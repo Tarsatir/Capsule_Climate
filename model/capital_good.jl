@@ -1,7 +1,13 @@
-# import Pkg; Pkg.add("Distributions")
-# import Pkg; Pkg.add("StatsBase") 
 using Distributions
 using StatsBase
+
+
+mutable struct Machine
+    A :: Float64
+    c :: Float64
+    freq :: Int16
+    age :: Float16
+end
 
 
 mutable struct CapitalGoodProducer 
@@ -15,6 +21,8 @@ mutable struct CapitalGoodProducer
     IN :: Array{Float64}
     S :: Array{Float64}
     HC :: Array{Float64}
+    Π :: Array{Float64}
+    orders :: Array
 end
 
 
@@ -24,7 +32,7 @@ function innovate!(capital_good_producer, global_param, macro_struct, model_stru
         functions
     """
 
-    set_RD(capital_good_producer, global_param, macro_struct)
+    set_RD!(capital_good_producer, global_param, macro_struct)
     tech_choices = [(capital_good_producer.A[end], capital_good_producer.B[end])]
 
     # determine innovation of machines
@@ -54,13 +62,14 @@ function innovate!(capital_good_producer, global_param, macro_struct, model_stru
         index = argmin(r_h)
         push!(capital_good_producer.A, tech_choices[index][0])
         push!(capital_good_producer.B, tech_choices[index][1])
+        push!(capital_good_producer.p, p_h[index])
+        push!(capital_good_producer.c, c_h[index])
     end
 
 end
 
 
-function send_brochures(capital_good_producer, model_struct, global_param)
-    # TODO: reset brochures of consumer good producers each turn
+function send_brochures!(capital_good_producer, model_struct, global_param)
 
     # set up brochure
     brochure = (capital_good_producer, capital_good_producer.p[end], capital_good_producer.c[end])
@@ -71,10 +80,16 @@ function send_brochures(capital_good_producer, model_struct, global_param)
     end
 
     # select new clients, send brochure
-    NC_potential = setdiff(model_struct.consumer_good_producers, consumer_good_producer.HC)
-    indexes = rand(1:length(NC_potential), round(global_param.γ * length(consumer_good_producer.HC)))
-    for index in indexes:
-        push!(NC_potential[index].brochures, brochure)
+    NC_potential = setdiff(model_struct.consumer_good_producers, capital_good_producer.HC)
+
+    n_choices = round(global_param.γ * length(capital_good_producer.HC))
+    if length(capital_good_producer.HC) == 0
+        n_choices = 10
+    end
+    
+    NC = sample(NC_potential, n_choices, replace=false)
+    for consumer_good_producer in NC
+        push!(consumer_good_producer.brochures, brochure)
     end 
 
 end
@@ -98,9 +113,6 @@ end
 
 
 function update_At!(capital_good_producer, global_param)
-    """
-    Updates A
-    """
     κ_A = Beta(global_param.α1, global_param.β1)
     A_t_in = A[end]*(1 + κ_A)
     return A_t_in
@@ -122,12 +134,23 @@ function set_price!(capital_good_producer, global_param, macro_struct)
 end
 
 
-function set_RD!(capital_good_producer, global_param, macro_struct)
+function set_RD!(capital_good_producer, global_param)
     RD_t_new = global_param.ν*(capital_good_producer.S[end])
     push!(capital_good_producer.RD, RD_t_new)
 
     IN_t_new = global_param.ξ*RD_t_new
     IM_t_new = (1 - global_param.ξ)*RD_t_new
     push!(capital_good_producer.IN, IN_t_new)
-    push!(capital_good_producer.IM, IN_t_new)
+    push!(capital_good_producer.IM, IM_t_new)
+end
+
+
+function receive_order(consumer_good_producer, I_t)
+    order = (consumer_good_producer, I_t)
+    push!(order, capital_good_producer.orders)
+end
+
+
+function send_order(consumer_good_producer, order)
+
 end
