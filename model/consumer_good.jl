@@ -30,7 +30,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Π :: Array{Float64}
     cI :: Float64
     ΔDeb :: Float64
-    Balance :: Float64
+    Balance :: Balance
 end
 
 
@@ -44,15 +44,15 @@ Computes capital stock K and average productivity π_t
 - capital stock at time t
 - average productivity at time t
 """
-function compute_K_π!(consumer_good_producer)
+function compute_K_π!(cp)
 
     # Dosi et al (2013) Eq. 20.5
-    K_t = sum(map(x -> x.freq, consumer_good_producer.Ξ))
-    push!(K_t, consumer_good_producer.Bal.K)
+    K_t = sum(map(x -> x.freq, cp.Ξ))
+    push!(K_t, cp.Bal.K)
 
     # Dosi et al (2013) Eq. 21.5
-    π_t = sum(map(x -> x.A * (x.freq / Kt), consumer_good_producer.Ξ))
-    push!(π_t, consumer_good_producer.π)
+    π_t = sum(map(x -> x.A * (x.freq / Kt), cp.Ξ))
+    push!(π_t, cp.π)
 
     return Kt, π_t
 end
@@ -61,84 +61,84 @@ end
 cop(p_t, c_t, b) = p_t + b * c_t
 
 
-function compute_p_c_E!(consumer_good_producer, global_params, w_t, l_t)
+function compute_p_c_E!(cp, global_params, w_t, l_t)
 
-    c_t = w_t / consumer_good_producer.π[end]
+    c_t = w_t / cp.π[end]
     p_t = (1 + global_param.μ1) * c_t
-    push!(c_t, consumer_good_producer.c)
-    push!(p_t, consumer_good_producer.p)
+    push!(c_t, cp.c)
+    push!(p_t, cp.p)
 
     E_t = -global_params.ω1 * p_t -global_params.ω2 * l_t
-    push!(E_t, consumer_good_producer.E)
+    push!(E_t, cp.E)
 
 end
 
 
-function set_production!(consumer_good_producer, E_bar, χ, C_t, r)
+function set_production!(cp, E_bar, χ, C_t, r)
 
     # update debt levels
-    Deb = consumer_good_producer.Bal.Deb
-    ΔDeb = consumer_good_producer.ΔDeb
-    push!(Deb + ΔDeb, consumer_good_producer.Bal.Deb)
+    Deb = cp.Bal.Deb
+    ΔDeb = cp.ΔDeb
+    push!(Deb + ΔDeb, cp.Bal.Deb)
 
     # compute new market share
-    E_t = consumer_good_producer.E[end]
+    E_t = cp.E[end]
     # Dosi et al (2013) Eq. 13
-    f_t = consumer_good_producer.f[end] * (1 + χ * (E_t - E_bar)/E_bar)
-    push!(f_t, consumer_good_producer.f)
+    f_t = cp.f[end] * (1 + χ * (E_t - E_bar)/E_bar)
+    push!(f_t, cp.f)
 
     # compute true demand
     D_t = f_t * C_t
-    push!(D_t, consumer_good_producer.D)
+    push!(D_t, cp.D)
 
     # compute profits
-    p_t = consumer_good_producer.p[end]
-    c_t = consumer_good_producer.c[end]
-    Q_t = consumer_good_producer.Q[end]
-    Deb_t = consumer_good_producer.Bal.Deb[end]
-    NW_t_1 = consumer_good_producer.Bal.NW[end]
-    cI = consumer_good_producer.cI
+    p_t = cp.p[end]
+    c_t = cp.c[end]
+    Q_t = cp.Q[end]
+    Deb_t = cp.Bal.Deb[end]
+    NW_t_1 = cp.Bal.NW[end]
+    cI = cp.cI
 
     # Dosi et al (2013), after Eq. 13
     Π_t = p_t * D_t - c_t * Q_t - r * Deb_t
-    push!(Π_t, consumer_good_producer.Π)
+    push!(Π_t, cp.Π)
 
     # Dosi et al (2013), after Eq. 13
     NW_t = NW_t_1 + Π_t - cI
-    push!(NW_t, consumer_good_producer.Bal.NW)
+    push!(NW_t, cp.Bal.NW)
 
 end
 
 
-function plan_investment!(consumer_good_producer, global_param, model_struct)
+function plan_investment!(cp, global_param, model_struct)
 
     # choose capital goods producer
-    p_star, c_star, chosen_producer, cop_star = choose_producer(consumer_good_producer.brochures, global_param.b)
+    p_star, c_star, chosen_producer, cop_star = choose_producer(cp.brochures, global_param.b)
 
     # compute capital stock K and average productivity
-    K_t, π_t = compute_productivity!(consumer_good_producer)
-    push!(π_t, consumer_good_producer.π)
+    K_t, π_t = compute_productivity!(cp)
+    push!(π_t, cp.π)
 
     # compute investment
-    EId = plan_expansion(consumer_good_producer, global_param, K_t)
-    RS = plan_replacement(consumer_good_producer, global_param, p_star, c_star)
+    EId = plan_expansion(cp, global_param, K_t)
+    RS = plan_replacement(cp, global_param, p_star, c_star)
     I_t = EId + sum(map(x -> x.freq, RS)) 
-    push!(I_t, consumer_good_producer.I)
+    push!(I_t, cp.I)
 
     # determine how liquid assets and debt changes
 
     #  TODO: repay debts
-    consumer_good_producer.cI = minimum(It, consumer_good_producer.Bal.NW[end])
-    consumer_good_producer.ΔDeb = maximum(It - consumer_good_producer.Bal.NW[end], 0)
+    cp.cI = minimum(It, cp.Bal.NW[end])
+    cp.ΔDeb = maximum(It - cp.Bal.NW[end], 0)
     
-    order_machines!(capital_good_producer, consumer_good_producer, I_t)
+    order_machines!(kp, cp, I_t)
 end
 
 
-function plan_expansion(consumer_good_producer, global_param, K_t)
-    Nd = global_param.ι * consumer_good_producer.D[end]
-    Qd = consumer_good_producer.D[end] + Nd - consumer_good_producer.Bal.N[end]
-    push!(Qd, consumer_good_producer.Q)
+function plan_expansion(cp, global_param, K_t)
+    Nd = global_param.ι * cp.D[end]
+    Qd = cp.D[end] + Nd - cp.Bal.N[end]
+    push!(Qd, cp.Q)
     
     K_d = Qd / global_param.cu
 
@@ -149,10 +149,10 @@ function plan_expansion(consumer_good_producer, global_param, K_t)
 end
 
 
-function plan_replacement(consumer_good_producer, global_param, p_star, c_star)
+function plan_replacement(cp, global_param, p_star, c_star)
     RS = Array{Float64}
 
-    for machine in consumer_good_producer.Ξ
+    for machine in cp.Ξ
         if (p_star/(machine.A - c_star) <= global_param.b) || machine.age >= global_param.η
             push!(RS, machine)
         end
@@ -190,12 +190,16 @@ function choose_producer(brochures, b)
 end
 
 
-function order_machines!(capital_good_producer, consumer_good_producer, I_t)
-    order = (consumer_good_producer, I_t)
-    push!(order, capital_good_producer.orders)
+function order_machines!(kp, cp, I_t)
+    order = (cp, I_t)
+    push!(order, kp.orders)
+end
+
+function reset_brochures!(cp)
+    cp.brochures = []
 end
 
 
-function receive_machines!(RS, consumer_good_producer, new_machines)
+function receive_machines!(RS, cp, new_machines)
 
 end

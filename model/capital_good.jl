@@ -12,6 +12,7 @@ end
 
 mutable struct CapitalGoodProducer <: AbstractAgent
     id :: Int
+    kp_id :: Int
     A :: Array{Float64}
     B :: Array{Float64}
     p :: Array{Float64}
@@ -25,17 +26,10 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     orders :: Array
 end
 
-
-function innovate!(;
-    kp, 
-    global_param, 
-    macro_struct, 
-    model_struct
-    )
-    """
-    Checks if innovation is performed, then calls approapriate
-        functions
-    """
+"""
+Checks if innovation is performed, then calls appropriate functions
+"""
+function innovate!(kp, global_param, all_agents, macro_struct)
     
     # determine levels of R&D, and how to divide under IN and IM
     set_RD!(kp, global_param)
@@ -43,16 +37,17 @@ function innovate!(;
 
     # determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN[end])
-    if (Bernoulli(θ_IN) == 1)
-        A_t_in = update_At(global_param)
-        B_t_in = update_Bt(global_param)
+    if (θ_IN > rand())
+        A_t_in = update_At(kp.A[end], global_param)
+        B_t_in = update_Bt(kp.B[end], global_param)
+        println((A_t_in, B_t_in))
         push!(tech_choices, (A_t_in, B_t_in))
     end
 
     # determine immitation of competitors
     θ_IM = 1 - exp(-global_param.ζ * kp.IM[end])
-    if (Bernoulli(θ_IM) == 1)
-        A_t_im, B_t_im = imitate_technology(kp, model_struct)
+    if (rand(Bernoulli(θ_IM)) > rand())
+        A_t_im, B_t_im = imitate_technology(kp, all_agents)
         push!(tech_choices, (A_t_im, B_t_im))
     end
 
@@ -62,12 +57,12 @@ function innovate!(;
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
     else
-        c_h = map(x -> global_param.w[end]/x[0], tech_choices)
+        c_h = map(x -> macro_struct.w[end]/x[1], tech_choices)
         p_h = map(x -> (1 + global_param.μ1)*x, c_h)
         r_h = p_h + global_param.b * c_h
         index = argmin(r_h)
-        push!(kp.A, tech_choices[index][0])
-        push!(kp.B, tech_choices[index][1])
+        push!(kp.A, tech_choices[index][1])
+        push!(kp.B, tech_choices[index][2])
         push!(kp.p, p_h[index])
         push!(kp.c, c_h[index])
     end
@@ -75,10 +70,10 @@ function innovate!(;
 end
 
 
-function send_brochures!(kp, model_struct, global_param)
+function send_brochures!(kp, all_agents, global_param)
 
     # set up brochure
-    brochure = (kp, kp.p[end], kp.c[end])
+    brochure = (kp.id, kp.p[end], kp.c[end])
 
     # send brochure to historical clients
     for client in kp.HC
@@ -86,7 +81,7 @@ function send_brochures!(kp, model_struct, global_param)
     end
 
     # select new clients, send brochure
-    NC_potential = setdiff(model_struct.consumer_good_producers, kp.HC)
+    NC_potential = setdiff(all_agents.consumer_good_producers, kp.HC)
 
     n_choices = round(global_param.γ * length(kp.HC))
     if length(kp.HC) == 0
@@ -101,18 +96,17 @@ function send_brochures!(kp, model_struct, global_param)
 end
 
 
-function imitate_technology(kp, model_struct, F1)
+function imitate_technology(kp, all_agents)
     # use inverse distances as weights for choice competitor,
-    distances = model_struct.capital_good_euclidian_matrix[kp.id, :]
-    
-    weights = zeros(F1)
-    weights[1:kp.id,:] = 1/distances[1:kp.id]
-    weights[kp.id+1:end] = 1/distances[kp.id+1:end]
-    
-    index = sample(1:F1, Weights(weights))
+    distances = all_agents.capital_good_euclidian_matrix
 
-    A_t_im = model_struct.capital_good_producers[index].A[end]
-    B_t_im = model_struct.capital_good_producers[index].B[end]
+    weights = map(x -> 1/x, distances[kp.kp_id,:])
+    
+    index = sample(1:length(all_agents.capital_good_producers),
+                   Weights(weights))
+
+    A_t_im = all_agents.capital_good_producers[index].A[end]
+    B_t_im = all_agents.capital_good_producers[index].B[end]
     
     return A_t_im, B_t_im
 end
@@ -126,18 +120,18 @@ function set_production!(kp)
 end
 
 
-function update_At!(global_param)
+function update_At(A_last, global_param)
     # determines new labor productivity of machine produced for cp
-    κ_A = Beta(global_param.α1, global_param.β1)
-    A_t_in = A[end]*(1 + κ_A)
+    κ_A = rand(Beta(global_param.α1, global_param.β1))
+    A_t_in = A_last*(1 + κ_A)
     return A_t_in
 end
 
 
-function update_Bt!(global_param)
+function update_Bt(B_last, global_param)
     # determines new labor productivity of own production method 
-    κ_A = Beta(global_param.α1, global_param.β1)
-    B_t_in = B[end]*(1 + κ_A)
+    κ_A = rand(Beta(global_param.α1, global_param.β1))
+    B_t_in = B_last*(1 + κ_A)
     return B_t_in
 end
 

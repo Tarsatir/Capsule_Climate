@@ -83,27 +83,31 @@ function initialize_model()
     return model_struct
 end
 
-function get_capgood_euclidian(model_struct, global_param)
+function get_capgood_euclidian(all_agents, n_captlgood)
     """
     Generates a matrix with Euclidian distances of the 
     technological levels A and B. 
     """
-    distance_matrix = zeros((global_param.F1, global_param.F1))
+    distance_matrix = zeros((n_captlgood, n_captlgood))
+
+    all_kp = all_agents.capital_good_producers
     
-    for i in 1:global_param.F1
-        for j in i:global_param.F1
+    for i in 1:n_captlgood
+        for j in i:n_captlgood
 
             # get current values for A and B of both producers
-            A1 = model_struct.capital_good_producers[i].A[end]
-            A2 = model_struct.capital_good_producers[j].A[end]
-            B1 = model_struct.capital_good_producers[i].B[end]
-            B2 = model_struct.capital_good_producers[j].B[end]
-
+            A1 = all_kp[i].A[end]
+            A2 = all_kp[j].A[end]
+            B1 = all_kp[i].B[end]
+            B2 = all_kp[j].B[end]
+            
             distance = sqrt((A1-A2)^2 + (B1-B2)^2)
+            if (i==j)
+                distance = Inf
+            end
             distance_matrix[i,j] = distance
             distance_matrix[j,i] = distance
         end
     end 
-    model_struct.capital_good_euclidian_matrix = distance_matrix
-
+    all_agents.capital_good_euclidian_matrix = distance_matrix
 end
