@@ -1,5 +1,5 @@
 
-mutable struct Model
+mutable struct All_Agents
     capital_good_producers :: Array
     consumer_good_producers :: Array
     capital_good_euclidian_matrix :: Array
@@ -72,7 +72,7 @@ function initialize_global_params()
         0.0,
         0.0,
         0.1,
-        0.4
+        0.4,
         0.75 # From rer98
     )
     return global_param
@@ -104,7 +104,6 @@ function get_capgood_euclidian(model_struct, global_param)
             distance_matrix[j,i] = distance
         end
     end 
-    # display(distance_matrix)
     model_struct.capital_good_euclidian_matrix = distance_matrix
 
 end

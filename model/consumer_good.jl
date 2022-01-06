@@ -12,8 +12,10 @@ mutable struct Balance
     EQ :: Array{Float64} # equity
 end
 
-
-mutable struct ConsumerGoodProducer 
+"""
+Defines struct for consumer good producer
+"""
+mutable struct ConsumerGoodProducer <: AbstractAgent
     id :: Int
     p :: Array{Float64}
     c :: Array{Float64}
@@ -28,9 +30,7 @@ mutable struct ConsumerGoodProducer
     Π :: Array{Float64}
     cI :: Float64
     ΔDeb :: Float64
-
-    Balance :: Balance
-
+    Balance :: Float64
 end
 
 
@@ -57,7 +57,7 @@ function compute_K_π!(consumer_good_producer)
     return Kt, π_t
 end
 
-# Dosi et al (2013) Eq. 17
+# Dosi et al (2013) Eq. 17, computes cost of production
 cop(p_t, c_t, b) = p_t + b * c_t
 
 
@@ -191,7 +191,8 @@ end
 
 
 function order_machines!(capital_good_producer, consumer_good_producer, I_t)
-
+    order = (consumer_good_producer, I_t)
+    push!(order, capital_good_producer.orders)
 end
 
 
