@@ -13,9 +13,12 @@ using Agents
 # using Setfield
 
 include("model.jl")
+include("misc.jl")
+include("household.jl")
 include("capital_good.jl")
 include("consumer_good.jl")
 include("macro.jl")
+
 
 
 function initialize_model(;
@@ -38,19 +41,26 @@ function initialize_model(;
     id = 0
     for kp_id in 1:n_captlgood
         capital_good_producer = CapitalGoodProducer(
-            id,
-            kp_id, 
-            [rand()], 
-            [rand()], 
-            [rand()], 
-            [rand()], 
-            [], 
-            [], 
-            [], 
-            [100], 
-            [],
-            [],
-            []
+            id,                     # global id
+            kp_id,                  # kp id
+            [rand()],               # A: labor prod sold product
+            [rand()],               # B: labor prod own production
+            [rand()],               # p: hist price data
+            [rand()],               # c: hist cost data
+            [],                     # RD: hist R&D expenditure
+            [],                     # IM: hist immitation expenditure
+            [],                     # IN: hist innovation expenditure
+            [100],                  # S: hist revenue
+            [],                     # HC: hist clients
+            [],                     # Π: hist profits
+            [],                     # orders
+            Balance(               
+                    0.0,            # - N: inventory
+                    0.0,            # - K: capital
+                    0.0,            # - NW: liquid assets
+                    0.0,            # - Deb: debt
+                    0.0             # - EQ: equity
+                )               
         )
         push!(all_agents.capital_good_producers, capital_good_producer)
         add_agent!(capital_good_producer, model)
@@ -61,23 +71,35 @@ function initialize_model(;
     get_capgood_euclidian(all_agents, n_captlgood)
 
     # initialize consumer good producers
-    for _ in 1:n_consrgood
+    for cp_id in 1:n_consrgood
         consumer_good_producer = ConsumerGoodProducer(
-            id, 
-            [], 
-            [], 
-            [], 
-            [], 
-            [rand()], 
-            [rand()], 
-            [], 
-            [], 
-            [rand()],
-            [rand()],
-            [100000],
-            0,
-            0,
-            Balance(0, 0, 0, 0, 0),
+            id,                     # global id
+            cp_id,                  # cp id
+            [],                     # p: hist prices
+            [],                     # c: hist cost
+            [],                     # RD: hist R&D spending
+            [],                     # D: hist demand
+            0,                      # Dᵉ exp demand
+            [rand()],               # N: hist inventory
+            0,                      # Nᵈ: desired inventory 
+            [rand()],               # Q: hist production
+            [rand()],               # I: hist investments
+            [],                     # Ξ: capital stock
+            [],                     # L: labor force
+            0,                      # Lᵉ: exp labor force
+            [],                     # brochures from kp
+            [rand()],               # π: hist productivity
+            [rand()],               # f: hist market share
+            [100000],               # Π: hist profits
+            0,                      # cI: internal funds for investments
+            0,                      # ΔDeb: changes in debt level
+            Balance(               
+                    0.0,            # - N: inventory
+                    0.0,            # - K: capital
+                    0.0,            # - NW: liquid assets
+                    0.0,            # - Deb: debt
+                    0.0             # - EQ: equity
+                )
         )
         push!(all_agents.consumer_good_producers, consumer_good_producer)
         add_agent!(consumer_good_producer, model)
@@ -104,8 +126,7 @@ function model_step!(model, all_agents, global_param, macro_struct)
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
     for cp in all_agents.consumer_good_producers
-        println(cp.brochures)
-        # TODO
+        plan_production!(cp, global_param)
     end
 
     # (3) workers apply for jobs

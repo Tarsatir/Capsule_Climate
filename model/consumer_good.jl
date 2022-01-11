@@ -1,36 +1,49 @@
 using Statistics
 
 
-mutable struct Balance
-    # assets
-    N :: Array{Float64} # inventories
-    K :: Array{Float64} # capital
-    NW :: Array{Float64} # liquid assets
-
-    # liabilities
-    Deb :: Array{Float64} # debt
-    EQ :: Array{Float64} # equity
-end
-
 """
 Defines struct for consumer good producer
 """
 mutable struct ConsumerGoodProducer <: AbstractAgent
-    id :: Int
-    p :: Array{Float64}
-    c :: Array{Float64}
-    RD :: Array{Float64}
-    D :: Array{Float64}
-    Q :: Array{Float64}
-    I :: Array{Float64}
-    Ξ :: Array
-    brochures :: Array
-    π :: Array{Float64}
-    f :: Array{Float64}
-    Π :: Array{Float64}
-    cI :: Float64
-    ΔDeb :: Float64
-    Balance :: Balance
+    id :: Int                   # id
+    cp_id :: Int                # cp id 
+    p :: Array{Float64}         # hist prices
+    c :: Array{Float64}         # hist cost
+    RD :: Array{Float64}        # R&D spending
+    D :: Array{Float64}         # hist demand
+    Dᵉ :: Float64               # exp demand
+    N :: Array{Float64}         # hist inventory
+    Nᵈ :: Float64               # desired inventory
+    Q :: Array{Float64}         # hist production
+    I :: Array{Float64}         # hist investments
+    Ξ :: Array{Machine}         # capital stock
+    L :: Array{Household}       # labor force
+    Lᵉ:: Float64                # exp labor force
+    brochures :: Array          # brochures from kp
+    π :: Array{Float64}         # hist productivity
+    f :: Array{Float64}         # hist market share
+    Π :: Array{Float64}         # hist profits
+    cI :: Float64               # internal funds for investments
+    ΔDeb :: Float64             # changes in debt level
+    balance :: Balance          # balance sheet
+end
+
+"""
+Plans production amounts for consumer good producer
+"""
+function plan_production!(cp, global_param)
+
+    # update expected demand
+    cp.Dᵉ = global_param.ωd * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
+
+    # determine desired short-term production
+    Qˢ = cp.Dᵉ + cp.Nᵈ - cp.N[end]
+
+    # compute corresponding change in labor stock
+    total_prod = sum(map(x -> x.A * x.freq, cp.Ξ))
+    ΔL = Qˢ/total_prod - length(cp.L)
+    println(ΔL)
+
 end
 
 

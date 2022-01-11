@@ -2,28 +2,21 @@ using Distributions
 using StatsBase
 
 
-mutable struct Machine
-    A :: Float64
-    c :: Float64
-    freq :: Int16
-    age :: Float16
-end
-
-
 mutable struct CapitalGoodProducer <: AbstractAgent
-    id :: Int
-    kp_id :: Int
-    A :: Array{Float64}
-    B :: Array{Float64}
-    p :: Array{Float64}
-    c :: Array{Float64}
-    RD :: Array{Float64}
-    IM :: Array{Float64}
-    IN :: Array{Float64}
-    S :: Array{Float64}
-    HC :: Array{Float64}
-    Π :: Array{Float64}
-    orders :: Array
+    id :: Int                   # global id
+    kp_id :: Int                # kp id
+    A :: Array{Float64}         # labor prod sold product
+    B :: Array{Float64}         # labor prod own production
+    p :: Array{Float64}         # hist price data
+    c :: Array{Float64}         # hist cost data
+    RD :: Array{Float64}        # hist R&D expenditure
+    IM :: Array{Float64}        # hist immitation expenditure
+    IN :: Array{Float64}        # hist innovation expenditure
+    S :: Array{Float64}         # hist revenue
+    HC :: Array{Float64}        # hist clients
+    Π :: Array{Float64}         # hist profits
+    orders :: Array             # orders
+    Balance :: Balance          # balance sheet
 end
 
 """
@@ -40,7 +33,6 @@ function innovate!(kp, global_param, all_agents, macro_struct)
     if (θ_IN > rand())
         A_t_in = update_At(kp.A[end], global_param)
         B_t_in = update_Bt(kp.B[end], global_param)
-        println((A_t_in, B_t_in))
         push!(tech_choices, (A_t_in, B_t_in))
     end
 
