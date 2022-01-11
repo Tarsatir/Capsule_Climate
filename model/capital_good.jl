@@ -3,20 +3,20 @@ using StatsBase
 
 
 mutable struct CapitalGoodProducer <: AbstractAgent
-    id :: Int                   # global id
-    kp_id :: Int                # kp id
-    A :: Array{Float64}         # labor prod sold product
-    B :: Array{Float64}         # labor prod own production
-    p :: Array{Float64}         # hist price data
-    c :: Array{Float64}         # hist cost data
-    RD :: Array{Float64}        # hist R&D expenditure
-    IM :: Array{Float64}        # hist immitation expenditure
-    IN :: Array{Float64}        # hist innovation expenditure
-    S :: Array{Float64}         # hist revenue
-    HC :: Array{Float64}        # hist clients
-    Π :: Array{Float64}         # hist profits
-    orders :: Array             # orders
-    Balance :: Balance          # balance sheet
+    id :: Int                               # global id
+    kp_id :: Int                            # kp id
+    A :: Array{Float64}                     # labor prod sold product
+    B :: Array{Float64}                     # labor prod own production
+    p :: Array{Float64}                     # hist price data
+    c :: Array{Float64}                     # hist cost data
+    RD :: Array{Float64}                    # hist R&D expenditure
+    IM :: Array{Float64}                    # hist immitation expenditure
+    IN :: Array{Float64}                    # hist innovation expenditure
+    S :: Array{Float64}                     # hist revenue
+    HC :: Array{ConsumerGoodProducer}       # hist clients
+    Π :: Array{Float64}                     # hist profits
+    orders :: Array                         # orders
+    Balance :: Balance                      # balance sheet
 end
 
 """
@@ -48,15 +48,20 @@ function innovate!(kp, global_param, all_agents, macro_struct)
         # if no new technologies, keep current technologies
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
+        c_h = macro_struct.w[end]/kp.B[end]
+        p_h = (1 + global_param.b) * c_h
+        push!(kp.c, c_h)
+        push!(kp.p, p_h)
     else
+        # if new technologies, update price data
         c_h = map(x -> macro_struct.w[end]/x[1], tech_choices)
         p_h = map(x -> (1 + global_param.μ1)*x, c_h)
         r_h = p_h + global_param.b * c_h
         index = argmin(r_h)
         push!(kp.A, tech_choices[index][1])
         push!(kp.B, tech_choices[index][2])
-        push!(kp.p, p_h[index])
         push!(kp.c, c_h[index])
+        push!(kp.p, p_h[index])
     end
 
 end
@@ -65,7 +70,7 @@ end
 function send_brochures!(kp, all_agents, global_param)
 
     # set up brochure
-    brochure = (kp.id, kp.p[end], kp.c[end])
+    brochure = (kp, kp.p[end], kp.c[end], kp.A[end])
 
     # send brochure to historical clients
     for client in kp.HC
@@ -75,14 +80,12 @@ function send_brochures!(kp, all_agents, global_param)
     # select new clients, send brochure
     NC_potential = setdiff(all_agents.consumer_good_producers, kp.HC)
 
-    n_choices = round(global_param.γ * length(kp.HC))
-    if length(kp.HC) == 0
-        n_choices = 10
-    end
+    n_choices = Int(round(global_param.γ * length(kp.HC)))
     
-    NC = sample(NC_potential, n_choices, replace=false)
-    for consumer_good_producer in NC
-        push!(consumer_good_producer.brochures, brochure)
+    # send brochures to new clients
+    NC = sample(NC_potential, n_choices; replace=false)
+    for cp in NC
+        push!(cp.brochures, brochure)
     end 
 
 end
@@ -104,12 +107,12 @@ function imitate_technology(kp, all_agents)
 end
 
 
-function set_production!(kp)
-    production = 0
-    for order in kp.orders
-        production += order[2]
-    end
-end
+# function set_production!(kp)
+#     production = 0
+#     for order in kp.orders
+#         production += order[2]
+#     end
+# end
 
 
 function update_At(A_last, global_param)
@@ -151,6 +154,11 @@ function set_RD!(kp, global_param)
     IM_t_new = (1 - global_param.ξ)*RD_new
     push!(kp.IN, IN_t_new)
     push!(kp.IM, IM_t_new)
+end
+
+
+function plan_production_kp!(kp, global_param)
+    # println(kp.orders)
 end
 
 

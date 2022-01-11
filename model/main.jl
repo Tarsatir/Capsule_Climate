@@ -10,13 +10,14 @@ using Statistics
 using Distributions
 using Random
 using Agents
+using BenchmarkTools
 # using Setfield
 
 include("model.jl")
 include("misc.jl")
 include("household.jl")
-include("capital_good.jl")
 include("consumer_good.jl")
+include("capital_good.jl")
 include("macro.jl")
 
 
@@ -24,7 +25,7 @@ include("macro.jl")
 function initialize_model(;
     n_captlgood = 5,
     n_consrgood = 20,
-    n_households = 1000
+    n_households = 100
     )
 
     # initialise model struct
@@ -37,56 +38,41 @@ function initialize_model(;
     # initialize struct that holds macro variables
     macro_struct = initialize_macro()
 
-    # initialize capital good producers
+    # global id
     id = 0
-    for kp_id in 1:n_captlgood
-        capital_good_producer = CapitalGoodProducer(
-            id,                     # global id
-            kp_id,                  # kp id
-            [rand()],               # A: labor prod sold product
-            [rand()],               # B: labor prod own production
-            [rand()],               # p: hist price data
-            [rand()],               # c: hist cost data
-            [],                     # RD: hist R&D expenditure
-            [],                     # IM: hist immitation expenditure
-            [],                     # IN: hist innovation expenditure
-            [100],                  # S: hist revenue
-            [],                     # HC: hist clients
-            [],                     # Π: hist profits
-            [],                     # orders
-            Balance(               
-                    0.0,            # - N: inventory
-                    0.0,            # - K: capital
-                    0.0,            # - NW: liquid assets
-                    0.0,            # - Deb: debt
-                    0.0             # - EQ: equity
-                )               
-        )
-        push!(all_agents.capital_good_producers, capital_good_producer)
-        add_agent!(capital_good_producer, model)
-        id += 1
-    end
 
-    # determine distance matrix between capital good producers
-    get_capgood_euclidian(all_agents, n_captlgood)
+    # initialize households
+    for hh_id in 1:n_households
+        
+    end
 
     # initialize consumer good producers
     for cp_id in 1:n_consrgood
+
+        # initialize capital good stock
+        machine = Machine(
+            1,                      # A: labor productivity machine
+            0,                      # c: cost to produce machine
+            40,                     # freq: freq machine owned by cp
+            0                       # age: age of machine
+        )
+
         consumer_good_producer = ConsumerGoodProducer(
             id,                     # global id
             cp_id,                  # cp id
             [],                     # p: hist prices
             [],                     # c: hist cost
             [],                     # RD: hist R&D spending
-            [],                     # D: hist demand
-            0,                      # Dᵉ exp demand
-            [rand()],               # N: hist inventory
-            0,                      # Nᵈ: desired inventory 
+            [1000],                 # D: hist demand
+            1000,                   # Dᵉ exp demand
+            [100],                  # N: hist inventory
+            200,                    # Nᵈ: desired inventory 
             [rand()],               # Q: hist production
+            12000,                  # Qᵉ: exp production
             [rand()],               # I: hist investments
-            [],                     # Ξ: capital stock
-            [],                     # L: labor force
-            0,                      # Lᵉ: exp labor force
+            [machine],              # Ξ: capital stock
+            [25],                 # L: labor force
+            25,                   # Lᵉ: exp labor force
             [],                     # brochures from kp
             [rand()],               # π: hist productivity
             [rand()],               # f: hist market share
@@ -105,6 +91,43 @@ function initialize_model(;
         add_agent!(consumer_good_producer, model)
         id += 1
     end
+
+    # initialize capital good producers
+    for kp_id in 1:n_captlgood
+
+        # make choice for historical clients
+        HC = sample(all_agents.consumer_good_producers, 10; replace=false)
+
+        # initialize capital good producer
+        capital_good_producer = CapitalGoodProducer( # initial parameters based on rer98
+            id,                     # global id
+            kp_id,                  # kp id
+            [1],                    # A: labor prod sold product
+            [1],                    # B: labor prod own production
+            [],                     # p: hist price data
+            [],                     # c: hist cost data
+            [],                     # RD: hist R&D expenditure
+            [],                     # IM: hist immitation expenditure
+            [],                     # IN: hist innovation expenditure
+            [100],                  # S: hist revenue
+            HC,                     # HC: hist clients
+            [],                     # Π: hist profits
+            [],                     # orders
+            Balance(               
+                    0.0,            # - N: inventory
+                    0.0,            # - K: capital
+                    1000.0,         # - NW: liquid assets
+                    0.0,            # - Deb: debt
+                    0.0             # - EQ: equity
+                )               
+        )
+        push!(all_agents.capital_good_producers, capital_good_producer)
+        add_agent!(capital_good_producer, model)
+        id += 1
+    end
+
+    # determine distance matrix between capital good producers
+    get_capgood_euclidian(all_agents, n_captlgood)
 
     return model, all_agents, global_param, macro_struct
 end
@@ -126,7 +149,13 @@ function model_step!(model, all_agents, global_param, macro_struct)
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
     for cp in all_agents.consumer_good_producers
-        plan_production!(cp, global_param)
+        plan_production_cp!(cp, global_param)
+        plan_investment_cp!(cp, global_param)
+    end
+
+    # (2) capital good producers set labor demand based on ordered machines
+    for kp in all_agents.capital_good_producers
+        plan_production_kp!(kp, global_param)
     end
 
     # (3) workers apply for jobs
@@ -188,6 +217,9 @@ end
 #     end
 # end
 
-model, all_agents, global_param, macro_struct = initialize_model()
+@time begin
 
+model, all_agents, global_param, macro_struct = initialize_model()
 model_step!(model, all_agents, global_param, macro_struct)
+
+end

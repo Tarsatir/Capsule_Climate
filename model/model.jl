@@ -6,45 +6,47 @@ mutable struct All_Agents
 end
 
 struct GlobalParam
-    F1 :: Int
-    F2 :: Int
-    ν :: Float64
-    ξ :: Float64
-    ζ :: Float64
-    α1 :: Float64
-    β1 :: Float64
-    κ_lower :: Float64
-    κ_upper :: Float64
-    γ :: Float64
-    μ1 :: Float64
-    ι :: Float64
-    b :: Int
-    η :: Int
-    υ :: Float64
-    ω :: Float64
-    χ :: Float64
-    Λ :: Float64
-    r :: Float64
-    φ1 :: Float64
-    φ2 :: Float64
-    φ3 :: Float64
-    φ4 :: Float64
-    α2 :: Float64
-    β2 :: Float64
-    ψ1 :: Float64
-    ψ2 :: Float64
-    ψ3 :: Float64
-    tr :: Float64
-    ϕ :: Float64
+    # F1 :: Int                       # number of kp
+    # F2 :: Int                       # number of cp
+    ν :: Float64                    # R&D inv propensity
+    ξ :: Float64                    # R&D allocation to IN
+    ζ :: Float64                    # firm search capabilities
+    α1 :: Float64                   # 1st beta dist param for IN
+    β1 :: Float64                   # 2nd beta dist param for IN
+    κ_lower :: Float64              # 1st beta dist support
+    κ_upper :: Float64              # 2nd beta dist support
+    γ :: Float64                    # new custommer sample parameter
+    μ1 :: Float64                   # kp markup rule
+    ι :: Float64                    # desired inventories
+    b :: Int                        # payback period
+    η :: Int                        # physical scrapping age
+    υ :: Float64                    # markup coefficient
+    ω :: Float64                    # competetiveness weights
+    χ :: Float64                    # replicator dynamics coeff
+    Λ :: Float64                    # max debt/sales ratio
+    r :: Float64                    # interest rate
+    φ1 :: Float64                   # 1st Uniform dist support, cp entrant cap
+    φ2 :: Float64                   # 2nd Uniform dist support, cp entrant cap
+    φ3 :: Float64                   # 1st Uniform dist support, cp entrant liq
+    φ4 :: Float64                   # 2nd Uniform dist support, cp entrant liq
+    α2 :: Float64                   # 1st beta dist param for kp entrant
+    β2 :: Float64                   # 2nd beta dist param for kp entrant
+    # ψ1 :: Float64
+    # ψ2 :: Float64
+    # ψ3 :: Float64                 # param changed in current model
+    # tr :: Float64
+    # ϕ :: Float64
     cu :: Float16
+
+    ωD :: Float64                   # memory parameter cp demand estimation
+    ωQ :: Float64                   # memory parameter cp quantity estimation
+    ωL :: Float64                   # memory parameter cp labor supply estimation
 end
 
 function initialize_global_params()
     global_param = GlobalParam(
-        # 50,
-        # 200,
-        5, # TEMP
-        20, # TEMP
+        # 5, # TEMP
+        # 20, # TEMP
         0.04,
         0.5,
         0.3,
@@ -68,12 +70,16 @@ function initialize_global_params()
         0.9,
         2.0,
         4.0,
-        1.0,
-        0.0,
-        0.0,
-        0.1,
-        0.4,
-        0.75 # From rer98
+        # 1.0,
+        # 0.0,
+        # 0.0,
+        # 0.1,
+        # 0.4,
+        0.75, # From rer98
+
+        0.5,                        # ωD: memory parameter cp demand estimation
+        0.5,                        # ωQ: memory parameter cp quantity estimation
+        0.5                         # ωL: memory parameter cp labor supply estimation
     )
     return global_param
 end

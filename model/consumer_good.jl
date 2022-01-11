@@ -15,9 +15,10 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     N :: Array{Float64}         # hist inventory
     Nᵈ :: Float64               # desired inventory
     Q :: Array{Float64}         # hist production
+    Qᵉ :: Float64               # exp production
     I :: Array{Float64}         # hist investments
     Ξ :: Array{Machine}         # capital stock
-    L :: Array{Household}       # labor force
+    L :: Array                  # labor force
     Lᵉ:: Float64                # exp labor force
     brochures :: Array          # brochures from kp
     π :: Array{Float64}         # hist productivity
@@ -28,13 +29,17 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     balance :: Balance          # balance sheet
 end
 
+
 """
-Plans production amounts for consumer good producer
+Plans production amounts for consumer good producer (short term)
+    - updates ST expected demand
+    - determines ST production goals
+    - based on ST, set labor demand
 """
-function plan_production!(cp, global_param)
+function plan_production_cp!(cp, global_param)
 
     # update expected demand
-    cp.Dᵉ = global_param.ωd * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
+    cp.Dᵉ = global_param.ωD * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
 
     # determine desired short-term production
     Qˢ = cp.Dᵉ + cp.Nᵈ - cp.N[end]
@@ -42,7 +47,45 @@ function plan_production!(cp, global_param)
     # compute corresponding change in labor stock
     total_prod = sum(map(x -> x.A * x.freq, cp.Ξ))
     ΔL = Qˢ/total_prod - length(cp.L)
-    println(ΔL)
+
+    # println(ΔL)
+
+end
+
+
+"""
+Plans production amounts for consumer good producer (long term)
+    - updates LT expected demand
+    - updates LT labor supply 
+    - determines LT production goals
+    - based on LT, set investment amount
+"""
+function plan_investment_cp!(cp, global_param)
+
+    # choose kp
+    p_star, c_star, kp_choice, cop_star, Aᵈ = choose_producer(cp, global_param.b)
+
+    # plan replacement investments
+    RS = plan_replacement(cp, global_param, p_star, c_star)
+
+    # update LT demand
+    cp.Qᵉ = global_param.ωQ * cp.Q[end] + (1 - global_param.ωQ) * cp.Qᵉ
+
+    # update expected labor supply
+    cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
+
+    # compute desired capital stock expansion
+    Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(x -> x.A * x.freq, cp.Ξ)))/Aᵈ
+
+    EIᵈ = Kᵈ - sum(map(x -> x.freq, cp.Ξ))
+    
+    Iₜ = EIᵈ + sum(map(x -> x.freq, RS))
+
+    println(Iₜ)
+
+    if Iₜ > 0
+        order_machines!(kp_choice, cp, Iₜ)
+    end
 
 end
 
@@ -123,29 +166,29 @@ function set_production!(cp, E_bar, χ, C_t, r)
 end
 
 
-function plan_investment!(cp, global_param, model_struct)
+# function plan_investment!(cp, global_param, model_struct)
 
-    # choose capital goods producer
-    p_star, c_star, chosen_producer, cop_star = choose_producer(cp.brochures, global_param.b)
+#     # choose capital goods producer
+#     p_star, c_star, chosen_producer, cop_star = choose_producer(cp.brochures, global_param.b)
 
-    # compute capital stock K and average productivity
-    K_t, π_t = compute_productivity!(cp)
-    push!(π_t, cp.π)
+#     # compute capital stock K and average productivity
+#     K_t, π_t = compute_productivity!(cp)
+#     push!(π_t, cp.π)
 
-    # compute investment
-    EId = plan_expansion(cp, global_param, K_t)
-    RS = plan_replacement(cp, global_param, p_star, c_star)
-    I_t = EId + sum(map(x -> x.freq, RS)) 
-    push!(I_t, cp.I)
+#     # compute investment
+#     EId = plan_expansion(cp, global_param, K_t)
+#     RS = plan_replacement(cp, global_param, p_star, c_star)
+#     I_t = EId + sum(map(x -> x.freq, RS)) 
+#     push!(I_t, cp.I)
 
-    # determine how liquid assets and debt changes
+#     # determine how liquid assets and debt changes
 
-    #  TODO: repay debts
-    cp.cI = minimum(It, cp.Bal.NW[end])
-    cp.ΔDeb = maximum(It - cp.Bal.NW[end], 0)
+#     #  TODO: repay debts
+#     cp.cI = minimum(It, cp.Bal.NW[end])
+#     cp.ΔDeb = maximum(It - cp.Bal.NW[end], 0)
     
-    order_machines!(kp, cp, I_t)
-end
+#     order_machines!(kp, cp, I_t)
+# end
 
 
 function plan_expansion(cp, global_param, K_t)
@@ -163,7 +206,7 @@ end
 
 
 function plan_replacement(cp, global_param, p_star, c_star)
-    RS = Array{Float64}
+    RS = []
 
     for machine in cp.Ξ
         if (p_star/(machine.A - c_star) <= global_param.b) || machine.age >= global_param.η
@@ -175,18 +218,20 @@ function plan_replacement(cp, global_param, p_star, c_star)
 end
 
 
-function choose_producer(brochures, b)
+function choose_producer(cp, b)
 
     # take first producer as best, then compare to other producers
-    chosen_producer = brochures[1][1]
-    p_star = brochures[1][2]
-    c_star = brochures[1][3]
+    chosen_producer = cp.brochures[1][1]
+    p_star = cp.brochures[1][2]
+    c_star = cp.brochures[1][3]
+    A_star = cp.brochures[1][4]
     cop_star = cop(p_star, c_star, b)
 
-    for brochure in brochures # TODO let skip first
+    for brochure in cp.brochures
 
         p_h = brochure[2]
         c_h = brochure[3]
+        A_h = brochure[4]
         potential_cop = cop(p_h, c_h, b)
 
         # if cheaper, choose cheaper option
@@ -194,18 +239,19 @@ function choose_producer(brochures, b)
             chosen_producer = brochure[1]
             p_star = p_h
             c_star = c_h
+            A_star = A_h
             cop_star = potential_cop
         end
 
     end
 
-    return p_star, c_star, chosen_producer, cop_star
+    return p_star, c_star, chosen_producer, cop_star, A_star
 end
 
 
-function order_machines!(kp, cp, I_t)
-    order = (cp, I_t)
-    push!(order, kp.orders)
+function order_machines!(kp_choice, cp, Iₜ)
+    order = (cp, Iₜ)
+    push!(kp_choice.orders, order)
 end
 
 function reset_brochures!(cp)
