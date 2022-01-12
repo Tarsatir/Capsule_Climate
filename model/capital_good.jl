@@ -158,7 +158,16 @@ end
 
 
 function plan_production_kp!(kp, global_param)
-    # println(kp.orders)
+    
+    if (length(kp.orders) > 0)
+        # determine total amount of machines to produce
+        O = sum(map(x -> x[2], kp.orders))
+        
+        # determine amount of labor to hire
+        ΔL = O/kp.B[end]
+        println(ΔL)
+
+    end
 end
 
 

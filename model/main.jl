@@ -71,11 +71,14 @@ function initialize_model(;
             12000,                  # Qᵉ: exp production
             [rand()],               # I: hist investments
             [machine],              # Ξ: capital stock
-            [25],                 # L: labor force
-            25,                   # Lᵉ: exp labor force
+            [25],                   # L: labor force
+            25,                     # Lᵉ: exp labor force
+            0,                      # ΔLᵈ: desired change in labor force
+            [1.0],                  # w: wage level
             [],                     # brochures from kp
             [rand()],               # π: hist productivity
             [rand()],               # f: hist market share
+            [0.05],                 # μ: hist markup
             [100000],               # Π: hist profits
             0,                      # cI: internal funds for investments
             0,                      # ΔDeb: changes in debt level
@@ -177,8 +180,9 @@ function model_step!(model, all_agents, global_param, macro_struct)
     # (7) government receives profit taxes
     # TODO
 
-    # (7) macro-economic indicators are updated
+    # (7) macro-economic indicators are updated.
     # TODO
+    # TODO update market share cp
 
 
 end

@@ -24,7 +24,7 @@ struct GlobalParam
     ω :: Float64                    # competetiveness weights
     χ :: Float64                    # replicator dynamics coeff
     Λ :: Float64                    # max debt/sales ratio
-    r :: Float64                    # interest rate
+    # r :: Float64                    # interest rate
     φ1 :: Float64                   # 1st Uniform dist support, cp entrant cap
     φ2 :: Float64                   # 2nd Uniform dist support, cp entrant cap
     φ3 :: Float64                   # 1st Uniform dist support, cp entrant liq
@@ -63,7 +63,7 @@ function initialize_global_params()
         1.0,
         1.0,
         2.0,
-        0.01,
+        # 0.01,
         0.1,
         0.9,
         0.1,

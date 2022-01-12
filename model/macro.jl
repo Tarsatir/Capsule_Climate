@@ -1,29 +1,31 @@
 
 mutable struct MacroEconomy
-    CPI :: Array{Float64}   # inflation over time
-    C :: Array{Float64}     # aggregate consumption over time
-    w :: Array{Float64}     # wage over time
-    U :: Array{Float64}     # unemployment over time
-    AB :: Array{Float64}    # average labor productivity over time
-    l :: Array{Float64}     # unfilled demand over time
-    E_bar :: Array{Float64} # average competetiveness over time
-    r :: Array{Float64}     # interest rate over time
-    Ls :: Array{Float64}    # labor supply over time
-    Ld :: Array{Float64}    # labor demand over time
+    CPI :: Array{Float64}       # inflation over time
+    C :: Array{Float64}         # aggregate consumption over time
+    w :: Array{Float64}         # wage over time
+    U :: Array{Float64}         # unemployment over time
+    AB :: Array{Float64}        # average labor productivity over time
+    l :: Array{Float64}         # unfilled demand over time
+    E_bar :: Array{Float64}     # average competetiveness over time
+    r :: Array{Float64}         # interest rate over time
+    Ls :: Array{Float64}        # labor supply over time
+    Ld :: Array{Float64}        # labor demand over time
 end
 
 
 function initialize_macro()
-    macro_struct = MacroEconomy([],     # CPI
-                                [],     # aggregate consumption
-                                [2],    # wage
-                                [], 
-                                [],
-                                [],
-                                [],
-                                [],
-                                [],
-                                [])
+    macro_struct = MacroEconomy(
+        [],                     # CPI: inflation rate
+        [],                     # aggregate consumption
+        [2],                    # wage
+        [], 
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+    )
     return macro_struct
 end
 

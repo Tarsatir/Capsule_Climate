@@ -20,9 +20,12 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Ξ :: Array{Machine}         # capital stock
     L :: Array                  # labor force
     Lᵉ:: Float64                # exp labor force
+    ΔLᵈ :: Float64              # desired change in labor force
+    w :: Array{Float64}         # wage level
     brochures :: Array          # brochures from kp
     π :: Array{Float64}         # hist productivity
     f :: Array{Float64}         # hist market share
+    μ :: Array{Float64}         # hist markup
     Π :: Array{Float64}         # hist profits
     cI :: Float64               # internal funds for investments
     ΔDeb :: Float64             # changes in debt level
@@ -46,10 +49,19 @@ function plan_production_cp!(cp, global_param)
 
     # compute corresponding change in labor stock
     total_prod = sum(map(x -> x.A * x.freq, cp.Ξ))
-    ΔL = Qˢ/total_prod - length(cp.L)
+    cp.ΔLᵈ = Qˢ/total_prod - length(cp.L)
 
-    # println(ΔL)
+    # update markup μ
+    μ = compute_μ_cp(cp, global_param.υ, global_param.μ1)
+    push!(cp.μ, μ)
 
+    # update cost of production c
+    c = compute_c_cp(cp, Qˢ)
+    push!(cp.c, c)
+
+    # compute price
+    p = (1 + μ) * c
+    push!(cp.p, p)
 end
 
 
@@ -81,8 +93,7 @@ function plan_investment_cp!(cp, global_param)
     
     Iₜ = EIᵈ + sum(map(x -> x.freq, RS))
 
-    println(Iₜ)
-
+    # TODO does not check if funds are available
     if Iₜ > 0
         order_machines!(kp_choice, cp, Iₜ)
     end
@@ -90,80 +101,80 @@ function plan_investment_cp!(cp, global_param)
 end
 
 
-"""
-Computes capital stock K and average productivity π_t
+# """
+# Computes capital stock K and average productivity π_t
 
-# Input
-- consumer good producer struct
+# # Input
+# - consumer good producer struct
 
-# Output
-- capital stock at time t
-- average productivity at time t
-"""
-function compute_K_π!(cp)
+# # Output
+# - capital stock at time t
+# - average productivity at time t
+# """
+# function compute_K_π!(cp)
 
-    # Dosi et al (2013) Eq. 20.5
-    K_t = sum(map(x -> x.freq, cp.Ξ))
-    push!(K_t, cp.Bal.K)
+#     # Dosi et al (2013) Eq. 20.5
+#     K_t = sum(map(x -> x.freq, cp.Ξ))
+#     push!(K_t, cp.Bal.K)
 
-    # Dosi et al (2013) Eq. 21.5
-    π_t = sum(map(x -> x.A * (x.freq / Kt), cp.Ξ))
-    push!(π_t, cp.π)
+#     # Dosi et al (2013) Eq. 21.5
+#     π_t = sum(map(x -> x.A * (x.freq / Kt), cp.Ξ))
+#     push!(π_t, cp.π)
 
-    return Kt, π_t
-end
+#     return Kt, π_t
+# end
 
 # Dosi et al (2013) Eq. 17, computes cost of production
 cop(p_t, c_t, b) = p_t + b * c_t
 
 
-function compute_p_c_E!(cp, global_params, w_t, l_t)
+# function compute_p_c_E!(cp, global_params, w_t, l_t)
 
-    c_t = w_t / cp.π[end]
-    p_t = (1 + global_param.μ1) * c_t
-    push!(c_t, cp.c)
-    push!(p_t, cp.p)
+#     c_t = w_t / cp.π[end]
+#     p_t = (1 + global_param.μ1) * c_t
+#     push!(c_t, cp.c)
+#     push!(p_t, cp.p)
 
-    E_t = -global_params.ω1 * p_t -global_params.ω2 * l_t
-    push!(E_t, cp.E)
+#     E_t = -global_params.ω1 * p_t -global_params.ω2 * l_t
+#     push!(E_t, cp.E)
 
-end
+# end
 
 
-function set_production!(cp, E_bar, χ, C_t, r)
+# function set_production!(cp, E_bar, χ, C_t, r)
 
-    # update debt levels
-    Deb = cp.Bal.Deb
-    ΔDeb = cp.ΔDeb
-    push!(Deb + ΔDeb, cp.Bal.Deb)
+#     # update debt levels
+#     Deb = cp.Bal.Deb
+#     ΔDeb = cp.ΔDeb
+#     push!(Deb + ΔDeb, cp.Bal.Deb)
 
-    # compute new market share
-    E_t = cp.E[end]
-    # Dosi et al (2013) Eq. 13
-    f_t = cp.f[end] * (1 + χ * (E_t - E_bar)/E_bar)
-    push!(f_t, cp.f)
+#     # compute new market share
+#     E_t = cp.E[end]
+#     # Dosi et al (2013) Eq. 13
+#     f_t = cp.f[end] * (1 + χ * (E_t - E_bar)/E_bar)
+#     push!(f_t, cp.f)
 
-    # compute true demand
-    D_t = f_t * C_t
-    push!(D_t, cp.D)
+#     # compute true demand
+#     D_t = f_t * C_t
+#     push!(D_t, cp.D)
 
-    # compute profits
-    p_t = cp.p[end]
-    c_t = cp.c[end]
-    Q_t = cp.Q[end]
-    Deb_t = cp.Bal.Deb[end]
-    NW_t_1 = cp.Bal.NW[end]
-    cI = cp.cI
+#     # compute profits
+#     p_t = cp.p[end]
+#     c_t = cp.c[end]
+#     Q_t = cp.Q[end]
+#     Deb_t = cp.Bal.Deb[end]
+#     NW_t_1 = cp.Bal.NW[end]
+#     cI = cp.cI
 
-    # Dosi et al (2013), after Eq. 13
-    Π_t = p_t * D_t - c_t * Q_t - r * Deb_t
-    push!(Π_t, cp.Π)
+#     # Dosi et al (2013), after Eq. 13
+#     Π_t = p_t * D_t - c_t * Q_t - r * Deb_t
+#     push!(Π_t, cp.Π)
 
-    # Dosi et al (2013), after Eq. 13
-    NW_t = NW_t_1 + Π_t - cI
-    push!(NW_t, cp.Bal.NW)
+#     # Dosi et al (2013), after Eq. 13
+#     NW_t = NW_t_1 + Π_t - cI
+#     push!(NW_t, cp.Bal.NW)
 
-end
+# end
 
 
 # function plan_investment!(cp, global_param, model_struct)
@@ -191,18 +202,18 @@ end
 # end
 
 
-function plan_expansion(cp, global_param, K_t)
-    Nd = global_param.ι * cp.D[end]
-    Qd = cp.D[end] + Nd - cp.Bal.N[end]
-    push!(Qd, cp.Q)
+# function plan_expansion(cp, global_param, K_t)
+#     Nd = global_param.ι * cp.D[end]
+#     Qd = cp.D[end] + Nd - cp.Bal.N[end]
+#     push!(Qd, cp.Q)
     
-    K_d = Qd / global_param.cu
+#     K_d = Qd / global_param.cu
 
-    # TODO: check if this is the correct function
-    EId = K_d - K_t
+#     # TODO: check if this is the correct function
+#     EId = K_d - K_t
 
-    return EId
-end
+#     return EId
+# end
 
 
 function plan_replacement(cp, global_param, p_star, c_star)
@@ -246,6 +257,21 @@ function choose_producer(cp, b)
     end
 
     return p_star, c_star, chosen_producer, cop_star, A_star
+end
+
+
+function compute_μ_cp(cp, υ, μ1)
+    μ = μ1
+    if (length(cp.f) > 2)
+        μ = cp.μ[end] * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
+    end
+    return μ
+end
+
+function compute_c_cp(cp, Qˢ)
+    Ā = sum(map(x -> x.A * x.freq, cp.Ξ))
+    c = cp.w[end] * Qˢ / Ā
+    return c
 end
 
 
