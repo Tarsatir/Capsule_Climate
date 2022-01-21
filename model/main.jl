@@ -23,14 +23,14 @@ include("macro.jl")
 
 
 function initialize_model(;
-    n_captlgood = 5,
-    n_consrgood = 20,
-    n_households = 100
+    n_captlgood = 50,
+    n_consrgood = 200,
+    n_households = 1000
     )
 
     # initialise model struct
-    model = AgentBasedModel(Union{CapitalGoodProducer, ConsumerGoodProducer})
-    all_agents = All_Agents([], [], [])
+    model = AgentBasedModel(Union{Household, CapitalGoodProducer, ConsumerGoodProducer})
+    all_agents = All_Agents([], [], [], [])
 
     # initialize struct that holds global params
     global_param  = initialize_global_params()
@@ -43,7 +43,21 @@ function initialize_model(;
 
     # initialize households
     for hh_id in 1:n_households
-        
+        household = Household(
+            id,                     # global id
+            hh_id,                  # household id
+            false,                  # bool: employed
+            nothing,                # employer
+            [1000],                 # I: hist income
+            1000,                   # Iᵉ: exp income
+            10,                     # L: labor units
+            [1000],                 # S: total savings
+            1000,                   # B: budget
+            1000,                   # w: wage
+            0.5                     # ωI: memory param income exp
+        )
+        push!(all_agents.households, household)
+        add_agent!(household, model)
     end
 
     # initialize consumer good producers
@@ -115,6 +129,7 @@ function initialize_model(;
             [100],                  # S: hist revenue
             HC,                     # HC: hist clients
             [],                     # Π: hist profits
+            [],                     # brochure
             [],                     # orders
             Balance(               
                     0.0,            # - N: inventory
@@ -140,20 +155,20 @@ function model_step!(model, all_agents, global_param, macro_struct)
 
     # reset brochures of all consumer good producers
     for cp in all_agents.consumer_good_producers
-        reset_brochures!(cp)
+        reset_brochures_cp!(cp)
     end
 
     # (1) capital good producers innovate and send brochures
     for kp in all_agents.capital_good_producers
-        innovate!(kp, global_param, all_agents, macro_struct)
-        send_brochures!(kp, all_agents, global_param)
+        innovate_kp!(kp, global_param, all_agents, macro_struct)
+        send_brochures_kp!(kp, all_agents, global_param)
     end
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
     for cp in all_agents.consumer_good_producers
         plan_production_cp!(cp, global_param)
-        plan_investment_cp!(cp, global_param)
+        plan_investment_cp!(cp, global_param, all_agents.capital_good_producers)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
@@ -169,6 +184,11 @@ function model_step!(model, all_agents, global_param, macro_struct)
 
     # (5) Government receives income taxes. Households set consumption choice
     # TODO
+
+    # (6) Households pick prefered products to buy and set budget and consumption package
+    for hh in all_agents.households
+        pick_cp_hh(hh, all_agents.consumer_good_producers)
+    end
 
     # (6) Transactions take place on consumer market, consumer good producers
     # make up profits

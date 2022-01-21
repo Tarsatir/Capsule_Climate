@@ -15,6 +15,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     S :: Array{Float64}                     # hist revenue
     HC :: Array{ConsumerGoodProducer}       # hist clients
     Π :: Array{Float64}                     # hist profits
+    brochure                                # brochure
     orders :: Array                         # orders
     Balance :: Balance                      # balance sheet
 end
@@ -22,24 +23,24 @@ end
 """
 Checks if innovation is performed, then calls appropriate functions
 """
-function innovate!(kp, global_param, all_agents, macro_struct)
+function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struct)
     
     # determine levels of R&D, and how to divide under IN and IM
-    set_RD!(kp, global_param)
+    set_RD_kp!(kp, global_param)
     tech_choices = [(kp.A[end], kp.B[end])]
 
     # determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN[end])
     if (θ_IN > rand())
-        A_t_in = update_At(kp.A[end], global_param)
-        B_t_in = update_Bt(kp.B[end], global_param)
+        A_t_in = update_At_kp(kp.A[end], global_param)
+        B_t_in = update_Bt_kp(kp.B[end], global_param)
         push!(tech_choices, (A_t_in, B_t_in))
     end
 
     # determine immitation of competitors
     θ_IM = 1 - exp(-global_param.ζ * kp.IM[end])
     if (rand(Bernoulli(θ_IM)) > rand())
-        A_t_im, B_t_im = imitate_technology(kp, all_agents)
+        A_t_im, B_t_im = imitate_technology_kp(kp, all_agents)
         push!(tech_choices, (A_t_im, B_t_im))
     end
 
@@ -67,10 +68,11 @@ function innovate!(kp, global_param, all_agents, macro_struct)
 end
 
 
-function send_brochures!(kp, all_agents, global_param)
+function send_brochures_kp!(kp :: AbstractAgent, all_agents, global_param)
 
     # set up brochure
     brochure = (kp, kp.p[end], kp.c[end], kp.A[end])
+    kp.brochure = brochure
 
     # send brochure to historical clients
     for client in kp.HC
@@ -91,7 +93,7 @@ function send_brochures!(kp, all_agents, global_param)
 end
 
 
-function imitate_technology(kp, all_agents)
+function imitate_technology_kp(kp :: AbstractAgent, all_agents)
     # use inverse distances as weights for choice competitor,
     distances = all_agents.capital_good_euclidian_matrix
 
@@ -115,7 +117,7 @@ end
 # end
 
 
-function update_At(A_last, global_param)
+function update_At_kp(A_last :: Float64, global_param)
     # determines new labor productivity of machine produced for cp
     κ_A = rand(Beta(global_param.α1, global_param.β1))
     A_t_in = A_last*(1 + κ_A)
@@ -123,7 +125,7 @@ function update_At(A_last, global_param)
 end
 
 
-function update_Bt(B_last, global_param)
+function update_Bt_kp(B_last :: Float64, global_param)
     # determines new labor productivity of own production method 
     κ_A = rand(Beta(global_param.α1, global_param.β1))
     B_t_in = B_last*(1 + κ_A)
@@ -131,7 +133,7 @@ function update_Bt(B_last, global_param)
 end
 
 
-function set_price!(kp, global_param, macro_struct)
+function set_price_kp!(kp :: AbstractAgent, global_param, macro_struct)
     c_t = macro_struct.w[end] / kp.B[end]
     p_t = (1 + global_param.μ1) * c_t
     push!(kp.c, c_t)
@@ -143,7 +145,7 @@ end
 Determines the level of R&D, and how it is divided under innovation (IN) 
 and immitation (IM). based on Dosi et al (2010)
 """
-function set_RD!(kp, global_param)
+function set_RD_kp!(kp :: AbstractAgent, global_param)
     # determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
     RD_new = global_param.ν*(kp.S[end])
     push!(kp.RD, RD_new)
@@ -157,7 +159,7 @@ function set_RD!(kp, global_param)
 end
 
 
-function plan_production_kp!(kp, global_param)
+function plan_production_kp!(kp :: AbstractAgent, global_param)
     
     if (length(kp.orders) > 0)
         # determine total amount of machines to produce
@@ -165,7 +167,6 @@ function plan_production_kp!(kp, global_param)
         
         # determine amount of labor to hire
         ΔL = O/kp.B[end]
-        println(ΔL)
 
     end
 end

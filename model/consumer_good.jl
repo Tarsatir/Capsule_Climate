@@ -39,7 +39,7 @@ Plans production amounts for consumer good producer (short term)
     - determines ST production goals
     - based on ST, set labor demand
 """
-function plan_production_cp!(cp, global_param)
+function plan_production_cp!(cp :: AbstractAgent, global_param)
 
     # update expected demand
     cp.Dᵉ = global_param.ωD * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
@@ -72,13 +72,13 @@ Plans production amounts for consumer good producer (long term)
     - determines LT production goals
     - based on LT, set investment amount
 """
-function plan_investment_cp!(cp, global_param)
+function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{AbstractAgent})
 
     # choose kp
-    p_star, c_star, kp_choice, cop_star, Aᵈ = choose_producer(cp, global_param.b)
+    p_star, c_star, kp_choice, cop_star, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp)
 
     # plan replacement investments
-    RS = plan_replacement(cp, global_param, p_star, c_star)
+    RS = plan_replacement_cp(cp, global_param, p_star, c_star)
 
     # update LT demand
     cp.Qᵉ = global_param.ωQ * cp.Q[end] + (1 - global_param.ωQ) * cp.Qᵉ
@@ -95,7 +95,7 @@ function plan_investment_cp!(cp, global_param)
 
     # TODO does not check if funds are available
     if Iₜ > 0
-        order_machines!(kp_choice, cp, Iₜ)
+        order_machines_cp!(kp_choice, cp, Iₜ)
     end
 
 end
@@ -180,7 +180,7 @@ cop(p_t, c_t, b) = p_t + b * c_t
 # function plan_investment!(cp, global_param, model_struct)
 
 #     # choose capital goods producer
-#     p_star, c_star, chosen_producer, cop_star = choose_producer(cp.brochures, global_param.b)
+#     p_star, c_star, chosen_producer, cop_star = choose_producer_cp(cp.brochures, global_param.b)
 
 #     # compute capital stock K and average productivity
 #     K_t, π_t = compute_productivity!(cp)
@@ -188,7 +188,7 @@ cop(p_t, c_t, b) = p_t + b * c_t
 
 #     # compute investment
 #     EId = plan_expansion(cp, global_param, K_t)
-#     RS = plan_replacement(cp, global_param, p_star, c_star)
+#     RS = plan_replacement_cp(cp, global_param, p_star, c_star)
 #     I_t = EId + sum(map(x -> x.freq, RS)) 
 #     push!(I_t, cp.I)
 
@@ -198,7 +198,7 @@ cop(p_t, c_t, b) = p_t + b * c_t
 #     cp.cI = minimum(It, cp.Bal.NW[end])
 #     cp.ΔDeb = maximum(It - cp.Bal.NW[end], 0)
     
-#     order_machines!(kp, cp, I_t)
+#     order_machines_cp!(kp, cp, I_t)
 # end
 
 
@@ -216,7 +216,7 @@ cop(p_t, c_t, b) = p_t + b * c_t
 # end
 
 
-function plan_replacement(cp, global_param, p_star, c_star)
+function plan_replacement_cp(cp :: AbstractAgent, global_param, p_star :: Float64, c_star :: Float64)
     RS = []
 
     for machine in cp.Ξ
@@ -229,7 +229,19 @@ function plan_replacement(cp, global_param, p_star, c_star)
 end
 
 
-function choose_producer(cp, b)
+function choose_producer_cp(cp :: AbstractAgent, b :: Int, all_kp :: Array{AbstractAgent})
+
+    if (length(cp.brochures) == 0)
+        # in case of no brochures, pick a random kp
+        chosen_producer = sample(all_kp)
+        brochure = chosen_producer.brochure
+        p_star = brochure[2]
+        c_star = brochure[3]
+        A_star = brochure[4]
+        cop_star = cop(p_star, c_star, b)
+        
+        return p_star, c_star, chosen_producer, cop_star, A_star
+    end
 
     # take first producer as best, then compare to other producers
     chosen_producer = cp.brochures[1][1]
@@ -260,7 +272,7 @@ function choose_producer(cp, b)
 end
 
 
-function compute_μ_cp(cp, υ, μ1)
+function compute_μ_cp(cp :: AbstractAgent, υ :: Float64, μ1 :: Float64)
     μ = μ1
     if (length(cp.f) > 2)
         μ = cp.μ[end] * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
@@ -268,19 +280,19 @@ function compute_μ_cp(cp, υ, μ1)
     return μ
 end
 
-function compute_c_cp(cp, Qˢ)
+function compute_c_cp(cp :: AbstractAgent, Qˢ :: Float64)
     Ā = sum(map(x -> x.A * x.freq, cp.Ξ))
     c = cp.w[end] * Qˢ / Ā
     return c
 end
 
 
-function order_machines!(kp_choice, cp, Iₜ)
+function order_machines_cp!(kp_choice :: AbstractAgent, cp :: AbstractAgent, Iₜ :: Float64)
     order = (cp, Iₜ)
     push!(kp_choice.orders, order)
 end
 
-function reset_brochures!(cp)
+function reset_brochures_cp!(cp :: AbstractAgent)
     cp.brochures = []
 end
 

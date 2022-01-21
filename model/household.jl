@@ -3,11 +3,11 @@ mutable struct Household <: AbstractAgent
     id :: Int                   # global id
     hh_id :: Int                # hh id
     employed :: Bool            # is employed
-    employer :: AbstractAgent   # employer
+    employer                    # employer
     I :: Array{Float64}         # hist income
     Iᵉ :: Float64               # expected income
     L :: Float64                # labor units in household
-    S :: Array{Float64}         # savings
+    S :: Array{Float64}         # total savings
     B :: Float64                # budget
     w :: Float64                # wage
     ωI :: Float64               # memory param income expectation
@@ -15,7 +15,10 @@ mutable struct Household <: AbstractAgent
 end
 
 
-function pick_cp(hh)
+function pick_cp_hh(hh, all_cp)
+    # TODO: find a better way to do this
+
+    
 
 end
 
@@ -30,16 +33,23 @@ Determines consumption budget B
 function set_budget_hh!(hh, UB, U, r)
     
     # determine income
-    Iₜ = UB
-    if (hh.employed)
-        Iₜ = hh.w * hh.L
-    end
-    push!(hh.I, Iₜ)
+    # Iₜ = UB
+    # if (hh.employed)
+    #     Iₜ = hh.w * hh.L
+    # end
+    # push!(hh.I, Iₜ)
 
-    hh.Iᵉ = compute_exp_income(hh, U, r)
+    # hh.Iᵉ = compute_exp_income_hh(hh, U, r)
 
-    # determine savings rate
-    s = (Iₜ - Iᵉ) / Iₜ
+    # # determine savings rate
+    # s = (Iₜ - Iᵉ) / Iₜ
+
+    # TODO: better way to set up savings rate
+    s = 0.1
+
+    # Bₜ = 
+
+
 
 end
 
@@ -54,7 +64,7 @@ function set_cons_package_hh!(hh)
 end
 
 
-function compute_exp_income(hh, U, r)
+function compute_exp_income_hh(hh, U, r)
 
     ξ = 0
     if (length(U) > 2)

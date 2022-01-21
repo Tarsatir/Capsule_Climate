@@ -1,7 +1,8 @@
 
 mutable struct All_Agents
-    capital_good_producers :: Array
-    consumer_good_producers :: Array
+    households :: Array{AbstractAgent}
+    capital_good_producers :: Array{AbstractAgent}
+    consumer_good_producers :: Array{AbstractAgent}
     capital_good_euclidian_matrix :: Array
 end
 
