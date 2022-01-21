@@ -33,6 +33,44 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
 end
 
 
+function initialize_cp(id :: Int, cp_id :: Int, machine_struct)
+    cp = ConsumerGoodProducer(
+        id,                     # global id
+        cp_id,                  # cp id
+        [],                     # p: hist prices
+        [],                     # c: hist cost
+        [],                     # RD: hist R&D spending
+        [5000],                 # D: hist demand
+        5000,                   # Dᵉ exp demand
+        [1000],                 # N: hist inventory
+        2000,                   # Nᵈ: desired inventory 
+        [5000],                 # Q: hist production
+        5000,                   # Qᵉ: exp production
+        [rand()],               # I: hist investments
+        [machine_struct],       # Ξ: capital stock
+        [25],                   # L: labor force
+        25,                     # Lᵉ: exp labor force
+        0,                      # ΔLᵈ: desired change in labor force
+        [100.0],                # w: wage level
+        [],                     # brochures from kp
+        [rand()],               # π: hist productivity
+        [rand()],               # f: hist market share
+        [0.05],                 # μ: hist markup
+        [100000],               # Π: hist profits
+        0,                      # cI: internal funds for investments
+        0,                      # ΔDeb: changes in debt level
+        Balance(               
+                1000.0,         # - N: inventory
+                0.0,            # - K: capital
+                0.0,            # - NW: liquid assets
+                0.0,            # - Deb: debt
+                0.0             # - EQ: equity
+            )
+    )
+    return cp
+end
+
+
 """
 Plans production amounts for consumer good producer (short term)
     - updates ST expected demand

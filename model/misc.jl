@@ -17,3 +17,13 @@ mutable struct Machine
     freq :: Int16               # freq machine owned by cp
     age :: Float16              # age of machine
 end
+
+function initialize_machine()
+    machine_struct = Machine(
+        1,                      # A: labor productivity machine
+        0,                      # c: cost to produce machine
+        40,                     # freq: freq machine owned by cp
+        0                       # age: age of machine
+    )
+    return machine_struct
+end

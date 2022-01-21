@@ -1,4 +1,3 @@
-
 mutable struct Household <: AbstractAgent
     id :: Int                   # global id
     hh_id :: Int                # hh id
@@ -12,6 +11,23 @@ mutable struct Household <: AbstractAgent
     w :: Float64                # wage
     ωI :: Float64               # memory param income expectation
 
+end
+
+function initialize_hh(id, hh_id, employed)
+    hh = Household(
+        id,                     # global id
+        hh_id,                  # household id
+        employed,               # bool: employed
+        nothing,                # employer
+        [1000],                 # I: hist income
+        1000,                   # Iᵉ: exp income
+        10,                     # L: labor units
+        [1000],                 # S: total savings
+        1000,                   # B: budget
+        1000,                   # w: wage
+        0.5                     # ωI: memory param income exp
+    )
+    return hh
 end
 
 

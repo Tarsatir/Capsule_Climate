@@ -9,6 +9,8 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     B :: Array{Float64}                     # labor prod own production
     p :: Array{Float64}                     # hist price data
     c :: Array{Float64}                     # hist cost data
+    L :: Array                              # labor force
+    ΔLᵈ :: Float64                          # desired change in labor force
     RD :: Array{Float64}                    # hist R&D expenditure
     IM :: Array{Float64}                    # hist immitation expenditure
     IN :: Array{Float64}                    # hist innovation expenditure
@@ -20,13 +22,42 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     Balance :: Balance                      # balance sheet
 end
 
+function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent})
+    kp = CapitalGoodProducer(   # initial parameters based on rer98
+        id,                     # global id
+        kp_id,                  # kp id
+        [1],                    # A: labor prod sold product
+        [1],                    # B: labor prod own production
+        [],                     # p: hist price data
+        [],                     # c: hist cost data
+        [],                     # L: labor force
+        0,                      # ΔLᵈ: desired change in labor force
+        [],                     # RD: hist R&D expenditure
+        [],                     # IM: hist immitation expenditure
+        [],                     # IN: hist innovation expenditure
+        [100],                  # S: hist revenue
+        HC,                     # HC: hist clients
+        [],                     # Π: hist profits
+        [],                     # brochure
+        [],                     # orders
+        Balance(               
+                0.0,            # - N: inventory
+                0.0,            # - K: capital
+                1000.0,         # - NW: liquid assets
+                0.0,            # - Deb: debt
+                0.0             # - EQ: equity
+            )               
+    )
+    return kp
+end
+
 """
 Checks if innovation is performed, then calls appropriate functions
 """
 function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struct)
     
     # determine levels of R&D, and how to divide under IN and IM
-    set_RD_kp!(kp, global_param)
+    set_RD_kp!(kp, global_param.ξ, global_param.ν)
     tech_choices = [(kp.A[end], kp.B[end])]
 
     # determine innovation of machines (Dosi et al (2010); eq. 4)
@@ -145,29 +176,28 @@ end
 Determines the level of R&D, and how it is divided under innovation (IN) 
 and immitation (IM). based on Dosi et al (2010)
 """
-function set_RD_kp!(kp :: AbstractAgent, global_param)
+function set_RD_kp!(kp :: AbstractAgent, ξ :: Float64, ν :: Float64)
     # determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
-    RD_new = global_param.ν*(kp.S[end])
+    RD_new = ν * (kp.S[end])
     push!(kp.RD, RD_new)
 
     # decide fractions innovation (IN) and immitation (IM), 
     # (Dosi et al, 2010; eq. 3.5)
-    IN_t_new = global_param.ξ*RD_new
-    IM_t_new = (1 - global_param.ξ)*RD_new
+    IN_t_new = ξ * RD_new
+    IM_t_new = (1 - ξ) * RD_new
     push!(kp.IN, IN_t_new)
     push!(kp.IM, IM_t_new)
 end
 
 
-function plan_production_kp!(kp :: AbstractAgent, global_param)
+function plan_production_kp!(kp :: AbstractAgent)
     
     if (length(kp.orders) > 0)
         # determine total amount of machines to produce
         O = sum(map(x -> x[2], kp.orders))
         
         # determine amount of labor to hire
-        ΔL = O/kp.B[end]
-
+        kp.ΔLᵈ = O/kp.B[end]
     end
 end
 
