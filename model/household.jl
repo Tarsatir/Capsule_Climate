@@ -9,6 +9,7 @@ mutable struct Household <: AbstractAgent
     S :: Array{Float64}         # total savings
     B :: Float64                # budget
     w :: Float64                # wage
+    wʳ :: Float64               # requested wage
     ωI :: Float64               # memory param income expectation
 
 end
@@ -25,6 +26,7 @@ function initialize_hh(id, hh_id, employed)
         [1000],                 # S: total savings
         1000,                   # B: budget
         1,                      # w: wage
+        1,                      # wʳ: requested wage
         0.5                     # ωI: memory param income exp
     )
     return hh
@@ -93,4 +95,15 @@ function compute_exp_income_hh(hh, U, r)
 
     Iᵉ = ωI * hh.Iᵉ + (1 - ωI) * (2 * hh.I[end] - hh.I[end-1]) + ξ * hh.I[end] + r[end] * hh.S[end]
     return Iᵉ
+end
+
+
+function get_fired_hh!(hh)
+    hh.employed = false
+    hh.employer = nothing
+end
+
+function get_hired_hh!(hh, p)
+    hh.employed = true
+    hh.employer = p
 end

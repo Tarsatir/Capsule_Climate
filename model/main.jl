@@ -137,11 +137,14 @@ function model_step!(model, all_agents, global_param, macro_struct, labormarket_
     end
 
     # (3) labor market matching process
-    matching_lm(
+
+    labormarket_process!(
         labormarket_struct, 
         all_agents.consumer_good_producers, 
         all_agents.capital_good_producers
     )
+
+    
 
     # (4) producers hire workers. Government pays unemployment benefits
     # TODO

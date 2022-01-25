@@ -23,6 +23,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
     w :: Array{Float64}         # wage level
+    wᴼ :: Float64               # offered wage
     brochures :: Array          # brochures from kp
     π :: Array{Float64}         # hist productivity
     f :: Float64                # hist market share
@@ -54,6 +55,7 @@ function initialize_cp(id :: Int, cp_id :: Int, machine_struct, n_consrgood :: I
         90,                      # Lᵉ: exp labor force
         0,                      # ΔLᵈ: desired change in labor force
         [1.0],                  # w: wage level
+        1.0,                    # wᴼ: offered wage
         [],                     # brochures from kp
         [rand()],               # π: hist productivity
         1/n_consrgood,          # f: market share
@@ -138,7 +140,7 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     
     Iₜ = EIᵈ + sum(map(x -> x.freq, RS))
 
-    println("I", Iₜ)
+    # println("I", Iₜ)
 
     # TODO does not check if funds are available
     if Iₜ > 0
