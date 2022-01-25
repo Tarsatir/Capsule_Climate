@@ -26,9 +26,9 @@ include("macro.jl")
 
 
 function initialize_model(;
-    n_captlgood = 50,
-    n_consrgood = 200,
-    n_households = 1000
+    n_captlgood = 5,
+    n_consrgood = 20,
+    n_households = 250
     )
 
     # initialise model struct
@@ -50,7 +50,7 @@ function initialize_model(;
 
         # determine if household will be employed
         employed = true
-        if hh_id > 0.95 * n_households
+        if hh_id > 0.9 * n_households
             employed = false
         end
 
@@ -76,7 +76,7 @@ function initialize_model(;
         # initialize capital good stock
         machine_struct = initialize_machine()
 
-        cp = initialize_cp(id, cp_id, machine_struct)
+        cp = initialize_cp(id, cp_id, machine_struct, n_consrgood)
 
         push!(all_agents.consumer_good_producers, cp)
         add_agent!(cp, model)
@@ -90,7 +90,7 @@ function initialize_model(;
         HC = sample(all_agents.consumer_good_producers, 10; replace=false)
 
         # initialize capital good producer
-        kp = initialize_kp(id, kp_id, HC)
+        kp = initialize_kp(id, kp_id, HC, n_captlgood)
 
         push!(all_agents.capital_good_producers, kp)
         add_agent!(kp, model)
@@ -179,3 +179,4 @@ for i in 1:1
 end
 
 show(to)
+println()

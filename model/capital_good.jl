@@ -9,7 +9,8 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     B :: Array{Float64}                     # labor prod own production
     p :: Array{Float64}                     # hist price data
     c :: Array{Float64}                     # hist cost data
-    L :: Array                              # labor force
+    Emp :: Array{AbstractAgent}             # employees in company
+    L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
     RD :: Array{Float64}                    # hist R&D expenditure
     IM :: Array{Float64}                    # hist immitation expenditure
@@ -17,12 +18,13 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     S :: Array{Float64}                     # hist revenue
     HC :: Array{ConsumerGoodProducer}       # hist clients
     Π :: Array{Float64}                     # hist profits
+    f :: Float64                            # market share
     brochure                                # brochure
     orders :: Array                         # orders
     Balance :: Balance                      # balance sheet
 end
 
-function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent})
+function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_captlgood :: Int)
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
         kp_id,                  # kp id
@@ -30,7 +32,8 @@ function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent})
         [1],                    # B: labor prod own production
         [],                     # p: hist price data
         [],                     # c: hist cost data
-        [],                     # L: labor force
+        [],                     # Emp: employees in company
+        0,                     # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
         [],                     # RD: hist R&D expenditure
         [],                     # IM: hist immitation expenditure
@@ -38,6 +41,7 @@ function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent})
         [100],                  # S: hist revenue
         HC,                     # HC: hist clients
         [],                     # Π: hist profits
+        1/n_captlgood,          # f: market share
         [],                     # brochure
         [],                     # orders
         Balance(               
@@ -192,13 +196,16 @@ end
 
 function plan_production_kp!(kp :: AbstractAgent)
     
+    O = 0
     if (length(kp.orders) > 0)
         # determine total amount of machines to produce
-        O = sum(map(x -> x[2], kp.orders))
-        
-        # determine amount of labor to hire
-        kp.ΔLᵈ = O/kp.B[end]
+        # println(kp.orders)
+        O = sum(map(order -> order[2], kp.orders))
     end
+
+    # determine amount of labor to hire
+    kp.ΔLᵈ = O/kp.B[end] - kp.L
+    # println("order", O, kp.ΔLᵈ)
 end
 
 

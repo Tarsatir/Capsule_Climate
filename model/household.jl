@@ -21,10 +21,10 @@ function initialize_hh(id, hh_id, employed)
         nothing,                # employer
         [1000],                 # I: hist income
         1000,                   # Iᵉ: exp income
-        10,                     # L: labor units
+        100,                    # L: labor units
         [1000],                 # S: total savings
         1000,                   # B: budget
-        1000,                   # w: wage
+        1,                      # w: wage
         0.5                     # ωI: memory param income exp
     )
     return hh
