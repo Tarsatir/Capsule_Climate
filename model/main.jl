@@ -17,11 +17,14 @@ using TimerOutputs
 
 include("model.jl")
 include("misc.jl")
+include("government.jl")
 include("labormarket.jl")
 include("household.jl")
 include("consumer_good.jl")
 include("capital_good.jl")
+include("general_producers.jl")
 include("macro.jl")
+
 
 
 
@@ -41,6 +44,9 @@ function initialize_model(;
     # initialize struct that holds macro variables
     macro_struct = initialize_macro()
     labormarket_struct = initialize_labormarket()
+
+    # initialize government
+    gov_struct = initialize_government()
 
     # global id
     id = 0
@@ -107,11 +113,17 @@ function initialize_model(;
         all_agents.capital_good_producers
     )
 
-    return model, all_agents, global_param, macro_struct, labormarket_struct
+    return model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct
 end
 
 
-function model_step!(model, all_agents, global_param, macro_struct, labormarket_struct)
+function model_step!( model, 
+    all_agents, 
+    global_param, 
+    macro_struct, 
+    gov_struct, 
+    labormarket_struct
+    )
 
     # reset brochures of all consumer good producers
     for cp in all_agents.consumer_good_producers
@@ -136,21 +148,25 @@ function model_step!(model, all_agents, global_param, macro_struct, labormarket_
         plan_production_kp!(kp)
     end
 
-    # (3) labor market matching process
 
+    # (3) labor market matching process
     labormarket_process!(
         labormarket_struct, 
         all_agents.consumer_good_producers, 
-        all_agents.capital_good_producers
+        all_agents.capital_good_producers,
+        global_param.ϵ,
+        gov_struct.UB
     )
 
     
 
-    # (4) producers hire workers. Government pays unemployment benefits
-    # TODO
+    # (4) Producers pay workers their wage. Government pays unemployment benefits
+    for p in vcat(all_agents.consumer_good_producers, all_agents.capital_good_producers)
+        pay_workers_p!(p)
+    end
 
     # (5) Government receives income taxes. Households set consumption choice
-    # TODO
+    pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed)
 
     # (6) Households pick prefered products to buy and set budget and consumption package
     for hh in all_agents.households
@@ -176,9 +192,9 @@ end
 
 to = TimerOutput()
 
-@timeit to "init" model, all_agents, global_param, macro_struct, labormarket_struct = initialize_model()
+@timeit to "init" model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
 for i in 1:1
-    @timeit to "step" model_step!(model, all_agents, global_param, macro_struct, labormarket_struct)
+    @timeit to "step" model_step!(model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct)
 end
 
 show(to)

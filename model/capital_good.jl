@@ -208,30 +208,7 @@ function plan_production_kp!(kp :: AbstractAgent)
     # println("order", O, kp.ΔLᵈ)
 end
 
-# TODO make this into a general form for both cp and kp
-function fire_excess_workers!(p)
-    n_to_be_fired = abs(floor(Int, p.ΔLᵈ / 100))
 
-    # TODO: find a more sophisticated way to select who is fired
-    fired_workers = sample(p.Emp, n_to_be_fired, replace=false)
-
-    # remove employees from labor stock
-    p.L -= sum(map(hh -> hh.L, fired_workers))
-    filter!(e -> e ∉ fired_workers, p.Emp)
-
-    return fired_workers
-
-end
-
-# TODO make this into a general form for both cp and kp
-function hire_worker_p!(p, l)
-
-    # update labor stock and desired labor
-    push!(p.Emp, l)
-    p.L += l.L
-    p.ΔLᵈ -= l.L
-
-end
 
 
 function send_order(consumer_good_producer, order)

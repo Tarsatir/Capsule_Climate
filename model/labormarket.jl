@@ -10,7 +10,7 @@ function initialize_labormarket()
         [],
         [],
         0.1,
-        1
+        3
     )
     return labormarket_struct
 end
@@ -24,14 +24,14 @@ Defines the whole labor market process
 - Updates unemployment rate
 
 """
-function labormarket_process!(labormarket_struct, all_cp, all_kp)
+function labormarket_process!(labormarket_struct, all_cp, all_kp, ϵ :: Float64, UB :: Float64)
 
     # get sets of firing and hiring producers
     firing_producers = []
     hiring_producers = []
 
-    # update_unemploymentrate_lm(labormarket_struct)
-    # println(labormarket_struct.E)
+    update_unemploymentrate_lm(labormarket_struct)
+    println(labormarket_struct.E)
 
     for p in vcat(all_cp, all_kp)
         if p.ΔLᵈ > 0
@@ -44,15 +44,20 @@ function labormarket_process!(labormarket_struct, all_cp, all_kp)
     # let producers fire excess workers
     fire_workers!(labormarket_struct, firing_producers)
 
-    # update_unemploymentrate_lm(labormarket_struct)
-    # println(labormarket_struct.E)
+    # update wage parameters households
+    for hh in vcat(labormarket_struct.employed, labormarket_struct.unemployed)
+        update_sat_req_wage_hh!(hh, ϵ, UB)
+    end
+
+    update_unemploymentrate_lm(labormarket_struct)
+    println(labormarket_struct.E)
 
     # labor market matching process
     matching_lm(labormarket_struct, all_cp, all_kp)
 
     # update the unemployment rate
     update_unemploymentrate_lm(labormarket_struct)
-    # println(labormarket_struct.E)
+    println(labormarket_struct.E)
 
 end
 
@@ -96,7 +101,7 @@ function fire_workers!(labormarket_struct, firing_producers)
 
     # choose who gets fired
     for p in firing_producers
-        append!(all_fired_workers, fire_excess_workers!(p))
+        append!(all_fired_workers, fire_excess_workers_p!(p))
     end
 
     # change employment status for households
@@ -138,12 +143,7 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
             Lˢ = sample(Lᵃ, n_sample, replace=false)
 
             # only select households with a low enough reservation wage
-            Lᵈ = []
-            for l in Lˢ
-                if l.wʳ <= p.wᴼ
-                    push!(Lᵈ, l)
-                end
-            end
+            Lᵈ = sort(Lˢ, by = l -> l.wʳ)
 
             # hire workers until demand is met or no more workers available
             while p.ΔLᵈ > 0 && length(Lᵈ) > 0

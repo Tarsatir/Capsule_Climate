@@ -8,7 +8,8 @@ mutable struct Household <: AbstractAgent
     L :: Float64                # labor units in household
     S :: Array{Float64}         # total savings
     B :: Float64                # budget
-    w :: Float64                # wage
+    w :: Array{Float64}         # wage
+    wˢ :: Float64               # satisfying wage
     wʳ :: Float64               # requested wage
     ωI :: Float64               # memory param income expectation
 
@@ -20,13 +21,14 @@ function initialize_hh(id, hh_id, employed)
         hh_id,                  # household id
         employed,               # bool: employed
         nothing,                # employer
-        [1000],                 # I: hist income
-        1000,                   # Iᵉ: exp income
+        [100],                  # I: hist income
+        100,                    # Iᵉ: exp income
         100,                    # L: labor units
-        [1000],                 # S: total savings
-        1000,                   # B: budget
-        1,                      # w: wage
-        1,                      # wʳ: requested wage
+        [100],                  # S: total savings
+        0.0,                    # B: budget
+        [1.0],                  # w: wage
+        1.0,                    # wˢ: satisfying wage
+        1.0,                    # wʳ: requested wage
         0.5                     # ωI: memory param income exp
     )
     return hh
@@ -35,8 +37,6 @@ end
 
 function pick_cp_hh(hh, all_cp)
     # TODO: find a better way to do this
-
-    
 
 end
 
@@ -67,8 +67,6 @@ function set_budget_hh!(hh, UB, U, r)
 
     # Bₜ = 
 
-
-
 end
 
 
@@ -98,6 +96,22 @@ function compute_exp_income_hh(hh, U, r)
 end
 
 
+function update_sat_req_wage_hh!(hh, ϵ :: Float64, UB :: Float64)
+
+    # update satisfying wage as wage level over 4 periods
+    if length(hh.w) > 4
+        hh.wˢ = mean(hh.w[end-4:end])
+    end
+
+    if hh.employed
+        hh.wʳ = hh.wʳ * (1 + ϵ)
+    else
+        hh.wʳ = max(UB/hh.L, hh.wˢ)
+    end
+
+end
+
+
 function get_fired_hh!(hh)
     hh.employed = false
     hh.employer = nothing
@@ -106,4 +120,5 @@ end
 function get_hired_hh!(hh, p)
     hh.employed = true
     hh.employer = p
+    push!(hh.w, p.wᴼ)
 end

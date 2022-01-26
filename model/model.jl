@@ -39,6 +39,8 @@ struct GlobalParam
     # ϕ :: Float64
     cu :: Float16
 
+    ϵ :: Float64                    # minimum desired wage increase rate
+
     ωD :: Float64                   # memory parameter cp demand estimation
     ωQ :: Float64                   # memory parameter cp quantity estimation
     ωL :: Float64                   # memory parameter cp labor supply estimation
@@ -77,6 +79,8 @@ function initialize_global_params()
         # 0.1,
         # 0.4,
         0.75, # From rer98
+
+        0.02,                       # ϵ: minimum desired wage increase rate
 
         0.5,                        # ωD: memory parameter cp demand estimation
         0.5,                        # ωQ: memory parameter cp quantity estimation
