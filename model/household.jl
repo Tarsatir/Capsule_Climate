@@ -12,7 +12,8 @@ mutable struct Household <: AbstractAgent
     wˢ :: Float64               # satisfying wage
     wʳ :: Float64               # requested wage
     ωI :: Float64               # memory param income expectation
-
+    bg                          # prefered basic good provider
+    lg                          # prefered luxury good provider
 end
 
 function initialize_hh(id, hh_id, employed)
@@ -29,14 +30,17 @@ function initialize_hh(id, hh_id, employed)
         [1.0],                  # w: wage
         1.0,                    # wˢ: satisfying wage
         1.0,                    # wʳ: requested wage
-        0.5                     # ωI: memory param income exp
+        0.5,                    # ωI: memory param income exp
+        nothing,                # bg: prefered basic good provider
+        nothing                 # lg: prefered luxury good provider
     )
     return hh
 end
 
 
-function pick_cp_hh(hh, all_cp)
-    # TODO: find a better way to do this
+function pick_cp_hh(hh, all_bp, all_lp)
+    
+
 
 end
 

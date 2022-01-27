@@ -1,5 +1,5 @@
 function fire_excess_workers_p!(p)
-    n_to_be_fired = abs(floor(Int, p.ΔLᵈ / 100))
+    n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
 
     # TODO: find a more sophisticated way to select who is fired
     fired_workers = sample(p.Emp, n_to_be_fired, replace=false)

@@ -11,6 +11,33 @@ mutable struct Balance
     EQ :: Float64           # equity
 end
 
+mutable struct GovCurrentAccount
+    # Revenues
+    Rev_τᴵ :: Array{Float64}            # hist revenues of income tax
+    Rev_τˢ :: Array{Float64}            # hist revenues of sales tax
+    Rev_τᴾ :: Array{Float64}            # hist revenues of profit tax
+    Rev_τᴱ :: Array{Float64}            # hist revenues of energy tax
+    Rev_τᶜ :: Array{Float64}            # hist revenues of emission tax
+
+    # Expenditures
+    Exp_UB :: Array{Float64}            # hist expenditures on unemployment benefits
+    Exp_Sub :: Array{Float64}           # hist expenditures on subsidies
+
+end
+
+function initialize_govcurrentaccount()
+    gov_curr_acc = GovCurrentAccount(
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+    )
+    return gov_curr_acc
+end
+
 mutable struct Machine
     A :: Float64                # labor productivity machine
     c :: Float64                # cost to produce machine

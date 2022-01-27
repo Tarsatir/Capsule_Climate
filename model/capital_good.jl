@@ -12,6 +12,8 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     Emp :: Array{AbstractAgent}             # employees in company
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
+    O :: Float64                            # total amount of machines ordered
+    prod_queue :: Array                     # production queue of machines
     RD :: Array{Float64}                    # hist R&D expenditure
     IM :: Array{Float64}                    # hist immitation expenditure
     IN :: Array{Float64}                    # hist innovation expenditure
@@ -35,6 +37,8 @@ function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_ca
         [],                     # Emp: employees in company
         0,                     # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
+        0,                      # O: total amount of machines ordered
+        [],                     # production queue
         [],                     # RD: hist R&D expenditure
         [],                     # IM: hist immitation expenditure
         [],                     # IN: hist innovation expenditure
@@ -115,7 +119,7 @@ function send_brochures_kp!(kp :: AbstractAgent, all_agents, global_param)
     end
 
     # select new clients, send brochure
-    NC_potential = setdiff(all_agents.consumer_good_producers, kp.HC)
+    NC_potential = setdiff(all_agents.all_cp, kp.HC)
 
     n_choices = Int(round(global_param.γ * length(kp.HC)))
     
@@ -134,22 +138,14 @@ function imitate_technology_kp(kp :: AbstractAgent, all_agents)
 
     weights = map(x -> 1/x, distances[kp.kp_id,:])
     
-    index = sample(1:length(all_agents.capital_good_producers),
+    index = sample(1:length(all_agents.all_kp),
                    Weights(weights))
 
-    A_t_im = all_agents.capital_good_producers[index].A[end]
-    B_t_im = all_agents.capital_good_producers[index].B[end]
+    A_t_im = all_agents.all_kp[index].A[end]
+    B_t_im = all_agents.all_kp[index].B[end]
     
     return A_t_im, B_t_im
 end
-
-
-# function set_production!(kp)
-#     production = 0
-#     for order in kp.orders
-#         production += order[2]
-#     end
-# end
 
 
 function update_At_kp(A_last :: Float64, global_param)
@@ -196,21 +192,44 @@ end
 
 function plan_production_kp!(kp :: AbstractAgent)
     
-    O = 0
     if (length(kp.orders) > 0)
         # determine total amount of machines to produce
-        # println(kp.orders)
-        O = sum(map(order -> order[2], kp.orders))
+        kp.O = sum(map(order -> order[2], kp.orders))
     end
 
     # determine amount of labor to hire
-    kp.ΔLᵈ = O/kp.B[end] - kp.L
-    # println("order", O, kp.ΔLᵈ)
+    kp.ΔLᵈ = kp.O/kp.B[end] - kp.L
 end
 
 
+function produce_goods_kp!(kp :: AbstractAgent)
+
+    # println(kp.B[end] * kp.L, " ", kp.O)
+
+    # check if enough labor available for all machines
+    unocc_L = kp.L
+    for order in kp.orders
+        req_L = order[2] / kp.B[end]
+        if unocc_L > req_L
+            push!(kp.prod_queue, order)
+            unocc_L -= req_L
+        end
+    end
+
+    # reset order amount back to zero
+    kp.O = 0
+end
 
 
-function send_order(consumer_good_producer, order)
+"""
+Sends orders from production queue to cp
+"""
+function send_orders_kp!(kp)
+
+    # TODO: request money for machines that were produced
+
+    # TODO: describe how labor market frictions affect delivery machines
+
+    # TODO: empty production queue
 
 end

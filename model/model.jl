@@ -1,9 +1,23 @@
 
 mutable struct All_Agents
-    households :: Array{AbstractAgent}
-    capital_good_producers :: Array{AbstractAgent}
-    consumer_good_producers :: Array{AbstractAgent}
+    all_hh :: Array{AbstractAgent}
+    all_kp :: Array{AbstractAgent}
+    all_cp :: Array{AbstractAgent}
+    all_bp :: Array{AbstractAgent}
+    all_lp :: Array{AbstractAgent}
     capital_good_euclidian_matrix :: Array
+end
+
+function initialize_allagents()
+    all_agents = All_Agents(
+        [], 
+        [], 
+        [],
+        [],
+        [], 
+        []
+    )
+    return all_agents
 end
 
 struct GlobalParam
@@ -101,7 +115,7 @@ function get_capgood_euclidian(all_agents, n_captlgood)
     """
     distance_matrix = zeros((n_captlgood, n_captlgood))
 
-    all_kp = all_agents.capital_good_producers
+    all_kp = all_agents.all_kp
     
     for i in 1:n_captlgood
         for j in i:n_captlgood

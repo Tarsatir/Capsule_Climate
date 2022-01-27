@@ -19,6 +19,7 @@ include("model.jl")
 include("misc.jl")
 include("government.jl")
 include("labormarket.jl")
+include("consumermarket.jl")
 include("household.jl")
 include("consumer_good.jl")
 include("capital_good.jl")
@@ -36,16 +37,18 @@ function initialize_model(;
 
     # initialise model struct
     model = AgentBasedModel(Union{Household, CapitalGoodProducer, ConsumerGoodProducer})
-    all_agents = All_Agents([], [], [], [])
+    all_agents = initialize_allagents()
 
     # initialize struct that holds global params
     global_param  = initialize_global_params()
 
     # initialize struct that holds macro variables
     macro_struct = initialize_macro()
+
+    # initialize labor market struct
     labormarket_struct = initialize_labormarket()
 
-    # initialize government
+    # initialize government struct
     gov_struct = initialize_government()
 
     # global id
@@ -62,7 +65,7 @@ function initialize_model(;
 
         hh = initialize_hh(id, hh_id, employed)
 
-        push!(all_agents.households, hh)
+        push!(all_agents.all_hh, hh)
         add_agent!(hh, model)
 
         # add household to labor market struct based on employment status
@@ -79,12 +82,25 @@ function initialize_model(;
     # initialize consumer good producers
     for cp_id in 1:n_consrgood
 
+        # decide if producer makes basic or luxury goods
+        type_good = "Basic"
+        if cp_id > n_consrgood / 2
+            type_good = "Luxury"
+        end
+
         # initialize capital good stock
         machine_struct = initialize_machine()
 
-        cp = initialize_cp(id, cp_id, machine_struct, n_consrgood)
+        cp = initialize_cp(id, cp_id, machine_struct, n_consrgood, type_good)
 
-        push!(all_agents.consumer_good_producers, cp)
+        push!(all_agents.all_cp, cp)
+        
+        if type_good == "Basic"
+            push!(all_agents.all_bp, cp)
+        else
+            push!(all_agents.all_lp, cp)
+        end
+
         add_agent!(cp, model)
         id += 1
     end
@@ -93,12 +109,12 @@ function initialize_model(;
     for kp_id in 1:n_captlgood
 
         # make choice for historical clients
-        HC = sample(all_agents.consumer_good_producers, 10; replace=false)
+        HC = sample(all_agents.all_cp, 10; replace=false)
 
         # initialize capital good producer
         kp = initialize_kp(id, kp_id, HC, n_captlgood)
 
-        push!(all_agents.capital_good_producers, kp)
+        push!(all_agents.all_kp, kp)
         add_agent!(kp, model)
         id += 1
     end
@@ -109,8 +125,8 @@ function initialize_model(;
     # spread employed households over producers
     spread_employees_lm!(
         labormarket_struct, 
-        all_agents.consumer_good_producers, 
-        all_agents.capital_good_producers
+        all_agents.all_cp, 
+        all_agents.all_kp
     )
 
     return model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct
@@ -126,25 +142,25 @@ function model_step!( model,
     )
 
     # reset brochures of all consumer good producers
-    for cp in all_agents.consumer_good_producers
+    for cp in all_agents.all_cp
         reset_brochures_cp!(cp)
     end
 
     # (1) capital good producers innovate and send brochures
-    for kp in all_agents.capital_good_producers
+    for kp in all_agents.all_kp
         innovate_kp!(kp, global_param, all_agents, macro_struct)
         send_brochures_kp!(kp, all_agents, global_param)
     end
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
-    for cp in all_agents.consumer_good_producers
+    for cp in all_agents.all_cp
         plan_production_cp!(cp, global_param)
-        plan_investment_cp!(cp, global_param, all_agents.capital_good_producers)
+        plan_investment_cp!(cp, global_param, all_agents.all_kp)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
-    for kp in all_agents.capital_good_producers
+    for kp in all_agents.all_kp
         plan_production_kp!(kp)
     end
 
@@ -152,26 +168,39 @@ function model_step!( model,
     # (3) labor market matching process
     labormarket_process!(
         labormarket_struct, 
-        all_agents.consumer_good_producers, 
-        all_agents.capital_good_producers,
+        all_agents.all_cp, 
+        all_agents.all_kp,
         global_param.ϵ,
         gov_struct.UB
     )
 
-    
-
     # (4) Producers pay workers their wage. Government pays unemployment benefits
-    for p in vcat(all_agents.consumer_good_producers, all_agents.capital_good_producers)
+    for p in vcat(all_agents.all_cp, all_agents.all_kp)
         pay_workers_p!(p)
     end
 
-    # (5) Government receives income taxes. Households set consumption choice
     pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed)
 
-    # (6) Households pick prefered products to buy and set budget and consumption package
-    for hh in all_agents.households
-        pick_cp_hh(hh, all_agents.consumer_good_producers)
+
+    # (5) Production takes place for cp and kp
+    for cp in all_agents.all_cp
+        produce_goods_cp!(cp)
     end
+
+    for kp in all_agents.all_kp
+        produce_goods_kp!(kp)
+    end
+
+
+    # (5) Government receives income taxes
+    levy_income_tax_gov!(gov_struct, all_agents.all_hh)
+    # compute_budget_balance(gov_struct)
+
+    # (6) Households pick prefered products to buy and set budget and consumption package
+    consumermarket_process!(all_agents.all_hh,
+                            all_agents.all_bp,
+                            all_agents.all_lp,
+                            gov_struct)
 
     # (6) Transactions take place on consumer market, consumer good producers
     # make up profits
