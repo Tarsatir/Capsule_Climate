@@ -23,6 +23,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     L :: Float64                # labor units
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
+    P_FE :: Float64             # probability of getting fired while employed
     w :: Array{Float64}         # wage level
     wᴼ :: Float64               # offered wage
     brochures :: Array          # brochures from kp
@@ -44,25 +45,26 @@ function initialize_cp(id :: Int, cp_id :: Int, machine_struct, n_consrgood :: I
         [],                     # p: hist prices
         [],                     # c: hist cost
         [],                     # RD: hist R&D spending
-        [36e3],                  # D: hist demand
-        37e3,                    # Dᵉ exp demand
-        # [36e3],                 # N: hist inventory
+        [36e3],                 # D: hist demand
+        37e3,                   # Dᵉ exp demand
+        # [36e3],               # N: hist inventory
         30e3,                   # Nᵈ: desired inventory 
-        [36e3],                # Q: hist production
-        37e3,                  # Qᵉ: exp production
+        [36e3],                 # Q: hist production
+        37e3,                   # Qᵉ: exp production
         [rand()],               # I: hist investments
         [machine_struct],       # Ξ: capital stock
         [],                     # Emp: employees
         0,                      # L: labor units in company
-        90,                      # Lᵉ: exp labor force
+        90,                     # Lᵉ: exp labor force
         0,                      # ΔLᵈ: desired change in labor force
+        0,                      # P_FE: probability of getting fired while employed
         [1.0],                  # w: wage level
         1.0,                    # wᴼ: offered wage
         [],                     # brochures from kp
         [rand()],               # π: hist productivity
         1/n_consrgood,          # f: market share
         [0.05],                 # μ: hist markup
-        [100000],               # Π: hist profits
+        [],                     # Π: hist profits
         0,                      # cI: internal funds for investments
         0,                      # ΔDeb: changes in debt level
         Balance(               
@@ -141,8 +143,6 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     EIᵈ = Kᵈ - sum(map(x -> x.freq, cp.Ξ))
     
     Iₜ = EIᵈ + sum(map(x -> x.freq, RS))
-
-    # println("I", Iₜ)
 
     # TODO does not check if funds are available
     if Iₜ > 0
@@ -253,11 +253,43 @@ function order_machines_cp!(kp_choice :: AbstractAgent, cp :: AbstractAgent, I�
 end
 
 
+"""
+Determines if amount of demanded goods are available and transacts
+"""
+function transact_cp!(cp :: AbstractAgent, hh :: AbstractAgent, N_G :: Float64)
+
+    # check if enough inventory available, then transact
+    if N_G < cp.balance.N
+
+        cp.balance.N -= N_G
+        cp.D[end] += N_G
+        hh.C -= cp.p[end] * N_G
+
+        return true
+    else 
+        cp.D[end] += cp.balance.N
+        hh.C -= cp.p[end] * cp.balance.N
+        cp.balance.N = 0
+        
+        return false
+    end
+
+end
+
+function compute_profits_cp!(cp)
+    # TODO incorporate interest rates
+    Π = cp.D[end] * (cp.p[end] - cp.c[end])
+    push!(cp.Π, Π)
+end
+
+
 function reset_brochures_cp!(cp :: AbstractAgent)
     cp.brochures = []
 end
 
 
-function receive_machines!(RS, cp, new_machines)
+function receive_machines!(cp, machine)
+
+    # TODO permutate the balance (in terms of capital and debt)
 
 end

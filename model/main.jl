@@ -48,6 +48,9 @@ function initialize_model(;
     # initialize labor market struct
     labormarket_struct = initialize_labormarket()
 
+    # initialize consumer market struct
+    consumermarket_struct = initialize_consumermarket()
+
     # initialize government struct
     gov_struct = initialize_government()
 
@@ -129,7 +132,7 @@ function initialize_model(;
         all_agents.all_kp
     )
 
-    return model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct
+    return model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct
 end
 
 
@@ -138,7 +141,8 @@ function model_step!( model,
     global_param, 
     macro_struct, 
     gov_struct, 
-    labormarket_struct
+    labormarket_struct,
+    consumermarket_struct
     )
 
     # reset brochures of all consumer good producers
@@ -173,6 +177,7 @@ function model_step!( model,
         global_param.ϵ,
         gov_struct.UB
     )
+    update_avg_T_unemp_lm(labormarket_struct)
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
     for p in vcat(all_agents.all_cp, all_agents.all_kp)
@@ -197,17 +202,31 @@ function model_step!( model,
     # compute_budget_balance(gov_struct)
 
     # (6) Households pick prefered products to buy and set budget and consumption package
-    consumermarket_process!(all_agents.all_hh,
+    for hh in all_agents.all_hh
+        compute_exp_income_hh!(hh, 
+                               labormarket_struct.P_HU, 
+                               labormarket_struct.P_UU, 
+                               gov_struct.UB)
+        set_savingsrate_hh!(hh, labormarket_struct.avg_T_unemp, gov_struct.UB)
+    end
+
+
+    # (6) Transactions take place on consumer market
+    consumermarket_process!(consumermarket_struct,
+                            all_agents.all_hh,
                             all_agents.all_bp,
                             all_agents.all_lp,
                             gov_struct)
 
-    # (6) Transactions take place on consumer market, consumer good producers
-    # make up profits
-    # TODO
+    # cp make up profits
+    for cp in all_agents.all_cp
+        compute_profits_cp!(cp)
+    end
 
-    # (6) capital good producers deliver goods to consumer good producers
-    # TODO
+    # (6) kp deliver goods to cp, kp make up profits
+    for kp in all_agents.all_kp
+        send_orders_kp!(kp)
+    end
 
     # (7) government receives profit taxes
     # TODO
@@ -221,9 +240,9 @@ end
 
 to = TimerOutput()
 
-@timeit to "init" model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
+@timeit to "init" model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct = initialize_model()
 for i in 1:1
-    @timeit to "step" model_step!(model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct)
+    @timeit to "step" model_step!(model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct)
 end
 
 show(to)

@@ -12,6 +12,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     Emp :: Array{AbstractAgent}             # employees in company
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
+    P_FE :: Float64                         # probability of getting fired while employed
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
     RD :: Array{Float64}                    # hist R&D expenditure
@@ -35,8 +36,9 @@ function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_ca
         [],                     # p: hist price data
         [],                     # c: hist cost data
         [],                     # Emp: employees in company
-        0,                     # L: labor units in company
+        0,                      # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
+        0,                      # P_FE: probability of getting fired while employed
         0,                      # O: total amount of machines ordered
         [],                     # production queue
         [],                     # RD: hist R&D expenditure
@@ -58,6 +60,7 @@ function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_ca
     )
     return kp
 end
+
 
 """
 Checks if innovation is performed, then calls appropriate functions
@@ -225,6 +228,22 @@ end
 Sends orders from production queue to cp
 """
 function send_orders_kp!(kp)
+
+    Π = 0
+
+    for order in kp.prod_queue
+
+        cp = order[1]
+        Iₜ = order[2]
+
+        machine = initialize_machine()
+        machine.A = kp.A[end]
+        machine.freq = Iₜ / kp.p[end]
+
+        Π += machine.freq * (kp.p[end] - kp.c[end])
+
+        receive_machines!(cp, machine)
+    end
 
     # TODO: request money for machines that were produced
 

@@ -3,6 +3,9 @@ mutable struct LaborMarket
     unemployed :: Array{AbstractAgent}          # array of unemployed households
     E :: Float64                                # unemployment rate
     n_rounds :: Int                             # number of rounds in matching process
+    avg_T_unemp :: Float64                      # average time periods of unemployment
+    P_HU :: Float64                             # hired workers as fraction of total unemployed workers
+    P_UU :: Float64                             # probability of staying unemployed
 end
 
 function initialize_labormarket()
@@ -10,7 +13,10 @@ function initialize_labormarket()
         [],
         [],
         0.1,
-        3
+        3,
+        0,
+        0,
+        0
     )
     return labormarket_struct
 end
@@ -122,6 +128,8 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
     # TODO: let employed workers also apply for jobs
     Lᵃ = labormarket_struct.unemployed
 
+    n_unemployed = length(labormarket_struct.unemployed)
+
     # get producers that want to hire workers
     all_p = []
     for p in vcat(all_cp, all_kp)
@@ -130,7 +138,9 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
         end
     end
 
-    for n_round in labormarket_struct.n_rounds
+    n_hired = 0
+
+    for n_round in 1:labormarket_struct.n_rounds
 
         # loop over producers
         shuffle!(all_p)
@@ -153,6 +163,8 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
                 get_hired_hh!(l, p)
                 hire_worker_p!(p, l)
 
+                n_hired += 1
+
                 # delete household from seeking lists
                 filter!(w -> w != l, Lᵈ)
                 filter!(w -> w != l, Lᵃ)
@@ -160,4 +172,22 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
             end
         end
     end
+
+    # increase unemployment time for households
+    n_longtermunemp = 0
+    for hh in labormarket_struct.unemployed
+        hh.T_unemp += 1
+        if hh.T_unemp >= 2
+            n_longtermunemp += 1
+        end
+    end
+
+    labormarket_struct.P_UU = n_longtermunemp / n_unemployed
+    labormarket_struct.P_HU = n_hired / n_unemployed
+
+end
+
+
+function update_avg_T_unemp_lm(labormarket_struct)
+    labormarket_struct.avg_T_unemp = mean(map(hh -> hh.T_unemp, labormarket_struct.unemployed))
 end

@@ -1,4 +1,5 @@
 function fire_excess_workers_p!(p)
+
     n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
 
     # TODO: find a more sophisticated way to select who is fired
@@ -7,6 +8,8 @@ function fire_excess_workers_p!(p)
     # remove employees from labor stock
     p.L -= sum(map(hh -> hh.L, fired_workers))
     filter!(e -> e ∉ fired_workers, p.Emp)
+
+    p.P_FE = length(fired_workers) / length(p.Emp)
 
     return fired_workers
 
@@ -27,7 +30,9 @@ function pay_workers_p!(p)
 
     # loop over workers and pay out wage
     for hh in p.Emp
-        push!(hh.I, hh.w[end] * hh.L)
+        total_wage = hh.w[end] * hh.L
+        push!(hh.I, total_wage)
+        hh.C += total_wage
     end
 
 end
