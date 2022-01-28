@@ -19,6 +19,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Qᵉ :: Float64               # exp production
     I :: Array{Float64}         # hist investments
     Ξ :: Array{Machine}         # capital stock
+    RS :: Array{Machine}        # list of to-be replaced machines
     Emp:: Array{AbstractAgent}  # employees list
     L :: Float64                # labor units
     Lᵉ:: Float64                # exp labor force
@@ -53,6 +54,7 @@ function initialize_cp(id :: Int, cp_id :: Int, machine_struct, n_consrgood :: I
         37e3,                   # Qᵉ: exp production
         [rand()],               # I: hist investments
         [machine_struct],       # Ξ: capital stock
+        [],                     # RS: list of to-be replaced machines
         [],                     # Emp: employees
         0,                      # L: labor units in company
         90,                     # Lᵉ: exp labor force
@@ -90,14 +92,20 @@ function plan_production_cp!(cp :: AbstractAgent, global_param)
     # update expected demand
     cp.Dᵉ = global_param.ωD * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
 
+    # println(cp.Dᵉ)
+
     # determine desired short-term production
     Qˢ = cp.Dᵉ + cp.Nᵈ - cp.balance.N
+
+    # println(cp.balance.N)
 
     # print(Qˢ)
 
     # compute corresponding change in labor stock
     total_prod = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
+    # println(total_prod)
     # println("L:", cp.L)
+    # println(Qˢ)
     # println(Qˢ/total_prod)
     cp.ΔLᵈ = Qˢ/total_prod - cp.L
 
@@ -129,7 +137,7 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     p_star, c_star, kp_choice, cop_star, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp)
 
     # plan replacement investments
-    RS = plan_replacement_cp!(cp, global_param, p_star, c_star)
+    plan_replacement_cp!(cp, global_param, p_star, c_star)
 
     # update LT demand
     cp.Qᵉ = global_param.ωQ * cp.Q[end] + (1 - global_param.ωQ) * cp.Qᵉ
@@ -142,7 +150,7 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
 
     EIᵈ = Kᵈ - sum(map(x -> x.freq, cp.Ξ))
     
-    Iₜ = EIᵈ + sum(map(x -> x.freq, RS))
+    Iₜ = EIᵈ + sum(map(x -> x.freq, cp.RS))
 
     # TODO does not check if funds are available
     if Iₜ > 0
@@ -165,7 +173,7 @@ function plan_replacement_cp!(cp :: AbstractAgent, global_param, p_star :: Float
         end
     end
 
-    return RS
+    cp.RS = RS
 end
 
 
@@ -288,7 +296,15 @@ function reset_brochures_cp!(cp :: AbstractAgent)
 end
 
 
-function receive_machines!(cp, machine)
+function receive_machines!(cp, machine, Iₜ)
+
+    # remove machines that were written off
+    filter!(m -> m ∉ cp.RS, cp.Ξ)
+
+    # add new machine to capital stock
+    push!(cp.Ξ, machine)
+
+    cp.balance.NW -= Iₜ
 
     # TODO permutate the balance (in terms of capital and debt)
 

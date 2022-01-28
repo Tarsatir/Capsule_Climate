@@ -8,6 +8,7 @@ mutable struct LaborMarket
     P_UU :: Float64                             # probability of staying unemployed
 end
 
+
 function initialize_labormarket()
     labormarket_struct = LaborMarket(
         [],
@@ -30,14 +31,14 @@ Defines the whole labor market process
 - Updates unemployment rate
 
 """
-function labormarket_process!(labormarket_struct, all_cp, all_kp, ϵ :: Float64, UB :: Float64)
+function labormarket_process!(labormarket_struct, all_cp :: Array{AbstractAgent}, all_kp :: Array{AbstractAgent}, ϵ :: Float64, UB :: Float64)
 
     # get sets of firing and hiring producers
     firing_producers = []
     hiring_producers = []
 
     update_unemploymentrate_lm(labormarket_struct)
-    println(labormarket_struct.E)
+    println("E 1: ", labormarket_struct.E)
 
     for p in vcat(all_cp, all_kp)
         if p.ΔLᵈ > 0
@@ -56,14 +57,16 @@ function labormarket_process!(labormarket_struct, all_cp, all_kp, ϵ :: Float64,
     end
 
     update_unemploymentrate_lm(labormarket_struct)
-    println(labormarket_struct.E)
+    println("E 2: ", labormarket_struct.E)
 
     # labor market matching process
     matching_lm(labormarket_struct, all_cp, all_kp)
+    
+    # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 
     # update the unemployment rate
     update_unemploymentrate_lm(labormarket_struct)
-    println(labormarket_struct.E)
+    println("E 3: ", labormarket_struct.E)
 
 end
 
@@ -115,9 +118,13 @@ function fire_workers!(labormarket_struct, firing_producers)
         get_fired_hh!(hh)
     end
 
+    # println(all_fired_workers)
+
     # update employed and unemployed lists
     filter!(e -> e ∉ all_fired_workers, labormarket_struct.employed)
     append!(labormarket_struct.unemployed, all_fired_workers)
+
+    # println(labormarket_struct.unemployed)
 
 end
 
@@ -126,7 +133,7 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
 
     # get all applicant workers
     # TODO: let employed workers also apply for jobs
-    Lᵃ = labormarket_struct.unemployed
+    # Lᵃ = labormarket_struct.unemployed
 
     n_unemployed = length(labormarket_struct.unemployed)
 
@@ -147,10 +154,10 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
         for p in all_p
 
             # TODO do this in a more sophisticated way
-            n_sample = min(10, length(Lᵃ))
+            n_sample = min(10, length(labormarket_struct.unemployed))
 
             # make queue of job-seeking households
-            Lˢ = sample(Lᵃ, n_sample, replace=false)
+            Lˢ = sample(labormarket_struct.unemployed, n_sample, replace=false)
 
             # only select households with a low enough reservation wage
             Lᵈ = sort(Lˢ, by = l -> l.wʳ)
@@ -166,8 +173,9 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
                 n_hired += 1
 
                 # delete household from seeking lists
-                filter!(w -> w != l, Lᵈ)
-                filter!(w -> w != l, Lᵃ)
+                filter!(w -> w ≠ l, Lᵈ)
+                filter!(w -> w ≠ l, labormarket_struct.unemployed)
+                push!(labormarket_struct.employed, l)
 
             end
         end
@@ -189,5 +197,9 @@ end
 
 
 function update_avg_T_unemp_lm(labormarket_struct)
-    labormarket_struct.avg_T_unemp = mean(map(hh -> hh.T_unemp, labormarket_struct.unemployed))
+    if length(labormarket_struct.unemployed) > 0
+        labormarket_struct.avg_T_unemp = mean(map(hh -> hh.T_unemp, labormarket_struct.unemployed))
+    else
+        labormarket_struct.avg_T_unemp = 0
+    end
 end

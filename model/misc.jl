@@ -1,5 +1,3 @@
-
-
 mutable struct Balance
     # assets
     N :: Float64            # inventories
@@ -41,8 +39,8 @@ end
 mutable struct Machine
     A :: Float64                # labor productivity machine
     c :: Float64                # cost to produce machine
-    freq :: Int16               # freq machine owned by cp
-    age :: Float16              # age of machine
+    freq :: Float64             # freq machine owned by cp
+    age :: Float64              # age of machine
 end
 
 function initialize_machine()

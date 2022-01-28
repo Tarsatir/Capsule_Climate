@@ -51,7 +51,7 @@ struct GlobalParam
     # ψ3 :: Float64                 # param changed in current model
     # tr :: Float64
     # ϕ :: Float64
-    cu :: Float16
+    cu :: Float64
 
     ϵ :: Float64                    # minimum desired wage increase rate
 
@@ -116,7 +116,6 @@ function get_capgood_euclidian(all_agents, n_captlgood)
     distance_matrix = zeros((n_captlgood, n_captlgood))
 
     all_kp = all_agents.all_kp
-    
     for i in 1:n_captlgood
         for j in i:n_captlgood
 

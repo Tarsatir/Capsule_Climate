@@ -13,6 +13,8 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
     P_FE :: Float64                         # probability of getting fired while employed
+    w :: Array{Float64}                     # wage level
+    wᴼ :: Float64                           # offered wage
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
     RD :: Array{Float64}                    # hist R&D expenditure
@@ -39,6 +41,8 @@ function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_ca
         0,                      # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
         0,                      # P_FE: probability of getting fired while employed
+        [1.0],                  # w: wage level
+        1.0,                    # wᴼ: offered wage
         0,                      # O: total amount of machines ordered
         [],                     # production queue
         [],                     # RD: hist R&D expenditure
@@ -91,13 +95,13 @@ function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struc
         # if no new technologies, keep current technologies
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
-        c_h = macro_struct.w[end]/kp.B[end]
+        c_h = kp.w[end]/kp.B[end]
         p_h = (1 + global_param.b) * c_h
         push!(kp.c, c_h)
         push!(kp.p, p_h)
     else
         # if new technologies, update price data
-        c_h = map(x -> macro_struct.w[end]/x[1], tech_choices)
+        c_h = map(x -> kp.w[end]/x[1], tech_choices)
         p_h = map(x -> (1 + global_param.μ1)*x, c_h)
         r_h = p_h + global_param.b * c_h
         index = argmin(r_h)
@@ -135,7 +139,7 @@ function send_brochures_kp!(kp :: AbstractAgent, all_agents, global_param)
 end
 
 
-function imitate_technology_kp(kp :: AbstractAgent, all_agents)
+function imitate_technology_kp(kp :: AbstractAgent, all_agents) :: Tuple{Float64, Float64}
     # use inverse distances as weights for choice competitor,
     distances = all_agents.capital_good_euclidian_matrix
 
@@ -242,8 +246,10 @@ function send_orders_kp!(kp)
 
         Π += machine.freq * (kp.p[end] - kp.c[end])
 
-        receive_machines!(cp, machine)
+        receive_machines!(cp, machine, Iₜ)
     end
+
+    push!(kp.Π, Π)
 
     # TODO: request money for machines that were produced
 

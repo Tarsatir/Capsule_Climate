@@ -3,7 +3,11 @@ function fire_excess_workers_p!(p)
     n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
 
     # TODO: find a more sophisticated way to select who is fired
-    fired_workers = sample(p.Emp, n_to_be_fired, replace=false)
+    if n_to_be_fired >= length(p.Emp)
+        fired_workers = p.Emp
+    else
+        fired_workers = sample(p.Emp, n_to_be_fired, replace=false)
+    end
 
     # remove employees from labor stock
     p.L -= sum(map(hh -> hh.L, fired_workers))
@@ -22,6 +26,7 @@ function hire_worker_p!(p, l)
     push!(p.Emp, l)
     p.L += l.L
     p.ΔLᵈ -= l.L
+    # println(p.ΔLᵈ)
 
 end
 

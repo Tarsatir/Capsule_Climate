@@ -15,7 +15,7 @@ function initialize_consumermarket()
 end
 
 
-function consumermarket_process!(consumermarket_struct, all_hh, all_bp, all_lp, gov_struct)
+function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp :: Array, all_lp :: Array, gov_struct)
 
     # TODO: put this as a parameter somewhere
     n_rounds = 1
@@ -34,7 +34,12 @@ function consumermarket_process!(consumermarket_struct, all_hh, all_bp, all_lp, 
 
         # TODO: find a way so cons package not determined all over again, otherwise 
         # consumers buy too much bg or lg
+        
         for hh in demanding_hh
+
+            if length(supplying_lp) == 0 || length(supplying_bp) == 0
+                return
+            end
             
             # pick bp and lp 
             pick_cp_hh!(hh, supplying_bp, supplying_lp)

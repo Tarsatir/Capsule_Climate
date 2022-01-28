@@ -1,5 +1,6 @@
 
 mutable struct MacroEconomy
+    GDP :: Array{Float64}       # GDP over time
     CPI :: Array{Float64}       # inflation over time
     C :: Array{Float64}         # aggregate consumption over time
     w :: Array{Float64}         # wage over time
@@ -15,9 +16,10 @@ end
 
 function initialize_macro()
     macro_struct = MacroEconomy(
+        [],                     # GDP over time
         [],                     # CPI: inflation rate
         [],                     # aggregate consumption
-        [2],                    # wage
+        [],                     # wage
         [], 
         [],
         [],
@@ -29,21 +31,19 @@ function initialize_macro()
     return macro_struct
 end
 
+function update_macro_stats(macro_struct, all_hh, all_cp, all_kp)
 
-function compute_average_competitiveness!(macro_struct, consumer_good_producers)
-    E_bar_t = sum(map(x -> x.E[end] * x.f[end], consumer_good_producers))
-    push!(E_bar, macro_struct.E_bar_t)
+    # compute GDP and add to array
+    total_I = sum(map(hh -> hh.I[end], all_hh))
+    total_Π = sum(map(cp -> cp.Π[end], all_cp))
+    total_Π += sum(map(kp -> kp.Π[end], all_kp))
 
-    return E_bar_t
+    GDP = total_I + total_Π
+    push!(macro_struct.GDP, GDP)
+
 end
 
 
-function update_wage!(macro_struct, global_param)
-    ΔAB = AB[end] - AB[end-1]
-    ΔCPI = CPI[end] - CPI[end-1]
-    ΔU = U[end] - U[end-1]
-    w_t = w[end] + (1 + global_param.ψ1*(ΔAB/AB[end-1]) 
-                      + global_param.ψ2*(ΔCPI/CPI[end-1]) 
-                      + global_param.ψ3*(ΔU/U[end-1]))
-    push!(w_t, macro_struct.w)
+function update_labor_stats(macro_struct, labormarket_struct)
+
 end

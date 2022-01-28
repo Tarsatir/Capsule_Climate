@@ -232,7 +232,8 @@ function model_step!( model,
     # TODO
 
     # (7) macro-economic indicators are updated.
-    # TODO
+    update_macro_stats(macro_struct, all_agents.all_hh, all_agents.all_cp, all_agents.all_kp)
+
     # TODO update market share cp
 
 
@@ -241,9 +242,12 @@ end
 to = TimerOutput()
 
 @timeit to "init" model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct = initialize_model()
-for i in 1:1
+for i in 1:50
+    println("Step ", i)
     @timeit to "step" model_step!(model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct)
 end
+
+println(macro_struct.GDP)
 
 show(to)
 println()

@@ -22,7 +22,7 @@ mutable struct Household <: AbstractAgent
     T_unemp :: Int              # time periods unemployed
 end
 
-function initialize_hh(id, hh_id, employed)
+function initialize_hh(id :: Int, hh_id :: Int, employed :: Bool)
     hh = Household(
         id,                     # global id
         hh_id,                  # household id
@@ -50,16 +50,18 @@ function initialize_hh(id, hh_id, employed)
 end
 
 
-function pick_cp_hh!(hh, all_bp, all_lp)
+function pick_cp_hh!(hh :: AbstractAgent, supplying_bp :: Array{AbstractAgent}, supplying_lp :: Array{AbstractAgent})
+
+    # println(length(supplying_bp), " ", length(supplying_lp))
     
     # TODO: do this in a more sophisticated way
-    hh.bg = sample(all_bp)
-    hh.lg = sample(all_lp) 
+    hh.bg = sample(supplying_bp)
+    hh.lg = sample(supplying_lp)
 
 end
 
 
-function compute_exp_income_hh!(hh, P_HU, P_UU, UB)
+function compute_exp_income_hh!(hh :: AbstractAgent, P_HU :: Float64, P_UU :: Float64, UB :: Float64)
 
     # determine income expectation for employed workers
     if hh.employed
@@ -87,7 +89,7 @@ end
 """
 Determines savings rate s
 """
-function set_savingsrate_hh!(hh, avg_T_unemp, UB)
+function set_savingsrate_hh!(hh :: AbstractAgent, avg_T_unemp :: Float64, UB :: Float64)
 
     # determine average budget over last year or over available information
     if length(hh.B[end]) >= 5
@@ -116,7 +118,7 @@ Determines the optimal consumption package
     - Choose which goods to buy
     - Choose optimal consumption package for both goods
 """
-function set_cons_package_hh!(hh, τˢ)
+function set_cons_package_hh!(hh :: AbstractAgent, τˢ :: Float64) :: Tuple{Float64, Float64}
 
     # decide value of minimum consumption package
     min_cons_val = hh.N_B_min * hh.bg.p[end]
@@ -162,15 +164,15 @@ function update_sat_req_wage_hh!(hh, ϵ :: Float64, UB :: Float64)
 end
 
 
-function get_fired_hh!(hh)
+function get_fired_hh!(hh :: AbstractAgent)
     hh.employed = false
     hh.employer = nothing
 end
 
 
-function get_hired_hh!(hh, p)
+function get_hired_hh!(hh :: AbstractAgent, employer :: AbstractAgent)
     hh.employed = true
-    hh.employer = p
+    hh.employer = employer
     hh.T_unemp = 0
-    push!(hh.w, p.wᴼ)
+    push!(hh.w, employer.wᴼ)
 end
