@@ -31,15 +31,22 @@ function initialize_macro()
     return macro_struct
 end
 
-function update_macro_stats(macro_struct, all_hh, all_cp, all_kp)
+function update_macro_stats(macro_struct, all_hh, all_cp, all_kp, E)
 
     # compute GDP and add to array
     total_I = sum(map(hh -> hh.I[end], all_hh))
+    println(total_I)
     total_Π = sum(map(cp -> cp.Π[end], all_cp))
+    println("cp Π ", total_Π)
     total_Π += sum(map(kp -> kp.Π[end], all_kp))
+
+    
+    println("all Π", total_Π)
 
     GDP = total_I + total_Π
     push!(macro_struct.GDP, GDP)
+
+    push!(macro_struct.U, E)
 
 end
 

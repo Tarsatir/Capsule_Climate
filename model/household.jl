@@ -103,12 +103,16 @@ function set_savingsrate_hh!(hh :: AbstractAgent, avg_T_unemp :: Float64, UB :: 
         hh.Sᵈ = avg_T_unemp * (B̄ - UB)
 
         # determine savings rate
-        hh.s = (hh.Sᵈ - hh.S[end]) / (hh.I[end] + 3*hh.Iᵉ)
+        s = (hh.Sᵈ - hh.S[end]) / (hh.I[end] + 3*hh.Iᵉ)
     else
 
-        hh.s = (B̄ - UB) / UB
+        s = (B̄ - UB) / UB
 
     end
+
+    hh.s = s
+
+    # println(hh.s, " ", hh.I[end], " ", 3*hh.Iᵉ)
 
 end
 
@@ -127,13 +131,17 @@ function set_cons_package_hh!(hh :: AbstractAgent, τˢ :: Float64) :: Tuple{Flo
         B = hh.I[end] + hh.S[end]
         push!(hh.B, B)
     else
-        B = min((1-hh.s[end]) * hh.I[end], hh.I[end] + hh.S[end])
+        B = min((1-hh.s) * hh.I[end], hh.I[end] + hh.S[end])
         push!(hh.B, B)
     end
+
+    # println(hh.B[end])
 
     # TODO utility determination still has to happen
     p_bg_τˢ = hh.bg.p[end] * (1 - τˢ)
     p_lg_τˢ = hh.lg.p[end] * (1 - τˢ)
+
+    # println("p ", p_bg_τˢ, " ", p_lg_τˢ)
 
     U_B = rand(Uniform(0, 1))
     U_L = rand(Uniform(U_B, 1))

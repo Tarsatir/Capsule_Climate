@@ -10,12 +10,16 @@ function fire_excess_workers_p!(p)
     end
 
     # remove employees from labor stock
-    p.L -= sum(map(hh -> hh.L, fired_workers))
-    filter!(e -> e ∉ fired_workers, p.Emp)
+    if length(fired_workers) > 0
+        p.L -= sum(map(hh -> hh.L, fired_workers))
+        filter!(e -> e ∉ fired_workers, p.Emp)
 
-    p.P_FE = length(fired_workers) / length(p.Emp)
+        p.P_FE = length(fired_workers) / length(p.Emp)
 
-    return fired_workers
+        return fired_workers
+    else
+        return []
+    end
 
 end
 

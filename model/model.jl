@@ -96,9 +96,9 @@ function initialize_global_params()
 
         0.02,                       # ϵ: minimum desired wage increase rate
 
-        0.5,                        # ωD: memory parameter cp demand estimation
-        0.5,                        # ωQ: memory parameter cp quantity estimation
-        0.5                         # ωL: memory parameter cp labor supply estimation
+        0.1,                        # ωD: memory parameter cp demand estimation
+        0.1,                        # ωQ: memory parameter cp quantity estimation
+        0.1                         # ωL: memory parameter cp labor supply estimation
     )
     return global_param
 end

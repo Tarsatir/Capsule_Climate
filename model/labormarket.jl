@@ -1,7 +1,7 @@
 mutable struct LaborMarket
     employed :: Array{AbstractAgent}            # array of employed households
     unemployed :: Array{AbstractAgent}          # array of unemployed households
-    E :: Float64                                # unemployment rate
+    E :: Float64                         # unemployment rate
     n_rounds :: Int                             # number of rounds in matching process
     avg_T_unemp :: Float64                      # average time periods of unemployment
     P_HU :: Float64                             # hired workers as fraction of total unemployed workers
@@ -38,7 +38,7 @@ function labormarket_process!(labormarket_struct, all_cp :: Array{AbstractAgent}
     hiring_producers = []
 
     update_unemploymentrate_lm(labormarket_struct)
-    println("E 1: ", labormarket_struct.E)
+    println("E 1: ", labormarket_struct.E[end])
 
     for p in vcat(all_cp, all_kp)
         if p.ΔLᵈ > 0
@@ -191,7 +191,10 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
     end
 
     labormarket_struct.P_UU = n_longtermunemp / n_unemployed
-    labormarket_struct.P_HU = n_hired / n_unemployed
+    # labormarket_struct.P_HU = n_hired / n_unemployed
+    labormarket_struct.P_HU = 1 - labormarket_struct.P_UU
+
+    # println(labormarket_struct.P_UU, " ", labormarket_struct.P_HU)
 
 end
 

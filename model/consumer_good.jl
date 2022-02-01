@@ -146,11 +146,11 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
 
     # compute desired capital stock expansion
-    Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(x -> x.A * x.freq, cp.Ξ)))/Aᵈ
+    Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(m -> m.A * m.freq, cp.Ξ)))/Aᵈ
 
-    EIᵈ = Kᵈ - sum(map(x -> x.freq, cp.Ξ))
+    EIᵈ = Kᵈ - sum(map(m -> m.freq, cp.Ξ))
     
-    Iₜ = EIᵈ + sum(map(x -> x.freq, cp.RS))
+    Iₜ = EIᵈ + sum(map(m -> m.freq, cp.RS))
 
     # TODO does not check if funds are available
     if Iₜ > 0
@@ -165,15 +165,21 @@ cop(p_t, c_t, b) = p_t + b * c_t
 
 
 function plan_replacement_cp!(cp :: AbstractAgent, global_param, p_star :: Float64, c_star :: Float64)
-    RS = []
+    cp.RS = []
+
+    # println("YEEEEEt")
+
+    # println("yeet1 ", cp.Ξ)
 
     for machine in cp.Ξ
-        if (p_star/(machine.A - c_star) <= global_param.b) || machine.age >= global_param.η
-            push!(RS, machine)
+        if p_star/(machine.A - c_star) < global_param.b || machine.age >= global_param.η
+        # if machine.age >= global_param.η
+            push!(cp.RS, machine)
         end
     end
 
-    cp.RS = RS
+    # println("yoot1 ", cp.RS)
+    # println()
 end
 
 
@@ -249,8 +255,11 @@ end
 
 
 function compute_c_cp(cp :: AbstractAgent, Qˢ :: Float64)
-    Ā = sum(map(x -> x.A * x.freq, cp.Ξ))
+    Ā = sum(map(m -> m.A * m.freq, cp.Ξ))
     c = (cp.w[end] * Qˢ / Ā) / Qˢ
+    
+    # println("A bar ", Ā)
+    # println("c ", c)
     return c
 end
 
@@ -286,7 +295,8 @@ end
 
 function compute_profits_cp!(cp)
     # TODO incorporate interest rates
-    Π = cp.D[end] * (cp.p[end] - cp.c[end])
+    # println(cp.D[end])
+    Π = cp.D[end] * (cp.p[end] - cp.c[end]) - cp.w[end] * cp.L[end]
     push!(cp.Π, Π)
 end
 
@@ -299,10 +309,20 @@ end
 function receive_machines!(cp, machine, Iₜ)
 
     # remove machines that were written off
+
+    # println("yeet2 ", cp.Ξ)
+    # println("yoot ", cp.RS)
+    # println("yaat ", filter(m -> m ∉ cp.RS, cp.Ξ))
+
+    # println("before ", length(cp.Ξ), " ", length(cp.RS))
     filter!(m -> m ∉ cp.RS, cp.Ξ)
+    # println("after ", length(cp.Ξ))
+    # println()
 
     # add new machine to capital stock
     push!(cp.Ξ, machine)
+
+    # println("yeet3 ", cp.Ξ)
 
     cp.balance.NW -= Iₜ
 

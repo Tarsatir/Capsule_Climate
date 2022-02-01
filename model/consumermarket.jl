@@ -47,9 +47,11 @@ function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp 
             # set budget based on bp and lp, decide consumption amount
             N_B, N_L = set_cons_package_hh!(hh, gov_struct.τˢ)
 
+            # println(N_B,  " ", N_L)
+
             # transact goods if enough available
-            bg_satisfied =  transact_cp!(hh.bg, hh, N_B)   
-            lg_satisfied =  transact_cp!(hh.lg, hh, N_L)
+            bg_satisfied = transact_cp!(hh.bg, hh, N_B)   
+            lg_satisfied = transact_cp!(hh.lg, hh, N_L)
 
             # implies both bg and lg have inventory left
             if bg_satisfied && lg_satisfied
@@ -64,6 +66,8 @@ function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp 
             end
         end
     end
+
+    # println("Yeet ", length(all_bp[1].D))
 
     # match all remaining households and producers randomly
 

@@ -96,7 +96,7 @@ function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struc
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
         c_h = kp.w[end]/kp.B[end]
-        p_h = (1 + global_param.b) * c_h
+        p_h = (1 + global_param.μ1) * c_h
         push!(kp.c, c_h)
         push!(kp.p, p_h)
     else
@@ -233,21 +233,29 @@ Sends orders from production queue to cp
 """
 function send_orders_kp!(kp)
 
-    Π = 0
+    tot_freq = 0
 
     for order in kp.prod_queue
+
+        # println(order[1].cp_id)
 
         cp = order[1]
         Iₜ = order[2]
 
         machine = initialize_machine()
         machine.A = kp.A[end]
-        machine.freq = Iₜ / kp.p[end]
+        machine.freq = Iₜ
+        # TODO check if this is correct
 
-        Π += machine.freq * (kp.p[end] - kp.c[end])
+        tot_freq += machine.freq
+
+        # Π += machine.freq * (kp.p[end] - kp.c[end])
 
         receive_machines!(cp, machine, Iₜ)
     end
+
+    # println(tot_freq)
+    Π = tot_freq * (kp.p[end] - kp.c[end])
 
     push!(kp.Π, Π)
 
@@ -257,4 +265,9 @@ function send_orders_kp!(kp)
 
     # TODO: empty production queue
 
+end
+
+
+function reset_order_queue_kp!(kp)
+    kp.orders = []
 end

@@ -15,6 +15,7 @@ using BenchmarkTools
 using TimerOutputs
 # using Setfield
 
+include("../results/write_results.jl")
 include("model.jl")
 include("misc.jl")
 include("government.jl")
@@ -28,11 +29,10 @@ include("macro.jl")
 
 
 
-
 function initialize_model(;
-    n_captlgood = 5,
-    n_consrgood = 20,
-    n_households = 250
+    n_captlgood = 50,
+    n_consrgood = 200,
+    n_households = 2500
     )
 
     # initialise model struct
@@ -152,6 +152,7 @@ function model_step!( model,
 
     # (1) capital good producers innovate and send brochures
     for kp in all_agents.all_kp
+        reset_order_queue_kp!(kp)
         innovate_kp!(kp, global_param, all_agents, macro_struct)
         send_brochures_kp!(kp, all_agents, global_param)
     end
@@ -232,7 +233,11 @@ function model_step!( model,
     # TODO
 
     # (7) macro-economic indicators are updated.
-    update_macro_stats(macro_struct, all_agents.all_hh, all_agents.all_cp, all_agents.all_kp)
+    update_macro_stats(macro_struct, 
+                       all_agents.all_hh, 
+                       all_agents.all_cp, 
+                       all_agents.all_kp,
+                       labormarket_struct.E)
 
     # TODO update market share cp
 
@@ -242,12 +247,14 @@ end
 to = TimerOutput()
 
 @timeit to "init" model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct = initialize_model()
-for i in 1:50
+for i in 1:400
     println("Step ", i)
     @timeit to "step" model_step!(model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct)
 end
 
 println(macro_struct.GDP)
+
+@timeit to "save" save_macro_data(macro_struct)
 
 show(to)
 println()
