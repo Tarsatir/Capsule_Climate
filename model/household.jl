@@ -110,7 +110,12 @@ function set_savingsrate_hh!(hh :: AbstractAgent, avg_T_unemp :: Float64, UB :: 
 
     end
 
-    hh.s = s
+    # TODO: find a solution for this
+    if isnan(s)
+        hh.s = 0
+    else
+        hh.s = s
+    end
 
     # println(hh.s, " ", hh.I[end], " ", 3*hh.Iᵉ)
 

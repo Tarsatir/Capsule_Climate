@@ -45,3 +45,11 @@ function pay_workers_p!(p)
     end
 
 end
+
+
+function update_wage_level_p!(p)
+    if length(p.Emp) > 0
+        w̄ = mean(map(l -> l.w[end], p.Emp))
+        push!(p.w, w̄)
+    end
+end

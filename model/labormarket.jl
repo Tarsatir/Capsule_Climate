@@ -79,28 +79,41 @@ end
 """
 Gives all producers a share of the labor force after being initialized
 """
-function spread_employees_lm!(labormarket_struct, all_cp, all_kp)
+function spread_employees_lm!(labormarket_struct, all_hh, all_cp, all_kp, n_init_emp_cp, n_init_emp_kp)
+
+    # n_init_emp_cp = 11
+    # n_init_emp_kp = 3
 
     i = 1
     for cp in all_cp
-        employees = labormarket_struct.employed[i:i+8]
+        employees = all_hh[i:i+n_init_emp_cp]
         for emp in employees
-            emp.employer = cp
+            # emp.employer = cp
+            get_hired_hh!(emp, cp)
+            hire_worker_p!(cp, emp)
+            push!(labormarket_struct.employed, emp)
         end
         cp.Emp = employees
         cp.L = sum(map(hh -> hh.L, employees))
-        i += 9
+        i += n_init_emp_cp
     end
 
     for kp in all_kp
-        employees = labormarket_struct.employed[i:i+8]
+        employees = all_hh[i:i+n_init_emp_kp]
         for emp in employees
-            emp.employer = kp
+            # emp.employer = kp
+            get_hired_hh!(emp, kp)
+            hire_worker_p!(kp, emp)
+            push!(labormarket_struct.employed, emp)
         end
         kp.Emp = employees
         kp.L = sum(map(hh -> hh.L, employees))
-        i += 9
+        i += n_init_emp_kp
     end
+
+    # other households are pushed into unemployment
+    println(i)
+    append!(labormarket_struct.unemployed, all_hh[i:end])
 
 end
 
@@ -153,31 +166,61 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
         shuffle!(all_p)
         for p in all_p
 
-            # TODO do this in a more sophisticated way
-            n_sample = min(10, length(labormarket_struct.unemployed))
+            if p.ΔLᵈ > 0
 
-            # make queue of job-seeking households
-            Lˢ = sample(labormarket_struct.unemployed, n_sample, replace=false)
+                # TODO do this in a more sophisticated way
+                n_sample = min(10, length(labormarket_struct.unemployed))
 
-            # only select households with a low enough reservation wage
-            Lᵈ = sort(Lˢ, by = l -> l.wʳ)
+                # make queue of job-seeking households
+                Lˢ = sample(labormarket_struct.unemployed, n_sample, replace=false)
 
-            # hire workers until demand is met or no more workers available
-            while p.ΔLᵈ > 0 && length(Lᵈ) > 0
+                # only select households with a low enough reservation wage
+                Lᵈ = sort(Lˢ, by = l -> l.wʳ)
 
-                # hire worker
-                l = Lᵈ[1]
-                get_hired_hh!(l, p)
-                hire_worker_p!(p, l)
+                to_be_hired = []
+                w = p.w[end]
+                for l in Lᵈ
+                    # hire worker
+                    l = Lᵈ[1]
+                    # n_hired += 1
 
-                n_hired += 1
+                    push!(to_be_hired, l)
+                    w = l.wʳ
+                    # println(l.wʳ)
 
-                # delete household from seeking lists
-                filter!(w -> w ≠ l, Lᵈ)
-                filter!(w -> w ≠ l, labormarket_struct.unemployed)
-                push!(labormarket_struct.employed, l)
+                    # delete household from seeking lists
+                    # filter!(hh -> hh ≠ l, Lᵈ)
+                    # filter!(hh -> hh ≠ l, labormarket_struct.unemployed)
+                    # push!(labormarket_struct.employed, l)
+                end
+
+                # add wage at which hired to wage list
+                p.wᴼ = w
+                # println(p.wᴼ)
+                # push!(p.w, w)
+
+                # hire workers until demand is met or no more workers available
+                # while p.ΔLᵈ > 0 && length(Lᵈ) > 0
+                for l in to_be_hired
+
+                    # hire worker
+                    # l = Lᵈ[1]
+                    get_hired_hh!(l, p)
+                    hire_worker_p!(p, l)
+
+                    n_hired += 1
+
+                    # delete household from seeking lists
+                    filter!(hh -> hh ≠ l, Lᵈ)
+                    filter!(hh -> hh ≠ l, labormarket_struct.unemployed)
+                    push!(labormarket_struct.employed, l)
+
+                end
+
+                update_wage_level_p!(p)
 
             end
+
         end
     end
 

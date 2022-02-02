@@ -38,7 +38,14 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
 end
 
 
-function initialize_cp(id :: Int, cp_id :: Int, machine_struct, n_consrgood :: Int, type_good :: String)
+function initialize_cp(
+    id :: Int, 
+    cp_id :: Int, 
+    machine_struct, 
+    n_consrgood :: Int, 
+    type_good :: String,
+    n_init_emp_cp :: Int
+    )
     cp = ConsumerGoodProducer(
         id,                     # global id
         cp_id,                  # cp id
@@ -46,18 +53,18 @@ function initialize_cp(id :: Int, cp_id :: Int, machine_struct, n_consrgood :: I
         [],                     # p: hist prices
         [],                     # c: hist cost
         [],                     # RD: hist R&D spending
-        [36e3],                 # D: hist demand
-        37e3,                   # Dᵉ exp demand
+        [48e3],                 # D: hist demand
+        49e3,                   # Dᵉ exp demand
         # [36e3],               # N: hist inventory
         30e3,                   # Nᵈ: desired inventory 
-        [36e3],                 # Q: hist production
-        37e3,                   # Qᵉ: exp production
+        [48e3],                 # Q: hist production
+        49e3,                   # Qᵉ: exp production
         [rand()],               # I: hist investments
         [machine_struct],       # Ξ: capital stock
         [],                     # RS: list of to-be replaced machines
         [],                     # Emp: employees
         0,                      # L: labor units in company
-        90,                     # Lᵉ: exp labor force
+        n_init_emp_cp * 100,    # Lᵉ: exp labor force
         0,                      # ΔLᵈ: desired change in labor force
         0,                      # P_FE: probability of getting fired while employed
         [1.0],                  # w: wage level
@@ -142,8 +149,12 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     # update LT demand
     cp.Qᵉ = global_param.ωQ * cp.Q[end] + (1 - global_param.ωQ) * cp.Qᵉ
 
+    println("Q ", cp.Qᵉ, " ", cp.Q[end])
+
     # update expected labor supply
     cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
+
+    println("L ", cp.Lᵉ, " ", cp.L[end])
 
     # compute desired capital stock expansion
     Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(m -> m.A * m.freq, cp.Ξ)))/Aᵈ
@@ -151,6 +162,8 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     EIᵈ = Kᵈ - sum(map(m -> m.freq, cp.Ξ))
     
     Iₜ = EIᵈ + sum(map(m -> m.freq, cp.RS))
+
+    # println(EIᵈ, " ", Iₜ, " ", EIᵈ)
 
     # TODO does not check if funds are available
     if Iₜ > 0
@@ -296,7 +309,8 @@ end
 function compute_profits_cp!(cp)
     # TODO incorporate interest rates
     # println(cp.D[end])
-    Π = cp.D[end] * (cp.p[end] - cp.c[end]) - cp.w[end] * cp.L[end]
+    Π = cp.D[end] * cp.p[end] - cp.w[end] * cp.L[end]
+    # println("Π ", Π)
     push!(cp.Π, Π)
 end
 

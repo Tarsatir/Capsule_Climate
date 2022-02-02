@@ -32,7 +32,9 @@ include("macro.jl")
 function initialize_model(;
     n_captlgood = 50,
     n_consrgood = 200,
-    n_households = 2500
+    n_households = 2500,
+    n_init_emp_cp = 11,
+    n_init_emp_kp = 3
     )
 
     # initialise model struct
@@ -60,11 +62,13 @@ function initialize_model(;
     # initialize households
     for hh_id in 1:n_households
 
-        # determine if household will be employed
-        employed = true
-        if hh_id > 0.9 * n_households
-            employed = false
-        end
+        employed = false
+
+        # # determine if household will be employed
+        # employed = true
+        # if hh_id > 0.9 * n_households
+        #     employed = false
+        # end
 
         hh = initialize_hh(id, hh_id, employed)
 
@@ -72,15 +76,15 @@ function initialize_model(;
         add_agent!(hh, model)
 
         # add household to labor market struct based on employment status
-        if hh.employed
-            push!(labormarket_struct.employed, hh)
-        else
-            push!(labormarket_struct.unemployed, hh)
-        end
+        # if hh.employed
+        #     push!(labormarket_struct.employed, hh)
+        # else
+        #     push!(labormarket_struct.unemployed, hh)
+        # end
     end
 
     # update unemployment rate
-    update_unemploymentrate_lm(labormarket_struct)
+    # update_unemploymentrate_lm(labormarket_struct)
 
     # initialize consumer good producers
     for cp_id in 1:n_consrgood
@@ -93,8 +97,9 @@ function initialize_model(;
 
         # initialize capital good stock
         machine_struct = initialize_machine()
+        machine_struct.age = rand(0:global_param.η)
 
-        cp = initialize_cp(id, cp_id, machine_struct, n_consrgood, type_good)
+        cp = initialize_cp(id, cp_id, machine_struct, n_consrgood, type_good, n_init_emp_cp)
 
         push!(all_agents.all_cp, cp)
         
@@ -115,7 +120,7 @@ function initialize_model(;
         HC = sample(all_agents.all_cp, 10; replace=false)
 
         # initialize capital good producer
-        kp = initialize_kp(id, kp_id, HC, n_captlgood)
+        kp = initialize_kp(id, kp_id, HC, n_captlgood, n_init_emp_kp)
 
         push!(all_agents.all_kp, kp)
         add_agent!(kp, model)
@@ -125,12 +130,17 @@ function initialize_model(;
     # determine distance matrix between capital good producers
     get_capgood_euclidian(all_agents, n_captlgood)
 
-    # spread employed households over producers
+    # spread employed households over producerss
     spread_employees_lm!(
-        labormarket_struct, 
+        labormarket_struct,
+        all_agents.all_hh, 
         all_agents.all_cp, 
-        all_agents.all_kp
+        all_agents.all_kp,
+        n_init_emp_cp,
+        n_init_emp_kp
     )
+
+    update_unemploymentrate_lm(labormarket_struct)
 
     return model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct
 end
@@ -247,7 +257,7 @@ end
 to = TimerOutput()
 
 @timeit to "init" model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct = initialize_model()
-for i in 1:400
+for i in 1:100
     println("Step ", i)
     @timeit to "step" model_step!(model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct)
 end

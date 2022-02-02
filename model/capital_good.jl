@@ -29,7 +29,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     Balance :: Balance                      # balance sheet
 end
 
-function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_captlgood :: Int)
+function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_captlgood :: Int, n_init_emp_kp :: Int)
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
         kp_id,                  # kp id
@@ -77,7 +77,7 @@ function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struc
 
     # determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN[end])
-    if (θ_IN > rand())
+    if (rand(Bernoulli(θ_IN)) > rand())
         A_t_in = update_At_kp(kp.A[end], global_param)
         B_t_in = update_Bt_kp(kp.B[end], global_param)
         push!(tech_choices, (A_t_in, B_t_in))
@@ -157,7 +157,7 @@ end
 
 function update_At_kp(A_last :: Float64, global_param)
     # determines new labor productivity of machine produced for cp
-    κ_A = rand(Beta(global_param.α1, global_param.β1))
+    κ_A = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
     A_t_in = A_last*(1 + κ_A)
     return A_t_in
 end
@@ -165,8 +165,9 @@ end
 
 function update_Bt_kp(B_last :: Float64, global_param)
     # determines new labor productivity of own production method 
-    κ_A = rand(Beta(global_param.α1, global_param.β1))
-    B_t_in = B_last*(1 + κ_A)
+    κ_B = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
+    # println("κ ", κ_B)
+    B_t_in = B_last*(1 + κ_B)
     return B_t_in
 end
 
@@ -242,6 +243,8 @@ function send_orders_kp!(kp)
         cp = order[1]
         Iₜ = order[2]
 
+        # println(Iₜ)
+
         machine = initialize_machine()
         machine.A = kp.A[end]
         machine.freq = Iₜ
@@ -255,8 +258,11 @@ function send_orders_kp!(kp)
     end
 
     # println(tot_freq)
+    
+    S = tot_freq * kp.p[end]
     Π = tot_freq * (kp.p[end] - kp.c[end])
 
+    push!(kp.S, S)
     push!(kp.Π, Π)
 
     # TODO: request money for machines that were produced
