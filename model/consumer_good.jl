@@ -19,6 +19,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Qᵉ :: Float64               # exp production
     I :: Array{Float64}         # hist investments
     Ξ :: Array{Machine}         # capital stock
+    K :: Float64                # total amount of machines
     RS :: Array{Machine}        # list of to-be replaced machines
     Emp:: Array{AbstractAgent}  # employees list
     L :: Float64                # labor units
@@ -53,14 +54,15 @@ function initialize_cp(
         [],                     # p: hist prices
         [],                     # c: hist cost
         [],                     # RD: hist R&D spending
-        [48e3],                 # D: hist demand
-        49e3,                   # Dᵉ exp demand
+        [40],                   # D: hist demand
+        40,                     # Dᵉ exp demand
         # [36e3],               # N: hist inventory
-        30e3,                   # Nᵈ: desired inventory 
-        [48e3],                 # Q: hist production
-        49e3,                   # Qᵉ: exp production
+        30,                     # Nᵈ: desired inventory 
+        [42],                   # Q: hist production
+        42,                     # Qᵉ: exp production
         [rand()],               # I: hist investments
         [machine_struct],       # Ξ: capital stock
+        40,                     # K: total amount of machines
         [],                     # RS: list of to-be replaced machines
         [],                     # Emp: employees
         0,                      # L: labor units in company
@@ -77,7 +79,7 @@ function initialize_cp(
         0,                      # cI: internal funds for investments
         0,                      # ΔDeb: changes in debt level
         Balance(               
-                30e3,           # - N: inventory
+                30,             # - N: inventory
                 0.0,            # - K: capital
                 0.0,            # - NW: liquid assets
                 0.0,            # - Deb: debt
@@ -96,6 +98,9 @@ Plans production amounts for consumer good producer (short term)
 """
 function plan_production_cp!(cp :: AbstractAgent, global_param)
 
+    # update amount of owned capital
+    update_K!(cp)
+
     # update expected demand
     cp.Dᵉ = global_param.ωD * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
 
@@ -108,13 +113,22 @@ function plan_production_cp!(cp :: AbstractAgent, global_param)
 
     # print(Qˢ)
 
+    # update average productivity
+    update_π!(cp)
+
     # compute corresponding change in labor stock
     total_prod = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
     # println(total_prod)
     # println("L:", cp.L)
     # println(Qˢ)
     # println(Qˢ/total_prod)
-    cp.ΔLᵈ = Qˢ/total_prod - cp.L
+
+    ΔLᵈ = Qˢ/cp.π[end] - cp.L
+    if ΔLᵈ < -cp.L
+        cp.ΔLᵈ = -cp.L
+    else
+        cp.ΔLᵈ = ΔLᵈ
+    end
 
     # update markup μ
     μ = compute_μ_cp(cp, global_param.υ, global_param.μ1)
@@ -149,15 +163,16 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     # update LT demand
     cp.Qᵉ = global_param.ωQ * cp.Q[end] + (1 - global_param.ωQ) * cp.Qᵉ
 
-    println("Q ", cp.Qᵉ, " ", cp.Q[end])
+    # println("Q ", cp.Qᵉ, " ", cp.Q[end])
 
     # update expected labor supply
     cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
 
-    println("L ", cp.Lᵉ, " ", cp.L[end])
+    # println("L ", cp.Lᵉ, " ", cp.L[end])
 
     # compute desired capital stock expansion
-    Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(m -> m.A * m.freq, cp.Ξ)))/Aᵈ
+    # Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(m -> m.A * m.freq, cp.Ξ)))/Aᵈ
+    Kᵈ = (cp.Qᵉ / cp.Lᵉ - cp.π[end])/Aᵈ
 
     EIᵈ = Kᵈ - sum(map(m -> m.freq, cp.Ξ))
     
@@ -170,6 +185,17 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
         order_machines_cp!(kp_choice, cp, Iₜ)
     end
 
+end
+
+
+function update_K!(cp)
+    cp.K = sum(map(machine -> machine.freq, cp.Ξ))
+end
+
+
+function update_π!(cp)
+    π = sum(map(machine -> machine.freq / cp.K, cp.Ξ))
+    push!(cp.π, π)
 end
 
 
@@ -268,11 +294,9 @@ end
 
 
 function compute_c_cp(cp :: AbstractAgent, Qˢ :: Float64)
-    Ā = sum(map(m -> m.A * m.freq, cp.Ξ))
+    total_K = sum(map(machine -> machine.freq, cp.Ξ))
+    Ā = sum(map(m -> m.A * m.freq / total_K, cp.Ξ))
     c = (cp.w[end] * Qˢ / Ā) / Qˢ
-    
-    # println("A bar ", Ā)
-    # println("c ", c)
     return c
 end
 

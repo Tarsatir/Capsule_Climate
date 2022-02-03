@@ -247,9 +247,12 @@ function model_step!( model,
                        all_agents.all_hh, 
                        all_agents.all_cp, 
                        all_agents.all_kp,
-                       labormarket_struct.E)
+                       labormarket_struct.E,
+                       gov_struct.curr_acc.Exp_UB[end])
 
     # TODO update market share cp
+
+    
 
 
 end

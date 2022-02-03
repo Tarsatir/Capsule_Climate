@@ -11,7 +11,7 @@ end
 
 function initialize_government()
     gov_struct = Government(
-        50,                             # UB: unemployment benefits
+        70,                             # UB: unemployment benefits
         0.2,                            # τᴵ: income tax
         0.2,                            # τˢ: sales tax
         0.2,                            # τᴾ: profit tax
@@ -28,7 +28,8 @@ function pay_unemployment_benefits_gov!(gov_struct, unemployed)
     # pay out unemployment benefits to households
     total_UB = 0
     for hh in unemployed
-        push!(hh.I, gov_struct.UB)
+        # push!(hh.I, gov_struct.UB)
+        get_income_hh!(hh, gov_struct.UB)
         total_UB += gov_struct.UB
     end
 

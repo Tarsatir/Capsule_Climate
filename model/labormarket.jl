@@ -1,7 +1,9 @@
 mutable struct LaborMarket
     employed :: Array{AbstractAgent}            # array of employed households
     unemployed :: Array{AbstractAgent}          # array of unemployed households
-    E :: Float64                         # unemployment rate
+    # employed :: Array{Int}
+    # unemployed :: Array{Int}
+    E :: Float64                                # unemployment rate
     n_rounds :: Int                             # number of rounds in matching process
     avg_T_unemp :: Float64                      # average time periods of unemployment
     P_HU :: Float64                             # hired workers as fraction of total unemployed workers
@@ -14,7 +16,7 @@ function initialize_labormarket()
         [],
         [],
         0.1,
-        3,
+        1,
         0,
         0,
         0
@@ -49,7 +51,9 @@ function labormarket_process!(labormarket_struct, all_cp :: Array{AbstractAgent}
     end
 
     # let producers fire excess workers
+    println("f1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     fire_workers!(labormarket_struct, firing_producers)
+    println("f2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 
     # update wage parameters households
     for hh in vcat(labormarket_struct.employed, labormarket_struct.unemployed)
@@ -60,7 +64,9 @@ function labormarket_process!(labormarket_struct, all_cp :: Array{AbstractAgent}
     println("E 2: ", labormarket_struct.E)
 
     # labor market matching process
-    matching_lm(labormarket_struct, all_cp, all_kp)
+    println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
+    matching_lm(labormarket_struct, hiring_producers)
+    println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     
     # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 
@@ -86,12 +92,13 @@ function spread_employees_lm!(labormarket_struct, all_hh, all_cp, all_kp, n_init
 
     i = 1
     for cp in all_cp
-        employees = all_hh[i:i+n_init_emp_cp]
+        employees = all_hh[i:i+n_init_emp_cp-1]
         for emp in employees
             # emp.employer = cp
+            push!(labormarket_struct.employed, emp)
             get_hired_hh!(emp, cp)
             hire_worker_p!(cp, emp)
-            push!(labormarket_struct.employed, emp)
+            
         end
         cp.Emp = employees
         cp.L = sum(map(hh -> hh.L, employees))
@@ -99,12 +106,12 @@ function spread_employees_lm!(labormarket_struct, all_hh, all_cp, all_kp, n_init
     end
 
     for kp in all_kp
-        employees = all_hh[i:i+n_init_emp_kp]
+        employees = all_hh[i:i+n_init_emp_kp-1]
         for emp in employees
             # emp.employer = kp
+            push!(labormarket_struct.employed, emp)
             get_hired_hh!(emp, kp)
             hire_worker_p!(kp, emp)
-            push!(labormarket_struct.employed, emp)
         end
         kp.Emp = employees
         kp.L = sum(map(hh -> hh.L, employees))
@@ -112,10 +119,13 @@ function spread_employees_lm!(labormarket_struct, all_hh, all_cp, all_kp, n_init
     end
 
     # other households are pushed into unemployment
-    println(i)
-    append!(labormarket_struct.unemployed, all_hh[i:end])
+    for hh in all_hh[i:end]
+        get_fired_hh!(hh)
+        push!(labormarket_struct.unemployed, hh)
+    end
 
 end
+
 
 function fire_workers!(labormarket_struct, firing_producers)
 
@@ -126,23 +136,20 @@ function fire_workers!(labormarket_struct, firing_producers)
         append!(all_fired_workers, fire_excess_workers_p!(p))
     end
 
+    # update employed and unemployed lists
+    filter!(e -> e ∉ all_fired_workers, labormarket_struct.employed)
+
     # change employment status for households
     for hh in all_fired_workers
         get_fired_hh!(hh)
     end
 
-    # println(all_fired_workers)
-
-    # update employed and unemployed lists
-    filter!(e -> e ∉ all_fired_workers, labormarket_struct.employed)
     append!(labormarket_struct.unemployed, all_fired_workers)
-
-    # println(labormarket_struct.unemployed)
 
 end
 
 
-function matching_lm(labormarket_struct, all_cp, all_kp)
+function matching_lm(labormarket_struct, hiring_producers)
 
     # get all applicant workers
     # TODO: let employed workers also apply for jobs
@@ -150,21 +157,13 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
 
     n_unemployed = length(labormarket_struct.unemployed)
 
-    # get producers that want to hire workers
-    all_p = []
-    for p in vcat(all_cp, all_kp)
-        if p.ΔLᵈ > 0
-            push!(all_p, p)
-        end
-    end
-
     n_hired = 0
 
     for n_round in 1:labormarket_struct.n_rounds
 
         # loop over producers
-        shuffle!(all_p)
-        for p in all_p
+        shuffle!(hiring_producers)
+        for p in hiring_producers
 
             if p.ΔLᵈ > 0
 
@@ -202,18 +201,22 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
                 # hire workers until demand is met or no more workers available
                 # while p.ΔLᵈ > 0 && length(Lᵈ) > 0
                 for l in to_be_hired
+                    
+                    # delete household from seeking lists
+                    filter!(hh -> hh ≠ l, Lᵈ)
 
-                    # hire worker
-                    # l = Lᵈ[1]
+                    filter!(hh -> hh ≠ l, labormarket_struct.unemployed)
+
                     get_hired_hh!(l, p)
                     hire_worker_p!(p, l)
 
-                    n_hired += 1
-
-                    # delete household from seeking lists
-                    filter!(hh -> hh ≠ l, Lᵈ)
-                    filter!(hh -> hh ≠ l, labormarket_struct.unemployed)
                     push!(labormarket_struct.employed, l)
+
+                    # hire worker
+                    # l = Lᵈ[1]
+                    
+
+                    n_hired += 1
 
                 end
 
@@ -225,6 +228,7 @@ function matching_lm(labormarket_struct, all_cp, all_kp)
     end
 
     # increase unemployment time for households
+    # TODO put this in households
     n_longtermunemp = 0
     for hh in labormarket_struct.unemployed
         hh.T_unemp += 1

@@ -18,7 +18,7 @@ end
 function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp :: Array, all_lp :: Array, gov_struct)
 
     # TODO: put this as a parameter somewhere
-    n_rounds = 3
+    n_rounds = 1
 
     demanding_hh = copy(all_hh)
     supplying_bp = copy(all_bp)

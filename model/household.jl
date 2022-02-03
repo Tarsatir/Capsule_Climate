@@ -31,12 +31,12 @@ function initialize_hh(id :: Int, hh_id :: Int, employed :: Bool)
         [100],                  # I: hist income
         100,                    # Iᵉ: exp income
         100,                    # L: labor units
-        [100],                  # S: total savings
+        [10],                   # S: total savings
         0,                      # Sᵈ: desired savings
         0,                      # s: savings rate
         [0.0],                  # B: budget
         100,                    # C: cash
-        1000,                   # N_B_min: substistence level of basic goods
+        10,                     # N_B_min: substistence level of basic goods
         [1.0],                  # w: wage
         1.0,                    # wˢ: satisfying wage
         1.0,                    # wʳ: requested wage
@@ -103,7 +103,7 @@ function set_savingsrate_hh!(hh :: AbstractAgent, avg_T_unemp :: Float64, UB :: 
         hh.Sᵈ = avg_T_unemp * (B̄ - UB)
 
         # determine savings rate
-        s = (hh.Sᵈ - hh.S[end]) / (hh.I[end] + 3*hh.Iᵉ)
+        s = max((hh.Sᵈ - hh.S[end]) / (hh.I[end] + 3*hh.Iᵉ), -hh.S[end]/hh.I[end])
     else
 
         s = (B̄ - UB) / UB
@@ -143,20 +143,28 @@ function set_cons_package_hh!(hh :: AbstractAgent, τˢ :: Float64) :: Tuple{Flo
     # println(hh.B[end])
 
     # TODO utility determination still has to happen
-    p_bg_τˢ = hh.bg.p[end] * (1 - τˢ)
-    p_lg_τˢ = hh.lg.p[end] * (1 - τˢ)
 
-    # println("p ", p_bg_τˢ, " ", p_lg_τˢ)
+    if min_cons_val > hh.I[end] + hh.S[end]
+        p_bg_τˢ = hh.bg.p[end] * (1 - τˢ)
+        p_lg_τˢ = hh.lg.p[end] * (1 - τˢ)
 
-    U_B = rand(Uniform(0, 1))
-    U_L = rand(Uniform(U_B, 1))
+        # println("p ", p_bg_τˢ, " ", p_lg_τˢ)
 
-    α = U_B / (U_B + U_L)
-    β = 1 - α
+        U_B = rand(Uniform(0, 1))
+        U_L = rand(Uniform(U_B, 1))
 
-    N_B = hh.N_B_min + (α/p_bg_τˢ) * (hh.B[end] - p_bg_τˢ * hh.N_B_min)
-    N_L = (β/p_lg_τˢ) * (hh.B[end] - p_bg_τˢ * hh.N_B_min)
+        α = U_B / (U_B + U_L)
+        β = 1 - α
 
+        N_B = hh.N_B_min + (α/p_bg_τˢ) * (hh.B[end] - p_bg_τˢ * hh.N_B_min)
+        N_L = (β/p_lg_τˢ) * (hh.B[end] - p_bg_τˢ * hh.N_B_min)
+
+        
+    else
+        N_B = (hh.I[end] + hh.S[end]) / hh.bg.p[end]
+        N_L = 0
+    end
+    # println(N_B, " ", N_L)
     return N_B, N_L
 end
 
@@ -173,6 +181,17 @@ function update_sat_req_wage_hh!(hh, ϵ :: Float64, UB :: Float64)
     else
         hh.wʳ = max(UB/hh.L, hh.wˢ)
     end
+
+end
+
+
+"""
+Lets households get income, either from UB or wage
+"""
+function get_income_hh!(hh :: AbstractAgent, amount :: Float64)
+
+    push!(hh.I, amount)
+    hh.C += amount
 
 end
 

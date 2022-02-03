@@ -262,6 +262,8 @@ function send_orders_kp!(kp)
     S = tot_freq * kp.p[end]
     Π = tot_freq * (kp.p[end] - kp.c[end])
 
+    # println(S, " ", Π)
+
     push!(kp.S, S)
     push!(kp.Π, Π)
 

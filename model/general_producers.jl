@@ -1,4 +1,4 @@
-function fire_excess_workers_p!(p)
+function fire_excess_workers_p!(p :: AbstractAgent)
 
     n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
 
@@ -24,7 +24,7 @@ function fire_excess_workers_p!(p)
 end
 
 
-function hire_worker_p!(p, l)
+function hire_worker_p!(p :: AbstractAgent, l :: AbstractAgent)
 
     # update labor stock and desired labor
     push!(p.Emp, l)
@@ -35,19 +35,20 @@ function hire_worker_p!(p, l)
 end
 
 
-function pay_workers_p!(p)
+function pay_workers_p!(p :: AbstractAgent)
 
     # loop over workers and pay out wage
     for hh in p.Emp
+        
         total_wage = hh.w[end] * hh.L
-        push!(hh.I, total_wage)
-        hh.C += total_wage
+        get_income_hh!(hh, total_wage)
+
     end
 
 end
 
 
-function update_wage_level_p!(p)
+function update_wage_level_p!(p :: AbstractAgent)
     if length(p.Emp) > 0
         w̄ = mean(map(l -> l.w[end], p.Emp))
         push!(p.w, w̄)
