@@ -1,7 +1,7 @@
 function fire_excess_workers_p!(
     p::AbstractAgent, 
     model::ABM
-    ) :: Vector{Int}
+    )::Vector{Int}
 
     n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
 
@@ -14,6 +14,7 @@ function fire_excess_workers_p!(
 
     # remove employees from labor stock
     if length(fired_workers) > 0
+
         p.L -= sum(map(hh_id -> model[hh_id].L, fired_workers))
         filter!(hh_id -> hh_id ∉ fired_workers, p.Emp)
 

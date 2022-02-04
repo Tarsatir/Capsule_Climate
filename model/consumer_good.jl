@@ -54,12 +54,12 @@ function initialize_cp(
         [],                     # p: hist prices
         [],                     # c: hist cost
         [],                     # RD: hist R&D spending
-        [40],                   # D: hist demand
-        40,                     # Dᵉ exp demand
+        [1100],                   # D: hist demand
+        1100,                     # Dᵉ exp demand
         # [36e3],               # N: hist inventory
-        30,                     # Nᵈ: desired inventory 
-        [42],                   # Q: hist production
-        42,                     # Qᵉ: exp production
+        1000,                     # Nᵈ: desired inventory 
+        [1200],                   # Q: hist production
+        1200,                   # Qᵉ: exp production
         [rand()],               # I: hist investments
         [machine_struct],       # Ξ: capital stock
         40,                     # K: total amount of machines
@@ -379,7 +379,7 @@ end
 Lets cp receive machine and include it in capital stock.
 """
 function receive_machines!(
-    cp::Int, 
+    cp::ConsumerGoodProducer, 
     machine::Machine, 
     Iₜ::Float64,
     )

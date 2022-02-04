@@ -114,8 +114,12 @@ function labormarket_process!(
 
     # let producers fire excess workers
     # println("f1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
+    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
     fire_workers!(labormarket_struct, firing_producers, model)
     # println("f2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
+    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+
+    update_employment_lm(labormarket_struct, all_hh, all_p, model)
 
     # update wage parameters households
     for hh_id in all_hh
@@ -126,9 +130,13 @@ function labormarket_process!(
     println("E 2: ", labormarket_struct.E)
 
     # labor market matching process
-    println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    matching_lm(labormarket_struct, hiring_producers, model)
-    println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
+    # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
+    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+    matching_lm(labormarket_struct, hiring_producers, all_p, all_hh, model)
+    # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
+    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+
+
     
     # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 
@@ -150,7 +158,7 @@ function fire_workers!(
     model::ABM
     )
 
-    all_fired_workers = []
+    all_fired_workers = Vector{Int}()
 
     # choose who gets fired
     for p_id in firing_producers
@@ -158,15 +166,18 @@ function fire_workers!(
         append!(all_fired_workers, fired_workers)
     end
 
+    # println("yeet ", length(all_fired_workers))
+
     # update employed and unemployed lists
     filter!(hh_id -> hh_id ∉ all_fired_workers, labormarket_struct.employed)
+    append!(labormarket_struct.unemployed, all_fired_workers)
+
+    # println("unemp", labormarket_struct.unemployed)
 
     # change employment status for households
     for hh_id in all_fired_workers
         get_fired_hh!(model[hh_id])
     end
-
-    append!(labormarket_struct.unemployed, all_fired_workers)
 
 end
 
@@ -174,6 +185,8 @@ end
 function matching_lm(
     labormarket_struct, 
     hiring_producers::Vector{Int},
+    all_p::Vector{Int},
+    all_hh::Vector{Int},
     model::ABM
     )
 
@@ -190,6 +203,11 @@ function matching_lm(
         # loop over producers
         shuffle!(hiring_producers)
         for p_id in hiring_producers
+
+            # Stop process if no unemployed left
+            if length(labormarket_struct.unemployed) == 0
+                return
+            end
 
             p = model[p_id]
 
@@ -240,14 +258,13 @@ function matching_lm(
                 for hh_id in to_be_hired
                     
                     # delete household from seeking lists
-                    filter!(hh -> hh ≠ hh_id, Lᵈ)
-
-                    filter!(hh -> hh ≠ hh_id, labormarket_struct.unemployed)
+                    # filter!(hh -> hh ≠ hh_id, Lᵈ)
 
                     get_hired_hh!(model[hh_id], p.wᴼ, p_id)
                     hire_worker_p!(model[p_id], model[hh_id])
 
-                    push!(labormarket_struct.employed, hh_id)                    
+                    # filter!(hh -> hh ≠ hh_id, labormarket_struct.unemployed)
+                    # push!(labormarket_struct.employed, hh_id)                    
 
                     n_hired += 1
 
@@ -257,7 +274,11 @@ function matching_lm(
 
             end
 
+            # TODO find a way not to have to do this every time
+            update_employment_lm(labormarket_struct, all_hh, all_p, model)
+
         end
+
     end
 
     # increase unemployment time for households
@@ -290,4 +311,27 @@ function update_avg_T_unemp_lm(
     else
         labormarket_struct.avg_T_unemp = 0
     end
+end
+
+
+function update_employment_lm(
+    labormarket_struct,
+    all_hh::Vector{Int},
+    all_p::Vector{Int},
+    model::ABM
+    )
+
+    employed = Vector{Int}()
+
+    for p_id in all_p
+        for hh_id in model[p_id].Emp
+            push!(employed, hh_id)
+        end
+    end
+
+    unemployed = filter(hh_id -> hh_id ∉ employed, all_hh)
+
+    labormarket_struct.employed = employed
+    labormarket_struct.unemployed = unemployed
+
 end

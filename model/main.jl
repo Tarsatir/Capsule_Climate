@@ -6,6 +6,7 @@ using Random
 using Agents
 using BenchmarkTools
 using TimerOutputs
+using RecursiveArrayTools
 
 # Include files
 include("../results/write_results.jl")
@@ -169,6 +170,8 @@ function model_step!(model,
         plan_production_kp!(kp)
     end
 
+    println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+    println(length(labormarket_struct.employed))
 
     # (3) labor market matching process
     labormarket_process!(

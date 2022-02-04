@@ -28,7 +28,7 @@ function initialize_hh(id :: Int)
         # hh_id,                  # household id
         false,                  # bool: employed
         nothing,                # employer
-        [100],                  # I: hist income
+        [],                     # I: hist income
         100,                    # Iᵉ: exp income
         100,                    # L: labor units
         [10],                   # S: total savings
