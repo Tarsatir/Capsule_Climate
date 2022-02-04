@@ -1,6 +1,6 @@
 mutable struct Household <: AbstractAgent
     id :: Int                   # global id
-    hh_id :: Int                # hh id
+    # hh_id :: Int              # hh id
     employed :: Bool            # is employed
     employer                    # employer
     I :: Array{Float64}         # hist income
@@ -17,16 +17,16 @@ mutable struct Household <: AbstractAgent
     wʳ :: Float64               # requested wage
     wᵉ :: Float64               # expected wage
     ωI :: Float64               # memory param income expectation
-    bg                          # prefered basic good provider
-    lg                          # prefered luxury good provider
+    pref_bp_id          # prefered basic good provider
+    pref_lp_id          # prefered luxury good provider
     T_unemp :: Int              # time periods unemployed
 end
 
-function initialize_hh(id :: Int, hh_id :: Int, employed :: Bool)
+function initialize_hh(id :: Int)
     hh = Household(
         id,                     # global id
-        hh_id,                  # household id
-        employed,               # bool: employed
+        # hh_id,                  # household id
+        false,                  # bool: employed
         nothing,                # employer
         [100],                  # I: hist income
         100,                    # Iᵉ: exp income
@@ -50,18 +50,31 @@ function initialize_hh(id :: Int, hh_id :: Int, employed :: Bool)
 end
 
 
-function pick_cp_hh!(hh :: AbstractAgent, supplying_bp :: Array{AbstractAgent}, supplying_lp :: Array{AbstractAgent})
+function pick_cp_hh!(
+    hh::Household, 
+    supplying_bp::Vector{Int}, 
+    supplying_lp::Vector{Int}
+    )
 
     # println(length(supplying_bp), " ", length(supplying_lp))
     
     # TODO: do this in a more sophisticated way
-    hh.bg = sample(supplying_bp)
-    hh.lg = sample(supplying_lp)
+    hh.pref_bp_id = sample(supplying_bp)
+    hh.pref_lp_id = sample(supplying_lp)
 
 end
 
 
-function compute_exp_income_hh!(hh :: AbstractAgent, P_HU :: Float64, P_UU :: Float64, UB :: Float64)
+"""
+Computes the expected income based on perceived probabilities.
+"""
+function compute_exp_income_hh!(
+    hh::Household, 
+    P_HU::Float64, 
+    P_UU::Float64, 
+    UB::Float64,
+    model::ABM
+    )
 
     # determine income expectation for employed workers
     if hh.employed
@@ -72,7 +85,7 @@ function compute_exp_income_hh!(hh :: AbstractAgent, P_HU :: Float64, P_UU :: Fl
             hh.wᵉ = hh.ωI * hh.wᵉ + (1-hh.ωI) * (2*hh.w[end] - hh.w[end-1])
         end
 
-        P_UE = hh.employer.P_FE * (1 - P_HU)
+        P_UE = model[hh.employer].P_FE * (1 - P_HU)
 
         hh.Iᵉ = P_UE * UB + (1 - P_UE) * hh.wᵉ
 
@@ -82,7 +95,6 @@ function compute_exp_income_hh!(hh :: AbstractAgent, P_HU :: Float64, P_UU :: Fl
         hh.Iᵉ = P_UU * UB + (1 - P_UU) * hh.wʳ
 
     end
-
 end
 
 
@@ -127,10 +139,17 @@ Determines the optimal consumption package
     - Choose which goods to buy
     - Choose optimal consumption package for both goods
 """
-function set_cons_package_hh!(hh :: AbstractAgent, τˢ :: Float64) :: Tuple{Float64, Float64}
+function set_cons_package_hh!(
+    hh::AbstractAgent, 
+    τˢ::Float64,
+    model::ABM
+    )::Tuple{Float64, Float64}
+
+    pref_bp = model[hh.pref_bp_id]
+    pref_lp = model[hh.pref_lp_id]
 
     # decide value of minimum consumption package
-    min_cons_val = hh.N_B_min * hh.bg.p[end]
+    min_cons_val = hh.N_B_min * pref_bp.p[end]
 
     if min_cons_val > hh.I[end] + hh.S[end]
         B = hh.I[end] + hh.S[end]
@@ -144,11 +163,11 @@ function set_cons_package_hh!(hh :: AbstractAgent, τˢ :: Float64) :: Tuple{Flo
 
     # TODO utility determination still has to happen
 
-    if min_cons_val > hh.I[end] + hh.S[end]
-        p_bg_τˢ = hh.bg.p[end] * (1 - τˢ)
-        p_lg_τˢ = hh.lg.p[end] * (1 - τˢ)
+    # determine prices including sales taxes
+    p_bp_τˢ = pref_bp.p[end] * (1 + τˢ)
+    p_lp_τˢ = pref_lp.p[end] * (1 + τˢ)
 
-        # println("p ", p_bg_τˢ, " ", p_lg_τˢ)
+    if min_cons_val > hh.I[end] + hh.S[end]
 
         U_B = rand(Uniform(0, 1))
         U_L = rand(Uniform(U_B, 1))
@@ -156,15 +175,14 @@ function set_cons_package_hh!(hh :: AbstractAgent, τˢ :: Float64) :: Tuple{Flo
         α = U_B / (U_B + U_L)
         β = 1 - α
 
-        N_B = hh.N_B_min + (α/p_bg_τˢ) * (hh.B[end] - p_bg_τˢ * hh.N_B_min)
-        N_L = (β/p_lg_τˢ) * (hh.B[end] - p_bg_τˢ * hh.N_B_min)
-
+        N_B = hh.N_B_min + (α/p_bp_τˢ) * (hh.B[end] - p_bp_τˢ * hh.N_B_min)
+        N_L = (β/p_lp_τˢ) * (hh.B[end] - p_bp_τˢ * hh.N_B_min)
         
     else
-        N_B = (hh.I[end] + hh.S[end]) / hh.bg.p[end]
+        N_B = (hh.I[end] + hh.S[end]) / p_bp_τˢ
         N_L = 0
     end
-    # println(N_B, " ", N_L)
+
     return N_B, N_L
 end
 
@@ -196,15 +214,23 @@ function get_income_hh!(hh :: AbstractAgent, amount :: Float64)
 end
 
 
-function get_fired_hh!(hh :: AbstractAgent)
+function get_fired_hh!(hh::Household)
     hh.employed = false
     hh.employer = nothing
 end
 
 
-function get_hired_hh!(hh :: AbstractAgent, employer :: AbstractAgent)
+"""
+Lets employee be hired, saves employer id and new earned wage.
+"""
+function get_hired_hh!(
+    hh::Household, 
+    wᴼ::Float64,
+    employer::Int,
+    )
+
     hh.employed = true
     hh.employer = employer
     hh.T_unemp = 0
-    push!(hh.w, employer.wᴼ)
+    push!(hh.w, wᴼ)
 end

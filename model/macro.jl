@@ -65,7 +65,20 @@ function initialize_macro()
     return macro_struct
 end
 
-function update_macro_stats(macro_struct, all_hh, all_cp, all_kp, E, Exp_UB)
+function update_macro_stats(
+    macro_struct, 
+    all_hh::Vector{Int}, 
+    all_cp::Vector{Int}, 
+    all_kp::Vector{Int}, 
+    E::Float64, 
+    Exp_UB::Float64,
+    model::ABM
+    )
+
+    # TEMP SOLUTION
+    all_hh = map(hh_id -> model[hh_id], all_hh)
+    all_cp = map(cp_id -> model[cp_id], all_cp)
+    all_kp = map(kp_id -> model[kp_id], all_kp)
 
     # compute GDP and add to array
     total_I = sum(map(hh -> hh.I[end], all_hh))

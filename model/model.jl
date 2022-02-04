@@ -2,8 +2,8 @@ mutable struct All_Agents
     all_hh :: Array{AbstractAgent}
     all_kp :: Array{AbstractAgent}
     all_cp :: Array{AbstractAgent}
-    all_bp :: Array{AbstractAgent}
-    all_lp :: Array{AbstractAgent}
+    all_bp :: Array{Int}
+    all_lp :: Array{Int}
     capital_good_euclidian_matrix :: Array
 end
 
@@ -87,22 +87,22 @@ function initialize_model()
     return model_struct
 end
 
-function get_capgood_euclidian(all_agents, n_captlgood)
+function get_capgood_euclidian(all_kp, model)
     """
     Generates a matrix with Euclidian distances of the 
     technological levels A and B. 
     """
+    n_captlgood = length(all_kp)
     distance_matrix = zeros((n_captlgood, n_captlgood))
 
-    all_kp = all_agents.all_kp
     for i in 1:n_captlgood
         for j in i:n_captlgood
 
             # get current values for A and B of both producers
-            A1 = all_kp[i].A[end]
-            A2 = all_kp[j].A[end]
-            B1 = all_kp[i].B[end]
-            B2 = all_kp[j].B[end]
+            A1 = model[all_kp[i]].A[end]
+            A2 = model[all_kp[j]].A[end]
+            B1 = model[all_kp[i]].B[end]
+            B2 = model[all_kp[j]].B[end]
             
             distance = sqrt((A1-A2)^2 + (B1-B2)^2)
             if (i==j)
@@ -112,5 +112,5 @@ function get_capgood_euclidian(all_agents, n_captlgood)
             distance_matrix[j,i] = distance
         end
     end 
-    all_agents.capital_good_euclidian_matrix = distance_matrix
+    return distance_matrix
 end

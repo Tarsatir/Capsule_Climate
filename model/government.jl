@@ -23,13 +23,19 @@ function initialize_government()
 end
 
 
-function pay_unemployment_benefits_gov!(gov_struct, unemployed)
-
+"""
+Loops over all unemployed households and pays UB
+"""
+function pay_unemployment_benefits_gov!(
+    gov_struct, 
+    unemployed::Vector{Int},
+    model::ABM
+    )
     # pay out unemployment benefits to households
     total_UB = 0
-    for hh in unemployed
+    for hh_id in unemployed
         # push!(hh.I, gov_struct.UB)
-        get_income_hh!(hh, gov_struct.UB)
+        get_income_hh!(model[hh_id], gov_struct.UB)
         total_UB += gov_struct.UB
     end
 
@@ -41,10 +47,15 @@ end
 """
 Levies income tax on all households
 """
-function levy_income_tax_gov!(gov_struct, all_hh)
+function levy_income_tax_gov!(
+    gov_struct, 
+    all_hh::Vector{Int},
+    model::ABM
+    )
 
     total_τᴵ = 0
-    for hh in all_hh
+    for hh_id in all_hh
+        hh = model[hh_id]
         total_τᴵ += hh.I[end] * gov_struct.τᴵ
         hh.I[end] = hh.I[end] * (1 - gov_struct.τᴵ)
     end

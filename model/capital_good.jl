@@ -4,35 +4,35 @@ using StatsBase
 
 mutable struct CapitalGoodProducer <: AbstractAgent
     id :: Int                               # global id
-    kp_id :: Int                            # kp id
-    A :: Array{Float64}                     # labor prod sold product
-    B :: Array{Float64}                     # labor prod own production
-    p :: Array{Float64}                     # hist price data
-    c :: Array{Float64}                     # hist cost data
-    Emp :: Array{AbstractAgent}             # employees in company
+    kp_i  :: Int                            # kp id
+    A :: Vector{Float64}                     # labor prod sold product
+    B :: Vector{Float64}                     # labor prod own production
+    p :: Vector{Float64}                     # hist price data
+    c :: Vector{Float64}                     # hist cost data
+    Emp :: Vector{Int}             # employees in company
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
     P_FE :: Float64                         # probability of getting fired while employed
-    w :: Array{Float64}                     # wage level
+    w :: Vector{Float64}                     # wage level
     wᴼ :: Float64                           # offered wage
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
-    RD :: Array{Float64}                    # hist R&D expenditure
-    IM :: Array{Float64}                    # hist immitation expenditure
-    IN :: Array{Float64}                    # hist innovation expenditure
-    S :: Array{Float64}                     # hist revenue
-    HC :: Array{ConsumerGoodProducer}       # hist clients
-    Π :: Array{Float64}                     # hist profits
+    RD :: Vector{Float64}                    # hist R&D expenditure
+    IM :: Vector{Float64}                    # hist immitation expenditure
+    IN :: Vector{Float64}                    # hist innovation expenditure
+    S :: Vector{Float64}                     # hist revenue
+    HC :: Vector{Int}                       # hist clients
+    Π :: Vector{Float64}                     # hist profits
     f :: Float64                            # market share
     brochure                                # brochure
     orders :: Array                         # orders
     Balance :: Balance                      # balance sheet
 end
 
-function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_captlgood :: Int, n_init_emp_kp :: Int)
+function initialize_kp(id :: Int, kp_i :: Int, n_captlgood :: Int, n_init_emp_kp :: Int)
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
-        kp_id,                  # kp id
+        kp_i,                   # kp id
         [1],                    # A: labor prod sold product
         [1],                    # B: labor prod own production
         [],                     # p: hist price data
@@ -49,7 +49,7 @@ function initialize_kp(id :: Int, kp_id :: Int, HC :: Array{AbstractAgent}, n_ca
         [],                     # IM: hist immitation expenditure
         [],                     # IN: hist innovation expenditure
         [100],                  # S: hist revenue
-        HC,                     # HC: hist clients
+        [],                     # HC: hist clients
         [],                     # Π: hist profits
         1/n_captlgood,          # f: market share
         [],                     # brochure
@@ -69,7 +69,13 @@ end
 """
 Checks if innovation is performed, then calls appropriate functions
 """
-function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struct)
+function innovate_kp!(
+    kp::CapitalGoodProducer, 
+    global_param, 
+    all_kp::Vector{Int}, 
+    kp_distance_matrix::Array{Float64}, 
+    model::ABM
+    )
     
     # determine levels of R&D, and how to divide under IN and IM
     set_RD_kp!(kp, global_param.ξ, global_param.ν)
@@ -86,7 +92,7 @@ function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struc
     # determine immitation of competitors
     θ_IM = 1 - exp(-global_param.ζ * kp.IM[end])
     if (rand(Bernoulli(θ_IM)) > rand())
-        A_t_im, B_t_im = imitate_technology_kp(kp, all_agents)
+        A_t_im, B_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
         push!(tech_choices, (A_t_im, B_t_im))
     end
 
@@ -114,42 +120,53 @@ function innovate_kp!(kp :: AbstractAgent, global_param, all_agents, macro_struc
 end
 
 
-function send_brochures_kp!(kp :: AbstractAgent, all_agents, global_param)
+function send_brochures_kp!(
+    kp::CapitalGoodProducer,
+    all_cp::Vector{Int}, 
+    global_param,
+    model::ABM
+    )
 
     # set up brochure
-    brochure = (kp, kp.p[end], kp.c[end], kp.A[end])
+    brochure = (kp.id, kp.p[end], kp.c[end], kp.A[end])
     kp.brochure = brochure
 
     # send brochure to historical clients
-    for client in kp.HC
-        push!(client.brochures, brochure)
+    for cp_id in kp.HC
+        cp = model[cp_id]
+        push!(cp.brochures, brochure)
     end
 
     # select new clients, send brochure
-    NC_potential = setdiff(all_agents.all_cp, kp.HC)
+    NC_potential = setdiff(all_cp, kp.HC)
 
     n_choices = Int(round(global_param.γ * length(kp.HC)))
     
     # send brochures to new clients
     NC = sample(NC_potential, n_choices; replace=false)
-    for cp in NC
+    for cp_id in NC
+        cp = model[cp_id]
         push!(cp.brochures, brochure)
     end 
 
 end
 
+"""
 
-function imitate_technology_kp(kp :: AbstractAgent, all_agents) :: Tuple{Float64, Float64}
-    # use inverse distances as weights for choice competitor,
-    distances = all_agents.capital_good_euclidian_matrix
+Uses inverse distances as weights for choice competitor to immitate
+"""
+function imitate_technology_kp(
+    kp :: AbstractAgent, 
+    all_kp::Vector{Int}, 
+    kp_distance_matrix, model::ABM
+    ) :: Tuple{Float64, Float64}
 
-    weights = map(x -> 1/x, distances[kp.kp_id,:])
+    weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
     
-    index = sample(1:length(all_agents.all_kp),
-                   Weights(weights))
+    idx = sample(all_kp, Weights(weights))
 
-    A_t_im = all_agents.all_kp[index].A[end]
-    B_t_im = all_agents.all_kp[index].B[end]
+    A_t_im = model[idx].A[end]
+    B_t_im = model[idx].B[end]
     
     return A_t_im, B_t_im
 end
@@ -232,7 +249,10 @@ end
 """
 Sends orders from production queue to cp
 """
-function send_orders_kp!(kp)
+function send_orders_kp!(
+    kp::CapitalGoodProducer,
+    model::ABM
+    )
 
     tot_freq = 0
 
@@ -240,7 +260,7 @@ function send_orders_kp!(kp)
 
         # println(order[1].cp_id)
 
-        cp = order[1]
+        cp_id = order[1]
         Iₜ = order[2]
 
         # println(Iₜ)
@@ -254,7 +274,7 @@ function send_orders_kp!(kp)
 
         # Π += machine.freq * (kp.p[end] - kp.c[end])
 
-        receive_machines!(cp, machine, Iₜ)
+        receive_machines!(model[cp_id], machine, Iₜ)
     end
 
     # println(tot_freq)
@@ -278,4 +298,8 @@ end
 
 function reset_order_queue_kp!(kp)
     kp.orders = []
+end
+
+function select_HC_kp!(kp::CapitalGoodProducer, all_cp::Vector{Int})
+    kp.HC = sample(all_cp, 10; replace=false)
 end

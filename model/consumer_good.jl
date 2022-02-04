@@ -6,33 +6,33 @@ Defines struct for consumer good producer
 """
 mutable struct ConsumerGoodProducer <: AbstractAgent
     id :: Int                   # id
-    cp_id :: Int                # cp id
+    # cp_id :: Int              # cp id
     type_good :: String         # type of good produced by producer 
-    p :: Array{Float64}         # hist prices
-    c :: Array{Float64}         # hist cost
-    RD :: Array{Float64}        # R&D spending
-    D :: Array{Float64}         # hist demand
+    p :: Vector{Float64}         # hist prices
+    c :: Vector{Float64}         # hist cost
+    RD :: Vector{Float64}        # R&D spending
+    D :: Vector{Float64}         # hist demand
     Dᵉ :: Float64               # exp demand
-    # N :: Array{Float64}         # hist inventory
+    # N :: Array{Float64}       # hist inventory
     Nᵈ :: Float64               # desired inventory
-    Q :: Array{Float64}         # hist production
+    Q :: Vector{Float64}         # hist production
     Qᵉ :: Float64               # exp production
-    I :: Array{Float64}         # hist investments
-    Ξ :: Array{Machine}         # capital stock
+    I :: Vector{Float64}         # hist investments
+    Ξ :: Vector{Machine}         # capital stock
     K :: Float64                # total amount of machines
-    RS :: Array{Machine}        # list of to-be replaced machines
-    Emp:: Array{AbstractAgent}  # employees list
+    RS :: Vector{Machine}        # list of to-be replaced machines
+    Emp:: Vector{Int}            # employees list
     L :: Float64                # labor units
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
     P_FE :: Float64             # probability of getting fired while employed
-    w :: Array{Float64}         # wage level
+    w :: Vector{Float64}         # wage level
     wᴼ :: Float64               # offered wage
-    brochures :: Array          # brochures from kp
-    π :: Array{Float64}         # hist productivity
+    brochures :: Vector          # brochures from kp
+    π :: Vector{Float64}         # hist productivity
     f :: Float64                # hist market share
-    μ :: Array{Float64}         # hist markup
-    Π :: Array{Float64}         # hist profits
+    μ :: Vector{Float64}         # hist markup
+    Π :: Vector{Float64}         # hist profits
     cI :: Float64               # internal funds for investments
     ΔDeb :: Float64             # changes in debt level
     balance :: Balance          # balance sheet
@@ -41,7 +41,7 @@ end
 
 function initialize_cp(
     id :: Int, 
-    cp_id :: Int, 
+    # cp_id :: Int, 
     machine_struct, 
     n_consrgood :: Int, 
     type_good :: String,
@@ -49,7 +49,7 @@ function initialize_cp(
     )
     cp = ConsumerGoodProducer(
         id,                     # global id
-        cp_id,                  # cp id
+        # cp_id,                  # cp id
         type_good,              # type of good produced by producer
         [],                     # p: hist prices
         [],                     # c: hist cost
@@ -96,7 +96,10 @@ Plans production amounts for consumer good producer (short term)
     - determines ST production goals
     - based on ST, set labor demand
 """
-function plan_production_cp!(cp :: AbstractAgent, global_param)
+function plan_production_cp!(
+    cp::ConsumerGoodProducer, 
+    global_param
+    )
 
     # update amount of owned capital
     update_K!(cp)
@@ -152,10 +155,15 @@ Plans production amounts for consumer good producer (long term)
     - determines LT production goals
     - based on LT, set investment amount
 """
-function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{AbstractAgent})
+function plan_investment_cp!(
+    cp::ConsumerGoodProducer, 
+    global_param, 
+    all_kp::Vector{Int},
+    model::ABM
+    )
 
     # choose kp
-    p_star, c_star, kp_choice, cop_star, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp)
+    p_star, c_star, chosen_kp_id, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp, model)
 
     # plan replacement investments
     plan_replacement_cp!(cp, global_param, p_star, c_star)
@@ -174,15 +182,15 @@ function plan_investment_cp!(cp :: AbstractAgent, global_param, all_kp :: Array{
     # Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(m -> m.A * m.freq, cp.Ξ)))/Aᵈ
     Kᵈ = (cp.Qᵉ / cp.Lᵉ - cp.π[end])/Aᵈ
 
-    EIᵈ = Kᵈ - sum(map(m -> m.freq, cp.Ξ))
+    EIᵈ = Kᵈ - sum(map(machine -> machine.freq, cp.Ξ))
     
-    Iₜ = EIᵈ + sum(map(m -> m.freq, cp.RS))
+    Iₜ = EIᵈ + sum(map(machine -> machine.freq, cp.RS))
 
     # println(EIᵈ, " ", Iₜ, " ", EIᵈ)
 
     # TODO does not check if funds are available
     if Iₜ > 0
-        order_machines_cp!(kp_choice, cp, Iₜ)
+        order_machines_cp!(cp, chosen_kp_id, Iₜ, model)
     end
 
 end
@@ -202,42 +210,47 @@ end
 # Dosi et al (2013) Eq. 17, computes cost of production
 cop(p_t, c_t, b) = p_t + b * c_t
 
+"""
+Plans replacement investment based on age machines and available new machines
+"""
+function plan_replacement_cp!(
+    cp::ConsumerGoodProducer, 
+    global_param,
+    p_star::Float64, 
+    c_star::Float64
+    )
 
-function plan_replacement_cp!(cp :: AbstractAgent, global_param, p_star :: Float64, c_star :: Float64)
     cp.RS = []
-
-    # println("YEEEEEt")
-
-    # println("yeet1 ", cp.Ξ)
 
     for machine in cp.Ξ
         if p_star/(machine.A - c_star) < global_param.b || machine.age >= global_param.η
-        # if machine.age >= global_param.η
             push!(cp.RS, machine)
         end
     end
 
-    # println("yoot1 ", cp.RS)
-    # println()
 end
 
 
-function choose_producer_cp(cp :: AbstractAgent, b :: Int, all_kp :: Array{AbstractAgent})
+function choose_producer_cp(
+    cp::ConsumerGoodProducer, 
+    b::Int, 
+    all_kp::Vector{Int},
+    model::ABM
+    )
 
     if (length(cp.brochures) == 0)
         # in case of no brochures, pick a random kp
-        chosen_producer = sample(all_kp)
-        brochure = chosen_producer.brochure
+        chosen_kp_id = sample(all_kp)
+        brochure = model[chosen_kp_id].brochure
         p_star = brochure[2]
         c_star = brochure[3]
         A_star = brochure[4]
-        cop_star = cop(p_star, c_star, b)
         
-        return p_star, c_star, chosen_producer, cop_star, A_star
+        return p_star, c_star, chosen_kp_id, A_star
     end
 
     # take first producer as best, then compare to other producers
-    chosen_producer = cp.brochures[1][1]
+    chosen_kp_id = cp.brochures[1][1]
     p_star = cp.brochures[1][2]
     c_star = cp.brochures[1][3]
     A_star = cp.brochures[1][4]
@@ -252,7 +265,7 @@ function choose_producer_cp(cp :: AbstractAgent, b :: Int, all_kp :: Array{Abstr
 
         # if cheaper, choose cheaper option
         if potential_cop < cop_star
-            chosen_producer = brochure[1]
+            chosen_kp_id = brochure[1]
             p_star = p_h
             c_star = c_h
             A_star = A_h
@@ -261,7 +274,7 @@ function choose_producer_cp(cp :: AbstractAgent, b :: Int, all_kp :: Array{Abstr
 
     end
 
-    return p_star, c_star, chosen_producer, cop_star, A_star
+    return p_star, c_star, chosen_kp_id, A_star
 end
 
 
@@ -271,7 +284,7 @@ Produces goods based on planned production and actual amount of hired workers
 function produce_goods_cp!(cp :: AbstractAgent)
 
     # compute weighted sum of machines
-    Ā = sum(map(m -> m.freq * m.A, cp.Ξ))
+    Ā = sum(map(machine -> machine.freq * machine.A, cp.Ξ))
 
     # compute total production amount
     Q = Ā * cp.L
@@ -284,7 +297,11 @@ function produce_goods_cp!(cp :: AbstractAgent)
 end
 
 
-function compute_μ_cp(cp :: AbstractAgent, υ :: Float64, μ1 :: Float64)
+function compute_μ_cp(
+    cp::ConsumerGoodProducer, 
+    υ::Float64, 
+    μ1::Float64
+    )::Float64
     μ = μ1
     if (length(cp.f) > 2)
         μ = cp.μ[end] * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
@@ -293,7 +310,10 @@ function compute_μ_cp(cp :: AbstractAgent, υ :: Float64, μ1 :: Float64)
 end
 
 
-function compute_c_cp(cp :: AbstractAgent, Qˢ :: Float64)
+function compute_c_cp(
+    cp::ConsumerGoodProducer, 
+    Qˢ::Float64
+    )::Float64
     total_K = sum(map(machine -> machine.freq, cp.Ξ))
     Ā = sum(map(m -> m.A * m.freq / total_K, cp.Ξ))
     c = (cp.w[end] * Qˢ / Ā) / Qˢ
@@ -301,16 +321,27 @@ function compute_c_cp(cp :: AbstractAgent, Qˢ :: Float64)
 end
 
 
-function order_machines_cp!(kp_choice :: AbstractAgent, cp :: AbstractAgent, Iₜ :: Float64)
-    order = (cp, Iₜ)
-    push!(kp_choice.orders, order)
+function order_machines_cp!(
+    cp::ConsumerGoodProducer,
+    chosen_kp_id::Int, 
+    Iₜ :: Float64,
+    model::ABM
+    )
+
+    order = (cp.id, Iₜ)
+    push!(model[chosen_kp_id].orders, order)
+
 end
 
 
 """
 Determines if amount of demanded goods are available and transacts
 """
-function transact_cp!(cp :: AbstractAgent, hh :: AbstractAgent, N_G :: Float64)
+function transact_cp!(
+    cp::ConsumerGoodProducer, 
+    hh::Household, 
+    N_G::Float64,
+    )::Bool
 
     # check if enough inventory available, then transact
     if N_G < cp.balance.N
@@ -344,7 +375,14 @@ function reset_brochures_cp!(cp :: AbstractAgent)
 end
 
 
-function receive_machines!(cp, machine, Iₜ)
+"""
+Lets cp receive machine and include it in capital stock.
+"""
+function receive_machines!(
+    cp::Int, 
+    machine::Machine, 
+    Iₜ::Float64,
+    )
 
     # remove machines that were written off
 
@@ -353,7 +391,7 @@ function receive_machines!(cp, machine, Iₜ)
     # println("yaat ", filter(m -> m ∉ cp.RS, cp.Ξ))
 
     # println("before ", length(cp.Ξ), " ", length(cp.RS))
-    filter!(m -> m ∉ cp.RS, cp.Ξ)
+    filter!(machine -> machine ∉ cp.RS, cp.Ξ)
     # println("after ", length(cp.Ξ))
     # println()
 

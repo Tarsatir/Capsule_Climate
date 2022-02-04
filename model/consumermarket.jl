@@ -1,21 +1,29 @@
-mutable struct ConsumerMarket
-    demanding_hh :: Array{AbstractAgent}
-    supplying_bp :: Array{AbstractAgent}
-    supplying_lg :: Array{AbstractAgent}
-end
+# mutable struct ConsumerMarket
+#     demanding_hh :: Vector{Int}
+#     supplying_bp :: Vector{Int}
+#     supplying_lg :: Vector{Int}
+# end
 
 
-function initialize_consumermarket()
-    consumermarket_struct = ConsumerMarket(
-        [],
-        [],
-        []
+# function initialize_consumermarket()
+#     consumermarket_struct = ConsumerMarket(
+#         Vector{Int}(),
+#         Vector{Int}(),
+#         Vector{Int}()
+#     )
+#     return consumermarket_struct
+# end
+
+
+function consumermarket_process!(
+    # consumermarket_struct, 
+    all_hh::Vector{Int},
+    all_cp::Vector{Int}, 
+    all_bp::Vector{Int}, 
+    all_lp::Vector{Int}, 
+    gov_struct,
+    model::ABM
     )
-    return consumermarket_struct
-end
-
-
-function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp :: Array, all_lp :: Array, gov_struct)
 
     # TODO: put this as a parameter somewhere
     n_rounds = 1
@@ -25,8 +33,8 @@ function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp 
     supplying_lp = copy(all_lp)
 
     # add zero to all hist demand for this time step
-    for p in vcat(all_bp, all_lp)
-        push!(p.D, 0)
+    for cp_id in all_cp
+        push!(model[cp_id].D, 0)
     end
 
     # loop over all demanding households for n rounds and match producers
@@ -35,7 +43,9 @@ function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp 
         # TODO: find a way so cons package not determined all over again, otherwise 
         # consumers buy too much bg or lg
         
-        for hh in demanding_hh
+        for hh_id in demanding_hh
+
+            hh = model[hh_id]
 
             if length(supplying_lp) == 0 || length(supplying_bp) == 0
                 return
@@ -45,24 +55,24 @@ function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp 
             pick_cp_hh!(hh, supplying_bp, supplying_lp)
 
             # set budget based on bp and lp, decide consumption amount
-            N_B, N_L = set_cons_package_hh!(hh, gov_struct.τˢ)
+            N_B, N_L = set_cons_package_hh!(hh, gov_struct.τˢ, model)
 
             # println(N_B,  " ", N_L)
 
             # transact goods if enough available
-            bg_satisfied = transact_cp!(hh.bg, hh, N_B)   
-            lg_satisfied = transact_cp!(hh.lg, hh, N_L)
+            bg_satisfied = transact_cp!(model[hh.pref_bp_id], hh, N_B)   
+            lg_satisfied = transact_cp!(model[hh.pref_lp_id], hh, N_L)
 
             # implies both bg and lg have inventory left
             if bg_satisfied && lg_satisfied
                 filter!(h -> h ≠ hh, demanding_hh)
             elseif bg_satisfied && ~(lg_satisfied)
-                filter!(lp -> lp ≠ hh.lg, supplying_lp)
+                filter!(lp -> lp ≠ hh.pref_lp_id, supplying_lp)
             elseif lg_satisfied && ~(bg_satisfied)
-                filter!(bp -> bp ≠ hh.bg, supplying_bp)
+                filter!(bp -> bp ≠ hh.pref_bp_id, supplying_bp)
             elseif ~(bg_satisfied && lg_satisfied)
-                filter!(bp -> bp ≠ hh.bg, supplying_bp)
-                filter!(lp -> lp ≠ hh.lg, supplying_lp)
+                filter!(bp -> bp ≠ hh.pref_bp_id, supplying_bp)
+                filter!(lp -> lp ≠ hh.pref_lp_id, supplying_lp)
             end
         end
     end
@@ -70,7 +80,6 @@ function consumermarket_process!(consumermarket_struct, all_hh :: Array, all_bp 
     # println("Yeet ", length(all_bp[1].D))
 
     # match all remaining households and producers randomly
-
 
 
 end
