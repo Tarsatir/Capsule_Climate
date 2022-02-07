@@ -45,9 +45,6 @@ function initialize_model(;
     # initialize labor market struct
     labormarket_struct = initialize_labormarket()
 
-    # initialize consumer market struct
-    # consumermarket_struct = initialize_consumermarket()
-
     # initialize government struct
     gov_struct = initialize_government()
 
@@ -78,23 +75,12 @@ function initialize_model(;
 
         cp = initialize_cp(id, machine_struct, n_consrgood, type_good, n_init_emp_cp)
 
-        # push!(all_agents.all_cp, cp)
-        
-        # if type_good == "Basic"
-        #     push!(all_agents.all_bp, cp.cp_id)
-        # else
-        #     push!(all_agents.all_lp, cp.cp_id)
-        # end
-
         add_agent!(cp, model)
         id += 1
     end
 
     # initialize capital good producers
     for kp_i in 1:n_captlgood
-
-        # make choice for historical clients
-        # HC = sample(all_cp, 10; replace=false)
 
         # initialize capital good producer
         kp = initialize_kp(id, kp_i, n_captlgood, n_init_emp_kp)
@@ -108,8 +94,7 @@ function initialize_model(;
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = per_type(true, model)
 
     for kp_id in all_kp
-        kp = model[kp_id]
-        select_HC_kp!(kp, all_cp)
+        select_HC_kp!(model[kp_id], all_cp)
     end
 
     # spread employed households over producerss
@@ -140,8 +125,7 @@ function model_step!(model,
 
     # reset brochures of all consumer good producers
     for cp_id in all_cp
-        cp = model[cp_id]
-        reset_brochures_cp!(cp)
+        reset_brochures_cp!(model[cp_id])
     end
 
     # (1) capital good producers innovate and send brochures
@@ -166,8 +150,7 @@ function model_step!(model,
 
     # (2) capital good producers set labor demand based on ordered machines
     for kp_id in all_kp
-        kp = model[kp_id]
-        plan_production_kp!(kp)
+        plan_production_kp!(model[kp_id])
     end
 
     println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
@@ -250,7 +233,6 @@ function model_step!(model,
                        model)
 
     # TODO update market share cp
-
     println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 
 

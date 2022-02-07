@@ -59,7 +59,7 @@ function initialize_global_params()
         -0.15,                      # κ_lower: 1st beta dist support
         0.15,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
-        0.04,                       # μ1: kp markup rule
+        0.2,                       # μ1: kp markup rule
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
         20,                         # η: physical scrapping age

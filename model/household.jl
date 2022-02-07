@@ -17,8 +17,8 @@ mutable struct Household <: AbstractAgent
     wʳ :: Float64               # requested wage
     wᵉ :: Float64               # expected wage
     ωI :: Float64               # memory param income expectation
-    pref_bp_id          # prefered basic good provider
-    pref_lp_id          # prefered luxury good provider
+    pref_bp_id                  # prefered basic good provider
+    pref_lp_id                  # prefered luxury good provider
     T_unemp :: Int              # time periods unemployed
 end
 

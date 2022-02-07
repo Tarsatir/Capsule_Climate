@@ -79,7 +79,7 @@ function initialize_cp(
         0,                      # cI: internal funds for investments
         0,                      # ΔDeb: changes in debt level
         Balance(               
-                30,             # - N: inventory
+                1000,           # - N: inventory
                 0.0,            # - K: capital
                 0.0,            # - NW: liquid assets
                 0.0,            # - Deb: debt
@@ -125,6 +125,8 @@ function plan_production_cp!(
     # println("L:", cp.L)
     # println(Qˢ)
     # println(Qˢ/total_prod)
+
+    # println(cp.balance.N, " ", cp.Dᵉ, " ", Qˢ/cp.π[end])
 
     ΔLᵈ = Qˢ/cp.π[end] - cp.L
     if ΔLᵈ < -cp.L
@@ -196,12 +198,12 @@ function plan_investment_cp!(
 end
 
 
-function update_K!(cp)
+function update_K!(cp::ConsumerGoodProducer)
     cp.K = sum(map(machine -> machine.freq, cp.Ξ))
 end
 
 
-function update_π!(cp)
+function update_π!(cp::ConsumerGoodProducer)
     π = sum(map(machine -> machine.freq / cp.K, cp.Ξ))
     push!(cp.π, π)
 end
@@ -284,15 +286,15 @@ Produces goods based on planned production and actual amount of hired workers
 function produce_goods_cp!(cp :: AbstractAgent)
 
     # compute weighted sum of machines
-    Ā = sum(map(machine -> machine.freq * machine.A, cp.Ξ))
+    # Ā = sum(map(machine -> machine.freq * machine.A, cp.Ξ))
 
     # compute total production amount
-    Q = Ā * cp.L
+    Q = cp.π[end] * cp.L
     push!(cp.Q, Q)
     
     # change inventory, will be amount households can buy from
-    N = cp.balance.N[end] + Q
-    cp.balance.N = N
+    cp.balance.N += Q
+    # push!(cp.balance.N, N)
 
 end
 
@@ -344,7 +346,8 @@ function transact_cp!(
     )::Bool
 
     # check if enough inventory available, then transact
-    if N_G < cp.balance.N
+    # println("Yeet ", cp.balance.N)
+    if N_G < cp.balance.N[end]
 
         cp.balance.N -= N_G
         cp.D[end] += N_G
@@ -361,7 +364,10 @@ function transact_cp!(
 
 end
 
-function compute_profits_cp!(cp)
+
+function compute_profits_cp!(
+    cp::ConsumerGoodProducer
+    )
     # TODO incorporate interest rates
     # println(cp.D[end])
     Π = cp.D[end] * cp.p[end] - cp.w[end] * cp.L[end]
@@ -370,7 +376,9 @@ function compute_profits_cp!(cp)
 end
 
 
-function reset_brochures_cp!(cp :: AbstractAgent)
+function reset_brochures_cp!(
+    cp :: AbstractAgent
+    )
     cp.brochures = []
 end
 
