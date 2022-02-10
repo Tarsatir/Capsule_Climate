@@ -12,13 +12,19 @@ function fire_excess_workers_p!(
         fired_workers = sample(p.Emp, n_to_be_fired, replace=false)
     end
 
+    # println(fired_workers, length(fired_workers))
+
     # remove employees from labor stock
     if length(fired_workers) > 0
 
+        # println(fired_workers, length(fired_workers))
+
         p.L -= sum(map(hh_id -> model[hh_id].L, fired_workers))
-        filter!(hh_id -> hh_id ∉ fired_workers, p.Emp)
+        p.Emp = filter(hh_id -> hh_id ∉ fired_workers, p.Emp)
 
         p.P_FE = length(fired_workers) / length(p.Emp)
+
+        # println(fired_workers, length(fired_workers))
 
         return fired_workers
     else
@@ -40,7 +46,6 @@ function hire_worker_p!(
     push!(p.Emp, hh.id)
     p.L += hh.L
     p.ΔLᵈ -= hh.L
-
 end
 
 

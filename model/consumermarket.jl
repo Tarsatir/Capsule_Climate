@@ -1,22 +1,4 @@
-# mutable struct ConsumerMarket
-#     demanding_hh :: Vector{Int}
-#     supplying_bp :: Vector{Int}
-#     supplying_lg :: Vector{Int}
-# end
-
-
-# function initialize_consumermarket()
-#     consumermarket_struct = ConsumerMarket(
-#         Vector{Int}(),
-#         Vector{Int}(),
-#         Vector{Int}()
-#     )
-#     return consumermarket_struct
-# end
-
-
 function consumermarket_process!(
-    # consumermarket_struct, 
     all_hh::Vector{Int},
     all_cp::Vector{Int}, 
     all_bp::Vector{Int}, 
@@ -24,6 +6,9 @@ function consumermarket_process!(
     gov_struct,
     model::ABM
     )
+
+    # Set reveived sales tax for this period to zero
+    set_salestax_zero_gov!(gov_struct)
 
     # TODO: put this as a parameter somewhere
     n_rounds = 1
@@ -60,8 +45,10 @@ function consumermarket_process!(
             # println(N_B,  " ", N_L)
 
             # transact goods if enough available
-            bg_satisfied = transact_cp!(model[hh.pref_bp_id], hh, N_B)   
-            lg_satisfied = transact_cp!(model[hh.pref_lp_id], hh, N_L)
+            bg_satisfied, sales_tax_bp = transact_cp!(model[hh.pref_bp_id], hh, N_B, gov_struct.τˢ)   
+            lg_satisfied, sales_tax_lp = transact_cp!(model[hh.pref_lp_id], hh, N_L, gov_struct.τˢ)
+            add_salestax_transaction_gov!(sales_tax_bp, sales_tax_lp)
+
 
             # implies both bg and lg have inventory left
             if bg_satisfied && lg_satisfied
@@ -77,9 +64,21 @@ function consumermarket_process!(
         end
     end
 
-    # println("Yeet ", length(all_bp[1].D))
-
     # match all remaining households and producers randomly
 
+end
 
+
+function update_marketshares_cm!(
+    all_cp::Vector{Int}, 
+    model::ABM
+    )
+
+    total_D = sum(map(cp_id -> model[cp_id].D[end], all_cp))
+
+    for cp_id in all_cp
+        cp = model[cp_id]
+        f = cp.D[end] / total_D
+        push!(model[cp_id].f, f)
+    end
 end

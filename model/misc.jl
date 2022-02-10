@@ -11,30 +11,30 @@ end
 
 mutable struct GovCurrentAccount
     # Revenues
-    Rev_τᴵ :: Array{Float64}            # hist revenues of income tax
-    Rev_τˢ :: Array{Float64}            # hist revenues of sales tax
-    Rev_τᴾ :: Array{Float64}            # hist revenues of profit tax
-    Rev_τᴱ :: Array{Float64}            # hist revenues of energy tax
-    Rev_τᶜ :: Array{Float64}            # hist revenues of emission tax
+    Rev_τᴵ :: Vector{Float64}            # hist revenues of income tax
+    Rev_τˢ :: Vector{Float64}            # hist revenues of sales tax
+    Rev_τᴾ :: Vector{Float64}            # hist revenues of profit tax
+    Rev_τᴱ :: Vector{Float64}            # hist revenues of energy tax
+    Rev_τᶜ :: Vector{Float64}            # hist revenues of emission tax
 
     # Expenditures
-    Exp_UB :: Array{Float64}            # hist expenditures on unemployment benefits
-    Exp_Sub :: Array{Float64}           # hist expenditures on subsidies
+    Exp_UB :: Vector{Float64}            # hist expenditures on unemployment benefits
+    Exp_Sub :: Vector{Float64}           # hist expenditures on subsidies
 
 end
 
-function initialize_govcurrentaccount()
-    gov_curr_acc = GovCurrentAccount(
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        []
-    )
-    return gov_curr_acc
-end
+# function initialize_govcurrentaccount()
+#     gov_curr_acc = GovCurrentAccount(
+#         [],
+#         [],
+#         [],
+#         [],
+#         [],
+#         [],
+#         []
+#     )
+#     return gov_curr_acc
+# end
 
 mutable struct Machine
     A :: Float64                # labor productivity machine

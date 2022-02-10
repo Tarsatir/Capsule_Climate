@@ -31,3 +31,11 @@ function save_macro_data(macro_struct)
                    dL_kp_avg=macro_struct.ΔL̄_kp_avg)
     CSV.write("results/result_data/first.csv", df)
 end
+
+function save_final_dist(all_hh, model)
+
+    df = DataFrame(all_I = map(hh_id -> model[hh_id].I[end], all_hh),
+                   all_w = map(hh_id -> model[hh_id].w[end], all_hh))
+    CSV.write("results/result_data/final_dists.csv", df)
+
+end

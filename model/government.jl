@@ -12,12 +12,20 @@ end
 function initialize_government()
     gov_struct = Government(
         70,                             # UB: unemployment benefits
-        0.2,                            # τᴵ: income tax
+        0.1,                            # τᴵ: income tax
         0.2,                            # τˢ: sales tax
         0.2,                            # τᴾ: profit tax
         0.0,                            # τᴱ: energy tax
-        0.0,                             # τᶜ: emission tax
-        initialize_govcurrentaccount()  # curr_account: current account of government spending
+        0.0,                            # τᶜ: emission tax
+        GovCurrentAccount(              # curr_account: current account of government spending
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+        )  
     )
     return gov_struct
 end
@@ -65,19 +73,51 @@ function levy_income_tax_gov!(
 end
 
 
+"""
+Levies profit tax on all producers
+"""
+function levy_profit_tax_gov!(
+    gov_struct,
+    all_p::Vector{Int},
+    model::ABM
+    )
+
+    total_τᴾ = 0
+    for p_id in all_p
+        p = model[p_id]
+        # Only levy tax when profit is positive
+        if p.Π[end] > 0
+            total_τᴾ += p.Π[end] * gov_struct.τᴾ
+            p.Π[end] = p.Π[end] * (1 - gov_struct.τᴾ)
+        end
+    end
+
+    push!(gov_struct.curr_acc.Rev_τᴾ, total_τᴾ)
+end
+
+
 function compute_budget_balance(gov_struct)
 
-    println(gov_struct.curr_acc.Rev_τᴵ)
-    println(gov_struct.curr_acc.Exp_UB)
+    ca = gov_struct.curr_acc
 
-    # Rev_tot = (gov_struct.curr_acc.Rev_τᴵ[end] + gov_struct.curr_acc.Rev_τˢ[end] + 
-    #            gov_struct.curr_acc.Rev_τᴾ[end] + gov_struct.curr_acc.Rev_τᴱ[end] +
-    #            gov_struct.curr_acc.Rev_τᶜ[end])
-    
-    # Exp_tot = gov_struct.curr_acc.Exp_UB[end] + gov_struct.curr_acc.Exp_Sub[end]
+    # TODO add energy and emission tax
+    Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τˢ[end] + ca.Rev_τᴾ[end]
 
-    # balance = Rev_tot - Exp_tot
+    # TODO add subsidies
+    Tot_exp = ca.Exp_UB[end]
 
-    # println("gov balance: ", balance)
+    println("Gov deficit: ", Tot_rev - Tot_exp)
 
+end
+
+
+function set_salestax_zero_gov!(gov_struct)
+    push!(gov_struct.curr_acc.Rev_τˢ, 0)
+end
+
+function add_salestax_transaction_gov!(
+    sales_tax_bp::Float64, 
+    sales_tax_lp::Float64
+    )
+    gov_struct.curr_acc.Rev_τˢ[end] += (sales_tax_bp + sales_tax_lp)
 end

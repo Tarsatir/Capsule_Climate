@@ -114,13 +114,11 @@ function labormarket_process!(
     # let producers fire excess workers
     # println("f1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
-    fire_workers!(labormarket_struct, firing_producers, model)
+    fire_workers_lm!(labormarket_struct, firing_producers, model)
     # println("f2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
 
-    update_employment_lm(labormarket_struct, all_hh, all_p, model)
-
-    # update wage parameters households
+    # Update wage parameters households
     for hh_id in all_hh
         update_sat_req_wage_hh!(model[hh_id], ϵ, UB)
     end
@@ -132,7 +130,7 @@ function labormarket_process!(
     # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
     matching_lm(labormarket_struct, hiring_producers, model)
-    # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
+    # println("m2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
 
     # Update probabilities of long-term unemployment
@@ -143,6 +141,8 @@ function labormarket_process!(
     # update the unemployment rate
     update_unemploymentrate_lm(labormarket_struct)
     println("E 3: ", labormarket_struct.E)
+
+    # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 
 end
 
@@ -156,7 +156,7 @@ end
 Employers select workers to fire, labor market aggregates are changed and employees 
 are fired.
 """
-function fire_workers!(
+function fire_workers_lm!(
     labormarket_struct, 
     firing_producers::Vector{Int}, 
     model::ABM
@@ -167,8 +167,11 @@ function fire_workers!(
     # choose who gets fired
     for p_id in firing_producers
         fired_workers = fire_excess_workers_p!(model[p_id], model)
+        # println(fired_workers)
         append!(all_fired_workers, fired_workers)
     end
+
+    # println(all_fired_workers)
 
     # update employed and unemployed lists
     update_firedworker_lm!(labormarket_struct, all_fired_workers)
@@ -185,7 +188,7 @@ function matching_lm(
     hiring_producers::Vector{Int},
     model::ABM
     )
-    
+
     # TODO: let employed workers also apply for jobs
 
     for n_round in 1:labormarket_struct.n_rounds

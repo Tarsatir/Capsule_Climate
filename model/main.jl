@@ -54,7 +54,7 @@ function initialize_model(;
     # initialize households
     for hh_i in 1:n_households
 
-        hh = initialize_hh(id)
+        hh = initialize_hh(id, gov_struct.τᴵ)
         add_agent!(hh, model)
 
         id += 1
@@ -108,12 +108,15 @@ function initialize_model(;
         model
     )
 
+    update_marketshares_cm!(all_cp, model)
+
     # return model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct
     return model, global_param, macro_struct, gov_struct, labormarket_struct
 end
 
 
-function model_step!(model, 
+function model_step!(
+    model::ABM, 
     global_param, 
     macro_struct, 
     gov_struct, 
@@ -153,8 +156,8 @@ function model_step!(model,
         plan_production_kp!(model[kp_id])
     end
 
-    println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
-    println(length(labormarket_struct.employed))
+    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+    # println(length(labormarket_struct.employed))
 
     # (3) labor market matching process
     labormarket_process!(
@@ -175,7 +178,6 @@ function model_step!(model,
 
     pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed, model)
 
-
     # (5) Production takes place for cp and kp
     for cp_id in all_cp
         produce_goods_cp!(model[cp_id])
@@ -187,7 +189,6 @@ function model_step!(model,
 
     # Government receives income taxes
     levy_income_tax_gov!(gov_struct, all_hh, model)
-    # compute_budget_balance(gov_struct)
 
     # (6) Households pick prefered products to buy and set budget and consumption package
     for hh_id in all_hh
@@ -201,9 +202,7 @@ function model_step!(model,
 
 
     # (6) Transactions take place on consumer market
-    consumermarket_process!(
-                            # consumermarket_struct,
-                            all_hh,
+    consumermarket_process!(all_hh,
                             all_cp,
                             all_bp,
                             all_lp,
@@ -220,35 +219,42 @@ function model_step!(model,
         send_orders_kp!(model[kp_id], model)
     end
 
-    # (7) government receives profit taxes
-    # TODO
+    # (7) government receives profit taxes and computes budget balance
+    levy_profit_tax_gov!(gov_struct, all_p, model)
+    compute_budget_balance(gov_struct)
 
     # (7) macro-economic indicators are updated.
-    update_macro_stats(macro_struct, 
-                       all_hh, 
-                       all_cp, 
-                       all_kp,
-                       labormarket_struct.E,
-                       gov_struct.curr_acc.Exp_UB[end],
-                       model)
+    update_macro_timeseries(macro_struct, 
+                            all_hh, 
+                            all_cp, 
+                            all_kp,
+                            labormarket_struct.E,
+                            gov_struct.curr_acc.Exp_UB[end],
+                            model)
 
     # TODO update market share cp
-    println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-
-
+    # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 end
 
 to = TimerOutput()
 
+# df_agent = init_agent_dataframe(model)
+
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
-for i in 1:100
+for i in 1:400
     println("Step ", i)
     @timeit to "step" model_step!(model, global_param, macro_struct, gov_struct, labormarket_struct)
 end
 
+# @timeit to "step" run!(model, dummystep, model_step!, 10)
+
 println(macro_struct.GDP)
 
-@timeit to "save" save_macro_data(macro_struct)
+@timeit to "save macro" save_macro_data(macro_struct)
+
+all_hh, all_cp, all_kp, all_bp, all_lp, all_p = per_type(true, model)
+
+@timeit to "save findist" save_final_dist(all_hh, model)
 
 show(to)
 println()

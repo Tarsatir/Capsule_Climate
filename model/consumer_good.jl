@@ -11,28 +11,28 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     p :: Vector{Float64}         # hist prices
     c :: Vector{Float64}         # hist cost
     RD :: Vector{Float64}        # R&D spending
-    D :: Vector{Float64}         # hist demand
+    D :: Vector{Float64}        # hist demand
     Dᵉ :: Float64               # exp demand
-    # N :: Array{Float64}       # hist inventory
+    # N :: Array{Float64}        # hist inventory
     Nᵈ :: Float64               # desired inventory
-    Q :: Vector{Float64}         # hist production
+    Q :: Vector{Float64}        # hist production
     Qᵉ :: Float64               # exp production
-    I :: Vector{Float64}         # hist investments
-    Ξ :: Vector{Machine}         # capital stock
+    I :: Vector{Float64}        # hist investments
+    Ξ :: Vector{Machine}        # capital stock
     K :: Float64                # total amount of machines
-    RS :: Vector{Machine}        # list of to-be replaced machines
-    Emp:: Vector{Int}            # employees list
+    RS :: Vector{Machine}       # list of to-be replaced machines
+    Emp:: Vector{Int}           # employees list
     L :: Float64                # labor units
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
     P_FE :: Float64             # probability of getting fired while employed
-    w :: Vector{Float64}         # wage level
+    w :: Vector{Float64}        # wage level
     wᴼ :: Float64               # offered wage
-    brochures :: Vector          # brochures from kp
-    π :: Vector{Float64}         # hist productivity
-    f :: Float64                # hist market share
-    μ :: Vector{Float64}         # hist markup
-    Π :: Vector{Float64}         # hist profits
+    brochures :: Vector         # brochures from kp
+    π :: Vector{Float64}        # hist productivity
+    f :: Vector{Float64}        # hist market share
+    μ :: Float64                # hist markup
+    Π :: Vector{Float64}        # hist profits
     cI :: Float64               # internal funds for investments
     ΔDeb :: Float64             # changes in debt level
     balance :: Balance          # balance sheet
@@ -73,8 +73,8 @@ function initialize_cp(
         1.0,                    # wᴼ: offered wage
         [],                     # brochures from kp
         [rand()],               # π: hist productivity
-        1/n_consrgood,          # f: market share
-        [0.05],                 # μ: hist markup
+        [1/n_consrgood],        # f: market share
+        0.05,                   # μ: hist markup
         [],                     # Π: hist profits
         0,                      # cI: internal funds for investments
         0,                      # ΔDeb: changes in debt level
@@ -136,15 +136,14 @@ function plan_production_cp!(
     end
 
     # update markup μ
-    μ = compute_μ_cp(cp, global_param.υ, global_param.μ1)
-    push!(cp.μ, μ)
+    compute_μ_cp!(cp, global_param.υ, global_param.μ1)
 
     # update cost of production c
-    c = compute_c_cp(cp, Qˢ)
+    c = compute_c_cp!(cp, Qˢ)
     push!(cp.c, c)
 
     # compute price
-    p = (1 + μ) * c
+    p = (1 + cp.μ) * c
     # println(p)
     push!(cp.p, p)
 end
@@ -299,23 +298,25 @@ function produce_goods_cp!(cp :: AbstractAgent)
 end
 
 
-function compute_μ_cp(
+function compute_μ_cp!(
     cp::ConsumerGoodProducer, 
     υ::Float64, 
     μ1::Float64
     )::Float64
-    μ = μ1
+
     if (length(cp.f) > 2)
-        μ = cp.μ[end] * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
+        cp.μ = cp.μ * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
+    else
+        cp.μ = μ1
     end
-    return μ
 end
 
 
-function compute_c_cp(
+function compute_c_cp!(
     cp::ConsumerGoodProducer, 
     Qˢ::Float64
     )::Float64
+
     total_K = sum(map(machine -> machine.freq, cp.Ξ))
     Ā = sum(map(m -> m.A * m.freq / total_K, cp.Ξ))
     c = (cp.w[end] * Qˢ / Ā) / Qˢ
@@ -343,23 +344,27 @@ function transact_cp!(
     cp::ConsumerGoodProducer, 
     hh::Household, 
     N_G::Float64,
-    )::Bool
+    τˢ::Float64
+    )::Tuple{Bool, Float64}
 
-    # check if enough inventory available, then transact
-    # println("Yeet ", cp.balance.N)
+    # Check if enough inventory available, then transact
     if N_G < cp.balance.N[end]
 
         cp.balance.N -= N_G
         cp.D[end] += N_G
-        hh.C -= cp.p[end] * N_G
+        hh.C -= cp.p[end] * (1 + τˢ) * N_G
 
-        return true
+        sales_tax = cp.p[end] * τˢ * N_G
+
+        return true, sales_tax
     else 
         cp.D[end] += cp.balance.N
-        hh.C -= cp.p[end] * cp.balance.N
+        hh.C -= cp.p[end] * (1 + τˢ) * cp.balance.N
         cp.balance.N = 0
+
+        sales_tax = cp.p[end] * τˢ * cp.balance.N
         
-        return false
+        return false, sales_tax
     end
 
 end

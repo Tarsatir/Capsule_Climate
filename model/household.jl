@@ -3,7 +3,8 @@ mutable struct Household <: AbstractAgent
     # hh_id :: Int              # hh id
     employed :: Bool            # is employed
     employer                    # employer
-    I :: Array{Float64}         # hist income
+    I :: Vector{Float64}         # hist income
+    Iᵀ :: Vector{Float64}        # hist taxed income
     Iᵉ :: Float64               # expected income
     L :: Float64                # labor units in household
     S :: Array{Float64}         # total savings
@@ -22,15 +23,19 @@ mutable struct Household <: AbstractAgent
     T_unemp :: Int              # time periods unemployed
 end
 
-function initialize_hh(id :: Int)
+function initialize_hh(
+    id::Int,
+    τᴵ::Float64
+    )::Household
     hh = Household(
         id,                     # global id
         # hh_id,                  # household id
         false,                  # bool: employed
         nothing,                # employer
         [],                     # I: hist income
-        100,                    # Iᵉ: exp income
-        100,                    # L: labor units
+        [],                     # Iᵀ: hist taxed income
+        100*(1-τᴵ),             # Iᵉ: exp income
+        100*(1-τᴵ),             # L: labor units
         [10],                   # S: total savings
         0,                      # Sᵈ: desired savings
         0,                      # s: savings rate
@@ -101,7 +106,11 @@ end
 """
 Determines savings rate s
 """
-function set_savingsrate_hh!(hh :: AbstractAgent, avg_T_unemp :: Float64, UB :: Float64)
+function set_savingsrate_hh!(
+    hh::Household, 
+    avg_T_unemp::Float64, 
+    UB::Float64
+    )
 
     # determine average budget over last year or over available information
     if length(hh.B[end]) >= 5
@@ -187,11 +196,18 @@ function set_cons_package_hh!(
 end
 
 
-function update_sat_req_wage_hh!(hh, ϵ :: Float64, UB :: Float64)
+function update_sat_req_wage_hh!(
+    hh::Household, 
+    ϵ::Float64, 
+    UB :: Float64
+    )
 
-    # update satisfying wage as wage level over 4 periods
+    # Update satisfying wage as wage level over 4 periods
+    # TODO: figure out if this should be wage or income
     if length(hh.w) > 4
         hh.wˢ = mean(hh.w[end-4:end])
+    else
+        hh.wˢ = mean(hh.w)
     end
 
     if hh.employed
@@ -206,11 +222,13 @@ end
 """
 Lets households get income, either from UB or wage
 """
-function get_income_hh!(hh :: AbstractAgent, amount :: Float64)
+function get_income_hh!(
+    hh::Household, 
+    amount :: Float64
+    )
 
     push!(hh.I, amount)
     hh.C += amount
-
 end
 
 
