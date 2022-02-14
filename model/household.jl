@@ -14,16 +14,17 @@ mutable struct Household <: AbstractAgent
     # Income and wealth variables
     I :: Vector{Float64}        # hist income
     Iᵀ :: Vector{Float64}       # hist taxed income
-    S :: Vector{Float64}        # total savings
+    # S :: Vector{Float64}        # total savings
     s :: Float64                # savings rate
     W :: Vector{Float64}        # wealth or cash on hand
     Wʳ :: Vector{Float64}       # real wealth or cash on hand
 
     # Consumption variables
     C :: Vector{Float64}        # budget
-    N_B_min :: Float64          # substistence level of basic goods
+    # N_B_min :: Float64          # substistence level of basic goods
     bp :: Vector{Int}           # connected cp basic goods
     lp :: Vector{Int}           # connected cp luxury goods
+    unsat_dem :: Vector         # unsatisfied demands
     P̄ :: Float64                # weighted average price of bp
     c_L :: Float64              # share of income used to buy luxury goods
 
@@ -46,15 +47,16 @@ function initialize_hh(
 
         [],                     # I: hist income
         [],                     # Iᵀ: hist taxed income
-        [10],                   # S: total savings
+        # [10],                   # S: total savings
         0,                      # s: savings rate
-        [],                     # W: wealth or cash on hand
-        [],                     # Wʳ: real wealth or cash on hand
+        [10],                   # W: wealth or cash on hand
+        [10],                   # Wʳ: real wealth or cash on hand
 
-        [0.0],                  # C: budget
-        10,                     # N_B_min: substistence level of basic goods
+        [],                     # C: budget
+        # 10,                     # N_B_min: substistence level of basic goods
         Vector{Int}(),          # all_cp_B: connected cp basic goods
         Vector{Int}(),          # all_cp_L: connected cp luxury goods
+        Vector(),
         0,                      # P̄: weighted average price of bp
         0.5,                    # c_L: share of budget used to buy luxury goods
     )
@@ -151,6 +153,7 @@ Sets consumption budget based on current wealth level
 """
 function set_consumption_budget_hh!(
     hh::Household,
+    c_L_max::Float64,
     a_σ::Float64,
     b_σ::Float64,
     α_cp::Float64,
@@ -168,6 +171,54 @@ function set_consumption_budget_hh!(
 
     # Compute consumption budget
     compute_consumption_budget_hh!(hh, α_cp)
+end
+
+
+"""
+Places orders at bp and lp
+"""
+function place_orders_hh!(
+    hh::Household, 
+    model::ABM
+    )
+
+    n_days = 3
+
+    C_B = hh.C[end] * (1 - hh.c_L)
+    C_L = hh.C[end] * hh.c_L
+
+    # Send order to queues of bp and lp
+    for n_day in 1:n_days
+
+        order_B = (hh.id, C_B/n_days)
+        order_L = (hh.id, C_L/n_days)
+
+        bp_choice_id = sample(hh.bp)
+        lp_choice_id = sample(hh.lp)
+
+        push!(model[bp_choice_id].hh_queue, order_B)
+        push!(model[lp_choice_id].hh_queue, order_L)
+    end
+end
+
+
+"""
+Household receives ordered cg and mutates balance
+"""
+function receive_order_hh!(
+    hh::Household,
+    cp_id::Int,
+    tot_price::Float64,
+    share_fulfilled::Float64
+    )
+
+    # Decrease wealth with total price paid
+    hh.W[end] -= tot_price
+
+    # If full demand not fulfilled, add cp to unsatisfied demand
+    if share_fulfilled < 1.0
+        push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
+    end
 end
 
 # function pick_cp_hh!(
@@ -337,11 +388,11 @@ Lets households get income, either from UB or wage
 """
 function get_income_hh!(
     hh::Household, 
-    amount :: Float64
+    amount::Float64
     )
 
     push!(hh.I, amount)
-    hh.C += amount
+    push!(hh.W, amount + hh.W[end])
 end
 
 

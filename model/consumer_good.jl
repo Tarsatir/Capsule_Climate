@@ -6,14 +6,13 @@ Defines struct for consumer good producer
 """
 mutable struct ConsumerGoodProducer <: AbstractAgent
     id :: Int                   # id
-    # cp_id :: Int              # cp id
     type_good :: String         # type of good produced by producer 
-    p :: Vector{Float64}         # hist prices
-    c :: Vector{Float64}         # hist cost
-    RD :: Vector{Float64}        # R&D spending
+    p :: Vector{Float64}        # hist prices
+    c :: Vector{Float64}        # hist cost
+    RD :: Vector{Float64}       # R&D spending
     D :: Vector{Float64}        # hist demand
     Dᵉ :: Float64               # exp demand
-    # N :: Array{Float64}        # hist inventory
+    hh_queue :: Vector          # vector containing orders of demanding households
     Nᵈ :: Float64               # desired inventory
     Q :: Vector{Float64}        # hist production
     Qᵉ :: Float64               # exp production
@@ -21,11 +20,11 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Ξ :: Vector{Machine}        # capital stock
     K :: Float64                # total amount of machines
     RS :: Vector{Machine}       # list of to-be replaced machines
-    employees:: Vector{Int}           # employees list
+    employees:: Vector{Int}     # employees list
     L :: Float64                # labor units
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
-    P_FE :: Float64             # probability of getting fired while employed
+    # P_FE :: Float64             # probability of getting fired while employed
     w̄ :: Vector{Float64}        # wage level
     wᴼ :: Float64               # offered wage
     brochures :: Vector         # brochures from kp
@@ -41,12 +40,12 @@ end
 
 function initialize_cp(
     id :: Int, 
-    # cp_id :: Int, 
     machine_struct, 
     n_consrgood :: Int, 
     type_good :: String,
     n_init_emp_cp :: Int
     )
+
     cp = ConsumerGoodProducer(
         id,                     # global id
         type_good,              # type of good produced by producer
@@ -55,6 +54,7 @@ function initialize_cp(
         [],                     # RD: hist R&D spending
         [1100],                 # D: hist demand
         1100,                   # Dᵉ exp demand
+        Vector(),               # hh_queue: vector containing ids of demanding households           
         # [36e3],               # N: hist inventory
         40,                     # Nᵈ: desired inventory 
         [40],                   # Q: hist production
@@ -67,7 +67,7 @@ function initialize_cp(
         0,                      # L: labor units in company
         n_init_emp_cp * 100,    # Lᵉ: exp labor force
         0,                      # ΔLᵈ: desired change in labor force
-        0,                      # P_FE: probability of getting fired while employed
+        # 0,                      # P_FE: probability of getting fired while employed
         [1.0],                  # w: wage level
         1.0,                    # wᴼ: offered wage
         [],                     # brochures from kp
@@ -310,7 +310,7 @@ function compute_μ_cp!(
     cp::ConsumerGoodProducer, 
     υ::Float64, 
     μ1::Float64
-    )::Float64
+    )
 
     if (length(cp.f) > 2)
         cp.μ = cp.μ * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
@@ -347,36 +347,70 @@ end
 
 
 """
-Determines if amount of demanded goods are available and transacts
+Decides if enough inventory to send orders hh, 
+    if yes: transact, if no: send back order unfulfilled or partially fulfilled
 """
-function transact_cp!(
-    cp::ConsumerGoodProducer, 
-    hh::Household, 
-    N_G::Float64,
-    τˢ::Float64
-    )::Tuple{Bool, Float64}
+function send_orders_cp!(
+    cp::ConsumerGoodProducer,
+    model::ABM
+    )
 
-    # Check if enough inventory available, then transact
-    if N_G < cp.balance.N[end]
+    # Loop over orders in queue
+    for order in cp.hh_queue
 
-        cp.balance.N -= N_G
-        cp.D[end] += N_G
-        hh.C -= cp.p[end] * (1 + τˢ) * N_G
+        hh_id = order[1]
+        q = order[2]
 
-        sales_tax = cp.p[end] * τˢ * N_G
+        # Check if enough inventory available
+        share_fulfilled = 0.0
+        if cp.balance.N > q
+            share_fulfilled = 1.0
+            cp.D[end] += q
+            cp.balance.N -= q
+        elseif cp.balance.N > 0.0 && cp.balance.N < q
+            share_fulfilled = cp.balance.N / q
+            cp.D[end] += cp.balance.N
+            cp.balance.N = 0.0
+        end
 
-        return true, sales_tax
-    else 
-        cp.D[end] += cp.balance.N
-        hh.C -= cp.p[end] * (1 + τˢ) * cp.balance.N
-        cp.balance.N = 0
+        tot_price = (q * share_fulfilled) * cp.p[end]
 
-        sales_tax = cp.p[end] * τˢ * cp.balance.N
-        
-        return false, sales_tax
+        receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
     end
-
 end
+
+
+# """
+# Determines if amount of demanded goods are available and transacts
+# """
+# function transact_cp!(
+#     cp::ConsumerGoodProducer, 
+#     hh::Household, 
+#     N_G::Float64,
+#     τˢ::Float64
+#     )::Tuple{Bool, Float64}
+
+#     # Check if enough inventory available, then transact
+#     if N_G < cp.balance.N[end]
+
+#         cp.balance.N -= N_G
+#         cp.D[end] += N_G
+#         hh.C -= cp.p[end] * (1 + τˢ) * N_G
+
+#         sales_tax = cp.p[end] * τˢ * N_G
+
+#         return true, sales_tax
+#     else 
+#         cp.D[end] += cp.balance.N
+#         hh.C -= cp.p[end] * (1 + τˢ) * cp.balance.N
+#         cp.balance.N = 0
+
+#         sales_tax = cp.p[end] * τˢ * cp.balance.N
+        
+#         return false, sales_tax
+#     end
+
+# end
 
 
 function compute_profits_cp!(
@@ -384,7 +418,7 @@ function compute_profits_cp!(
     )
     # TODO incorporate interest rates
     # println(cp.D[end])
-    Π = cp.D[end] * cp.p[end] - cp.c[end] * cp.Q[end]
+    Π = cp.D[end] * cp.p[end] - cp.c[end] * cp.D[end]
     # println("Π ", Π)
     push!(cp.Π, Π)
 end

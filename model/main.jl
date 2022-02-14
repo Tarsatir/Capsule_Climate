@@ -209,23 +209,25 @@ function model_step!(
     levy_income_tax_gov!(gov_struct, all_hh, model)
 
     # (6) Households pick prefered products to buy and set budget and consumption package
-    for hh_id in all_hh
-        # compute_exp_income_hh!(model[hh_id], 
-        #                        labormarket_struct.P_HU, 
-        #                        labormarket_struct.P_UU, 
-        #                        gov_struct.UB,
-        #                        model)
-        # set_savingsrate_hh!(model[hh_id], labormarket_struct.avg_T_unemp, gov_struct.UB)
-        set_consumption_budget_hh!(
-            model[hh_id],
-            global_param.a_σ,
-            global_param.b_σ, 
-            global_param.α_cp, 
-            model
-        )
-    end
 
 
+    # for hh_id in all_hh
+    #     # compute_exp_income_hh!(model[hh_id], 
+    #     #                        labormarket_struct.P_HU, 
+    #     #                        labormarket_struct.P_UU, 
+    #     #                        gov_struct.UB,
+    #     #                        model)
+    #     # set_savingsrate_hh!(model[hh_id], labormarket_struct.avg_T_unemp, gov_struct.UB)
+    #     set_consumption_budget_hh!(
+    #         model[hh_id],
+    #         global_param.a_σ,
+    #         global_param.b_σ, 
+    #         global_param.α_cp, 
+    #         model
+    #     )
+    # end
+
+    
     # (6) Transactions take place on consumer market
     consumermarket_process!(
         all_hh,

@@ -27,6 +27,9 @@ struct GlobalParam
     ωQ :: Float64                   # memory parameter cp quantity estimation
     ωL :: Float64                   # memory parameter cp labor supply estimation
     α_cp :: Float64                 # parameter controlling MPC of consumers
+    c_L_max :: Float64              # maximum share consumed on luxury goods
+    a_σ :: Float64                  # 1st parameter governing logistic function
+    b_σ :: Float64                  # 2nd parameter governing logistic function
 end
 
 
@@ -59,7 +62,10 @@ function initialize_global_params()
         0.1,                        # ωD: memory parameter cp demand estimation
         0.1,                        # ωQ: memory parameter cp quantity estimation
         0.1,                        # ωL: memory parameter cp labor supply estimation
-        0.9                         # α_cp: parameter controlling MPC of consumers
+        0.9,                        # α_cp: parameter controlling MPC of consumers
+        0.7,                        # c_L_max
+        100,                        # a_σ
+        3                           # b_σ
     )
     return global_param
 end

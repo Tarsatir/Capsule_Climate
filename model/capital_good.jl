@@ -4,35 +4,40 @@ using StatsBase
 
 mutable struct CapitalGoodProducer <: AbstractAgent
     id :: Int                               # global id
-    kp_i  :: Int                            # kp id
-    A :: Vector{Float64}                     # labor prod sold product
-    B :: Vector{Float64}                     # labor prod own production
-    p :: Vector{Float64}                     # hist price data
-    c :: Vector{Float64}                     # hist cost data
-    employees :: Vector{Int}             # employees in company
+    kp_i :: Int                             # kp id, used for distance matrix
+    A :: Vector{Float64}                    # labor prod sold product
+    B :: Vector{Float64}                    # labor prod own production
+    p :: Vector{Float64}                    # hist price data
+    c :: Vector{Float64}                    # hist cost data
+    employees :: Vector{Int}                # employees in company
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
     P_FE :: Float64                         # probability of getting fired while employed
-    w̄ :: Vector{Float64}                     # wage level
+    w̄ :: Vector{Float64}                    # wage level
     wᴼ :: Float64                           # offered wage
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
-    RD :: Vector{Float64}                    # hist R&D expenditure
-    IM :: Vector{Float64}                    # hist immitation expenditure
-    IN :: Vector{Float64}                    # hist innovation expenditure
-    S :: Vector{Float64}                     # hist revenue
+    RD :: Vector{Float64}                   # hist R&D expenditure
+    IM :: Vector{Float64}                   # hist immitation expenditure
+    IN :: Vector{Float64}                   # hist innovation expenditure
+    S :: Vector{Float64}                    # hist revenue
     HC :: Vector{Int}                       # hist clients
-    Π :: Vector{Float64}                     # hist profits
+    Π :: Vector{Float64}                    # hist profits
     f :: Float64                            # market share
     brochure                                # brochure
     orders :: Array                         # orders
     Balance :: Balance                      # balance sheet
 end
 
-function initialize_kp(id :: Int, kp_i :: Int, n_captlgood :: Int, n_init_emp_kp :: Int)
+function initialize_kp(
+    id::Int, 
+    n_captlgood::Int,
+    kp_i::Int,
+    n_init_emp_kp::Int
+    )
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
-        kp_i,                   # kp id
+        kp_i,                   # kp_i, used for distance matrix
         [1],                    # A: labor prod sold product
         [1],                    # B: labor prod own production
         [],                     # p: hist price data

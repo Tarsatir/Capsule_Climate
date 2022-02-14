@@ -96,12 +96,15 @@ function levy_profit_tax_gov!(
 end
 
 
-function compute_budget_balance(gov_struct)
+function compute_budget_balance(
+    gov_struct::Government
+    )
 
     ca = gov_struct.curr_acc
 
-    # TODO add energy and emission tax
-    Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τˢ[end] + ca.Rev_τᴾ[end]
+    # TODO add sales, energy and emission tax
+    # Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τˢ[end] + ca.Rev_τᴾ[end]
+    Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τᴾ[end]
 
     # TODO add subsidies
     Tot_exp = ca.Exp_UB[end]

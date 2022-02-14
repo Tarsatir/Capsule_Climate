@@ -20,7 +20,7 @@ function fire_excess_workers_p!(
         p.L -= sum(map(hh_id -> model[hh_id].L, fired_workers))
         p.employees = filter(hh_id -> hh_id ∉ fired_workers, p.employees)
 
-        p.P_FE = length(fired_workers) / length(p.employees)
+        # p.P_FE = length(fired_workers) / length(p.employees)
 
         return fired_workers
     else
