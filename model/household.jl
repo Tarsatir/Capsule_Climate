@@ -1,10 +1,9 @@
 mutable struct Household <: AbstractAgent
     id :: Int                   # global id
-    # hh_id :: Int              # hh id
     employed :: Bool            # is employed
-    employer                    # employer
-    I :: Vector{Float64}         # hist income
-    Iᵀ :: Vector{Float64}        # hist taxed income
+    employer :: Int             # id of employer
+    I :: Vector{Float64}        # hist income
+    Iᵀ :: Vector{Float64}       # hist taxed income
     Iᵉ :: Float64               # expected income
     L :: Float64                # labor units in household
     S :: Array{Float64}         # total savings
@@ -13,7 +12,7 @@ mutable struct Household <: AbstractAgent
     B :: Array{Float64}         # budget
     C :: Float64                # cash
     N_B_min :: Float64          # substistence level of basic goods
-    w :: Array{Float64}         # wage
+    w :: Vector{Float64}        # wage
     wˢ :: Float64               # satisfying wage
     wʳ :: Float64               # requested wage
     wᵉ :: Float64               # expected wage
@@ -29,13 +28,12 @@ function initialize_hh(
     )::Household
     hh = Household(
         id,                     # global id
-        # hh_id,                  # household id
         false,                  # bool: employed
-        nothing,                # employer
+        0,                      # id of employer
         [],                     # I: hist income
         [],                     # Iᵀ: hist taxed income
         100*(1-τᴵ),             # Iᵉ: exp income
-        100*(1-τᴵ),             # L: labor units
+        100,                    # L: labor units
         [10],                   # S: total savings
         0,                      # Sᵈ: desired savings
         0,                      # s: savings rate
@@ -234,7 +232,7 @@ end
 
 function get_fired_hh!(hh::Household)
     hh.employed = false
-    hh.employer = nothing
+    hh.employer = 0
 end
 
 

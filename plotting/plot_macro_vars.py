@@ -44,4 +44,4 @@ def plot_macro_vars():
     plt.tight_layout()
     plt.savefig('plots/first.png', bbox_inches='tight')
 
-# plot_macro_vars()
+plot_macro_vars()

@@ -1,9 +1,9 @@
 """
-    per_type(type, shuffle_agents::Bool)
+    schedule_per_type(type, shuffle_agents::Bool)
 A scheduler that returns multiple schedulers, each for a specific subset 
 `shuffle_agents = true` randomizes the order of agents within each group.
 """
-function per_type(shuffle_agents::Bool, model::ABM)
+function schedule_per_type(shuffle_agents::Bool, model::ABM)
 
     all_hh = Vector{Int}()
     all_cp = Vector{Int}()

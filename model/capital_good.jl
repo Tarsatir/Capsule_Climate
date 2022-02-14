@@ -13,7 +13,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
     P_FE :: Float64                         # probability of getting fired while employed
-    w :: Vector{Float64}                     # wage level
+    w̄ :: Vector{Float64}                     # wage level
     wᴼ :: Float64                           # offered wage
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
@@ -41,7 +41,7 @@ function initialize_kp(id :: Int, kp_i :: Int, n_captlgood :: Int, n_init_emp_kp
         0,                      # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
         0,                      # P_FE: probability of getting fired while employed
-        [1.0],                  # w: wage level
+        [1.0],                  # w̄: wage level
         1.0,                    # wᴼ: offered wage
         0,                      # O: total amount of machines ordered
         [],                     # production queue
@@ -101,13 +101,13 @@ function innovate_kp!(
         # if no new technologies, keep current technologies
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
-        c_h = kp.w[end]/kp.B[end]
+        c_h = kp.w̄[end]/kp.B[end]
         p_h = (1 + global_param.μ1) * c_h
         push!(kp.c, c_h)
         push!(kp.p, p_h)
     else
         # if new technologies, update price data
-        c_h = map(x -> kp.w[end]/x[1], tech_choices)
+        c_h = map(x -> kp.w̄[end]/x[1], tech_choices)
         p_h = map(x -> (1 + global_param.μ1)*x, c_h)
         r_h = p_h + global_param.b * c_h
         index = argmin(r_h)
@@ -151,14 +151,16 @@ function send_brochures_kp!(
 
 end
 
+
 """
 
 Uses inverse distances as weights for choice competitor to immitate
 """
 function imitate_technology_kp(
-    kp :: AbstractAgent, 
+    kp::CapitalGoodProducer, 
     all_kp::Vector{Int}, 
-    kp_distance_matrix, model::ABM
+    kp_distance_matrix, 
+    model::ABM
     ) :: Tuple{Float64, Float64}
 
     weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
@@ -172,7 +174,10 @@ function imitate_technology_kp(
 end
 
 
-function update_At_kp(A_last :: Float64, global_param)
+function update_At_kp(
+    A_last :: Float64, 
+    global_param
+    )
     # determines new labor productivity of machine produced for cp
     κ_A = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
     A_t_in = A_last*(1 + κ_A)
@@ -180,7 +185,10 @@ function update_At_kp(A_last :: Float64, global_param)
 end
 
 
-function update_Bt_kp(B_last :: Float64, global_param)
+function update_Bt_kp(
+    B_last :: Float64, 
+    global_param
+    )
     # determines new labor productivity of own production method 
     κ_B = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
     # println("κ ", κ_B)
@@ -189,9 +197,12 @@ function update_Bt_kp(B_last :: Float64, global_param)
 end
 
 
-function set_price_kp!(kp :: AbstractAgent, global_param, macro_struct)
-    c_t = macro_struct.w[end] / kp.B[end]
-    p_t = (1 + global_param.μ1) * c_t
+function set_price_kp!(
+    kp::CapitalGoodProducer, 
+    μ1::Float64, 
+    )
+    c_t = kp.w̄[end] / kp.B[end]
+    p_t = (1 + μ1) * c_t
     push!(kp.c, c_t)
     push!(kp.p, p_t)
 end
@@ -201,9 +212,13 @@ end
 Determines the level of R&D, and how it is divided under innovation (IN) 
 and immitation (IM). based on Dosi et al (2010)
 """
-function set_RD_kp!(kp :: AbstractAgent, ξ :: Float64, ν :: Float64)
+function set_RD_kp!(
+    kp::CapitalGoodProducer, 
+    ξ::Float64, 
+    ν::Float64
+    )
     # determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
-    RD_new = ν * (kp.S[end])
+    RD_new = ν * kp.S[end]
     push!(kp.RD, RD_new)
 
     # decide fractions innovation (IN) and immitation (IM), 
@@ -215,7 +230,9 @@ function set_RD_kp!(kp :: AbstractAgent, ξ :: Float64, ν :: Float64)
 end
 
 
-function plan_production_kp!(kp :: AbstractAgent)
+function plan_production_kp!(
+    kp::CapitalGoodProducer
+    )
     
     if (length(kp.orders) > 0)
         # determine total amount of machines to produce
@@ -227,7 +244,9 @@ function plan_production_kp!(kp :: AbstractAgent)
 end
 
 
-function produce_goods_kp!(kp :: AbstractAgent)
+function produce_goods_kp!(
+    kp::CapitalGoodProducer
+    )
 
     # println(kp.B[end] * kp.L, " ", kp.O)
 
@@ -258,12 +277,8 @@ function send_orders_kp!(
 
     for order in kp.prod_queue
 
-        # println(order[1].cp_id)
-
         cp_id = order[1]
         Iₜ = order[2]
-
-        # println(Iₜ)
 
         machine = initialize_machine()
         machine.A = kp.A[end]
@@ -272,17 +287,13 @@ function send_orders_kp!(
 
         tot_freq += machine.freq
 
-        # Π += machine.freq * (kp.p[end] - kp.c[end])
-
         receive_machines!(model[cp_id], machine, Iₜ)
     end
-
-    # println(tot_freq)
     
     S = tot_freq * kp.p[end]
     Π = tot_freq * (kp.p[end] - kp.c[end])
 
-    # println(S, " ", Π)
+    # println(Π, " ", tot_freq)
 
     push!(kp.S, S)
     push!(kp.Π, Π)
@@ -291,15 +302,22 @@ function send_orders_kp!(
 
     # TODO: describe how labor market frictions affect delivery machines
 
-    # TODO: empty production queue
+    # Empty production queue
+    reset_order_queue_kp!(kp)
 
 end
 
 
-function reset_order_queue_kp!(kp)
+function reset_order_queue_kp!(
+    kp:: CapitalGoodProducer
+    )
     kp.orders = []
 end
 
-function select_HC_kp!(kp::CapitalGoodProducer, all_cp::Vector{Int})
+
+function select_HC_kp!(
+    kp::CapitalGoodProducer, 
+    all_cp::Vector{Int}
+    )
     kp.HC = sample(all_cp, 10; replace=false)
 end

@@ -26,7 +26,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
     P_FE :: Float64             # probability of getting fired while employed
-    w :: Vector{Float64}        # wage level
+    w̄ :: Vector{Float64}        # wage level
     wᴼ :: Float64               # offered wage
     brochures :: Vector         # brochures from kp
     π :: Vector{Float64}        # hist productivity
@@ -49,18 +49,17 @@ function initialize_cp(
     )
     cp = ConsumerGoodProducer(
         id,                     # global id
-        # cp_id,                  # cp id
         type_good,              # type of good produced by producer
         [],                     # p: hist prices
         [],                     # c: hist cost
         [],                     # RD: hist R&D spending
-        [1100],                   # D: hist demand
-        1100,                     # Dᵉ exp demand
+        [1100],                 # D: hist demand
+        1100,                   # Dᵉ exp demand
         # [36e3],               # N: hist inventory
-        1000,                     # Nᵈ: desired inventory 
-        [1200],                   # Q: hist production
-        1200,                   # Qᵉ: exp production
-        [rand()],               # I: hist investments
+        40,                     # Nᵈ: desired inventory 
+        [40],                   # Q: hist production
+        40,                     # Qᵉ: exp production
+        [],                     # I: hist investments
         [machine_struct],       # Ξ: capital stock
         40,                     # K: total amount of machines
         [],                     # RS: list of to-be replaced machines
@@ -72,7 +71,7 @@ function initialize_cp(
         [1.0],                  # w: wage level
         1.0,                    # wᴼ: offered wage
         [],                     # brochures from kp
-        [rand()],               # π: hist productivity
+        [],                     # π: hist productivity
         [1/n_consrgood],        # f: market share
         0.05,                   # μ: hist markup
         [],                     # Π: hist profits
@@ -98,7 +97,8 @@ Plans production amounts for consumer good producer (short term)
 """
 function plan_production_cp!(
     cp::ConsumerGoodProducer, 
-    global_param
+    global_param,
+    model::ABM
     )
 
     # update amount of owned capital
@@ -120,7 +120,8 @@ function plan_production_cp!(
     update_π!(cp)
 
     # compute corresponding change in labor stock
-    total_prod = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
+    # total_prod = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
+    total_K = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
     # println(total_prod)
     # println("L:", cp.L)
     # println(Qˢ)
@@ -128,23 +129,26 @@ function plan_production_cp!(
 
     # println(cp.balance.N, " ", cp.Dᵉ, " ", Qˢ/cp.π[end])
 
-    ΔLᵈ = Qˢ/cp.π[end] - cp.L
+    # ΔLᵈ = Qˢ/cp.π[end] - cp.L
+    ΔLᵈ = Qˢ/total_K - cp.L
     if ΔLᵈ < -cp.L
         cp.ΔLᵈ = -cp.L
     else
         cp.ΔLᵈ = ΔLᵈ
     end
 
-    # update markup μ
+    # Update average wage w̄
+    update_wage_level_p!(cp, model)
+
+    # Update markup μ
     compute_μ_cp!(cp, global_param.υ, global_param.μ1)
 
     # update cost of production c
     c = compute_c_cp!(cp, Qˢ)
     push!(cp.c, c)
 
-    # compute price
+    # Compute price
     p = (1 + cp.μ) * c
-    # println(p)
     push!(cp.p, p)
 end
 
@@ -197,12 +201,16 @@ function plan_investment_cp!(
 end
 
 
-function update_K!(cp::ConsumerGoodProducer)
+function update_K!(
+    cp::ConsumerGoodProducer
+    )
     cp.K = sum(map(machine -> machine.freq, cp.Ξ))
 end
 
 
-function update_π!(cp::ConsumerGoodProducer)
+function update_π!(
+    cp::ConsumerGoodProducer
+    )
     π = sum(map(machine -> machine.freq / cp.K, cp.Ξ))
     push!(cp.π, π)
 end
@@ -319,7 +327,8 @@ function compute_c_cp!(
 
     total_K = sum(map(machine -> machine.freq, cp.Ξ))
     Ā = sum(map(m -> m.A * m.freq / total_K, cp.Ξ))
-    c = (cp.w[end] * Qˢ / Ā) / Qˢ
+    # c = (cp.w̄[end] * Qˢ / Ā) / Qˢ
+    c = cp.w̄[end] / cp.π[end]
     return c
 end
 
@@ -375,7 +384,7 @@ function compute_profits_cp!(
     )
     # TODO incorporate interest rates
     # println(cp.D[end])
-    Π = cp.D[end] * cp.p[end] - cp.w[end] * cp.L[end]
+    Π = cp.D[end] * cp.p[end] - cp.c[end] * cp.Q[end]
     # println("Π ", Π)
     push!(cp.Π, Π)
 end

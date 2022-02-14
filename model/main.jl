@@ -23,7 +23,18 @@ include("general_producers.jl")
 include("macro.jl")
 
 
-
+"""
+Initializes model.
+- Receives:
+    * number of agents of each type 
+    * number of initial employees per producer type.
+- Returns:
+    * model: Agent Based Model struct
+    * global_param: struct containing global parameter values
+    * macro_struct: mutable struct containing macro variables
+    * gov_struct: mutable struct containing variables concerning the government
+    * labormarket_struct: mutable struct containing variables concerning the labor market
+"""
 function initialize_model(;
     n_captlgood = 50,
     n_consrgood = 200,
@@ -32,26 +43,26 @@ function initialize_model(;
     n_init_emp_kp = 3
     )
 
-    # initialise model struct
+    # Initialise model struct
     model = ABM(Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
                 scheduler = by_type(true,true))
 
-    # initialize struct that holds global params
+    # Initialize struct that holds global params
     global_param  = initialize_global_params()
 
-    # initialize struct that holds macro variables
+    # Initialize struct that holds macro variables
     macro_struct = initialize_macro()
 
-    # initialize labor market struct
+    # Initialize labor market struct
     labormarket_struct = initialize_labormarket()
 
-    # initialize government struct
+    # Initialize government struct
     gov_struct = initialize_government()
 
-    # global id
+    # Global id
     id = 1
 
-    # initialize households
+    # Initialize households
     for hh_i in 1:n_households
 
         hh = initialize_hh(id, gov_struct.τᴵ)
@@ -60,44 +71,44 @@ function initialize_model(;
         id += 1
     end
 
-    # initialize consumer good producers
+    # Initialize consumer good producers
     for cp_i in 1:n_consrgood
 
-        # decide if producer makes basic or luxury goods
+        # Decide if producer makes basic or luxury goods
+        # In init, half of producers are allocated basic and half luxury
         type_good = "Basic"
         if cp_i > n_consrgood / 2
             type_good = "Luxury"
         end
 
-        # initialize capital good stock
-        machine_struct = initialize_machine()
-        machine_struct.age = rand(0:global_param.η)
+        # Initialize capital good stock
+        # Machines have random age as to allow replacement in early periods
+        machine_struct = initialize_machine(global_param.η)
 
         cp = initialize_cp(id, machine_struct, n_consrgood, type_good, n_init_emp_cp)
-
         add_agent!(cp, model)
+
         id += 1
     end
 
-    # initialize capital good producers
+    # Initialize capital good producers
     for kp_i in 1:n_captlgood
 
-        # initialize capital good producer
         kp = initialize_kp(id, kp_i, n_captlgood, n_init_emp_kp)
-
-        # push!(all_agents.all_kp, kp)
         add_agent!(kp, model)
+
         id += 1
     end
 
-    # initialize schedulers
-    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = per_type(true, model)
+    # Initialize schedulers
+    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
+    # Let all capital good producers select historical clients
     for kp_id in all_kp
         select_HC_kp!(model[kp_id], all_cp)
     end
 
-    # spread employed households over producerss
+    # Spread employed households over producerss
     spread_employees_lm!(
         labormarket_struct,
         all_hh, 
@@ -108,9 +119,9 @@ function initialize_model(;
         model
     )
 
+    # Update market shares of cp
     update_marketshares_cm!(all_cp, model)
 
-    # return model, all_agents, global_param, macro_struct, gov_struct, labormarket_struct, consumermarket_struct
     return model, global_param, macro_struct, gov_struct, labormarket_struct
 end
 
@@ -124,7 +135,7 @@ function model_step!(
     )
 
     # update schedulers
-    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = per_type(true, model)
+    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
     # reset brochures of all consumer good producers
     for cp_id in all_cp
@@ -147,7 +158,7 @@ function model_step!(
     # demand for L and K
     for cp_id in all_cp
         cp = model[cp_id]
-        plan_production_cp!(cp, global_param)
+        plan_production_cp!(cp, global_param, model)
         plan_investment_cp!(cp, global_param, all_kp, model)
     end
 
@@ -233,6 +244,9 @@ function model_step!(
                             model)
 
     # TODO update market share cp
+
+    # Remove bankrupt companies and introduce new companies.
+
     # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 end
 
@@ -241,7 +255,7 @@ to = TimerOutput()
 # df_agent = init_agent_dataframe(model)
 
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
-for i in 1:400
+for i in 1:100
     println("Step ", i)
     @timeit to "step" model_step!(model, global_param, macro_struct, gov_struct, labormarket_struct)
 end
@@ -252,7 +266,7 @@ println(macro_struct.GDP)
 
 @timeit to "save macro" save_macro_data(macro_struct)
 
-all_hh, all_cp, all_kp, all_bp, all_lp, all_p = per_type(true, model)
+all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
 @timeit to "save findist" save_final_dist(all_hh, model)
 

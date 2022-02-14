@@ -14,17 +14,13 @@ function fire_excess_workers_p!(
 
     # println(fired_workers, length(fired_workers))
 
-    # remove employees from labor stock
+    # Remove employees from labor stock
     if length(fired_workers) > 0
-
-        # println(fired_workers, length(fired_workers))
 
         p.L -= sum(map(hh_id -> model[hh_id].L, fired_workers))
         p.Emp = filter(hh_id -> hh_id ∉ fired_workers, p.Emp)
 
         p.P_FE = length(fired_workers) / length(p.Emp)
-
-        # println(fired_workers, length(fired_workers))
 
         return fired_workers
     else
@@ -73,6 +69,6 @@ function update_wage_level_p!(
     )
     if length(p.Emp) > 0
         w̄ = mean(map(hh_id -> model[hh_id].w[end], p.Emp))
-        push!(p.w, w̄)
+        push!(p.w̄, w̄)
     end
 end
