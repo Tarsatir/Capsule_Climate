@@ -1,24 +1,3 @@
-mutable struct All_Agents
-    all_hh :: Array{AbstractAgent}
-    all_kp :: Array{AbstractAgent}
-    all_cp :: Array{AbstractAgent}
-    all_bp :: Array{Int}
-    all_lp :: Array{Int}
-    capital_good_euclidian_matrix :: Array
-end
-
-function initialize_allagents()
-    all_agents = All_Agents(
-        [], 
-        [], 
-        [],
-        [],
-        [], 
-        []
-    )
-    return all_agents
-end
-
 struct GlobalParam
     ν :: Float64                    # R&D inv propensity
     ξ :: Float64                    # R&D allocation to IN
@@ -47,7 +26,9 @@ struct GlobalParam
     ωD :: Float64                   # memory parameter cp demand estimation
     ωQ :: Float64                   # memory parameter cp quantity estimation
     ωL :: Float64                   # memory parameter cp labor supply estimation
+    α_cp :: Float64                 # parameter controlling MPC of consumers
 end
+
 
 function initialize_global_params()
     global_param = GlobalParam(
@@ -59,7 +40,7 @@ function initialize_global_params()
         -0.15,                      # κ_lower: 1st beta dist support
         0.15,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
-        0.2,                       # μ1: kp markup rule
+        0.2,                        # μ1: kp markup rule
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
         20,                         # η: physical scrapping age
@@ -77,40 +58,8 @@ function initialize_global_params()
         0.02,                       # ϵ: minimum desired wage increase rate
         0.1,                        # ωD: memory parameter cp demand estimation
         0.1,                        # ωQ: memory parameter cp quantity estimation
-        0.1                         # ωL: memory parameter cp labor supply estimation
+        0.1,                        # ωL: memory parameter cp labor supply estimation
+        0.9                         # α_cp: parameter controlling MPC of consumers
     )
     return global_param
-end
-
-function initialize_model()
-    model_struct = Model([], [], [])
-    return model_struct
-end
-
-function get_capgood_euclidian(all_kp, model)
-    """
-    Generates a matrix with Euclidian distances of the 
-    technological levels A and B. 
-    """
-    n_captlgood = length(all_kp)
-    distance_matrix = zeros((n_captlgood, n_captlgood))
-
-    for i in 1:n_captlgood
-        for j in i:n_captlgood
-
-            # get current values for A and B of both producers
-            A1 = model[all_kp[i]].A[end]
-            A2 = model[all_kp[j]].A[end]
-            B1 = model[all_kp[i]].B[end]
-            B2 = model[all_kp[j]].B[end]
-            
-            distance = sqrt((A1-A2)^2 + (B1-B2)^2)
-            if (i==j)
-                distance = Inf
-            end
-            distance_matrix[i,j] = distance
-            distance_matrix[j,i] = distance
-        end
-    end 
-    return distance_matrix
 end

@@ -11,7 +11,7 @@ using RecursiveArrayTools
 # Include files
 include("../results/write_results.jl")
 include("custom_schedulers.jl")
-include("model.jl")
+include("global_parameters.jl")
 include("misc.jl")
 include("government.jl")
 include("labormarket.jl")
@@ -40,7 +40,9 @@ function initialize_model(;
     n_consrgood = 200,
     n_households = 2500,
     n_init_emp_cp = 11,
-    n_init_emp_kp = 3
+    n_init_emp_kp = 3,
+    n_bp = 7,
+    n_lp = 7
     )
 
     # Initialise model struct
@@ -65,7 +67,7 @@ function initialize_model(;
     # Initialize households
     for hh_i in 1:n_households
 
-        hh = initialize_hh(id, gov_struct.τᴵ)
+        hh = initialize_hh(id)
         add_agent!(hh, model)
 
         id += 1
@@ -108,6 +110,11 @@ function initialize_model(;
         select_HC_kp!(model[kp_id], all_cp)
     end
 
+    # Let all households select cp of both types for trading network
+    for hh_id in all_hh
+        select_bp_lp_hh!(model[hh_id], all_bp, all_lp, n_bp, n_lp)
+    end
+
     # Spread employed households over producerss
     spread_employees_lm!(
         labormarket_struct,
@@ -127,24 +134,24 @@ end
 
 
 function model_step!(
-    model::ABM, 
     global_param, 
     macro_struct, 
     gov_struct, 
-    labormarket_struct
+    labormarket_struct,
+    model::ABM
     )
 
-    # update schedulers
+    # Update schedulers
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
-    # reset brochures of all consumer good producers
+    # Reset kp brochures of all cp
     for cp_id in all_cp
         reset_brochures_cp!(model[cp_id])
     end
 
     # (1) capital good producers innovate and send brochures
 
-    # determine distance matrix between capital good producers
+    # Determine distance matrix between capital good producers
     kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
     for kp_id in all_kp
@@ -203,22 +210,31 @@ function model_step!(
 
     # (6) Households pick prefered products to buy and set budget and consumption package
     for hh_id in all_hh
-        compute_exp_income_hh!(model[hh_id], 
-                               labormarket_struct.P_HU, 
-                               labormarket_struct.P_UU, 
-                               gov_struct.UB,
-                               model)
-        set_savingsrate_hh!(model[hh_id], labormarket_struct.avg_T_unemp, gov_struct.UB)
+        # compute_exp_income_hh!(model[hh_id], 
+        #                        labormarket_struct.P_HU, 
+        #                        labormarket_struct.P_UU, 
+        #                        gov_struct.UB,
+        #                        model)
+        # set_savingsrate_hh!(model[hh_id], labormarket_struct.avg_T_unemp, gov_struct.UB)
+        set_consumption_budget_hh!(
+            model[hh_id],
+            global_param.a_σ,
+            global_param.b_σ, 
+            global_param.α_cp, 
+            model
+        )
     end
 
 
     # (6) Transactions take place on consumer market
-    consumermarket_process!(all_hh,
-                            all_cp,
-                            all_bp,
-                            all_lp,
-                            gov_struct,
-                            model)
+    consumermarket_process!(
+        all_hh,
+        all_cp,
+        all_bp,
+        all_lp,
+        gov_struct,
+        model
+    )
 
     # cp make up profits
     for cp_id in all_cp
@@ -235,13 +251,15 @@ function model_step!(
     compute_budget_balance(gov_struct)
 
     # (7) macro-economic indicators are updated.
-    update_macro_timeseries(macro_struct, 
-                            all_hh, 
-                            all_cp, 
-                            all_kp,
-                            labormarket_struct.E,
-                            gov_struct.curr_acc.Exp_UB[end],
-                            model)
+    update_macro_timeseries(
+        macro_struct, 
+        all_hh, 
+        all_cp, 
+        all_kp,
+        labormarket_struct.E,
+        gov_struct.curr_acc.Exp_UB[end],
+        model
+    )
 
     # TODO update market share cp
 
@@ -257,7 +275,7 @@ to = TimerOutput()
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
 for i in 1:100
     println("Step ", i)
-    @timeit to "step" model_step!(model, global_param, macro_struct, gov_struct, labormarket_struct)
+    @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, model)
 end
 
 # @timeit to "step" run!(model, dummystep, model_step!, 10)

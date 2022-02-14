@@ -40,40 +40,43 @@ function spread_employees_lm!(
     )
 
     i = 1
+
+    # Loop over cp, allocate households as employees
     for cp_id in all_cp
         cp = model[cp_id]
         employees = all_hh[i:i+n_init_emp_cp-1]
         for hh_id in employees
             hh = model[hh_id]
-            get_hired_hh!(hh, 1.0, cp_id)
+            set_employed_hh!(hh, 1.0, cp_id)
             hire_worker_p!(cp, hh)
             push!(labormarket_struct.employed, hh.id)
         end
 
-        cp.Emp = employees
+        cp.employees = employees
         cp.L = sum(map(hh_id -> model[hh_id].L, employees))
         i += n_init_emp_cp
 
     end
 
+    # Loop over kp, allocate households as employees
     for kp_id in all_kp
         kp = model[kp_id]
         employees = all_hh[i:i+n_init_emp_kp-1]
         for hh_id in employees
             hh = model[hh_id]
-            get_hired_hh!(hh, 1.0, kp_id)
+            set_employed_hh!(hh, 1.0, kp_id)
             hire_worker_p!(kp, hh)
             push!(labormarket_struct.employed, hh.id)
         end
-        kp.Emp = employees
+        kp.employees = employees
         kp.L = sum(map(hh_id -> model[hh_id].L, employees))
         i += n_init_emp_kp
     end
 
-    # other households are pushed into unemployment
+    # Other households are pushed into unemployment
     for hh_id in all_hh[i:end]
         hh = model[hh_id]
-        get_fired_hh!(hh)
+        set_unemployed_hh!(hh)
         push!(labormarket_struct.unemployed, hh.id)
     end
 end
@@ -113,10 +116,10 @@ function labormarket_process!(
 
     # let producers fire excess workers
     # println("f1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
     fire_workers_lm!(labormarket_struct, firing_producers, model)
     # println("f2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
 
     # Update wage parameters households
     for hh_id in all_hh
@@ -128,10 +131,10 @@ function labormarket_process!(
 
     # labor market matching process
     # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
     matching_lm(labormarket_struct, hiring_producers, model)
     # println("m2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
+    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
 
     # Update probabilities of long-term unemployment
     update_probs_lm!(labormarket_struct, model)
@@ -178,7 +181,7 @@ function fire_workers_lm!(
 
     # change employment status for households
     for hh_id in all_fired_workers
-        get_fired_hh!(model[hh_id])
+        set_unemployed_hh!(model[hh_id])
     end
 end
 
@@ -234,7 +237,7 @@ function matching_lm(
                 # Hire selected workers
                 for hh_id in to_be_hired
 
-                    get_hired_hh!(model[hh_id], p.wᴼ, p_id)
+                    set_employed_hh!(model[hh_id], p.wᴼ, p_id)
                     hire_worker_p!(model[p_id], model[hh_id])                  
 
                 end

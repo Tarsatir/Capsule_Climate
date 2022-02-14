@@ -5,11 +5,11 @@ function fire_excess_workers_p!(
 
     n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
 
-    if n_to_be_fired >= length(p.Emp)
-        fired_workers = p.Emp
+    if n_to_be_fired >= length(p.employees)
+        fired_workers = p.employees
     else
         # TODO: find a more sophisticated way to select who is fired
-        fired_workers = sample(p.Emp, n_to_be_fired, replace=false)
+        fired_workers = sample(p.employees, n_to_be_fired, replace=false)
     end
 
     # println(fired_workers, length(fired_workers))
@@ -18,9 +18,9 @@ function fire_excess_workers_p!(
     if length(fired_workers) > 0
 
         p.L -= sum(map(hh_id -> model[hh_id].L, fired_workers))
-        p.Emp = filter(hh_id -> hh_id ∉ fired_workers, p.Emp)
+        p.employees = filter(hh_id -> hh_id ∉ fired_workers, p.employees)
 
-        p.P_FE = length(fired_workers) / length(p.Emp)
+        p.P_FE = length(fired_workers) / length(p.employees)
 
         return fired_workers
     else
@@ -39,7 +39,7 @@ function hire_worker_p!(
     )
 
     # update labor stock and desired labor
-    push!(p.Emp, hh.id)
+    push!(p.employees, hh.id)
     p.L += hh.L
     p.ΔLᵈ -= hh.L
 end
@@ -52,7 +52,7 @@ function pay_workers_p!(
     p::AbstractAgent,
     model::ABM
     )
-    for hh_id in p.Emp
+    for hh_id in p.employees
         hh = model[hh_id]
         total_wage = hh.w[end] * hh.L
         get_income_hh!(hh, total_wage)
@@ -67,8 +67,8 @@ function update_wage_level_p!(
     p::AbstractAgent,
     model::ABM
     )
-    if length(p.Emp) > 0
-        w̄ = mean(map(hh_id -> model[hh_id].w[end], p.Emp))
+    if length(p.employees) > 0
+        w̄ = mean(map(hh_id -> model[hh_id].w[end], p.employees))
         push!(p.w̄, w̄)
     end
 end

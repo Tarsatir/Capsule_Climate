@@ -21,7 +21,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Ξ :: Vector{Machine}        # capital stock
     K :: Float64                # total amount of machines
     RS :: Vector{Machine}       # list of to-be replaced machines
-    Emp:: Vector{Int}           # employees list
+    employees:: Vector{Int}           # employees list
     L :: Float64                # labor units
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
@@ -63,7 +63,7 @@ function initialize_cp(
         [machine_struct],       # Ξ: capital stock
         40,                     # K: total amount of machines
         [],                     # RS: list of to-be replaced machines
-        [],                     # Emp: employees
+        [],                     # employees: employees
         0,                      # L: labor units in company
         n_init_emp_cp * 100,    # Lᵉ: exp labor force
         0,                      # ΔLᵈ: desired change in labor force

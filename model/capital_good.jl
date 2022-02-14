@@ -9,7 +9,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     B :: Vector{Float64}                     # labor prod own production
     p :: Vector{Float64}                     # hist price data
     c :: Vector{Float64}                     # hist cost data
-    Emp :: Vector{Int}             # employees in company
+    employees :: Vector{Int}             # employees in company
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
     P_FE :: Float64                         # probability of getting fired while employed
@@ -37,7 +37,7 @@ function initialize_kp(id :: Int, kp_i :: Int, n_captlgood :: Int, n_init_emp_kp
         [1],                    # B: labor prod own production
         [],                     # p: hist price data
         [],                     # c: hist cost data
-        [],                     # Emp: employees in company
+        [],                     # employees: employees in company
         0,                      # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
         0,                      # P_FE: probability of getting fired while employed
