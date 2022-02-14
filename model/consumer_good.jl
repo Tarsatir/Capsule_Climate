@@ -425,9 +425,16 @@ end
 
 
 function reset_brochures_cp!(
-    cp :: AbstractAgent
+    cp::ConsumerGoodProducer
     )
     cp.brochures = []
+end
+
+
+function reset_queue_cp!(
+    cp::ConsumerGoodProducer
+    )
+    cp.hh_queue = Vector()
 end
 
 

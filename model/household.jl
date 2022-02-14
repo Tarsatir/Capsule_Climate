@@ -83,16 +83,16 @@ function select_bp_lp_hh!(
 end
 
 
-"""
-Updates current wealth level W, equal to the current cash on hand
-"""
-function update_W_hh!(
-    hh::Household
-    )
+# """
+# Updates current wealth level W, equal to the current cash on hand
+# """
+# function update_W_hh!(
+#     hh::Household
+#     )
     
-    W = hh.Iᵀ[end] + hh.S[end]
-    push!(hh.W, W)
-end
+#     W = hh.Iᵀ[end] + hh.S[end]
+#     push!(hh.W, W)
+# end
 
 
 """
@@ -143,8 +143,13 @@ function compute_consumption_budget_hh!(
     α_cp::Float64
     )
 
-    C = min((hh.Wʳ[end])^α_cp, hh.Wʳ[end])
+    # C = min((hh.Wʳ[end])^α_cp, hh.Wʳ[end])
+    println(hh.W[end])
+    C = min((hh.W[end])^α_cp, hh.W[end])
+    # println(C, " ", hh.W[end])
+    s = (hh.I[end] - C)/hh.I[end]
     push!(hh.C, C)
+    hh.s = s
 end
 
 
@@ -392,6 +397,9 @@ function get_income_hh!(
     )
 
     push!(hh.I, amount)
+    if hh.employed
+        push!(hh.w, amount)
+    end
     push!(hh.W, amount + hh.W[end])
 end
 
@@ -417,5 +425,6 @@ function set_employed_hh!(
     hh.employed = true
     hh.employer_id = employer_id
     hh.T_unemp = 0
+    # println(wᴼ)
     push!(hh.w, wᴼ)
 end

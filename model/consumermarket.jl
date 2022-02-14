@@ -99,6 +99,7 @@ function consumermarket_process!(
     # supply the demand.
     for cp_id in all_cp
         send_orders_cp!(model[cp_id], model)
+        reset_queue_cp!(model[cp_id])
     end
 
 end

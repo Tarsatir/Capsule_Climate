@@ -35,7 +35,8 @@ end
 function save_final_dist(all_hh, model)
 
     df = DataFrame(all_I = map(hh_id -> model[hh_id].I[end], all_hh),
-                   all_w = map(hh_id -> model[hh_id].w[end], all_hh))
+                   all_w = map(hh_id -> model[hh_id].w[end], all_hh),
+                   all_W = map(hh_id -> model[hh_id].W[end], all_hh))
     CSV.write("results/result_data/final_dists.csv", df)
 
 end

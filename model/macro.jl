@@ -118,8 +118,8 @@ function update_macro_timeseries(
     push!(macro_struct.s̄_std, s̄_std)
 
     # TODO: also include kp
-    w̄_avg = mean(map(cp -> cp.w̄[end], all_cp_str))
-    w̄_std = std(map(cp -> cp.w̄[end], all_cp_str))
+    w̄_avg = mean(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
+    w̄_std = std(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
     push!(macro_struct.w̄_avg, w̄_avg)
     push!(macro_struct.w̄_std, w̄_std)
 
