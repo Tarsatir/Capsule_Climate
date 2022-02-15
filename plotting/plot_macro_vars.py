@@ -26,9 +26,18 @@ def plot_macro_vars():
     ax3.fill_between(range(len(df.s_avg)), df.s_avg + df.s_std, df.s_avg - df.s_std, color='red', alpha=0.4)
     ax3.set_title("Savings rate")
 
-    ax4.plot(range(len(df.w_avg)), df.w_avg, color='green')
-    ax4.fill_between(range(len(df.w_avg)), df.w_avg + df.w_std, df.w_avg - df.w_std, color='green', alpha=0.4)
+    # Wage levels
+    ax4.plot(range(len(df.w_avg)), df.w_avg, color='green', label='$\\bar{w}$')
+    ax4.fill_between(range(len(df.w_avg)), df.w_avg + df.w_std, df.w_avg - df.w_std, 
+                     color='green', alpha=0.4)
+    ax4.plot(range(len(df.wr_avg)), df.wr_avg, color='red', label='$w^r$')
+    ax4.fill_between(range(len(df.wr_avg)), df.wr_avg + df.wr_std, df.wr_avg - df.wr_std, 
+                     color='red', alpha=0.4)
+    ax4.plot(range(len(df.ws_avg)), df.ws_avg, color='blue', label='$w^s$')
+    ax4.fill_between(range(len(df.ws_avg)), df.ws_avg + df.ws_std, df.ws_avg - df.ws_std, 
+                     color='blue', alpha=0.4)
     ax4.set_title('Wage level')
+    ax4.legend()
 
     ax5.plot(range(len(df.dL_avg)), df.dL_avg, color='red', label='all')
     ax5.fill_between(range(len(df.dL_avg)), df.dL_avg + df.dL_std, df.dL_avg - df.dL_std, color='red', alpha=0.4)

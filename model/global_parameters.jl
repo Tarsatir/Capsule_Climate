@@ -30,6 +30,7 @@ struct GlobalParam
     c_L_max :: Float64              # maximum share consumed on luxury goods
     a_σ :: Float64                  # 1st parameter governing logistic function
     b_σ :: Float64                  # 2nd parameter governing logistic function
+    ψ_E :: Float64                  # chance of employed worker looking for a better paying job
 end
 
 
@@ -65,7 +66,8 @@ function initialize_global_params()
         0.9,                        # α_cp: parameter controlling MPC of consumers
         0.7,                        # c_L_max
         100,                        # a_σ
-        3                           # b_σ
+        3,                          # b_σ
+        0.05                        # ψ_E, chance of employed worker looking for a better paying job
     )
     return global_param
 end

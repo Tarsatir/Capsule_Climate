@@ -74,7 +74,7 @@ function consumermarket_process!(
     all_cp::Vector{Int}, 
     all_bp::Vector{Int}, 
     all_lp::Vector{Int}, 
-    gov_struct,
+    gov_struct::Government,
     model::ABM
     )
 
@@ -105,6 +105,9 @@ function consumermarket_process!(
 end
 
 
+"""
+Updates market share f of cp
+"""
 function update_marketshares_cm!(
     all_cp::Vector{Int}, 
     model::ABM

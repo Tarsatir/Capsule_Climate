@@ -1,13 +1,9 @@
 mutable struct LaborMarket
-    employed :: Vector{Int}           # array of employed households
-    unemployed :: Vector{Int}          # array of unemployed households
-    # employed :: Array{Int}
-    # unemployed :: Array{Int}
+    employed :: Vector{Int}                     # array of employed households
+    unemployed :: Vector{Int}                   # array of unemployed households
     E :: Float64                                # unemployment rate
     n_rounds :: Int                             # number of rounds in matching process
     avg_T_unemp :: Float64                      # average time periods of unemployment
-    P_HU :: Float64                             # hired workers as fraction of total unemployed workers
-    P_UU :: Float64                             # probability of staying unemployed
 end
 
 
@@ -17,8 +13,6 @@ function initialize_labormarket()
         [],
         0.1,
         1,
-        0,
-        0,
         0
     )
     return labormarket_struct
@@ -30,7 +24,7 @@ Gives all producers a share of the labor force after being initialized.
 Households that are not assigned to a producer are declared unemployed.
 """
 function spread_employees_lm!(
-    labormarket_struct, 
+    labormarket_struct::LaborMarket, 
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
     all_kp::Vector{Int}, 
@@ -91,7 +85,7 @@ Defines the whole labor market process
 
 """
 function labormarket_process!(
-    labormarket_struct,
+    labormarket_struct::LaborMarket,
     all_hh::Vector{Int}, 
     all_p::Vector{Int}, 
     ϵ :: Float64, 
@@ -103,7 +97,7 @@ function labormarket_process!(
     firing_producers = Vector{Int}()
     hiring_producers = Vector{Int}()
 
-    update_unemploymentrate_lm(labormarket_struct)
+    update_unemploymentrate_lm!(labormarket_struct)
     println("E 1: ", labormarket_struct.E[end])
 
     for p_id in all_p
@@ -126,23 +120,23 @@ function labormarket_process!(
         update_sat_req_wage_hh!(model[hh_id], ϵ, UB)
     end
 
-    update_unemploymentrate_lm(labormarket_struct)
+    update_unemploymentrate_lm!(labormarket_struct)
     println("E 2: ", labormarket_struct.E)
+
+    # Find all employed households that want to change jobs
+    employed_jobseekers = find_employed_jobseekers_lm(labormarket_struct.employed, global_param.ψ_E)
 
     # labor market matching process
     # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
-    matching_lm(labormarket_struct, hiring_producers, model)
+    matching_lm(labormarket_struct, employed_jobseekers, hiring_producers, model)
     # println("m2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
 
-    # Update probabilities of long-term unemployment
-    update_probs_lm!(labormarket_struct, model)
-    
     # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 
     # update the unemployment rate
-    update_unemploymentrate_lm(labormarket_struct)
+    update_unemploymentrate_lm!(labormarket_struct)
     println("E 3: ", labormarket_struct.E)
 
     # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
@@ -150,7 +144,9 @@ function labormarket_process!(
 end
 
 
-function update_unemploymentrate_lm(labormarket_struct)
+function update_unemploymentrate_lm!(
+    labormarket_struct::LaborMarket
+    )
     labormarket_struct.E = (length(labormarket_struct.unemployed) / (length(labormarket_struct.employed) + length(labormarket_struct.unemployed)))
 end
 
@@ -160,7 +156,7 @@ Employers select workers to fire, labor market aggregates are changed and employ
 are fired.
 """
 function fire_workers_lm!(
-    labormarket_struct, 
+    labormarket_struct::LaborMarket, 
     firing_producers::Vector{Int}, 
     model::ABM
     )
@@ -186,21 +182,26 @@ function fire_workers_lm!(
 end
 
 
+"""
+Matches job-seeking households with employee-seeking firms
+"""
 function matching_lm(
-    labormarket_struct, 
+    labormarket_struct::LaborMarket,
+    employed_jobseekers::Vector{Int}, 
     hiring_producers::Vector{Int},
     model::ABM
     )
 
-    # TODO: let employed workers also apply for jobs
+    # Concatenate all unemployed and job-seeking employed households
+    jobseeking_hh = vcat(employed_jobseekers, labormarket_struct.unemployed)
 
     for n_round in 1:labormarket_struct.n_rounds
 
-        # loop over hiring producers producers
+        # Loop over hiring producers producers
         for p_id in hiring_producers
 
             # Stop process if no unemployed left
-            if length(labormarket_struct.unemployed) == 0
+            if length(jobseeking_hh) == 0
                 return
             end
 
@@ -209,10 +210,10 @@ function matching_lm(
             if p.ΔLᵈ > 0
 
                 # TODO do this in a more sophisticated way
-                n_sample = min(10, length(labormarket_struct.unemployed))
+                n_sample = min(10, length(jobseeking_hh))
 
                 # Make queue of job-seeking households
-                Lˢ = sample(labormarket_struct.unemployed, n_sample, replace=false)
+                Lˢ = sample(jobseeking_hh, n_sample, replace=false)
 
                 # Only select households with a low enough reservation wage
                 Lᵈ = sort(Lˢ, by = hh_id -> model[hh_id].wʳ)
@@ -221,7 +222,7 @@ function matching_lm(
                 ΔL = p.ΔLᵈ
 
                 for hh_id in Lᵈ
-                    
+                    # println("wr ", model[hh_id].wʳ)
                     ΔL -= model[hh_id].L
                     push!(to_be_hired, hh_id)
 
@@ -234,12 +235,21 @@ function matching_lm(
                 # meet the labor target
                 p.wᴼ = model[to_be_hired[end]].wʳ
 
+                # println(p.wᴼ)
+
                 # Hire selected workers
                 for hh_id in to_be_hired
 
-                    set_employed_hh!(model[hh_id], p.wᴼ, p_id)
-                    hire_worker_p!(model[p_id], model[hh_id])                  
-
+                    # If employed, change employer, otherwise get employed
+                    if model[hh_id].employed
+                        change_employer_hh!(model[hh_id], p.wᴼ, p_id)
+                        remove_worker_p!(model[model[hh_id].employer_id], model[hh_id])
+                    else
+                        set_employed_hh!(model[hh_id], p.wᴼ, p_id)
+                    end
+                    
+                    hire_worker_p!(model[p_id], model[hh_id])
+                    filter!(hh -> hh ≠ hh_id, jobseeking_hh)                  
                 end
 
                 # Labor market aggregates are updated
@@ -254,26 +264,6 @@ function matching_lm(
             end
         end
     end
-end
-
-
-function update_probs_lm!(
-    labormarket_struct,
-    model::ABM
-    )
-
-    n_unemployed = length(labormarket_struct.unemployed)
-    n_longtermunemp = 0
-
-    for hh_id in labormarket_struct.unemployed
-        model[hh_id].T_unemp += 1
-        if model[hh_id].T_unemp >= 2
-            n_longtermunemp += 1
-        end
-    end
-
-    labormarket_struct.P_UU = n_longtermunemp / n_unemployed
-    labormarket_struct.P_HU = 1 - labormarket_struct.P_UU
 end
 
 
@@ -305,7 +295,7 @@ end
 
 
 function update_firedworker_lm!(
-    labormarket_struct,
+    labormarket_struct::LaborMarket,
     to_be_fired::Vector{Int}
     )
 
@@ -315,4 +305,18 @@ function update_firedworker_lm!(
     # remove unemployed workers from employed category
     filter!(hh -> hh ∉ to_be_fired, labormarket_struct.employed)
 
+end
+
+
+"""
+Finds employed workers that want to look for another job.
+"""
+function find_employed_jobseekers_lm(
+    employed::Vector{Int},
+    ψ_E::Float64
+    )::Vector{Int}
+
+    n = floor(Int, length(employed) * ψ_E)
+    employed_jobseekers = sample(employed, n)
+    return employed_jobseekers
 end

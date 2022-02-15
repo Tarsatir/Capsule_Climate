@@ -21,7 +21,6 @@ mutable struct Household <: AbstractAgent
 
     # Consumption variables
     C :: Vector{Float64}        # budget
-    # N_B_min :: Float64          # substistence level of basic goods
     bp :: Vector{Int}           # connected cp basic goods
     lp :: Vector{Int}           # connected cp luxury goods
     unsat_dem :: Vector         # unsatisfied demands
@@ -53,7 +52,6 @@ function initialize_hh(
         [10],                   # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
-        # 10,                     # N_B_min: substistence level of basic goods
         Vector{Int}(),          # all_cp_B: connected cp basic goods
         Vector{Int}(),          # all_cp_L: connected cp luxury goods
         Vector(),
@@ -136,19 +134,17 @@ end
 
 
 """
-Computes consumption budget
+Computes consumption budget, updates savings rate
 """
 function compute_consumption_budget_hh!(
     hh::Household,
     α_cp::Float64
     )
 
-    # C = min((hh.Wʳ[end])^α_cp, hh.Wʳ[end])
-    println(hh.W[end])
     C = min((hh.W[end])^α_cp, hh.W[end])
-    # println(C, " ", hh.W[end])
-    s = (hh.I[end] - C)/hh.I[end]
     push!(hh.C, C)
+
+    s = (hh.I[end] - C)/hh.I[end]
     hh.s = s
 end
 
@@ -176,6 +172,8 @@ function set_consumption_budget_hh!(
 
     # Compute consumption budget
     compute_consumption_budget_hh!(hh, α_cp)
+
+    # println(hh.W[end], " ", hh.C[end])
 end
 
 
@@ -192,14 +190,19 @@ function place_orders_hh!(
     C_B = hh.C[end] * (1 - hh.c_L)
     C_L = hh.C[end] * hh.c_L
 
+    # println(hh.C[end], " ", C_B, " ", C_L)
+
     # Send order to queues of bp and lp
     for n_day in 1:n_days
 
-        order_B = (hh.id, C_B/n_days)
-        order_L = (hh.id, C_L/n_days)
-
         bp_choice_id = sample(hh.bp)
         lp_choice_id = sample(hh.lp)
+
+        # Compute how many units can be bought, make orders
+        q_B = (C_B/n_days) / model[bp_choice_id].p[end]
+        q_L = (C_L/n_days) / model[lp_choice_id].p[end]
+        order_B = (hh.id, q_B)
+        order_L = (hh.id, q_L)
 
         push!(model[bp_choice_id].hh_queue, order_B)
         push!(model[lp_choice_id].hh_queue, order_L)
@@ -368,15 +371,20 @@ end
 function update_sat_req_wage_hh!(
     hh::Household, 
     ϵ::Float64, 
-    UB :: Float64
+    UB::Float64
     )
 
     # Update satisfying wage as wage level over 4 periods
     # TODO: figure out if this should be wage or income
-    if length(hh.w) > 4
-        hh.wˢ = mean(hh.w[end-4:end])
+    # if length(hh.w) > 4
+    #     hh.wˢ = mean(hh.w[end-4:end])
+    # else
+    #     hh.wˢ = mean(hh.w)
+    # end
+    if length(hh.I) > 4
+        hh.wˢ = mean(hh.I[end-4:end]/hh.L)
     else
-        hh.wˢ = mean(hh.w)
+        hh.wˢ = mean(hh.I/hh.L)
     end
 
     if hh.employed
@@ -395,15 +403,32 @@ function get_income_hh!(
     hh::Household, 
     amount::Float64
     )
-
+    # println(amount)
     push!(hh.I, amount)
     if hh.employed
-        push!(hh.w, amount)
+        push!(hh.w, hh.w[end])
     end
-    push!(hh.W, amount + hh.W[end])
+    # println("1 ", amount, " ", hh.W[end])
+    # push!(hh.W, amount + hh.W[end])
+    # println("2 ", amount, " ", hh.W[end])
 end
 
 
+"""
+Updates household wealth
+"""
+function update_wealth_hh!(
+    hh::Household
+    )
+
+    W = hh.W[end] + hh.Iᵀ[end]
+    push!(hh.W, W)
+end
+
+
+"""
+Sets household to be unemployed.
+"""
 function set_unemployed_hh!(
     hh::Household
     )
@@ -414,7 +439,7 @@ end
 
 
 """
-Lets employee be hired, saves employer id and new earned wage.
+Lets employee be hired when previously unemployed, saves employer id and new earned wage.
 """
 function set_employed_hh!(
     hh::Household, 
@@ -425,6 +450,19 @@ function set_employed_hh!(
     hh.employed = true
     hh.employer_id = employer_id
     hh.T_unemp = 0
-    # println(wᴼ)
+    push!(hh.w, wᴼ)
+end
+
+
+"""
+Changes employer for households that were already employed.
+"""
+function change_employer_hh!(
+    hh::Household,
+    wᴼ::Float64,
+    employer_id::Int
+    )
+
+    hh.employer_id = employer_id
     push!(hh.w, wᴼ)
 end

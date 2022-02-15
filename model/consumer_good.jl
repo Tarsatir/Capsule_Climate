@@ -16,9 +16,10 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Nᵈ :: Float64               # desired inventory
     Q :: Vector{Float64}        # hist production
     Qᵉ :: Float64               # exp production
+    Qˢ :: Float64               # desired short-term production
     I :: Vector{Float64}        # hist investments
     Ξ :: Vector{Machine}        # capital stock
-    K :: Float64                # total amount of machines
+    # K :: Float64                # total amount of machines
     RS :: Vector{Machine}       # list of to-be replaced machines
     employees:: Vector{Int}     # employees list
     L :: Float64                # labor units
@@ -59,9 +60,10 @@ function initialize_cp(
         40,                     # Nᵈ: desired inventory 
         [40],                   # Q: hist production
         40,                     # Qᵉ: exp production
+        0,                      # Qˢ: desired short-term production
         [],                     # I: hist investments
         [machine_struct],       # Ξ: capital stock
-        40,                     # K: total amount of machines
+        # 40,                     # K: total amount of machines
         [],                     # RS: list of to-be replaced machines
         [],                     # employees: employees
         0,                      # L: labor units in company
@@ -79,7 +81,7 @@ function initialize_cp(
         0,                      # ΔDeb: changes in debt level
         Balance(               
                 1000,           # - N: inventory
-                0.0,            # - K: capital
+                40.0,           # - K: capital
                 0.0,            # - NW: liquid assets
                 0.0,            # - Deb: debt
                 0.0             # - EQ: equity
@@ -101,36 +103,22 @@ function plan_production_cp!(
     model::ABM
     )
 
-    # update amount of owned capital
+    # Update amount of owned capital
     update_K!(cp)
 
-    # update expected demand
+    # Update expected demand
     cp.Dᵉ = global_param.ωD * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
 
-    # println(cp.Dᵉ)
+    # Determine desired short-term production
+    cp.Qˢ = cp.Dᵉ + cp.Nᵈ - cp.balance.N
 
-    # determine desired short-term production
-    Qˢ = cp.Dᵉ + cp.Nᵈ - cp.balance.N
-
-    # println(cp.balance.N)
-
-    # print(Qˢ)
-
-    # update average productivity
+    # Update average productivity
     update_π!(cp)
 
-    # compute corresponding change in labor stock
-    # total_prod = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
-    total_K = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
-    # println(total_prod)
-    # println("L:", cp.L)
-    # println(Qˢ)
-    # println(Qˢ/total_prod)
+    # Compute corresponding change in labor stock
+    # total_K = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
 
-    # println(cp.balance.N, " ", cp.Dᵉ, " ", Qˢ/cp.π[end])
-
-    # ΔLᵈ = Qˢ/cp.π[end] - cp.L
-    ΔLᵈ = Qˢ/total_K - cp.L
+    ΔLᵈ = cp.Qˢ/cp.π[end] - cp.L
     if ΔLᵈ < -cp.L
         cp.ΔLᵈ = -cp.L
     else
@@ -143,12 +131,11 @@ function plan_production_cp!(
     # Update markup μ
     compute_μ_cp!(cp, global_param.υ, global_param.μ1)
 
-    # update cost of production c
-    c = compute_c_cp!(cp, Qˢ)
-    push!(cp.c, c)
+    # Update cost of production c
+    compute_c_cp!(cp)
 
     # Compute price
-    p = (1 + cp.μ) * c
+    p = (1 + cp.μ) * cp.c[end]
     push!(cp.p, p)
 end
 
@@ -167,31 +154,24 @@ function plan_investment_cp!(
     model::ABM
     )
 
-    # choose kp
+    # Choose kp
     p_star, c_star, chosen_kp_id, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp, model)
 
-    # plan replacement investments
+    # Plan replacement investments
     plan_replacement_cp!(cp, global_param, p_star, c_star)
 
-    # update LT demand
+    # Update LT demand
     cp.Qᵉ = global_param.ωQ * cp.Q[end] + (1 - global_param.ωQ) * cp.Qᵉ
 
-    # println("Q ", cp.Qᵉ, " ", cp.Q[end])
-
-    # update expected labor supply
+    # Update expected labor supply
     cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
 
-    # println("L ", cp.Lᵉ, " ", cp.L[end])
+    # Compute desired capital stock expansion
+    Kᵈ = cp.Qᵉ
 
-    # compute desired capital stock expansion
-    # Kᵈ = (cp.Qᵉ / cp.Lᵉ - sum(map(m -> m.A * m.freq, cp.Ξ)))/Aᵈ
-    Kᵈ = (cp.Qᵉ / cp.Lᵉ - cp.π[end])/Aᵈ
-
-    EIᵈ = Kᵈ - sum(map(machine -> machine.freq, cp.Ξ))
+    EIᵈ = Kᵈ - cp.balance.K
     
     Iₜ = EIᵈ + sum(map(machine -> machine.freq, cp.RS))
-
-    # println(EIᵈ, " ", Iₜ, " ", EIᵈ)
 
     # TODO does not check if funds are available
     if Iₜ > 0
@@ -204,14 +184,14 @@ end
 function update_K!(
     cp::ConsumerGoodProducer
     )
-    cp.K = sum(map(machine -> machine.freq, cp.Ξ))
+    cp.balance.K = sum(map(machine -> machine.freq, cp.Ξ))
 end
 
 
 function update_π!(
     cp::ConsumerGoodProducer
     )
-    π = sum(map(machine -> machine.freq / cp.K, cp.Ξ))
+    π = sum(map(machine -> (machine.freq * machine.A) / cp.balance.K, cp.Ξ))
     push!(cp.π, π)
 end
 
@@ -236,7 +216,6 @@ function plan_replacement_cp!(
             push!(cp.RS, machine)
         end
     end
-
 end
 
 
@@ -290,19 +269,20 @@ end
 """
 Produces goods based on planned production and actual amount of hired workers
 """
-function produce_goods_cp!(cp :: AbstractAgent)
+function produce_goods_cp!(
+    cp::ConsumerGoodProducer
+    )
 
     # compute weighted sum of machines
     # Ā = sum(map(machine -> machine.freq * machine.A, cp.Ξ))
 
-    # compute total production amount
-    Q = cp.π[end] * cp.L
+    # Compute total production amount
+    Q = min(cp.π[end] * cp.L, cp.balance.K, cp.Qˢ)
     push!(cp.Q, Q)
     
     # change inventory, will be amount households can buy from
     cp.balance.N += Q
     # push!(cp.balance.N, N)
-
 end
 
 
@@ -321,15 +301,14 @@ end
 
 
 function compute_c_cp!(
-    cp::ConsumerGoodProducer, 
-    Qˢ::Float64
-    )::Float64
+    cp::ConsumerGoodProducer,
+    )
 
-    total_K = sum(map(machine -> machine.freq, cp.Ξ))
-    Ā = sum(map(m -> m.A * m.freq / total_K, cp.Ξ))
+    # total_K = sum(map(machine -> machine.freq, cp.Ξ))
+    # Ā = sum(map(m -> m.A * m.freq / total_K, cp.Ξ))
     # c = (cp.w̄[end] * Qˢ / Ā) / Qˢ
     c = cp.w̄[end] / cp.π[end]
-    return c
+    push!(cp.c, c)
 end
 
 

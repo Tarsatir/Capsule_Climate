@@ -43,7 +43,7 @@ mutable struct Machine
     age :: Float64              # age of machine
 end
 
-function initialize_machine(η)
+function initialize_machine(η=0)
     machine_struct = Machine(
         1,                      # A: labor productivity machine
         0,                      # c: cost to produce machine

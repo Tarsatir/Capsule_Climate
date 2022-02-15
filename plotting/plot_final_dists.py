@@ -11,10 +11,10 @@ def plot_final_dist():
 
     fig, [ax1, ax2, ax3]= plt.subplots(1, 3, figsize=(12,5))
 
-    ax1.hist(df.all_I)
+    ax1.hist(df.all_I, bins=100)
     ax1.set_title('Income ($I_{i,t}$)')
 
-    ax2.hist(df.all_w)
+    ax2.hist(df.all_w, bins=100)
     ax2.set_title('Wages ($w_{i,t}$)')
 
     ax3.hist(df.all_W, bins=100)

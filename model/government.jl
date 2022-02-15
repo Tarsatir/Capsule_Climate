@@ -65,7 +65,8 @@ function levy_income_tax_gov!(
     for hh_id in all_hh
         hh = model[hh_id]
         total_τᴵ += hh.I[end] * gov_struct.τᴵ
-        hh.I[end] = hh.I[end] * (1 - gov_struct.τᴵ)
+        # hh.I[end] = hh.I[end] * (1 - gov_struct.τᴵ)
+        push!(hh.Iᵀ, hh.I[end] * (1 - gov_struct.τᴵ))
     end
 
     # add total income tax to government current account
@@ -114,7 +115,10 @@ function compute_budget_balance(
 end
 
 
-function set_salestax_zero_gov!(gov_struct)
+function set_salestax_zero_gov!(
+    gov_struct::Government
+    )
+
     push!(gov_struct.curr_acc.Rev_τˢ, 0)
 end
 

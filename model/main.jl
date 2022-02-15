@@ -193,8 +193,11 @@ function model_step!(
     for p_id in all_p
         pay_workers_p!(model[p_id], model)
     end
-
     pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed, model)
+
+    # Government receives income taxes
+    levy_income_tax_gov!(gov_struct, all_hh, model)
+
 
     # (5) Production takes place for cp and kp
     for cp_id in all_cp
@@ -205,30 +208,15 @@ function model_step!(
         produce_goods_kp!(model[kp_id])
     end
 
-    # Government receives income taxes
-    levy_income_tax_gov!(gov_struct, all_hh, model)
-
-    # (6) Households pick prefered products to buy and set budget and consumption package
-
-
-    # for hh_id in all_hh
-    #     # compute_exp_income_hh!(model[hh_id], 
-    #     #                        labormarket_struct.P_HU, 
-    #     #                        labormarket_struct.P_UU, 
-    #     #                        gov_struct.UB,
-    #     #                        model)
-    #     # set_savingsrate_hh!(model[hh_id], labormarket_struct.avg_T_unemp, gov_struct.UB)
-    #     set_consumption_budget_hh!(
-    #         model[hh_id],
-    #         global_param.a_σ,
-    #         global_param.b_σ, 
-    #         global_param.α_cp, 
-    #         model
-    #     )
-    # end
-
     
     # (6) Transactions take place on consumer market
+
+    # Households update wealth level
+    for hh_id in all_hh
+        update_wealth_hh!(model[hh_id])
+    end
+
+    # Consumer market process
     consumermarket_process!(
         all_hh,
         all_cp,

@@ -17,10 +17,9 @@ function fire_excess_workers_p!(
     # Remove employees from labor stock
     if length(fired_workers) > 0
 
-        p.L -= sum(map(hh_id -> model[hh_id].L, fired_workers))
-        p.employees = filter(hh_id -> hh_id ∉ fired_workers, p.employees)
-
-        # p.P_FE = length(fired_workers) / length(p.employees)
+        for hh_id in fired_workers
+            remove_worker_p!(p, model[hh_id])
+        end
 
         return fired_workers
     else
@@ -46,6 +45,19 @@ end
 
 
 """
+Removes worker from firm
+"""
+function remove_worker_p!(
+    p::AbstractAgent,
+    hh::Household
+    )
+
+    p.L -= hh.L
+    p.employees = filter(hh_id -> hh_id ≠ hh.id, p.employees)
+end
+
+
+"""
 Loop over workers and pay out wage.
 """
 function pay_workers_p!(
@@ -55,6 +67,7 @@ function pay_workers_p!(
     for hh_id in p.employees
         hh = model[hh_id]
         total_wage = hh.w[end] * hh.L
+        # println(hh.w[end], " ", hh.L, " ", total_wage)
         get_income_hh!(hh, total_wage)
     end
 end

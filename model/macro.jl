@@ -1,37 +1,44 @@
 
 mutable struct MacroEconomy
-    GDP :: Array{Float64}       # GDP over time
-    GDP_I :: Array{Float64}     # income share of GDP over time
-    GDP_Π_cp :: Array{Float64}  # profit share of GDP of cp over time
-    GDP_Π_kp :: Array{Float64}  # profit share of GDP of kp over time
-    CPI :: Array{Float64}       # inflation over time
-    C :: Array{Float64}         # aggregate consumption over time
-    w̄_avg :: Array{Float64}     # average wage over time
-    w̄_std :: Array{Float64}     # std of wage over time
-    Ī_avg :: Array{Float64}     # average income over time
-    Ī_std :: Array{Float64}     # std of income over time
-    B̄_avg :: Array{Float64}     # average of budget over time
-    B̄_std :: Array{Float64}     # std of budget over time
-    U :: Array{Float64}         # unemployment over time
-    Exp_UB :: Array{Float64}    # total spending on UB
-    AB :: Array{Float64}        # average labor productivity over time
-    l :: Array{Float64}         # unfilled demand over time
-    E_bar :: Array{Float64}     # average competetiveness over time
-    r :: Array{Float64}         # interest rate over time
-    Ls :: Array{Float64}        # labor supply over time
-    Ld :: Array{Float64}        # labor demand over time
+    GDP :: Vector{Float64}       # GDP over time
+    GDP_I :: Vector{Float64}     # income share of GDP over time
+    GDP_Π_cp :: Vector{Float64}  # profit share of GDP of cp over time
+    GDP_Π_kp :: Vector{Float64}  # profit share of GDP of kp over time
+    CPI :: Vector{Float64}       # inflation over time
+    C :: Vector{Float64}         # aggregate consumption over time
+
+    # Wage statistics
+    w̄_avg :: Vector{Float64}     # average wage over time
+    w̄_std :: Vector{Float64}     # std of wage over time
+    wʳ_avg :: Vector{Float64}   # average requested wage over time
+    wʳ_std :: Vector{Float64}   # std of requested wage over time
+    wˢ_avg :: Vector{Float64}   # average of satisfying wage over time
+    wˢ_std :: Vector{Float64}   # std of satisfying wage over time
+
+    Ī_avg :: Vector{Float64}     # average income over time
+    Ī_std :: Vector{Float64}     # std of income over time
+    B̄_avg :: Vector{Float64}     # average of budget over time
+    B̄_std :: Vector{Float64}     # std of budget over time
+    U :: Vector{Float64}         # unemployment over time
+    Exp_UB :: Vector{Float64}    # total spending on UB
+    AB :: Vector{Float64}        # average labor productivity over time
+    l :: Vector{Float64}         # unfilled demand over time
+    E_bar :: Vector{Float64}     # average competetiveness over time
+    r :: Vector{Float64}         # interest rate over time
+    Ls :: Vector{Float64}        # labor supply over time
+    Ld :: Vector{Float64}        # labor demand over time
 
     # Changes in savings rate
-    s̄_avg :: Array{Float64}     # average savings rate over time
-    s̄_std :: Array{Float64}     # std of savings over time
+    s̄_avg :: Vector{Float64}     # average savings rate over time
+    s̄_std :: Vector{Float64}     # std of savings over time
 
     # Changes in labor demand
-    ΔL̄_avg :: Array{Float64}    # average desired labor change
-    ΔL̄_std :: Array{Float64}    # std desired labor change
-    ΔL̄_cp_avg :: Array{Float64} # average desired over time for cp
-    ΔL̄_cp_std :: Array{Float64} # std desired labor change for cp
-    ΔL̄_kp_avg :: Array{Float64} # ' ' for kp
-    ΔL̄_kp_std :: Array{Float64}
+    ΔL̄_avg :: Vector{Float64}    # average desired labor change
+    ΔL̄_std :: Vector{Float64}    # std desired labor change
+    ΔL̄_cp_avg :: Vector{Float64} # average desired over time for cp
+    ΔL̄_cp_std :: Vector{Float64} # std desired labor change for cp
+    ΔL̄_kp_avg :: Vector{Float64} # ' ' for kp
+    ΔL̄_kp_std :: Vector{Float64}
 end
 
 
@@ -43,8 +50,14 @@ function initialize_macro()
         [],                     # profit share of GDP of kp over time
         [],                     # CPI: inflation rate
         [],                     # aggregate consumption
+
         [],                     # average of wage over time
         [],                     # std of wage over time
+        [],
+        [],
+        [],
+        [],
+
         [],                     # average income over time
         [],                     # std of income over time
         [],                     # average budget over time
@@ -74,7 +87,7 @@ end
 Updates macro stats after each time step
 """
 function update_macro_timeseries(
-    macro_struct, 
+    macro_struct::MacroEconomy, 
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
     all_kp::Vector{Int}, 
@@ -117,11 +130,21 @@ function update_macro_timeseries(
     push!(macro_struct.s̄_avg, s̄_avg)
     push!(macro_struct.s̄_std, s̄_std)
 
-    # TODO: also include kp
+    # Wage and income statistics
     w̄_avg = mean(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
     w̄_std = std(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
     push!(macro_struct.w̄_avg, w̄_avg)
     push!(macro_struct.w̄_std, w̄_std)
+
+    wʳ_avg = mean(map(hh -> hh.wʳ, all_hh_str))
+    wʳ_std = std(map(hh -> hh.wʳ, all_hh_str))
+    push!(macro_struct.wʳ_avg, wʳ_avg)
+    push!(macro_struct.wʳ_std, wʳ_std)
+
+    wˢ_avg = mean(map(hh -> hh.wˢ, all_hh_str))
+    wˢ_std = std(map(hh -> hh.wˢ, all_hh_str))
+    push!(macro_struct.wˢ_avg, wˢ_avg)
+    push!(macro_struct.wˢ_std, wˢ_std)
 
     Ī_avg = mean(map(hh -> hh.I[end], all_hh_str))
     Ī_std = std(map(hh -> hh.I[end], all_hh_str))
@@ -140,7 +163,7 @@ function compute_GDP!(
     all_hh_str::Vector{Household},
     all_cp_str::Vector{ConsumerGoodProducer},
     all_kp_str::Vector{CapitalGoodProducer},
-    macro_struct
+    macro_struct::MacroEconomy
     )
     total_I = sum(map(hh -> hh.I[end], all_hh_str))
     push!(macro_struct.GDP_I, total_I)

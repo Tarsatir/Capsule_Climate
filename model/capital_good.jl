@@ -1,7 +1,3 @@
-using Distributions
-using StatsBase
-
-
 mutable struct CapitalGoodProducer <: AbstractAgent
     id :: Int                               # global id
     kp_i :: Int                             # kp id, used for distance matrix
@@ -179,24 +175,29 @@ function imitate_technology_kp(
 end
 
 
+"""
+Determines new labor productivity of machine produced for cp
+"""
 function update_At_kp(
-    A_last :: Float64, 
-    global_param
-    )
-    # determines new labor productivity of machine produced for cp
+    A_last::Float64, 
+    global_param::GlobalParam
+    )::Float64
+    
     κ_A = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
     A_t_in = A_last*(1 + κ_A)
     return A_t_in
 end
 
 
+"""
+Determines new labor productivity of own production method.
+"""
 function update_Bt_kp(
-    B_last :: Float64, 
-    global_param
-    )
-    # determines new labor productivity of own production method 
+    B_last::Float64, 
+    global_param::GlobalParam
+    )::Float64
+
     κ_B = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
-    # println("κ ", κ_B)
     B_t_in = B_last*(1 + κ_B)
     return B_t_in
 end
@@ -253,11 +254,10 @@ function produce_goods_kp!(
     kp::CapitalGoodProducer
     )
 
-    # println(kp.B[end] * kp.L, " ", kp.O)
-
-    # check if enough labor available for all machines
+    # Check if enough labor available for all machines
     unocc_L = kp.L
     for order in kp.orders
+        # Only push order in production queue if enough labor available
         req_L = order[2] / kp.B[end]
         if unocc_L > req_L
             push!(kp.prod_queue, order)
@@ -288,7 +288,6 @@ function send_orders_kp!(
         machine = initialize_machine()
         machine.A = kp.A[end]
         machine.freq = Iₜ
-        # TODO check if this is correct
 
         tot_freq += machine.freq
 
@@ -314,7 +313,7 @@ end
 
 
 function reset_order_queue_kp!(
-    kp:: CapitalGoodProducer
+    kp::CapitalGoodProducer
     )
     kp.orders = []
 end
