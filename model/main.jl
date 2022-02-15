@@ -236,6 +236,10 @@ function model_step!(
         send_orders_kp!(model[kp_id], model)
     end
 
+    for cp_id in all_cp
+        increase_machine_age_cp!(model[cp_id])
+    end
+
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(gov_struct, all_p, model)
     compute_budget_balance(gov_struct)

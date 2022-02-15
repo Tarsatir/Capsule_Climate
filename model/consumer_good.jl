@@ -135,8 +135,7 @@ function plan_production_cp!(
     compute_c_cp!(cp)
 
     # Compute price
-    p = (1 + cp.μ) * cp.c[end]
-    push!(cp.p, p)
+    compute_p_cp!(cp)
 end
 
 
@@ -149,16 +148,16 @@ Plans production amounts for consumer good producer (long term)
 """
 function plan_investment_cp!(
     cp::ConsumerGoodProducer, 
-    global_param, 
+    global_param::GlobalParam, 
     all_kp::Vector{Int},
     model::ABM
     )
 
     # Choose kp
-    p_star, c_star, chosen_kp_id, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp, model)
+    p_star, chosen_kp_id, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp, model)
 
     # Plan replacement investments
-    plan_replacement_cp!(cp, global_param, p_star, c_star)
+    plan_replacement_cp!(cp, global_param, p_star, Aᵈ)
 
     # Update LT demand
     cp.Qᵉ = global_param.ωQ * cp.Q[end] + (1 - global_param.ωQ) * cp.Qᵉ
@@ -172,6 +171,12 @@ function plan_investment_cp!(
     EIᵈ = Kᵈ - cp.balance.K
     
     Iₜ = EIᵈ + sum(map(machine -> machine.freq, cp.RS))
+
+    # if Iₜ > 10000
+    #     println(p_star)
+    #     println(EIᵈ, " ", Iₜ)
+    #     println("length ", length(cp.Ξ))
+    # end
 
     # TODO does not check if funds are available
     if Iₜ > 0
@@ -199,20 +204,23 @@ end
 # Dosi et al (2013) Eq. 17, computes cost of production
 cop(p_t, c_t, b) = p_t + b * c_t
 
+
 """
 Plans replacement investment based on age machines and available new machines
 """
 function plan_replacement_cp!(
     cp::ConsumerGoodProducer, 
-    global_param,
+    global_param::GlobalParam,
     p_star::Float64, 
-    c_star::Float64
+    Aᵈ::Float64
     )
 
-    cp.RS = []
+    cp.RS = Vector{Machine}()
 
     for machine in cp.Ξ
-        if p_star/(machine.A - c_star) < global_param.b || machine.age >= global_param.η
+        c_A = cp.w̄[end] / machine.A
+        c_star = cp.w̄[end] / Aᵈ
+        if p_star/(c_A - c_star) <= global_param.b || machine.age >= global_param.η
             push!(cp.RS, machine)
         end
     end
@@ -224,7 +232,7 @@ function choose_producer_cp(
     b::Int, 
     all_kp::Vector{Int},
     model::ABM
-    )
+    )::Tuple{Float64, Int, Float64}
 
     if (length(cp.brochures) == 0)
         # in case of no brochures, pick a random kp
@@ -234,7 +242,7 @@ function choose_producer_cp(
         c_star = brochure[3]
         A_star = brochure[4]
         
-        return p_star, c_star, chosen_kp_id, A_star
+        return p_star, chosen_kp_id, A_star
     end
 
     # take first producer as best, then compare to other producers
@@ -262,7 +270,7 @@ function choose_producer_cp(
 
     end
 
-    return p_star, c_star, chosen_kp_id, A_star
+    return p_star, chosen_kp_id, A_star
 end
 
 
@@ -273,16 +281,12 @@ function produce_goods_cp!(
     cp::ConsumerGoodProducer
     )
 
-    # compute weighted sum of machines
-    # Ā = sum(map(machine -> machine.freq * machine.A, cp.Ξ))
-
     # Compute total production amount
     Q = min(cp.π[end] * cp.L, cp.balance.K, cp.Qˢ)
     push!(cp.Q, Q)
     
-    # change inventory, will be amount households can buy from
+    # Change inventory, will be amount households can buy from
     cp.balance.N += Q
-    # push!(cp.balance.N, N)
 end
 
 
@@ -304,11 +308,17 @@ function compute_c_cp!(
     cp::ConsumerGoodProducer,
     )
 
-    # total_K = sum(map(machine -> machine.freq, cp.Ξ))
-    # Ā = sum(map(m -> m.A * m.freq / total_K, cp.Ξ))
-    # c = (cp.w̄[end] * Qˢ / Ā) / Qˢ
     c = cp.w̄[end] / cp.π[end]
     push!(cp.c, c)
+end
+
+
+function compute_p_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    p = (1 + cp.μ) * cp.c[end]
+    push!(cp.p, p)
 end
 
 
@@ -321,7 +331,6 @@ function order_machines_cp!(
 
     order = (cp.id, Iₜ)
     push!(model[chosen_kp_id].orders, order)
-
 end
 
 
@@ -359,46 +368,11 @@ function send_orders_cp!(
 end
 
 
-# """
-# Determines if amount of demanded goods are available and transacts
-# """
-# function transact_cp!(
-#     cp::ConsumerGoodProducer, 
-#     hh::Household, 
-#     N_G::Float64,
-#     τˢ::Float64
-#     )::Tuple{Bool, Float64}
-
-#     # Check if enough inventory available, then transact
-#     if N_G < cp.balance.N[end]
-
-#         cp.balance.N -= N_G
-#         cp.D[end] += N_G
-#         hh.C -= cp.p[end] * (1 + τˢ) * N_G
-
-#         sales_tax = cp.p[end] * τˢ * N_G
-
-#         return true, sales_tax
-#     else 
-#         cp.D[end] += cp.balance.N
-#         hh.C -= cp.p[end] * (1 + τˢ) * cp.balance.N
-#         cp.balance.N = 0
-
-#         sales_tax = cp.p[end] * τˢ * cp.balance.N
-        
-#         return false, sales_tax
-#     end
-
-# end
-
-
 function compute_profits_cp!(
     cp::ConsumerGoodProducer
     )
     # TODO incorporate interest rates
-    # println(cp.D[end])
     Π = cp.D[end] * cp.p[end] - cp.c[end] * cp.D[end]
-    # println("Π ", Π)
     push!(cp.Π, Π)
 end
 
@@ -417,6 +391,16 @@ function reset_queue_cp!(
 end
 
 
+function increase_machine_age_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    for machine in cp.Ξ
+        machine.age += 1
+    end
+end
+
+
 """
 Lets cp receive machine and include it in capital stock.
 """
@@ -426,22 +410,13 @@ function receive_machines!(
     Iₜ::Float64,
     )
 
-    # remove machines that were written off
-
-    # println("yeet2 ", cp.Ξ)
-    # println("yoot ", cp.RS)
-    # println("yaat ", filter(m -> m ∉ cp.RS, cp.Ξ))
-
-    # println("before ", length(cp.Ξ), " ", length(cp.RS))
+    # Remove machines that were written off
+    # println("1 ", length(cp.Ξ), " ", length(cp.RS))
     filter!(machine -> machine ∉ cp.RS, cp.Ξ)
-    # println("after ", length(cp.Ξ))
-    # println()
+    # println("2 ", length(cp.Ξ))
 
-    # add new machine to capital stock
+    # Add new machine to capital stock
     push!(cp.Ξ, machine)
-
-    # println("yeet3 ", cp.Ξ)
-
     cp.balance.NW -= Iₜ
 
     # TODO permutate the balance (in terms of capital and debt)

@@ -78,28 +78,28 @@ function innovate_kp!(
     model::ABM
     )
     
-    # determine levels of R&D, and how to divide under IN and IM
+    # Determine levels of R&D, and how to divide under IN and IM
     set_RD_kp!(kp, global_param.ξ, global_param.ν)
     tech_choices = [(kp.A[end], kp.B[end])]
 
-    # determine innovation of machines (Dosi et al (2010); eq. 4)
+    # Determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN[end])
-    if (rand(Bernoulli(θ_IN)) > rand())
+    if rand(Bernoulli(θ_IN))
         A_t_in = update_At_kp(kp.A[end], global_param)
         B_t_in = update_Bt_kp(kp.B[end], global_param)
         push!(tech_choices, (A_t_in, B_t_in))
     end
 
-    # determine immitation of competitors
+    # Determine immitation of competitors
     θ_IM = 1 - exp(-global_param.ζ * kp.IM[end])
-    if (rand(Bernoulli(θ_IM)) > rand())
+    if rand(Bernoulli(θ_IM))
         A_t_im, B_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
         push!(tech_choices, (A_t_im, B_t_im))
     end
 
-    # make choice between possible technologies
+    # Make choice between possible technologies
     if length(tech_choices) == 1
-        # if no new technologies, keep current technologies
+        # If no new technologies, keep current technologies
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
         c_h = kp.w̄[end]/kp.B[end]
@@ -107,7 +107,7 @@ function innovate_kp!(
         push!(kp.c, c_h)
         push!(kp.p, p_h)
     else
-        # if new technologies, update price data
+        # If new technologies, update price data
         c_h = map(x -> kp.w̄[end]/x[1], tech_choices)
         p_h = map(x -> (1 + global_param.μ1)*x, c_h)
         r_h = p_h + global_param.b * c_h
@@ -121,6 +121,9 @@ function innovate_kp!(
 end
 
 
+"""
+Creates brochures and sends to potential clients.
+"""
 function send_brochures_kp!(
     kp::CapitalGoodProducer,
     all_cp::Vector{Int}, 
@@ -128,22 +131,22 @@ function send_brochures_kp!(
     model::ABM
     )
 
-    # set up brochure
+    # Set up brochure
     brochure = (kp.id, kp.p[end], kp.c[end], kp.A[end])
     kp.brochure = brochure
 
-    # send brochure to historical clients
+    # Send brochure to historical clients
     for cp_id in kp.HC
         cp = model[cp_id]
         push!(cp.brochures, brochure)
     end
 
-    # select new clients, send brochure
+    # Select new clients, send brochure
     NC_potential = setdiff(all_cp, kp.HC)
 
     n_choices = Int(round(global_param.γ * length(kp.HC)))
     
-    # send brochures to new clients
+    # Send brochures to new clients
     NC = sample(NC_potential, n_choices; replace=false)
     for cp_id in NC
         cp = model[cp_id]
@@ -154,7 +157,6 @@ end
 
 
 """
-
 Uses inverse distances as weights for choice competitor to immitate
 """
 function imitate_technology_kp(
@@ -183,8 +185,10 @@ function update_At_kp(
     global_param::GlobalParam
     )::Float64
     
-    κ_A = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
-    A_t_in = A_last*(1 + κ_A)
+    κ_A = rand(Beta(global_param.α1, global_param.β1))
+    κ_A = global_param.κ_lower + κ_A * (global_param.κ_upper - global_param.κ_lower)
+
+    A_t_in = A_last * (1 + κ_A)
     return A_t_in
 end
 
@@ -197,7 +201,9 @@ function update_Bt_kp(
     global_param::GlobalParam
     )::Float64
 
-    κ_B = min(rand(Beta(global_param.α1, global_param.β1)), global_param.κ_upper)
+    κ_B = rand(Beta(global_param.α1, global_param.β1))
+    κ_B = global_param.κ_lower + κ_B * (global_param.κ_upper - global_param.κ_lower)
+
     B_t_in = B_last*(1 + κ_B)
     return B_t_in
 end
@@ -207,6 +213,7 @@ function set_price_kp!(
     kp::CapitalGoodProducer, 
     μ1::Float64, 
     )
+
     c_t = kp.w̄[end] / kp.B[end]
     p_t = (1 + μ1) * c_t
     push!(kp.c, c_t)
@@ -223,11 +230,12 @@ function set_RD_kp!(
     ξ::Float64, 
     ν::Float64
     )
-    # determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
+
+    # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
     RD_new = ν * kp.S[end]
     push!(kp.RD, RD_new)
 
-    # decide fractions innovation (IN) and immitation (IM), 
+    # Decide fractions innovation (IN) and immitation (IM), 
     # (Dosi et al, 2010; eq. 3.5)
     IN_t_new = ξ * RD_new
     IM_t_new = (1 - ξ) * RD_new
@@ -265,7 +273,7 @@ function produce_goods_kp!(
         end
     end
 
-    # reset order amount back to zero
+    # Reset order amount back to zero
     kp.O = 0
 end
 
