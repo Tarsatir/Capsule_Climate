@@ -10,19 +10,23 @@ using RecursiveArrayTools
 
 # Include files
 include("../results/write_results.jl")
-include("custom_schedulers.jl")
+include("helpers/custom_schedulers.jl")
+include("helpers/dist_matrix.jl")
 include("global_parameters.jl")
-include("misc.jl")
-include("accounting/accounting_firms.jl")
-include("accounting/accounting_govt.jl")
+
+include("objects/accounting_firms.jl")
+include("objects/accounting_govt.jl")
+include("objects/machine.jl")
+
+include("macro_markets/labormarket.jl")
+include("macro_markets/consumermarket.jl")
+include("macro_markets/macro.jl")
+
 include("agents/government.jl")
-include("labormarket.jl")
-include("consumermarket.jl")
 include("agents/household.jl")
 include("agents/consumer_good.jl")
 include("agents/capital_good.jl")
 include("agents/general_producers.jl")
-include("macro.jl")
 
 
 """
