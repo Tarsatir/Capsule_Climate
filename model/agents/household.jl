@@ -44,7 +44,7 @@ function initialize_hh(
         1.0,                    # wʳ: requested wage
         0,                      # T_unemp: time periods unemployed
 
-        [],                     # I: hist income
+        [100],                  # I: hist income
         [],                     # Iᵀ: hist taxed income
         # [10],                   # S: total savings
         0,                      # s: savings rate
@@ -381,17 +381,21 @@ function update_sat_req_wage_hh!(
     # else
     #     hh.wˢ = mean(hh.w)
     # end
+
     if length(hh.I) > 4
         hh.wˢ = mean(hh.I[end-4:end]/hh.L)
     else
         hh.wˢ = mean(hh.I/hh.L)
     end
 
+
     if hh.employed
         hh.wʳ = hh.wʳ * (1 + ϵ)
     else
         hh.wʳ = max(UB/hh.L, hh.wˢ)
     end
+
+    
 
 end
 
@@ -403,6 +407,9 @@ function get_income_hh!(
     hh::Household, 
     amount::Float64
     )
+    # if isnan(amount)
+    #     println("yeet ", hh.employer_id)
+    # end
     # println(amount)
     push!(hh.I, amount)
     if hh.employed

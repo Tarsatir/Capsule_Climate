@@ -67,7 +67,9 @@ function pay_workers_p!(
     for hh_id in p.employees
         hh = model[hh_id]
         total_wage = hh.w[end] * hh.L
-        # println(hh.w[end], " ", hh.L, " ", total_wage)
+        # if isnan(total_wage)
+        #     println(hh.w[end], " ", hh.L, " ", total_wage)
+        # end
         get_income_hh!(hh, total_wage)
     end
 end

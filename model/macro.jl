@@ -174,6 +174,8 @@ function compute_GDP!(
     total_Π_kp = sum(map(kp -> kp.Π[end], all_kp_str))
     push!(macro_struct.GDP_Π_kp, total_Π_kp)
 
+    println(total_I, " ", total_Π_cp, " ", total_Π_kp)
+
     GDP = total_I + total_Π_cp + total_Π_kp
     push!(macro_struct.GDP, GDP)
 end

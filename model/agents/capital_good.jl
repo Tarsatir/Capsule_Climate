@@ -84,6 +84,7 @@ function innovate_kp!(
 
     # Determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN[end])
+    # println(θ_IN, " ", kp.IN[end], " ")
     if rand(Bernoulli(θ_IN))
         A_t_in = update_At_kp(kp.A[end], global_param)
         B_t_in = update_Bt_kp(kp.B[end], global_param)
@@ -293,16 +294,17 @@ function send_orders_kp!(
         cp_id = order[1]
         Iₜ = order[2]
 
-        machine = initialize_machine()
+        machine = initialize_machine(Iₜ, 0, kp.A[end])
         machine.A = kp.A[end]
-        machine.freq = Iₜ
 
         tot_freq += machine.freq
 
         receive_machines!(model[cp_id], machine, Iₜ)
     end
     
+    
     S = tot_freq * kp.p[end]
+    # println(S, " ", tot_freq, " ", kp.p[end])
     Π = tot_freq * (kp.p[end] - kp.c[end])
 
     # println(Π, " ", tot_freq)

@@ -235,7 +235,9 @@ function matching_lm(
                 # meet the labor target
                 p.wᴼ = model[to_be_hired[end]].wʳ
 
-                # println(p.wᴼ)
+                if isnan(p.wᴼ)
+                    println("yoo ", p.wᴼ)
+                end
 
                 # Hire selected workers
                 for hh_id in to_be_hired

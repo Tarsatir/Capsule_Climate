@@ -1,6 +1,3 @@
-using Statistics
-
-
 """
 Defines struct for consumer good producer
 """
@@ -19,19 +16,17 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Qˢ :: Float64               # desired short-term production
     I :: Vector{Float64}        # hist investments
     Ξ :: Vector{Machine}        # capital stock
-    # K :: Float64                # total amount of machines
     RS :: Vector{Machine}       # list of to-be replaced machines
     employees:: Vector{Int}     # employees list
     L :: Float64                # labor units
     Lᵉ:: Float64                # exp labor force
     ΔLᵈ :: Float64              # desired change in labor force
-    # P_FE :: Float64             # probability of getting fired while employed
     w̄ :: Vector{Float64}        # wage level
     wᴼ :: Float64               # offered wage
     brochures :: Vector         # brochures from kp
     π :: Vector{Float64}        # hist productivity
     f :: Vector{Float64}        # hist market share
-    μ :: Float64                # hist markup
+    μ :: Float64                # markup rate
     Π :: Vector{Float64}        # hist profits
     cI :: Float64               # internal funds for investments
     ΔDeb :: Float64             # changes in debt level
@@ -41,7 +36,7 @@ end
 
 function initialize_cp(
     id :: Int, 
-    machine_struct, 
+    machines::Vector{Machine}, 
     n_consrgood :: Int, 
     type_good :: String,
     n_init_emp_cp :: Int
@@ -56,20 +51,17 @@ function initialize_cp(
         [1100],                 # D: hist demand
         1100,                   # Dᵉ exp demand
         Vector(),               # hh_queue: vector containing ids of demanding households           
-        # [36e3],               # N: hist inventory
-        40,                     # Nᵈ: desired inventory 
-        [40],                   # Q: hist production
-        40,                     # Qᵉ: exp production
+        1000,                   # Nᵈ: desired inventory 
+        [1100],                 # Q: hist production
+        1100,                   # Qᵉ: exp production
         0,                      # Qˢ: desired short-term production
         [],                     # I: hist investments
-        [machine_struct],       # Ξ: capital stock
-        # 40,                     # K: total amount of machines
+        machines,               # Ξ: capital stock
         [],                     # RS: list of to-be replaced machines
         [],                     # employees: employees
         0,                      # L: labor units in company
         n_init_emp_cp * 100,    # Lᵉ: exp labor force
         0,                      # ΔLᵈ: desired change in labor force
-        # 0,                      # P_FE: probability of getting fired while employed
         [1.0],                  # w: wage level
         1.0,                    # wᴼ: offered wage
         [],                     # brochures from kp
@@ -80,11 +72,11 @@ function initialize_cp(
         0,                      # cI: internal funds for investments
         0,                      # ΔDeb: changes in debt level
         Balance(               
-                1000,           # - N: inventory
-                40.0,           # - K: capital
-                0.0,            # - NW: liquid assets
-                0.0,            # - Deb: debt
-                0.0             # - EQ: equity
+                1000,                   # - N: inventory
+                n_init_emp_cp * 100,    # - K: capital
+                1000.0,                 # - NW: liquid assets
+                0.0,                    # - Deb: debt
+                0.0                     # - EQ: equity
             )
     )
     return cp
@@ -124,6 +116,8 @@ function plan_production_cp!(
     else
         cp.ΔLᵈ = ΔLᵈ
     end
+
+    # println(ΔLᵈ)
 
     # Update average wage w̄
     update_wage_level_p!(cp, model)
@@ -189,6 +183,7 @@ end
 function update_K!(
     cp::ConsumerGoodProducer
     )
+
     cp.balance.K = sum(map(machine -> machine.freq, cp.Ξ))
 end
 
@@ -196,6 +191,7 @@ end
 function update_π!(
     cp::ConsumerGoodProducer
     )
+
     π = sum(map(machine -> (machine.freq * machine.A) / cp.balance.K, cp.Ξ))
     push!(cp.π, π)
 end

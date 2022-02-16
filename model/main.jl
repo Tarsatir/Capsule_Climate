@@ -13,13 +13,15 @@ include("../results/write_results.jl")
 include("custom_schedulers.jl")
 include("global_parameters.jl")
 include("misc.jl")
-include("government.jl")
+include("accounting/accounting_firms.jl")
+include("accounting/accounting_govt.jl")
+include("agents/government.jl")
 include("labormarket.jl")
 include("consumermarket.jl")
-include("household.jl")
-include("consumer_good.jl")
-include("capital_good.jl")
-include("general_producers.jl")
+include("agents/household.jl")
+include("agents/consumer_good.jl")
+include("agents/capital_good.jl")
+include("agents/general_producers.jl")
 include("macro.jl")
 
 
@@ -84,10 +86,19 @@ function initialize_model(;
         end
 
         # Initialize capital good stock
-        # Machines have random age as to allow replacement in early periods
-        machine_struct = initialize_machine(global_param.η)
+        n_machines_init = 40  #TODO: put this in parameters
 
-        cp = initialize_cp(id, machine_struct, n_consrgood, type_good, n_init_emp_cp)
+        machines = Vector{Machine}()
+        K = n_init_emp_cp * 100
+        for n in 1:n_machines_init
+            # Machines have random age as to allow replacement in early periods
+            freq = K/n_machines_init
+            machine_struct = initialize_machine(freq, global_param.η)
+            push!(machines, machine_struct)
+        end
+
+        cp = initialize_cp(id, machines, n_consrgood, type_good, n_init_emp_cp)
+        update_K!(cp)
         add_agent!(cp, model)
 
         id += 1
@@ -134,10 +145,10 @@ end
 
 
 function model_step!(
-    global_param, 
-    macro_struct, 
-    gov_struct, 
-    labormarket_struct,
+    global_param::GlobalParam, 
+    macro_struct::MacroEconomy, 
+    gov_struct::Government, 
+    labormarket_struct::LaborMarket,
     model::ABM
     )
 
