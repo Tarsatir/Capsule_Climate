@@ -8,13 +8,15 @@ struct GlobalParam
     κ_upper :: Float64              # 2nd beta dist support
     γ :: Float64                    # new custommer sample parameter
     μ1 :: Float64                   # kp markup rule
+    r :: Float64                    # interest rate
     ι :: Float64                    # desired inventories
     b :: Int                        # payback period
     η :: Int                        # physical scrapping age
     υ :: Float64                    # markup coefficient
     ω :: Float64                    # competetiveness weights
     χ :: Float64                    # replicator dynamics coeff
-    Λ :: Float64                    # max debt/sales ratio
+    Λ :: Float64                    # max debt/sales ratio, regular debt
+    Λ_max :: Float64                # max debt/sales ratio, including credit
     φ1 :: Float64                   # 1st Uniform dist support, cp entrant cap
     φ2 :: Float64                   # 2nd Uniform dist support, cp entrant cap
     φ3 :: Float64                   # 1st Uniform dist support, cp entrant liq
@@ -26,11 +28,13 @@ struct GlobalParam
     ωD :: Float64                   # memory parameter cp demand estimation
     ωQ :: Float64                   # memory parameter cp quantity estimation
     ωL :: Float64                   # memory parameter cp labor supply estimation
+    ωW :: Float64                   # memory parameter cp offered wage estimation
     α_cp :: Float64                 # parameter controlling MPC of consumers
     c_L_max :: Float64              # maximum share consumed on luxury goods
     a_σ :: Float64                  # 1st parameter governing logistic function
     b_σ :: Float64                  # 2nd parameter governing logistic function
     ψ_E :: Float64                  # chance of employed worker looking for a better paying job
+    Nᵈ_share::Float64
 end
 
 
@@ -45,13 +49,15 @@ function initialize_global_params()
         0.15,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
         0.2,                        # μ1: kp markup rule
+        0.01,                       # r: (annual) interest rate
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
         20,                         # η: physical scrapping age
         0.04,                       # υ: markup coefficient
         1.0,                        # ω: competetiveness weights
         1.0,                        # χ: replicator dynamics coeff
-        2.0,                        # Λ: max debt/sales ratio
+        2.0,                        # Λ: max debt/sales ratio regular debt
+        2.5,                        # Λ_max: max debt/sales ratio including credit
         0.1,                        # φ1: 1st Uniform dist support, cp entrant cap
         0.9,                        # φ2: 2nd Uniform dist support, cp entrant cap
         0.1,                        # φ3: 1st Uniform dist support, cp entrant liq
@@ -61,13 +67,15 @@ function initialize_global_params()
         0.75, # From rer98          # cu: capacity utilization for cp
         0.02,                       # ϵ: minimum desired wage increase rate
         0.1,                        # ωD: memory parameter cp demand estimation
-        0.1,                        # ωQ: memory parameter cp quantity estimation
-        0.1,                        # ωL: memory parameter cp labor supply estimation
-        0.9,                        # α_cp: parameter controlling MPC of consumers
+        0.5,                        # ωQ: memory parameter cp quantity estimation
+        0.5,                        # ωL: memory parameter cp labor supply estimation
+        0.5,                        # ωW: memory parameter cp offered wage parameter
+        0.99,                       # α_cp: parameter controlling MPC of consumers
         0.7,                        # c_L_max
-        100,                        # a_σ
-        3,                          # b_σ
-        0.05                        # ψ_E, chance of employed worker looking for a better paying job
+        1000,                       # a_σ
+        30,                         # b_σ
+        0.05,                       # ψ_E, chance of employed worker looking for a better paying job
+        0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
     )
     return global_param
 end

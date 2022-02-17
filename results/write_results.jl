@@ -17,6 +17,16 @@ function save_macro_data(macro_struct)
                    GDP_I=macro_struct.GDP_I,
                    GDP_cp=macro_struct.GDP_Π_cp,
                    GDP_kp=macro_struct.GDP_Π_kp,
+                   M=macro_struct.M,
+                   M_hh=macro_struct.M_hh,
+                   M_cp=macro_struct.M_cp,
+                   M_kp=macro_struct.M_kp,
+                   M_gov=macro_struct.M_gov,
+
+                   Deb_tot=macro_struct.Deb_tot,
+                   Deb_cp=macro_struct.Deb_cp,
+                   Deb_kp=macro_struct.Deb_kp,
+
                    UR=macro_struct.U,
                    Exp_UB=macro_struct.Exp_UB,
                    s_avg=macro_struct.s̄_avg,

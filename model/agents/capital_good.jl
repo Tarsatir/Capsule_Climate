@@ -16,13 +16,14 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     RD :: Vector{Float64}                   # hist R&D expenditure
     IM :: Vector{Float64}                   # hist immitation expenditure
     IN :: Vector{Float64}                   # hist innovation expenditure
-    S :: Vector{Float64}                    # hist revenue
+    D :: Vector{Float64}                    # hist revenue
     HC :: Vector{Int}                       # hist clients
     Π :: Vector{Float64}                    # hist profits
     f :: Float64                            # market share
     brochure                                # brochure
     orders :: Array                         # orders
-    Balance :: Balance                      # balance sheet
+    balance :: Balance                      # balance sheet
+    curracc :: FirmCurrentAccount           # current account
 end
 
 function initialize_kp(
@@ -31,6 +32,17 @@ function initialize_kp(
     kp_i::Int,
     n_init_emp_kp::Int
     )
+
+    balance = Balance(               
+        0.0,                    # - N: inventory
+        0.0,                    # - K: capital
+        1000.0,                 # - NW: liquid assets
+        0.0,                    # - Deb: debt
+        0.0                     # - EQ: equity
+    )
+    
+    curracc = FirmCurrentAccount(0,0,0,0,0,0)
+
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
         kp_i,                   # kp_i, used for distance matrix
@@ -49,19 +61,14 @@ function initialize_kp(
         [],                     # RD: hist R&D expenditure
         [],                     # IM: hist immitation expenditure
         [],                     # IN: hist innovation expenditure
-        [100],                  # S: hist revenue
+        [100],                  # D: hist revenue
         [],                     # HC: hist clients
         [],                     # Π: hist profits
         1/n_captlgood,          # f: market share
         [],                     # brochure
         [],                     # orders
-        Balance(               
-                0.0,            # - N: inventory
-                0.0,            # - K: capital
-                1000.0,         # - NW: liquid assets
-                0.0,            # - Deb: debt
-                0.0             # - EQ: equity
-            )               
+        balance,                # balance
+        curracc                 # current account   
     )
     return kp
 end
@@ -233,7 +240,7 @@ function set_RD_kp!(
     )
 
     # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
-    RD_new = ν * kp.S[end]
+    RD_new = ν * kp.D[end]
     push!(kp.RD, RD_new)
 
     # Decide fractions innovation (IN) and immitation (IM), 
@@ -303,13 +310,13 @@ function send_orders_kp!(
     end
     
     
-    S = tot_freq * kp.p[end]
-    # println(S, " ", tot_freq, " ", kp.p[end])
+    D = tot_freq * kp.p[end]
+    # println(D, " ", tot_freq, " ", kp.p[end])
     Π = tot_freq * (kp.p[end] - kp.c[end])
 
     # println(Π, " ", tot_freq)
 
-    push!(kp.S, S)
+    push!(kp.D, D)
     push!(kp.Π, Π)
 
     # TODO: request money for machines that were produced

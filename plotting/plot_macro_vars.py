@@ -50,6 +50,20 @@ def plot_macro_vars():
     ax6.fill_between(range(len(df.I_avg)), df.I_avg + df.I_std, df.I_avg - df.I_std, color='purple', alpha=0.4)
     ax6.set_title('Income of households')
 
+    ax7.plot(range(len(df.M)), df.M, label='total')
+    ax7.plot(range(len(df.M)), df.M_hh, label='hh')
+    ax7.plot(range(len(df.M)), df.M_cp, label='cp')
+    ax7.plot(range(len(df.M)), df.M_kp, label='kp')
+    ax7.plot(range(len(df.M)), df.M_gov, label='gov')
+    ax7.set_title('Money supply')
+    ax7.legend()
+
+    ax8.plot(range(len(df.Deb_tot)), df.Deb_tot, label='total')
+    ax8.plot(range(len(df.Deb_cp)), df.Deb_cp, label='cp')
+    ax8.plot(range(len(df.Deb_kp)), df.Deb_kp, label='kp')
+    ax8.set_title('Debt levels')
+    ax8.legend()
+
     plt.tight_layout()
     plt.savefig('plots/first.png', bbox_inches='tight')
 

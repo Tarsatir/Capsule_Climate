@@ -7,6 +7,18 @@ mutable struct MacroEconomy
     CPI :: Vector{Float64}       # inflation over time
     C :: Vector{Float64}         # aggregate consumption over time
 
+    # Division of money over sectors
+    M :: Vector{Float64}         # total amount of money (should be stable)
+    M_hh :: Vector{Float64}      # total amount of money at hh
+    M_cp :: Vector{Float64}      # total amount of money at cp
+    M_kp :: Vector{Float64}      # total amount of money at kp
+    M_gov :: Vector{Float64}     # total amount of money at gov
+
+    # Debt levels
+    Deb_tot :: Vector{Float64}   # total debt
+    Deb_cp :: Vector{Float64}    # cp debt
+    Deb_kp :: Vector{Float64}    # kp debt
+
     # Wage statistics
     w̄_avg :: Vector{Float64}     # average wage over time
     w̄_std :: Vector{Float64}     # std of wage over time
@@ -51,6 +63,18 @@ function initialize_macro()
         [],                     # CPI: inflation rate
         [],                     # aggregate consumption
 
+        # Money amounts
+        [],                     # M total
+        [],                     # M hh
+        [],                     # M cp
+        [],                     # M kp
+        [],                     # M gov
+
+        # Debt levels
+        [],                     # total debt
+        [],                     # cp debt
+        [],                     # kp debt
+
         [],                     # average of wage over time
         [],                     # std of wage over time
         [],
@@ -90,9 +114,9 @@ function update_macro_timeseries(
     macro_struct::MacroEconomy, 
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
-    all_kp::Vector{Int}, 
+    all_kp::Vector{Int},
     E::Float64, 
-    Exp_UB::Float64,
+    gov_struct::Government,
     model::ABM
     )
 
@@ -121,9 +145,12 @@ function update_macro_timeseries(
 
     push!(macro_struct.U, E)
 
-    push!(macro_struct.Exp_UB, Exp_UB)
+    push!(macro_struct.Exp_UB, gov_struct.curracc.Exp_UB[end])
 
-    # compute average savings rate
+    # Compute total amount in system
+    compute_M!(all_hh_str, all_cp_str, all_kp_str, gov_struct, macro_struct)
+
+    # Compute average savings rate
     s̄_avg = mean(map(hh -> hh.s, all_hh_str))
     s̄_std = std(map(hh -> hh.s, all_hh_str))
     # println(map(hh -> hh.s, all_hh_str))
@@ -153,6 +180,8 @@ function update_macro_timeseries(
 
     D̄ = mean(map(cp -> cp.D[end], all_cp_str))
     # println(D̄)
+
+    update_debt!(all_cp_str, all_kp_str, macro_struct)
 end
 
 
@@ -165,6 +194,7 @@ function compute_GDP!(
     all_kp_str::Vector{CapitalGoodProducer},
     macro_struct::MacroEconomy
     )
+
     total_I = sum(map(hh -> hh.I[end], all_hh_str))
     push!(macro_struct.GDP_I, total_I)
 
@@ -182,4 +212,50 @@ end
 
 function update_labor_stats(macro_struct, labormarket_struct)
 
+end
+
+function compute_M!(
+    all_hh_str::Vector{Household},
+    all_cp_str::Vector{ConsumerGoodProducer},
+    all_kp_str::Vector{CapitalGoodProducer},
+    gov_struct::Government,
+    macro_struct::MacroEconomy
+    )
+
+    # Wealth of households
+    M_hh = sum(map(hh -> hh.W[end], all_hh_str))
+    push!(macro_struct.M_hh, M_hh)
+
+    # Liquid assets of cp
+    M_cp = sum(map(cp -> cp.balance.NW, all_cp_str))
+    push!(macro_struct.M_cp, M_cp)
+
+    # Liquid assets of kp
+    M_kp = sum(map(kp -> kp.balance.NW, all_kp_str))
+    push!(macro_struct.M_kp, M_kp)
+
+    # Money owned by government
+    M_gov = gov_struct.MS
+    push!(macro_struct.M_gov, M_gov)
+
+    M_tot = M_hh + M_cp + M_kp + M_gov
+    push!(macro_struct.M, M_tot)
+
+end
+
+
+function update_debt!(
+    all_cp_str::Vector{ConsumerGoodProducer},
+    all_kp_str::Vector{CapitalGoodProducer},
+    macro_struct::MacroEconomy
+    )
+
+    Deb_cp = sum(map(cp -> cp.balance.Deb, all_cp_str))
+    push!(macro_struct.Deb_cp, Deb_cp)
+
+    Deb_kp = sum(map(kp -> kp.balance.Deb, all_kp_str))
+    push!(macro_struct.Deb_kp, Deb_kp)
+
+    Deb_tot = Deb_cp + Deb_kp
+    push!(macro_struct.Deb_tot, Deb_tot)
 end

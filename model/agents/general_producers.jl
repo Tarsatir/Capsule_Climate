@@ -64,14 +64,15 @@ function pay_workers_p!(
     p::AbstractAgent,
     model::ABM
     )
+
+    total_wage = 0
     for hh_id in p.employees
         hh = model[hh_id]
-        total_wage = hh.w[end] * hh.L
-        # if isnan(total_wage)
-        #     println(hh.w[end], " ", hh.L, " ", total_wage)
-        # end
-        get_income_hh!(hh, total_wage)
+        wage = hh.w[end] * hh.L
+        total_wage += wage
+        get_income_hh!(hh, wage)
     end
+    p.balance.NW -= total_wage
 end
 
 
@@ -87,3 +88,59 @@ function update_wage_level_p!(
         push!(p.w̄, w̄)
     end
 end
+
+
+"""
+Updates market shares of cp firms
+"""
+function update_marketshare_cp!(
+    all_bp::Vector{Int},
+    all_lp::Vector{Int},
+    model::ABM
+    )
+
+    # Compute total market size of bp and lp markets
+    bp_market = sum(bp_id -> model[bp_id].D[end], all_bp)
+    lp_market = sum(lp_id -> model[lp_id].D[end], all_lp)
+
+    # Update market share f for all bp
+    for bp_id in all_bp
+        f = model[bp_id].D[end] / bp_market
+        push!(model[bp_id].f, f)
+    end
+
+    # Update market share f for all lp
+    for lp_id in all_lp
+        f = model[lp_id].D[end] / lp_market
+        push!(model[lp_id].f, f)
+    end
+end
+
+
+"""
+Borrows amount of debt, permutates balance.
+"""
+function borrow_funds_p!(
+    p::AbstractAgent,
+    amount::Float64
+    )
+
+    # TODO permutate bank
+    p.balance.Deb += amount
+    p.balance.NW += amount
+end
+
+
+"""
+Pays back amount of debt, permutates balance.
+"""
+function payback_debt_p!(
+    p::AbstractAgent,
+    amount::Float64
+    )
+
+    # TODO permutate bank
+    p.balance.Deb -= amount
+    p.balance.NW -= amount
+end
+

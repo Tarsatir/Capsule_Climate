@@ -5,7 +5,8 @@ mutable struct Government <: AbstractAgent
     τᴾ :: Float64                       # profit tax
     τᴱ :: Float64                       # energy tax
     τᶜ :: Float64                       # emission tax
-    curr_acc :: GovCurrentAccount       # current account of government spending
+    MS :: Float64                       # money stock owned by government
+    curracc :: GovCurrentAccount        # current account of government spending
 end
 
 
@@ -17,6 +18,7 @@ function initialize_government()
         0.2,                            # τᴾ: profit tax
         0.0,                            # τᴱ: energy tax
         0.0,                            # τᶜ: emission tax
+        0.0,                            # MS: money stock owned by government
         GovCurrentAccount(              # curr_account: current account of government spending
             [],
             [],
@@ -48,7 +50,8 @@ function pay_unemployment_benefits_gov!(
     end
 
     # add total UB spending to government current account
-    push!(gov_struct.curr_acc.Exp_UB, total_UB)
+    push!(gov_struct.curracc.Exp_UB, total_UB)
+    gov_struct.MS -= total_UB
 end
 
 
@@ -70,7 +73,8 @@ function levy_income_tax_gov!(
     end
 
     # add total income tax to government current account
-    push!(gov_struct.curr_acc.Rev_τᴵ, total_τᴵ)
+    push!(gov_struct.curracc.Rev_τᴵ, total_τᴵ)
+    gov_struct.MS += total_τᴵ
 end
 
 
@@ -93,7 +97,8 @@ function levy_profit_tax_gov!(
         end
     end
 
-    push!(gov_struct.curr_acc.Rev_τᴾ, total_τᴾ)
+    push!(gov_struct.curracc.Rev_τᴾ, total_τᴾ)
+    gov_struct.MS += total_τᴾ
 end
 
 
@@ -101,7 +106,7 @@ function compute_budget_balance(
     gov_struct::Government
     )
 
-    ca = gov_struct.curr_acc
+    ca = gov_struct.curracc
 
     # TODO add sales, energy and emission tax
     # Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τˢ[end] + ca.Rev_τᴾ[end]
@@ -119,12 +124,12 @@ function set_salestax_zero_gov!(
     gov_struct::Government
     )
 
-    push!(gov_struct.curr_acc.Rev_τˢ, 0)
+    push!(gov_struct.curracc.Rev_τˢ, 0)
 end
 
 function add_salestax_transaction_gov!(
     sales_tax_bp::Float64, 
     sales_tax_lp::Float64
     )
-    gov_struct.curr_acc.Rev_τˢ[end] += (sales_tax_bp + sales_tax_lp)
+    gov_struct.curracc.Rev_τˢ[end] += (sales_tax_bp + sales_tax_lp)
 end

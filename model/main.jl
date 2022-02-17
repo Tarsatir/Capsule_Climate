@@ -18,15 +18,15 @@ include("objects/accounting_firms.jl")
 include("objects/accounting_govt.jl")
 include("objects/machine.jl")
 
-include("macro_markets/labormarket.jl")
-include("macro_markets/consumermarket.jl")
-include("macro_markets/macro.jl")
-
 include("agents/government.jl")
 include("agents/household.jl")
 include("agents/consumer_good.jl")
 include("agents/capital_good.jl")
 include("agents/general_producers.jl")
+
+include("macro_markets/labormarket.jl")
+include("macro_markets/consumermarket.jl")
+include("macro_markets/macro.jl")
 
 
 """
@@ -142,7 +142,8 @@ function initialize_model(;
     )
 
     # Update market shares of cp
-    update_marketshares_cm!(all_cp, model)
+    # update_marketshares_cm!(all_cp, model)
+    update_marketshare_cp!(all_bp, all_lp, model)
 
     return model, global_param, macro_struct, gov_struct, labormarket_struct
 end
@@ -180,17 +181,18 @@ function model_step!(
     # demand for L and K
     for cp_id in all_cp
         cp = model[cp_id]
+        update_Nᵈ_cp!(cp, global_param.Nᵈ_share)
         plan_production_cp!(cp, global_param, model)
         plan_investment_cp!(cp, global_param, all_kp, model)
+        update_wᴼₑ(cp, global_param.ωW)
+        funding_allocation_cp!(cp, global_param.Λ, model)
+        order_machines_cp!(cp, model)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
     for kp_id in all_kp
         plan_production_kp!(model[kp_id])
     end
-
-    # println(sum(map(p_id -> length(model[p_id].Emp), all_p)))
-    # println(length(labormarket_struct.employed))
 
     # (3) labor market matching process
     labormarket_process!(
@@ -243,7 +245,7 @@ function model_step!(
 
     # cp make up profits
     for cp_id in all_cp
-        compute_profits_cp!(model[cp_id])
+        compute_profits_cp!(model[cp_id], global_param.r)
     end
 
     # (6) kp deliver goods to cp, kp make up profits
@@ -253,6 +255,11 @@ function model_step!(
 
     for cp_id in all_cp
         increase_machine_age_cp!(model[cp_id])
+    end
+
+    # Close balances of firms, if insolvent, liquidate firms
+    for p_id in all_p
+        close_balance_p!(model[p_id], global_param.Λ_max)
     end
 
     # (7) government receives profit taxes and computes budget balance
@@ -266,7 +273,7 @@ function model_step!(
         all_cp, 
         all_kp,
         labormarket_struct.E,
-        gov_struct.curr_acc.Exp_UB[end],
+        gov_struct,
         model
     )
 
@@ -278,8 +285,6 @@ function model_step!(
 end
 
 to = TimerOutput()
-
-# df_agent = init_agent_dataframe(model)
 
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
 for i in 1:100

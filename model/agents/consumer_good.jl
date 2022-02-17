@@ -2,35 +2,43 @@
 Defines struct for consumer good producer
 """
 mutable struct ConsumerGoodProducer <: AbstractAgent
-    id :: Int                   # id
-    type_good :: String         # type of good produced by producer 
-    p :: Vector{Float64}        # hist prices
-    c :: Vector{Float64}        # hist cost
-    RD :: Vector{Float64}       # R&D spending
-    D :: Vector{Float64}        # hist demand
-    Dᵉ :: Float64               # exp demand
-    hh_queue :: Vector          # vector containing orders of demanding households
-    Nᵈ :: Float64               # desired inventory
-    Q :: Vector{Float64}        # hist production
-    Qᵉ :: Float64               # exp production
-    Qˢ :: Float64               # desired short-term production
-    I :: Vector{Float64}        # hist investments
-    Ξ :: Vector{Machine}        # capital stock
-    RS :: Vector{Machine}       # list of to-be replaced machines
-    employees:: Vector{Int}     # employees list
-    L :: Float64                # labor units
-    Lᵉ:: Float64                # exp labor force
-    ΔLᵈ :: Float64              # desired change in labor force
-    w̄ :: Vector{Float64}        # wage level
-    wᴼ :: Float64               # offered wage
-    brochures :: Vector         # brochures from kp
-    π :: Vector{Float64}        # hist productivity
-    f :: Vector{Float64}        # hist market share
-    μ :: Float64                # markup rate
-    Π :: Vector{Float64}        # hist profits
-    cI :: Float64               # internal funds for investments
-    ΔDeb :: Float64             # changes in debt level
-    balance :: Balance          # balance sheet
+    id :: Int                       # id
+    type_good :: String             # type of good produced by producer 
+    p :: Vector{Float64}            # hist prices
+    c :: Vector{Float64}            # hist cost
+    RD :: Vector{Float64}           # R&D spending
+    D :: Vector{Float64}            # hist demand
+    Dᵉ :: Float64                   # exp demand
+    hh_queue :: Vector              # vector containing orders of demanding households
+    Nᵈ :: Float64                   # desired inventory
+    N_goods :: Float64              # inventory in good units
+    Q :: Vector{Float64}            # hist production
+    Qᵉ :: Float64                   # exp production
+    Qˢ :: Float64                   # desired short-term production
+
+    # Investments
+    Iᵈ :: Float64                   # desired total investments
+    EIᵈ :: Float64                  # desired expansionary investments
+    RSᵈ :: Float64                  # desired replacement investments
+    RS :: Vector{Machine}           # list of to-be replaced machines
+    chosen_kp_id :: Int             # id of chosen kp
+
+    Ξ :: Vector{Machine}            # capital stock
+    employees:: Vector{Int}         # employees list
+    L :: Float64                    # labor units
+    Lᵉ:: Float64                    # exp labor force
+    ΔLᵈ :: Float64                  # desired change in labor force
+    w̄ :: Vector{Float64}            # wage level
+    wᴼ :: Float64                   # offered wage
+    wᴼₑ :: Float64                  # expected offered wage 
+    brochures :: Vector             # brochures from kp
+    π :: Vector{Float64}            # hist productivity
+    f :: Vector{Float64}            # hist market share
+    μ :: Float64                    # markup rate
+    Π :: Vector{Float64}            # hist profits
+    cI :: Float64                   # internal funds for investments
+    balance :: Balance              # balance sheet
+    curracc :: FirmCurrentAccount   # current account
 end
 
 
@@ -42,42 +50,53 @@ function initialize_cp(
     n_init_emp_cp :: Int
     )
 
+    balance = Balance(               
+        0,                          # - N: inventory (in money units)
+        n_init_emp_cp * 100,        # - K: capital
+        1000.0,                     # - NW: liquid assets
+        0.0,                        # - Deb: debt
+        0.0                         # - EQ: equity
+    )
+
+    curracc = FirmCurrentAccount(0,0,0,0,0,0)
+
     cp = ConsumerGoodProducer(
-        id,                     # global id
-        type_good,              # type of good produced by producer
-        [],                     # p: hist prices
-        [],                     # c: hist cost
-        [],                     # RD: hist R&D spending
-        [1100],                 # D: hist demand
-        1100,                   # Dᵉ exp demand
-        Vector(),               # hh_queue: vector containing ids of demanding households           
-        1000,                   # Nᵈ: desired inventory 
-        [1100],                 # Q: hist production
-        1100,                   # Qᵉ: exp production
-        0,                      # Qˢ: desired short-term production
-        [],                     # I: hist investments
-        machines,               # Ξ: capital stock
-        [],                     # RS: list of to-be replaced machines
-        [],                     # employees: employees
-        0,                      # L: labor units in company
-        n_init_emp_cp * 100,    # Lᵉ: exp labor force
-        0,                      # ΔLᵈ: desired change in labor force
-        [1.0],                  # w: wage level
-        1.0,                    # wᴼ: offered wage
-        [],                     # brochures from kp
-        [],                     # π: hist productivity
-        [1/n_consrgood],        # f: market share
-        0.05,                   # μ: hist markup
-        [],                     # Π: hist profits
-        0,                      # cI: internal funds for investments
-        0,                      # ΔDeb: changes in debt level
-        Balance(               
-                1000,                   # - N: inventory
-                n_init_emp_cp * 100,    # - K: capital
-                1000.0,                 # - NW: liquid assets
-                0.0,                    # - Deb: debt
-                0.0                     # - EQ: equity
-            )
+        id,                         # global id
+        type_good,                  # type of good produced by producer
+        [],                         # p: hist prices
+        [],                         # c: hist cost
+        [],                         # RD: hist R&D spending
+        [1100],                     # D: hist demand
+        1100,                       # Dᵉ exp demand
+        Vector(),                   # hh_queue: vector containing ids of demanding households           
+        1000,                       # Nᵈ: desired inventory
+        1000,                       # N_goods: inventory in goods 
+        [1100],                     # Q: hist production
+        1100,                       # Qᵉ: exp production
+        0,                          # Qˢ: desired short-term production
+
+        0,                          # Iᵈ: desired investments
+        0,                          # EIᵈ: desired expansionary investments
+        0,                          # RSᵈ: desired replacement investments
+        [],                         # RS: list of to-be replaced machines
+        0,                          # chosen_kp_id: id of chosen kp
+
+        machines,                   # Ξ: capital stock
+        [],                         # employees: employees
+        0,                          # L: labor units in company
+        n_init_emp_cp * 100,        # Lᵉ: exp labor force
+        0,                          # ΔLᵈ: desired change in labor force
+        [1.0],                      # w: wage level
+        1.0,                        # wᴼ: offered wage
+        1.0,                        # wᴼₑ: expected offered wage
+        [],                         # brochures from kp
+        [],                         # π: hist productivity
+        [0.5/n_consrgood],          # f: market share
+        0.05,                       # μ: hist markup
+        [],                         # Π: hist profits
+        0,                          # cI: internal funds for investments
+        balance,                    # balance
+        curracc                     # current account
     )
     return cp
 end
@@ -101,23 +120,16 @@ function plan_production_cp!(
     # Update expected demand
     cp.Dᵉ = global_param.ωD * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
 
+    # println(cp.Dᵉ)
+
     # Determine desired short-term production
-    cp.Qˢ = cp.Dᵉ + cp.Nᵈ - cp.balance.N
+    cp.Qˢ = cp.Dᵉ + cp.Nᵈ - cp.N_goods
 
     # Update average productivity
     update_π!(cp)
 
     # Compute corresponding change in labor stock
-    # total_K = sum(map(machine -> machine.A * machine.freq, cp.Ξ))
-
-    ΔLᵈ = cp.Qˢ/cp.π[end] - cp.L
-    if ΔLᵈ < -cp.L
-        cp.ΔLᵈ = -cp.L
-    else
-        cp.ΔLᵈ = ΔLᵈ
-    end
-
-    # println(ΔLᵈ)
+    compute_ΔLᵈ(cp)
 
     # Update average wage w̄
     update_wage_level_p!(cp, model)
@@ -148,7 +160,7 @@ function plan_investment_cp!(
     )
 
     # Choose kp
-    p_star, chosen_kp_id, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp, model)
+    p_star, Aᵈ = choose_producer_cp(cp, global_param.b, all_kp, model)
 
     # Plan replacement investments
     plan_replacement_cp!(cp, global_param, p_star, Aᵈ)
@@ -160,23 +172,95 @@ function plan_investment_cp!(
     cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
 
     # Compute desired capital stock expansion
-    Kᵈ = cp.Qᵉ
+    Kᵈ = cp.Qᵉ / cp.π[end]
 
-    EIᵈ = Kᵈ - cp.balance.K
-    
-    Iₜ = EIᵈ + sum(map(machine -> machine.freq, cp.RS))
+    cp.EIᵈ = Kᵈ - cp.balance.K
+    cp.RSᵈ = sum(map(machine -> machine.freq, cp.RS))
+    cp.Iᵈ = cp.EIᵈ + cp.RSᵈ
+end
 
-    # if Iₜ > 10000
-    #     println(p_star)
-    #     println(EIᵈ, " ", Iₜ)
-    #     println("length ", length(cp.Ξ))
-    # end
 
-    # TODO does not check if funds are available
-    if Iₜ > 0
-        order_machines_cp!(cp, chosen_kp_id, Iₜ, model)
+"""
+Makes funding allocation based on desired production and investment. 
+If not enough funding available, changes desired production and investment
+    to a possible level.
+"""
+function funding_allocation_cp!(
+    cp::ConsumerGoodProducer,
+    Λ::Float64,
+    model::ABM
+    )
+
+    # Compute how much debt cp can make additionally
+    poss_add_Deb = max(cp.D[end] * Λ - cp.balance.Deb, 0)
+
+    # println(cp.D[end])
+
+    # Compute the expected total cost of desired production
+    # TODO: move this to hiring desicion (change n labor in hh)
+    ΔL_ceil = 100 * ceil(cp.ΔLᵈ / 100)
+    total_cop = cp.L * cp.w̄[end] + ΔL_ceil * cp.wᴼₑ
+
+    # Check if enough internal funds available
+    if cp.balance.NW > total_cop + cp.Iᵈ
+        # Production and full investment can be financed from NW
+        # Already available in cash amount, no need to do anything
+        return
+    elseif cp.balance.NW + poss_add_Deb > total_cop + cp.Iᵈ
+        # Production and full investment partially funded from Deb
+        # Compute required extra cash and borrow
+        req_cash = total_cop + cp.Iᵈ - cp.balance.NW
+        borrow_funds_p!(cp, req_cash)
+    else
+        # Production or investment constrained by financial means
+        if cp.balance.NW + poss_add_Deb < total_cop
+            # Production constrained. Decrease production target and labor demand,
+            # No investments possible
+
+            # Recompute labor that can be hired
+            cp.ΔLᵈ = (cp.balance.NW + poss_add_Deb - cp.w̄[end] * cp.L)/cp.wᴼₑ
+
+            # Set all desired investments to zero
+            cp.Iᵈ = 0
+            cp.EIᵈ = 0
+            cp.RSᵈ = 0
+            cp.RS = Vector{Machine}()
+
+        else
+            # Production possible from NW and Deb, investment constrained
+
+            # Compute extra required cash for production, borrow amount
+            req_cash = total_cop - cp.balance.NW
+
+            if cp.balance.NW + poss_add_Deb > total_cop + cp.EIᵈ
+                # Partial expansion investment, no replacement
+                poss_EI = cp.balance.NW + poss_add_Deb - total_cop - req_cash
+                req_cash += poss_EI
+
+                # Update desired investments
+                cp.Iᵈ = poss_EI
+                cp.EIᵈ = poss_EI
+                cp.RSᵈ = 0
+                cp.RS = Vector{Machine}()
+            else
+                # Full expansion investment, partial replacement
+                # poss_EI = cp.balance.NW + poss_add_Deb - total_cop - req_cash
+                # poss_RS = cp.balance.NW + poss_add_Deb - total_cop - req_cash - poss_EI
+
+                # P_RS = model[cp.chosen_kp_id].p[end]
+                # TODO let cp replace partial capital goods
+
+                req_cash += cp.EIᵈ
+
+                cp.Iᵈ = cp.EIᵈ
+                cp.RSᵈ = 0
+                cp.RS = Vector{Machine}()
+
+            end
+
+            borrow_funds_p!(cp, req_cash)
+        end
     end
-
 end
 
 
@@ -194,6 +278,18 @@ function update_π!(
 
     π = sum(map(machine -> (machine.freq * machine.A) / cp.balance.K, cp.Ξ))
     push!(cp.π, π)
+end
+
+
+"""
+Adaptively updates expected offered wage
+"""
+function update_wᴼₑ(
+    cp::ConsumerGoodProducer,
+    ωW::Float64
+    )
+
+    cp.wᴼₑ = ωW * cp.wᴼₑ + (1 - ωW) * cp.wᴼ
 end
 
 
@@ -228,17 +324,17 @@ function choose_producer_cp(
     b::Int, 
     all_kp::Vector{Int},
     model::ABM
-    )::Tuple{Float64, Int, Float64}
+    )::Tuple{Float64, Float64}
 
     if (length(cp.brochures) == 0)
         # in case of no brochures, pick a random kp
-        chosen_kp_id = sample(all_kp)
-        brochure = model[chosen_kp_id].brochure
+        cp.chosen_kp_id = sample(all_kp)
+        brochure = model[cp.chosen_kp_id].brochure
         p_star = brochure[2]
         c_star = brochure[3]
         A_star = brochure[4]
         
-        return p_star, chosen_kp_id, A_star
+        return p_star, A_star
     end
 
     # take first producer as best, then compare to other producers
@@ -266,7 +362,9 @@ function choose_producer_cp(
 
     end
 
-    return p_star, chosen_kp_id, A_star
+    cp.chosen_kp_id = chosen_kp_id
+
+    return p_star, A_star
 end
 
 
@@ -282,7 +380,7 @@ function produce_goods_cp!(
     push!(cp.Q, Q)
     
     # Change inventory, will be amount households can buy from
-    cp.balance.N += Q
+    cp.N_goods += Q
 end
 
 
@@ -293,6 +391,7 @@ function compute_μ_cp!(
     )
 
     if (length(cp.f) > 2)
+        # println("Yeet")
         cp.μ = cp.μ * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
     else
         cp.μ = μ1
@@ -318,15 +417,28 @@ function compute_p_cp!(
 end
 
 
+function compute_ΔLᵈ(
+    cp::ConsumerGoodProducer
+    )
+
+    ΔLᵈ = cp.Qˢ/cp.π[end] - cp.L
+    if ΔLᵈ < -cp.L
+        cp.ΔLᵈ = -cp.L
+    else
+        cp.ΔLᵈ = ΔLᵈ
+    end
+end
+
+
 function order_machines_cp!(
     cp::ConsumerGoodProducer,
-    chosen_kp_id::Int, 
-    Iₜ :: Float64,
     model::ABM
     )
 
-    order = (cp.id, Iₜ)
-    push!(model[chosen_kp_id].orders, order)
+    if cp.Iᵈ > 0
+        order = (cp.id, cp.Iᵈ)
+        push!(model[cp.chosen_kp_id].orders, order)
+    end
 end
 
 
@@ -339,6 +451,12 @@ function send_orders_cp!(
     model::ABM
     )
 
+    # all_q = sum(map(o -> o[2], cp.hh_queue))
+    # avg_C = mean(map(o -> model[o[1]].C[end], cp.hh_queue))
+    # println(cp.Q[end], " ", all_q, " ", avg_C)
+
+    push!(cp.D, 0)
+
     # Loop over orders in queue
     for order in cp.hh_queue
 
@@ -347,29 +465,47 @@ function send_orders_cp!(
 
         # Check if enough inventory available
         share_fulfilled = 0.0
-        if cp.balance.N > q
+        if cp.N_goods > q
             share_fulfilled = 1.0
             cp.D[end] += q
-            cp.balance.N -= q
-        elseif cp.balance.N > 0.0 && cp.balance.N < q
-            share_fulfilled = cp.balance.N / q
-            cp.D[end] += cp.balance.N
-            cp.balance.N = 0.0
+            cp.N_goods -= q
+        elseif cp.N_goods > 0.0 && cp.N_goods < q
+            share_fulfilled = cp.N_goods / q
+            cp.D[end] += cp.N_goods
+            cp.N_goods = 0.0
         end
 
         tot_price = (q * share_fulfilled) * cp.p[end]
-
+        cp.balance.NW += tot_price
         receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
+
+        if cp.N_goods == 0.0
+            return
+        end
     end
 end
 
 
 function compute_profits_cp!(
-    cp::ConsumerGoodProducer
+    cp::ConsumerGoodProducer,
+    r::Float64
     )
-    # TODO incorporate interest rates
-    Π = cp.D[end] * cp.p[end] - cp.c[end] * cp.D[end]
+ 
+    Π = (cp.p[end] - cp.c[end]) * cp.D[end] - cp.balance.Deb * r
+    println(Π)
     push!(cp.Π, Π)
+end
+
+
+"""
+Updates desired inventory to be a share of the previous demand
+"""
+function update_Nᵈ_cp!(
+    cp::ConsumerGoodProducer,
+    Nᵈ_share::Float64
+    )
+
+    cp.Nᵈ = Nᵈ_share * cp.Dᵉ
 end
 
 
