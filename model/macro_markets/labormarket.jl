@@ -222,22 +222,29 @@ function matching_lm(
                 ΔL = p.ΔLᵈ
 
                 for hh_id in Lᵈ
-                    # println("wr ", model[hh_id].wʳ)
-                    ΔL -= model[hh_id].L
-                    push!(to_be_hired, hh_id)
+                   
+                    # Only hire workers if wage can be afforded
+                    if model[hh_id].wʳ <= p.wᴼₑ
+                        ΔL -= model[hh_id].L
+                        push!(to_be_hired, hh_id)
 
-                    if ΔL < 0
+                        if ΔL < 0
+                            break
+                        end
+                    else
                         break
                     end
+                end
+
+                # If no suitable candidates available, producer stops hiring
+                if length(to_be_hired) == 0
+                    filter!(p -> p ≠ p_id, hiring_producers)
+                    break
                 end
                 
                 # Set offered wage to lowest requested wage that makes producer
                 # meet the labor target
                 p.wᴼ = model[to_be_hired[end]].wʳ
-
-                if isnan(p.wᴼ)
-                    println("yoo ", p.wᴼ)
-                end
 
                 # Hire selected workers
                 for hh_id in to_be_hired

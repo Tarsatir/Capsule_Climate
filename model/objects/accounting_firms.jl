@@ -19,32 +19,31 @@ If firm is insolvent, liquidate firm.
 """
 function close_balance_p!(
     p::AbstractAgent,
-    Λ_max::Float64
+    Λ::Float64,
+    ΔD::Float64
     )
 
-    # TODO: make sure credit is paid off before investments!
+    # println(p.curracc, " ", p.Deb_installments)
 
-    # Check if NW is negative, if so, get short-term credit
-    if p.balance.NW < 0
-        poss_credit = p.D[end] * Λ_max - p.balance.Deb
-        # Check if difference can be borrowed
-        if p.balance.NW < poss_credit
-            # Firm borrows credit to finance shortage
-            req_credit = -p.balance.NW
-            borrow_funds_p!(p, req_credit)
-        else
-            # Firm can no longer finance expenses and should be liquidated
-            # TODO
-        end
-    end
+    p.balance.Deb = sum(p.Deb_installments)
 
-    if p == ConsumerGoodProducer
-        p.balance.N = p.N_goods * p.p[end]
-    end
+    # Check if additional credit is needed
+    # if p.balance.NW < 0
+    #     borrow_funds_p!(p, -p.balance.NW)
+    # end
 
+    # Repay debt (as far as NW allows)
+    # Deb_to_be_repaid = min(p.balance.Deb * ΔD, p.balance.NW)
+    # payback_debt_p!(p, Deb_to_be_repaid)
+
+    # Compute Equity
     tot_assets = p.p[end] * p.balance.N + p.balance.K + p.balance.NW
     equity = tot_assets - p.balance.Deb
     p.balance.EQ = equity
+
+    if p.balance.EQ < 0
+        # Liquidate firm
+    end
 end
 
 
@@ -67,7 +66,7 @@ end
 """
 Clears firms current account for next period.
 """
-function clear_firm_currentaccount!(
+function clear_firm_currentaccount_p!(
     ca::FirmCurrentAccount
     )
 

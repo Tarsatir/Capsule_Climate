@@ -11,6 +11,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     P_FE :: Float64                         # probability of getting fired while employed
     w̄ :: Vector{Float64}                    # wage level
     wᴼ :: Float64                           # offered wage
+    wᴼₑ :: Float64                          # expected offered wage
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
     RD :: Vector{Float64}                   # hist R&D expenditure
@@ -19,6 +20,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     D :: Vector{Float64}                    # hist revenue
     HC :: Vector{Int}                       # hist clients
     Π :: Vector{Float64}                    # hist profits
+    Deb_installments :: Vector{Float64}   # installments of debt repayments
     f :: Float64                            # market share
     brochure                                # brochure
     orders :: Array                         # orders
@@ -56,6 +58,7 @@ function initialize_kp(
         0,                      # P_FE: probability of getting fired while employed
         [1.0],                  # w̄: wage level
         1.0,                    # wᴼ: offered wage
+        1.0,                    # wᴼₑ: expected offered wage
         0,                      # O: total amount of machines ordered
         [],                     # production queue
         [],                     # RD: hist R&D expenditure
@@ -64,6 +67,9 @@ function initialize_kp(
         [100],                  # D: hist revenue
         [],                     # HC: hist clients
         [],                     # Π: hist profits
+        Vector{Float64}([0.0,
+                         0.0,
+                         0.0]),
         1/n_captlgood,          # f: market share
         [],                     # brochure
         [],                     # orders

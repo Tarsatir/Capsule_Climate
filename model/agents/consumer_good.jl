@@ -22,6 +22,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     RSᵈ :: Float64                  # desired replacement investments
     RS :: Vector{Machine}           # list of to-be replaced machines
     chosen_kp_id :: Int             # id of chosen kp
+    Deb_installments :: Vector{Float64}   # installments of debt repayments
 
     Ξ :: Vector{Machine}            # capital stock
     employees:: Vector{Int}         # employees list
@@ -80,6 +81,9 @@ function initialize_cp(
         0,                          # RSᵈ: desired replacement investments
         [],                         # RS: list of to-be replaced machines
         0,                          # chosen_kp_id: id of chosen kp
+        Vector{Float64}([0.0,       # Deb_installments: vector containing debt repayments
+                         0.0, 
+                         0.0]),
 
         machines,                   # Ξ: capital stock
         [],                         # employees: employees
@@ -129,7 +133,7 @@ function plan_production_cp!(
     update_π!(cp)
 
     # Compute corresponding change in labor stock
-    compute_ΔLᵈ(cp)
+    compute_ΔLᵈ_cp!(cp)
 
     # Update average wage w̄
     update_wage_level_p!(cp, model)
@@ -174,9 +178,9 @@ function plan_investment_cp!(
     # Compute desired capital stock expansion
     Kᵈ = cp.Qᵉ / cp.π[end]
 
-    cp.EIᵈ = Kᵈ - cp.balance.K
-    cp.RSᵈ = sum(map(machine -> machine.freq, cp.RS))
-    cp.Iᵈ = cp.EIᵈ + cp.RSᵈ
+    cp.EIᵈ = max(Kᵈ - cp.balance.K, 0)
+    cp.RSᵈ = max(sum(map(machine -> machine.freq, cp.RS)), 0)
+    cp.Iᵈ = max(cp.EIᵈ + cp.RSᵈ, 0)
 end
 
 
@@ -192,25 +196,40 @@ function funding_allocation_cp!(
     )
 
     # Compute how much debt cp can make additionally
-    poss_add_Deb = max(cp.D[end] * Λ - cp.balance.Deb, 0)
+    poss_add_Deb = max(cp.D[end] * cp.p[end] * Λ - cp.balance.Deb, 0)
 
-    # println(cp.D[end])
+    # println(cp.p[end])
 
     # Compute the expected total cost of desired production
     # TODO: move this to hiring desicion (change n labor in hh)
     ΔL_ceil = 100 * ceil(cp.ΔLᵈ / 100)
-    total_cop = cp.L * cp.w̄[end] + ΔL_ceil * cp.wᴼₑ
+    total_cop = max(cp.L * cp.w̄[end] + ΔL_ceil * cp.wᴼₑ, 0)
+
+    # println(cp.balance.NW, " ", total_cop, " ", cp.Iᵈ, " ", poss_add_Deb)
+    # println(cp.balance.Deb)
 
     # Check if enough internal funds available
-    if cp.balance.NW > total_cop + cp.Iᵈ
+    if cp.balance.NW > total_cop && cp.Iᵈ == 0
+        # Production can be funded from NW, no investment desired
+        # Already available in cash amount, no need to borrow
+
+        # Use remaining NW to pay back debts
+        # payback = min(cp.balance.Deb, cp.balance.NW - total_cop)
+        # payback_debt_p!(cp, payback)
+
+    elseif cp.balance.NW > total_cop + cp.Iᵈ
         # Production and full investment can be financed from NW
-        # Already available in cash amount, no need to do anything
-        return
+        # Already available in cash amount, no need to borrow
+        
+        # Use remaining NW to pay back debts
+        # payback = min(cp.balance.Deb, cp.balance.NW - total_cop)
+        # payback_debt_p!(cp, payback)
+
     elseif cp.balance.NW + poss_add_Deb > total_cop + cp.Iᵈ
         # Production and full investment partially funded from Deb
         # Compute required extra cash and borrow
         req_cash = total_cop + cp.Iᵈ - cp.balance.NW
-        borrow_funds_p!(cp, req_cash)
+        # borrow_funds_p!(cp, req_cash)
     else
         # Production or investment constrained by financial means
         if cp.balance.NW + poss_add_Deb < total_cop
@@ -219,6 +238,8 @@ function funding_allocation_cp!(
 
             # Recompute labor that can be hired
             cp.ΔLᵈ = (cp.balance.NW + poss_add_Deb - cp.w̄[end] * cp.L)/cp.wᴼₑ
+
+            # borrow_funds_p!(cp, poss_add_Deb)
 
             # Set all desired investments to zero
             cp.Iᵈ = 0
@@ -232,7 +253,7 @@ function funding_allocation_cp!(
             # Compute extra required cash for production, borrow amount
             req_cash = total_cop - cp.balance.NW
 
-            if cp.balance.NW + poss_add_Deb > total_cop + cp.EIᵈ
+            if cp.balance.NW + poss_add_Deb < total_cop + cp.EIᵈ
                 # Partial expansion investment, no replacement
                 poss_EI = cp.balance.NW + poss_add_Deb - total_cop - req_cash
                 req_cash += poss_EI
@@ -258,7 +279,7 @@ function funding_allocation_cp!(
 
             end
 
-            borrow_funds_p!(cp, req_cash)
+            # borrow_funds_p!(cp, req_cash)
         end
     end
 end
@@ -312,8 +333,10 @@ function plan_replacement_cp!(
     for machine in cp.Ξ
         c_A = cp.w̄[end] / machine.A
         c_star = cp.w̄[end] / Aᵈ
-        if p_star/(c_A - c_star) <= global_param.b || machine.age >= global_param.η
-            push!(cp.RS, machine)
+        if c_A > c_star
+            if p_star/(c_A - c_star) <= global_param.b || machine.age >= global_param.η
+                push!(cp.RS, machine)
+            end
         end
     end
 end
@@ -390,8 +413,14 @@ function compute_μ_cp!(
     μ1::Float64
     )
 
-    if (length(cp.f) > 2)
-        # println("Yeet")
+    # First check if market share is nonzero, else liquidate firm
+    if cp.f[end] <= 0.001
+        # TODO: liquidate firm
+        cp.f[end] = 0.001
+    end
+
+    # Compute market share
+    if length(cp.f) > 2
         cp.μ = cp.μ * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
     else
         cp.μ = μ1
@@ -417,15 +446,18 @@ function compute_p_cp!(
 end
 
 
-function compute_ΔLᵈ(
+function compute_ΔLᵈ_cp!(
     cp::ConsumerGoodProducer
     )
 
+    L = 100 # TODO: make this a global parameter
+
     ΔLᵈ = cp.Qˢ/cp.π[end] - cp.L
+
     if ΔLᵈ < -cp.L
         cp.ΔLᵈ = -cp.L
     else
-        cp.ΔLᵈ = ΔLᵈ
+        cp.ΔLᵈ = L * ceil(ΔLᵈ / L)
     end
 end
 
@@ -456,6 +488,7 @@ function send_orders_cp!(
     # println(cp.Q[end], " ", all_q, " ", avg_C)
 
     push!(cp.D, 0)
+    cp.curracc.S = 0
 
     # Loop over orders in queue
     for order in cp.hh_queue
@@ -476,7 +509,7 @@ function send_orders_cp!(
         end
 
         tot_price = (q * share_fulfilled) * cp.p[end]
-        cp.balance.NW += tot_price
+        cp.curracc.S += tot_price
         receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
 
         if cp.N_goods == 0.0
@@ -490,9 +523,11 @@ function compute_profits_cp!(
     cp::ConsumerGoodProducer,
     r::Float64
     )
+
+    # Compute total cost of investments
+    cp.curracc.int_Deb = cp.balance.Deb * r
  
-    Π = (cp.p[end] - cp.c[end]) * cp.D[end] - cp.balance.Deb * r
-    println(Π)
+    Π = (cp.p[end] - cp.c[end]) * cp.D[end] - cp.curracc.int_Deb
     push!(cp.Π, Π)
 end
 
@@ -549,8 +584,30 @@ function receive_machines!(
 
     # Add new machine to capital stock
     push!(cp.Ξ, machine)
-    cp.balance.NW -= Iₜ
+    # cp.balance.NW -= Iₜ
+
+    # Add debt to future installments
+    cp.Deb_installments[1] += Iₜ / 3
+    cp.Deb_installments[2] += Iₜ / 3
+    cp.Deb_installments[3] += Iₜ / 3
+
 
     # TODO permutate the balance (in terms of capital and debt)
 
+end
+
+
+"""
+Repays outstanding debts at start of period, shifts debt installments
+"""
+function repay_debt_installments_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    to_be_paid = cp.Deb_installments[1]
+    cp.curracc.rep_Deb += to_be_paid
+
+    cp.Deb_installments[1] = cp.Deb_installments[2]
+    cp.Deb_installments[2] = cp.Deb_installments[3]
+    cp.Deb_installments[3] = 0.0
 end

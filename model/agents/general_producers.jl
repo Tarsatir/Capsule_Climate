@@ -72,7 +72,9 @@ function pay_workers_p!(
         total_wage += wage
         get_income_hh!(hh, wage)
     end
-    p.balance.NW -= total_wage
+    
+    # p.balance.NW -= total_wage
+    p.curracc.TCL = total_wage
 end
 
 
@@ -105,13 +107,21 @@ function update_marketshare_cp!(
 
     # Update market share f for all bp
     for bp_id in all_bp
-        f = model[bp_id].D[end] / bp_market
+        if bp_market == 0
+            f = 1/length(all_bp)
+        else
+            f = model[bp_id].D[end] / bp_market
+        end
         push!(model[bp_id].f, f)
     end
 
     # Update market share f for all lp
     for lp_id in all_lp
-        f = model[lp_id].D[end] / lp_market
+        if lp_market == 0
+            f = 1/length(all_lp)
+        else
+            f = model[lp_id].D[end] / lp_market
+        end
         push!(model[lp_id].f, f)
     end
 end

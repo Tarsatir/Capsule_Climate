@@ -141,9 +141,7 @@ function initialize_model(;
         model
     )
 
-    # Update market shares of cp
     # update_marketshares_cm!(all_cp, model)
-    update_marketshare_cp!(all_bp, all_lp, model)
 
     return model, global_param, macro_struct, gov_struct, labormarket_struct
 end
@@ -160,8 +158,10 @@ function model_step!(
     # Update schedulers
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
-    # Reset kp brochures of all cp
+    # Clear current account, decide how many debts to repay, reset kp brochures of all cp
     for cp_id in all_cp
+        clear_firm_currentaccount_p!(model[cp_id].curracc)
+        repay_debt_installments_cp!(model[cp_id])
         reset_brochures_cp!(model[cp_id])
     end
 
@@ -259,7 +259,7 @@ function model_step!(
 
     # Close balances of firms, if insolvent, liquidate firms
     for p_id in all_p
-        close_balance_p!(model[p_id], global_param.Λ_max)
+        close_balance_p!(model[p_id], global_param.Λ, global_param.ΔD)
     end
 
     # (7) government receives profit taxes and computes budget balance
@@ -277,7 +277,8 @@ function model_step!(
         model
     )
 
-    # TODO update market share cp
+    # Update market shares of cp
+    update_marketshare_cp!(all_bp, all_lp, model)
 
     # Remove bankrupt companies and introduce new companies.
 
@@ -287,7 +288,7 @@ end
 to = TimerOutput()
 
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
-for i in 1:100
+for i in 1:50
     println("Step ", i)
     @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, model)
 end
