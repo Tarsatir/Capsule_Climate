@@ -102,7 +102,7 @@ function initialize_model(;
         end
 
         cp = initialize_cp(id, machines, n_consrgood, type_good, n_init_emp_cp)
-        update_K!(cp)
+        update_K_cp!(cp)
         add_agent!(cp, model)
 
         id += 1
@@ -161,7 +161,6 @@ function model_step!(
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
     for cp_id in all_cp
         clear_firm_currentaccount_p!(model[cp_id].curracc)
-        repay_debt_installments_cp!(model[cp_id])
         reset_brochures_cp!(model[cp_id])
     end
 
@@ -171,9 +170,24 @@ function model_step!(
     kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
     for kp_id in all_kp
+
         kp = model[kp_id]
-        reset_order_queue_kp!(kp)
-        innovate_kp!(kp, global_param, all_kp, kp_distance_matrix, model)
+        clear_firm_currentaccount_p!(model[kp_id].curracc)
+
+        if length(macro_struct.w̄_avg) == 0
+            w̄ = 1.0
+        else
+            w̄ = macro_struct.w̄_avg[end]
+        end
+
+        innovate_kp!(
+            kp, 
+            global_param, 
+            all_kp, 
+            kp_distance_matrix,
+            w̄,
+            model
+        )
         send_brochures_kp!(kp, all_cp, global_param, model)
     end
 
@@ -181,10 +195,15 @@ function model_step!(
     # demand for L and K
     for cp_id in all_cp
         cp = model[cp_id]
-        update_Nᵈ_cp!(cp, global_param.Nᵈ_share)
+        
+        # Plan production for this period
         plan_production_cp!(cp, global_param, model)
+
+        # Plan investments for this period
         plan_investment_cp!(cp, global_param, all_kp, model)
+
         update_wᴼₑ(cp, global_param.ωW)
+
         funding_allocation_cp!(cp, global_param.Λ, model)
         order_machines_cp!(cp, model)
     end
@@ -245,6 +264,7 @@ function model_step!(
 
     # cp make up profits
     for cp_id in all_cp
+        repay_debt_installments_cp!(model[cp_id])
         compute_profits_cp!(model[cp_id], global_param.r)
     end
 
@@ -254,6 +274,8 @@ function model_step!(
     end
 
     for cp_id in all_cp
+        # Update amount of owned capital
+        update_K_cp!(model[cp_id])
         increase_machine_age_cp!(model[cp_id])
     end
 
@@ -272,6 +294,8 @@ function model_step!(
         all_hh, 
         all_cp, 
         all_kp,
+        all_bp,
+        all_lp,
         labormarket_struct.E,
         gov_struct,
         model
@@ -288,7 +312,7 @@ end
 to = TimerOutput()
 
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
-for i in 1:50
+for i in 1:100
     println("Step ", i)
     @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, model)
 end

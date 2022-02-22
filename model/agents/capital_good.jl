@@ -14,6 +14,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     wᴼₑ :: Float64                          # expected offered wage
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
+    Q :: Vector{Float64}                    # production quantities
     RD :: Vector{Float64}                   # hist R&D expenditure
     IM :: Vector{Float64}                   # hist immitation expenditure
     IN :: Vector{Float64}                   # hist innovation expenditure
@@ -61,6 +62,7 @@ function initialize_kp(
         1.0,                    # wᴼₑ: expected offered wage
         0,                      # O: total amount of machines ordered
         [],                     # production queue
+        Vector{Float64}(),      # Q: production quantity
         [],                     # RD: hist R&D expenditure
         [],                     # IM: hist immitation expenditure
         [],                     # IN: hist innovation expenditure
@@ -87,29 +89,50 @@ function innovate_kp!(
     kp::CapitalGoodProducer, 
     global_param, 
     all_kp::Vector{Int}, 
-    kp_distance_matrix::Array{Float64}, 
-    model::ABM
+    kp_distance_matrix::Array{Float64},
+    w̄::Float64,
+    model::ABM,
     )
     
+    # TODO include labor demand for researchers
+
     # Determine levels of R&D, and how to divide under IN and IM
     set_RD_kp!(kp, global_param.ξ, global_param.ν)
     tech_choices = [(kp.A[end], kp.B[end])]
 
     # Determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN[end])
-    # println(θ_IN, " ", kp.IN[end], " ")
     if rand(Bernoulli(θ_IN))
         A_t_in = update_At_kp(kp.A[end], global_param)
         B_t_in = update_Bt_kp(kp.B[end], global_param)
-        push!(tech_choices, (A_t_in, B_t_in))
+        if A_t_in > kp.A[end] || B_t_in > kp.B[end]
+            push!(tech_choices, (A_t_in, B_t_in))
+        end
     end
+
+    # TODO compute real value innovation like rer98
 
     # Determine immitation of competitors
     θ_IM = 1 - exp(-global_param.ζ * kp.IM[end])
     if rand(Bernoulli(θ_IM))
         A_t_im, B_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
-        push!(tech_choices, (A_t_im, B_t_im))
+        if A_t_im > kp.A[end] || B_t_im > kp.B[end]
+            push!(tech_choices, (A_t_im, B_t_im))
+        end
     end
+
+    choose_technology_kp!(kp, w̄, tech_choices)
+end
+
+
+"""
+Lets kp choose technology
+"""
+function choose_technology_kp!(
+    kp::CapitalGoodProducer,
+    w̄::Float64,
+    tech_choices
+    )
 
     # Make choice between possible technologies
     if length(tech_choices) == 1
@@ -122,16 +145,16 @@ function innovate_kp!(
         push!(kp.p, p_h)
     else
         # If new technologies, update price data
-        c_h = map(x -> kp.w̄[end]/x[1], tech_choices)
-        p_h = map(x -> (1 + global_param.μ1)*x, c_h)
-        r_h = p_h + global_param.b * c_h
+        c_h_kp = map(tech -> kp.w̄[end]/tech[2], tech_choices)
+        c_h_cp = map(tech -> w̄/tech[1], tech_choices)
+        p_h = map(c -> (1 + global_param.μ1)*c, c_h_kp)
+        r_h = p_h + global_param.b * c_h_cp 
         index = argmin(r_h)
         push!(kp.A, tech_choices[index][1])
         push!(kp.B, tech_choices[index][2])
-        push!(kp.c, c_h[index])
+        push!(kp.c, c_h_kp[index])
         push!(kp.p, p_h[index])
     end
-
 end
 
 
@@ -248,6 +271,7 @@ function set_RD_kp!(
     # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
     RD_new = ν * kp.D[end]
     push!(kp.RD, RD_new)
+    kp.curracc.TCI += RD_new
 
     # Decide fractions innovation (IN) and immitation (IM), 
     # (Dosi et al, 2010; eq. 3.5)
@@ -276,12 +300,15 @@ function produce_goods_kp!(
     kp::CapitalGoodProducer
     )
 
+    total_Q = 0
+
     # Check if enough labor available for all machines
     unocc_L = kp.L
     for order in kp.orders
         # Only push order in production queue if enough labor available
         req_L = order[2] / kp.B[end]
         if unocc_L > req_L
+            total_Q += order[2]
             push!(kp.prod_queue, order)
             unocc_L -= req_L
         end
@@ -289,6 +316,9 @@ function produce_goods_kp!(
 
     # Reset order amount back to zero
     kp.O = 0
+
+    # Push production amount
+    push!(kp.Q, total_Q)
 end
 
 
@@ -302,13 +332,14 @@ function send_orders_kp!(
 
     tot_freq = 0
 
+    # println(kp.prod_queue)
+
     for order in kp.prod_queue
 
         cp_id = order[1]
         Iₜ = order[2]
 
         machine = initialize_machine(Iₜ, 0, kp.A[end])
-        machine.A = kp.A[end]
 
         tot_freq += machine.freq
 
@@ -317,7 +348,6 @@ function send_orders_kp!(
     
     
     D = tot_freq * kp.p[end]
-    # println(D, " ", tot_freq, " ", kp.p[end])
     Π = tot_freq * (kp.p[end] - kp.c[end])
 
     # println(Π, " ", tot_freq)
@@ -329,9 +359,9 @@ function send_orders_kp!(
 
     # TODO: describe how labor market frictions affect delivery machines
 
-    # Empty production queue
+    # Empty order and production queue
     reset_order_queue_kp!(kp)
-
+    reset_prod_queue_kp!(kp)
 end
 
 
@@ -339,6 +369,14 @@ function reset_order_queue_kp!(
     kp::CapitalGoodProducer
     )
     kp.orders = []
+end
+
+
+function reset_prod_queue_kp!(
+    kp::CapitalGoodProducer
+    )
+
+    kp.prod_queue = []
 end
 
 

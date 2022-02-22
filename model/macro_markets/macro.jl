@@ -51,6 +51,21 @@ mutable struct MacroEconomy
     ΔL̄_cp_std :: Vector{Float64} # std desired labor change for cp
     ΔL̄_kp_avg :: Vector{Float64} # ' ' for kp
     ΔL̄_kp_std :: Vector{Float64}
+
+    # Investment levels
+    EI_avg :: Vector{Float64}    # average expansion investment
+    RS_avg :: Vector{Float64}    # average replacement investment
+
+    # Productivity
+    avg_π :: Vector{Float64}     # average productivity cp
+    avg_A :: Vector{Float64}     # average A at kp
+    avg_B :: Vector{Float64}     # average B at kp
+
+    # Production
+    avg_Q_bp :: Vector{Float64}  # average production of bp
+    avg_Q_lp :: Vector{Float64}  # average production of lp
+    avg_Q_kp :: Vector{Float64}  # average production of kp
+
 end
 
 
@@ -101,6 +116,20 @@ function initialize_macro()
         [],
         [],
         [],
+        [],
+
+        # Investments
+        [],                     # EI
+        [],                     # RS
+
+        # Productivity
+        [],
+        [],
+        [],
+
+        # Production
+        [],
+        [],
         []
     )
     return macro_struct
@@ -115,6 +144,8 @@ function update_macro_timeseries(
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
     all_kp::Vector{Int},
+    all_bp::Vector{Int},
+    all_lp::Vector{Int},
     E::Float64, 
     gov_struct::Government,
     model::ABM
@@ -124,6 +155,8 @@ function update_macro_timeseries(
     all_hh_str = map(hh_id -> model[hh_id], all_hh)
     all_cp_str = map(cp_id -> model[cp_id], all_cp)
     all_kp_str = map(kp_id -> model[kp_id], all_kp)
+    all_bp_str = map(bp_id -> model[bp_id], all_bp)
+    all_lp_str = map(lp_id -> model[lp_id], all_lp)
 
     # Compute GDP and add to array
     compute_GDP!(all_hh_str, all_cp_str, all_kp_str, macro_struct)
@@ -182,6 +215,29 @@ function update_macro_timeseries(
     # println(D̄)
 
     update_debt!(all_cp_str, all_kp_str, macro_struct)
+
+    # Investment
+    EI_avg = mean(map(cp -> cp.EIᵈ, all_cp_str))
+    push!(macro_struct.EI_avg, EI_avg)
+    RS_avg = mean(map(cp -> cp.RSᵈ, all_cp_str))
+    push!(macro_struct.RS_avg, RS_avg)
+
+    # Productivity
+    avg_π = mean(map(cp -> cp.π[end], all_cp_str))
+    push!(macro_struct.avg_π, avg_π)
+    avg_A = mean(map(kp -> kp.A[end], all_kp_str))
+    push!(macro_struct.avg_A, avg_A)
+    avg_B = mean(map(kp -> kp.B[end], all_kp_str))
+    push!(macro_struct.avg_B, avg_B)
+
+    # Production quantity
+    avg_Q_bp = mean(map(bp -> bp.Q[end], all_bp_str))
+    push!(macro_struct.avg_Q_bp, avg_Q_bp)
+    avg_Q_lp = mean(map(lp -> lp.Q[end], all_lp_str))
+    push!(macro_struct.avg_Q_lp, avg_Q_lp)
+    avg_Q_kp = mean(map(kp -> kp.Q[end], all_kp_str))
+    push!(macro_struct.avg_Q_kp, avg_Q_kp)
+
 end
 
 

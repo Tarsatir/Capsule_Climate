@@ -26,6 +26,7 @@ struct GlobalParam
     β2 :: Float64                   # 2nd beta dist param for kp entrant
     cu :: Float64                   # capacity utilization for cp
     ϵ :: Float64                    # minimum desired wage increase rate
+    Kg_max :: Float64               # maximum capital growth rate
     ωD :: Float64                   # memory parameter cp demand estimation
     ωQ :: Float64                   # memory parameter cp quantity estimation
     ωL :: Float64                   # memory parameter cp labor supply estimation
@@ -35,7 +36,7 @@ struct GlobalParam
     a_σ :: Float64                  # 1st parameter governing logistic function
     b_σ :: Float64                  # 2nd parameter governing logistic function
     ψ_E :: Float64                  # chance of employed worker looking for a better paying job
-    Nᵈ_share::Float64
+    # Nᵈ_share::Float64
 end
 
 
@@ -68,7 +69,8 @@ function initialize_global_params()
         4.0,                        # β2: 2nd beta dist param for kp entrant
         0.75, # From rer98          # cu: capacity utilization for cp
         0.02,                       # ϵ: minimum desired wage increase rate
-        0.1,                        # ωD: memory parameter cp demand estimation
+        0.5,                        # Kg_max: maximum capital growth rate
+        0.5,                        # ωD: memory parameter cp demand estimation
         0.5,                        # ωQ: memory parameter cp quantity estimation
         0.5,                        # ωL: memory parameter cp labor supply estimation
         0.5,                        # ωW: memory parameter cp offered wage parameter
@@ -77,7 +79,7 @@ function initialize_global_params()
         1000,                       # a_σ
         30,                         # b_σ
         0.05,                       # ψ_E, chance of employed worker looking for a better paying job
-        0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
+        # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
     )
     return global_param
 end

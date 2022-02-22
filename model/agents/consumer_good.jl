@@ -9,7 +9,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     RD :: Vector{Float64}           # R&D spending
     D :: Vector{Float64}            # hist demand
     Dᵉ :: Float64                   # exp demand
-    hh_queue :: Vector              # vector containing orders of demanding households
+    order_queue :: Vector           # vector containing orders of demanding households
     Nᵈ :: Float64                   # desired inventory
     N_goods :: Float64              # inventory in good units
     Q :: Vector{Float64}            # hist production
@@ -114,23 +114,22 @@ Plans production amounts for consumer good producer (short term)
 """
 function plan_production_cp!(
     cp::ConsumerGoodProducer, 
-    global_param,
+    global_param::GlobalParam,
     model::ABM
     )
 
-    # Update amount of owned capital
-    update_K!(cp)
+    # Update amount of owned capital and desired inventories
+    update_K_cp!(cp)
+    update_Nᵈ_cp!(cp, global_param.ι)
 
-    # Update expected demand
-    cp.Dᵉ = global_param.ωD * cp.D[end] + (1 - global_param.ωD) * cp.Dᵉ
+    # Compute expected demand
+    compute_Dᵉ_cp!(cp, global_param.ωD)
 
-    # println(cp.Dᵉ)
-
-    # Determine desired short-term production
-    cp.Qˢ = cp.Dᵉ + cp.Nᵈ - cp.N_goods
+    # Compute desired short-term production
+    compute_Qˢ_cp!(cp)
 
     # Update average productivity
-    update_π!(cp)
+    update_π_cp!(cp)
 
     # Compute corresponding change in labor stock
     compute_ΔLᵈ_cp!(cp)
@@ -178,8 +177,9 @@ function plan_investment_cp!(
     # Compute desired capital stock expansion
     Kᵈ = cp.Qᵉ / cp.π[end]
 
-    cp.EIᵈ = max(Kᵈ - cp.balance.K, 0)
+    cp.EIᵈ = min(max(Kᵈ - cp.balance.K, 0), cp.balance.K * global_param.Kg_max)
     cp.RSᵈ = max(sum(map(machine -> machine.freq, cp.RS)), 0)
+    # println(cp.EIᵈ, " ", cp.RSᵈ, " ", cp.balance.K)
     cp.Iᵈ = max(cp.EIᵈ + cp.RSᵈ, 0)
 end
 
@@ -196,7 +196,7 @@ function funding_allocation_cp!(
     )
 
     # Compute how much debt cp can make additionally
-    poss_add_Deb = max(cp.D[end] * cp.p[end] * Λ - cp.balance.Deb, 0)
+    poss_add_Deb = max(cp.D[end] * cp.p[end] * Λ - sum(cp.Deb_installments), 0)
 
     # println(cp.p[end])
 
@@ -285,7 +285,33 @@ function funding_allocation_cp!(
 end
 
 
-function update_K!(
+"""
+Updates expected demand based on adaptive expectations.
+"""
+function compute_Dᵉ_cp!(
+    cp::ConsumerGoodProducer,
+    ωD::Float64
+    )
+
+    cp.Dᵉ = ωD * cp.D[end] + (1 - ωD) * cp.Dᵉ
+end
+
+
+"""
+Computes desired short-term production Qˢ
+"""
+function compute_Qˢ_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    cp.Qˢ = cp.Dᵉ + cp.Nᵈ - cp.N_goods
+end
+
+
+"""
+Updates capital stock K
+"""
+function update_K_cp!(
     cp::ConsumerGoodProducer
     )
 
@@ -293,11 +319,19 @@ function update_K!(
 end
 
 
-function update_π!(
+"""
+Updates weighted producivity of machine stock π
+"""
+function update_π_cp!(
     cp::ConsumerGoodProducer
     )
 
-    π = sum(map(machine -> (machine.freq * machine.A) / cp.balance.K, cp.Ξ))
+    # println(mean(map(machine -> machine.A, cp.Ξ)))
+    # println(cp.Iᵈ)
+
+    total_freq = sum(map(machine -> machine.freq, cp.Ξ))
+    # println(total_freq)
+    π = sum(map(machine -> (machine.freq * machine.A) / total_freq, cp.Ξ))
     push!(cp.π, π)
 end
 
@@ -335,6 +369,7 @@ function plan_replacement_cp!(
         c_star = cp.w̄[end] / Aᵈ
         if c_A > c_star
             if p_star/(c_A - c_star) <= global_param.b || machine.age >= global_param.η
+            # if p_star/(c_A - c_star) <= global_param.b
                 push!(cp.RS, machine)
             end
         end
@@ -446,6 +481,9 @@ function compute_p_cp!(
 end
 
 
+"""
+Computes the desired change in labor supply ΔLᵈ
+"""
 function compute_ΔLᵈ_cp!(
     cp::ConsumerGoodProducer
     )
@@ -453,11 +491,10 @@ function compute_ΔLᵈ_cp!(
     L = 100 # TODO: make this a global parameter
 
     ΔLᵈ = cp.Qˢ/cp.π[end] - cp.L
-
     if ΔLᵈ < -cp.L
         cp.ΔLᵈ = -cp.L
     else
-        cp.ΔLᵈ = L * ceil(ΔLᵈ / L)
+        cp.ΔLᵈ = L * floor(ΔLᵈ / L)
     end
 end
 
@@ -483,15 +520,14 @@ function send_orders_cp!(
     model::ABM
     )
 
-    # all_q = sum(map(o -> o[2], cp.hh_queue))
-    # avg_C = mean(map(o -> model[o[1]].C[end], cp.hh_queue))
-    # println(cp.Q[end], " ", all_q, " ", avg_C)
+    # Compute total demand for goods, regardless of if it can be fulfilled
+    # Allows producers to produce more if production is insufficient
+    total_D = sum(map(order -> order[2], cp.order_queue))
+    push!(cp.D, total_D)
 
-    push!(cp.D, 0)
+    # Loop over orders in queue, add realized sales S
     cp.curracc.S = 0
-
-    # Loop over orders in queue
-    for order in cp.hh_queue
+    for order in cp.order_queue
 
         hh_id = order[1]
         q = order[2]
@@ -500,11 +536,9 @@ function send_orders_cp!(
         share_fulfilled = 0.0
         if cp.N_goods > q
             share_fulfilled = 1.0
-            cp.D[end] += q
             cp.N_goods -= q
         elseif cp.N_goods > 0.0 && cp.N_goods < q
             share_fulfilled = cp.N_goods / q
-            cp.D[end] += cp.N_goods
             cp.N_goods = 0.0
         end
 
@@ -526,8 +560,11 @@ function compute_profits_cp!(
 
     # Compute total cost of investments
     cp.curracc.int_Deb = cp.balance.Deb * r
+    cp.curracc.TCL = cp.L * cp.w̄[end]
+
+    # println(cp.curracc.S, " ", cp.curracc.TCL, " ", cp.curracc.int_Deb)
  
-    Π = (cp.p[end] - cp.c[end]) * cp.D[end] - cp.curracc.int_Deb
+    Π = cp.curracc.S - cp.curracc.TCL - cp.curracc.int_Deb
     push!(cp.Π, Π)
 end
 
@@ -537,10 +574,10 @@ Updates desired inventory to be a share of the previous demand
 """
 function update_Nᵈ_cp!(
     cp::ConsumerGoodProducer,
-    Nᵈ_share::Float64
+    ι::Float64
     )
 
-    cp.Nᵈ = Nᵈ_share * cp.Dᵉ
+    cp.Nᵈ = ι * cp.D[end]
 end
 
 
@@ -554,7 +591,7 @@ end
 function reset_queue_cp!(
     cp::ConsumerGoodProducer
     )
-    cp.hh_queue = Vector()
+    cp.order_queue = Vector()
 end
 
 

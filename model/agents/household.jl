@@ -209,8 +209,8 @@ function place_orders_hh!(
 
         # println(q_B)
 
-        push!(model[bp_choice_id].hh_queue, order_B)
-        push!(model[lp_choice_id].hh_queue, order_L)
+        push!(model[bp_choice_id].order_queue, order_B)
+        push!(model[lp_choice_id].order_queue, order_L)
     end
 end
 

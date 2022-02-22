@@ -23,18 +23,8 @@ function close_balance_p!(
     ΔD::Float64
     )
 
-    # println(p.curracc, " ", p.Deb_installments)
-
     p.balance.Deb = sum(p.Deb_installments)
-
-    # Check if additional credit is needed
-    # if p.balance.NW < 0
-    #     borrow_funds_p!(p, -p.balance.NW)
-    # end
-
-    # Repay debt (as far as NW allows)
-    # Deb_to_be_repaid = min(p.balance.Deb * ΔD, p.balance.NW)
-    # payback_debt_p!(p, Deb_to_be_repaid)
+    p.balance.NW = p.balance.NW + p.Π[end] - p.Deb_installments[1]
 
     # Compute Equity
     tot_assets = p.p[end] * p.balance.N + p.balance.K + p.balance.NW
