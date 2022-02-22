@@ -192,8 +192,6 @@ function place_orders_hh!(
     C_B = hh.C[end] * (1 - hh.c_L)
     C_L = hh.C[end] * hh.c_L
 
-    # println(hh.C[end], " ", C_B, " ", C_L)
-
     # Send order to queues of bp and lp
     for n_day in 1:n_days
 
@@ -206,8 +204,6 @@ function place_orders_hh!(
 
         order_B = (hh.id, q_B)
         order_L = (hh.id, q_L)
-
-        # println(q_B)
 
         push!(model[bp_choice_id].order_queue, order_B)
         push!(model[lp_choice_id].order_queue, order_L)

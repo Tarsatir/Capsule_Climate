@@ -252,8 +252,8 @@ function matching_lm(
 
                     # If employed, change employer, otherwise get employed
                     if model[hh_id].employed
-                        change_employer_hh!(model[hh_id], p.wᴼ, p_id)
                         remove_worker_p!(model[model[hh_id].employer_id], model[hh_id])
+                        change_employer_hh!(model[hh_id], p.wᴼ, p_id)
                     else
                         set_employed_hh!(model[hh_id], p.wᴼ, p_id)
                     end
@@ -263,7 +263,7 @@ function matching_lm(
                 end
 
                 # Labor market aggregates are updated
-                update_wage_level_p!(p, model)
+                update_w̄_p!(p, model)
                 update_hiredworkers_lm!(labormarket_struct, to_be_hired)
 
                 # If producer's labor demand is met, remove from seeking producers

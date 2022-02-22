@@ -17,21 +17,62 @@ end
 Closes balance by computing firm's equity.
 If firm is insolvent, liquidate firm.
 """
-function close_balance_p!(
-    p::AbstractAgent,
+function close_balance_cp!(
+    cp::AbstractAgent,
     Λ::Float64,
     ΔD::Float64
     )
 
-    p.balance.Deb = sum(p.Deb_installments)
-    p.balance.NW = p.balance.NW + p.Π[end] - p.Deb_installments[1]
+    # Update valuation of inventory
+    cp.balance.N = cp.p[end] * cp.N_goods
+
+    # Update valuation of capital stock
+    cp.balance.K = sum(map(machine -> machine.freq * machine.p, cp.Ξ))
+    # TODO: include write-offs
+
+    # Compute balance of current account
+    curracc_in = cp.curracc.S + cp.curracc.rev_dep
+    curracc_out = cp.curracc.TCL + cp.curracc.TCI + cp.curracc.int_Deb + cp.curracc.rep_Deb
+    curracc_balance = curracc_in - curracc_out
+    
+    # Borrow liquid assets if needed
+    if curracc_balance < 0
+        borrow_funds_p!(cp, -curracc_balance)
+    end
+
+    cp.balance.Deb = sum(cp.Deb_installments)
+    cp.balance.NW = cp.balance.NW + cp.Π[end] - cp.cI
 
     # Compute Equity
-    tot_assets = p.p[end] * p.balance.N + p.balance.K + p.balance.NW
-    equity = tot_assets - p.balance.Deb
-    p.balance.EQ = equity
+    tot_assets = cp.balance.N + cp.balance.K + cp.balance.NW
+    cp.balance.EQ = tot_assets - cp.balance.Deb
+    # println(tot_assets, " ", cp.balance.EQ)
 
-    if p.balance.EQ < 0
+    if cp.balance.EQ < 0
+        # Liquidate firm
+    end
+end
+
+
+"""
+Closes balance by computing firm's equity.
+If firm is insolvent, liquidate firm.
+"""
+function close_balance_kp!(
+    kp::AbstractAgent,
+    Λ::Float64,
+    ΔD::Float64
+    )
+
+    kp.balance.Deb = sum(kp.Deb_installments)
+    kp.balance.NW = kp.balance.NW + kp.Π[end] - kp.Deb_installments[1]
+
+    # Compute Equity
+    tot_assets = kp.balance.N + kp.balance.K + kp.balance.NW
+    equity = tot_assets - kp.balance.Deb
+    kp.balance.EQ = equity
+
+    if kp.balance.EQ < 0
         # Liquidate firm
     end
 end
@@ -43,7 +84,7 @@ CURRENT ACCOUNT
 mutable struct FirmCurrentAccount
     # Inflows
     S :: Float64            # Sales
-    Rev_Dep :: Float64      # Deposit revenues
+    rev_dep :: Float64      # Deposit revenues
 
     # Outflows
     TCL::Float64            # Total cost of labor
@@ -61,7 +102,7 @@ function clear_firm_currentaccount_p!(
     )
 
     ca.S = 0
-    ca.Rev_Dep = 0
+    ca.rev_dep = 0
     ca.TCL = 0
     ca.TCI = 0
     ca.int_Deb = 0

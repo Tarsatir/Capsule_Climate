@@ -283,8 +283,11 @@ end
 
 
 function plan_production_kp!(
-    kp::CapitalGoodProducer
+    kp::CapitalGoodProducer,
+    model::ABM
     )
+
+    update_w̄_p!(kp, model)
     
     if (length(kp.orders) > 0)
         # determine total amount of machines to produce
@@ -339,7 +342,7 @@ function send_orders_kp!(
         cp_id = order[1]
         Iₜ = order[2]
 
-        machine = initialize_machine(Iₜ, 0, kp.A[end])
+        machine = initialize_machine(Iₜ, 0, kp.p[end], kp.A[end])
 
         tot_freq += machine.freq
 
@@ -368,6 +371,7 @@ end
 function reset_order_queue_kp!(
     kp::CapitalGoodProducer
     )
+
     kp.orders = []
 end
 
@@ -384,5 +388,6 @@ function select_HC_kp!(
     kp::CapitalGoodProducer, 
     all_cp::Vector{Int}
     )
+
     kp.HC = sample(all_cp, 10; replace=false)
 end

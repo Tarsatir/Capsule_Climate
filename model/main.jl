@@ -101,7 +101,7 @@ function initialize_model(;
             push!(machines, machine_struct)
         end
 
-        cp = initialize_cp(id, machines, n_consrgood, type_good, n_init_emp_cp)
+        cp = initialize_cp(id, machines, n_consrgood, type_good, n_init_emp_cp, global_param.μ1)
         update_K_cp!(cp)
         add_agent!(cp, model)
 
@@ -140,8 +140,6 @@ function initialize_model(;
         n_init_emp_kp,
         model
     )
-
-    # update_marketshares_cm!(all_cp, model)
 
     return model, global_param, macro_struct, gov_struct, labormarket_struct
 end
@@ -202,15 +200,17 @@ function model_step!(
         # Plan investments for this period
         plan_investment_cp!(cp, global_param, all_kp, model)
 
-        update_wᴼₑ(cp, global_param.ωW)
+        # See if enough funds available for investments and production, otherwise
+        # change investments and production to match funding availability.
+        funding_allocation_cp!(cp, global_param.Λ, global_param.ωW, model)
 
-        funding_allocation_cp!(cp, global_param.Λ, model)
+        # Send orders to kp
         order_machines_cp!(cp, model)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
     for kp_id in all_kp
-        plan_production_kp!(model[kp_id])
+        plan_production_kp!(model[kp_id], model)
     end
 
     # (3) labor market matching process
@@ -264,8 +264,9 @@ function model_step!(
 
     # cp make up profits
     for cp_id in all_cp
-        repay_debt_installments_cp!(model[cp_id])
-        compute_profits_cp!(model[cp_id], global_param.r)
+        # repay_debt_installments_cp!(model[cp_id])
+        payback_debt_p!(model[cp_id])
+        compute_Π_cp!(model[cp_id], global_param.r)
     end
 
     # (6) kp deliver goods to cp, kp make up profits
@@ -280,8 +281,12 @@ function model_step!(
     end
 
     # Close balances of firms, if insolvent, liquidate firms
-    for p_id in all_p
-        close_balance_p!(model[p_id], global_param.Λ, global_param.ΔD)
+    for cp_id in all_cp
+        close_balance_cp!(model[cp_id], global_param.Λ, global_param.ΔD)
+    end
+
+    for kp_id in all_kp
+        close_balance_kp!(model[kp_id], global_param.Λ, global_param.ΔD)
     end
 
     # (7) government receives profit taxes and computes budget balance
@@ -305,8 +310,8 @@ function model_step!(
     update_marketshare_cp!(all_bp, all_lp, model)
 
     # Remove bankrupt companies and introduce new companies.
+    # TODO
 
-    # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 end
 
 to = TimerOutput()

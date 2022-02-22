@@ -81,10 +81,11 @@ end
 """
 Updates wage level for producer.
 """
-function update_wage_level_p!(
+function update_w̄_p!(
     p::AbstractAgent,
     model::ABM
     )
+
     if length(p.employees) > 0
         w̄ = mean(map(hh_id -> model[hh_id].w[end], p.employees))
         push!(p.w̄, w̄)
@@ -136,8 +137,14 @@ function borrow_funds_p!(
     )
 
     # TODO permutate bank
-    p.balance.Deb += amount
-    p.balance.NW += amount
+    # p.balance.Deb += amount
+    # p.balance.NW += amount
+
+    # TODO: make this depend on amount of payback periods
+    p.Deb_installments[1] += amount/3
+    p.Deb_installments[2] += amount/3
+    p.Deb_installments[3] += amount/3
+
 end
 
 
@@ -146,11 +153,18 @@ Pays back amount of debt, permutates balance.
 """
 function payback_debt_p!(
     p::AbstractAgent,
-    amount::Float64
     )
 
     # TODO permutate bank
-    p.balance.Deb -= amount
-    p.balance.NW -= amount
+    # p.balance.Deb -= amount
+    # p.balance.NW -= amount
+
+    to_be_paid = p.Deb_installments[1]
+    p.curracc.rep_Deb += to_be_paid
+
+    # TODO: make this depend on amount of payback periods
+    p.Deb_installments[1] = p.Deb_installments[2]
+    p.Deb_installments[2] = p.Deb_installments[3]
+    p.Deb_installments[3] = 0.0
 end
 
