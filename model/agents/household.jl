@@ -48,8 +48,8 @@ function initialize_hh(
         [],                     # Iᵀ: hist taxed income
         # [10],                   # S: total savings
         0,                      # s: savings rate
-        [100],                  # W: wealth or cash on hand
-        [100],                  # Wʳ: real wealth or cash on hand
+        [0],                  # W: wealth or cash on hand
+        [0],                  # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
         Vector{Int}(),          # all_cp_B: connected cp basic goods
@@ -146,7 +146,7 @@ function compute_consumption_budget_hh!(
     C = min((hh.W[end])^α_cp, hh.W[end])
     push!(hh.C, C)
 
-    s = (hh.I[end] - C)/hh.I[end]
+    s = (hh.Iᵀ[end] - C)/hh.I[end]
     hh.s = s
 end
 

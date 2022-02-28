@@ -12,7 +12,7 @@ function initialize_labormarket()
         [],
         [],
         0.1,
-        1,
+        3,
         0
     )
     return labormarket_struct

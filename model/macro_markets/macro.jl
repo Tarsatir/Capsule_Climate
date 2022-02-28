@@ -221,11 +221,6 @@ function update_macro_timeseries(
 
     # Investment
     EI_avg = mean(map(cp -> cp.EIᵈ, all_cp_str))
-    # for cp in all_cp_str
-    #     if isnan(cp.EIᵈ)
-    #         println(cp)
-    #     end
-    # end
     push!(macro_struct.EI_avg, EI_avg)
     RS_avg = mean(map(cp -> cp.RSᵈ, all_cp_str))
     push!(macro_struct.RS_avg, RS_avg)
@@ -241,6 +236,7 @@ function update_macro_timeseries(
     # Production quantity
     avg_Q_bp = mean(map(bp -> bp.Q[end], all_bp_str))
     push!(macro_struct.avg_Q_bp, avg_Q_bp)
+    println(mean(map(cp -> cp.Qˢ, all_cp_str)))
     avg_Q_lp = mean(map(lp -> lp.Q[end], all_lp_str))
     push!(macro_struct.avg_Q_lp, avg_Q_lp)
     avg_Q_kp = mean(map(kp -> kp.Q[end], all_kp_str))

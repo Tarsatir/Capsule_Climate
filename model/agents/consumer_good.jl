@@ -75,8 +75,8 @@ function initialize_cp(
         Vector(),                   # hh_queue: vector containing ids of demanding households           
         ι * 1100,                   # Nᵈ: desired inventory
         0,                          # N_goods: inventory in goods 
-        [1210],                     # Q: hist production
-        1210,                       # Qᵉ: exp production
+        [1210],               # Q: hist production
+        1210,                 # Qᵉ: exp production
         0,                          # Qˢ: desired short-term production
 
         0,                          # Iᵈ: desired investments
@@ -310,6 +310,9 @@ function update_Qˢ_cp!(
     )
 
     cp.Qˢ = cp.Dᵉ + cp.Nᵈ - cp.N_goods
+    # if length(cp.D) > 1
+        # println(cp.Qˢ, " ", cp.Dᵉ, " ", cp.Nᵈ, " ", cp.N_goods, " ", cp.D[end], " ", cp.D[end-1])
+    # end
     # println(cp.Dᵉ, " ", cp.N_goods)
 end
 
