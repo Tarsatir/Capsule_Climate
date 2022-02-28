@@ -158,8 +158,11 @@ function update_macro_timeseries(
     all_bp_str = map(bp_id -> model[bp_id], all_bp)
     all_lp_str = map(lp_id -> model[lp_id], all_lp)
 
-    # Compute GDP and add to array
+    # Compute GDP
     compute_GDP!(all_hh_str, all_cp_str, all_kp_str, macro_struct)
+
+    # Compute CPI
+    update_CPI!(all_cp_str, macro_struct)
 
     ΔL̄_avg = mean(map(p -> p.ΔLᵈ, vcat(all_cp_str, all_kp_str)))
     ΔL̄_std = std(map(p -> p.ΔLᵈ, vcat(all_cp_str, all_kp_str)))
@@ -218,6 +221,11 @@ function update_macro_timeseries(
 
     # Investment
     EI_avg = mean(map(cp -> cp.EIᵈ, all_cp_str))
+    # for cp in all_cp_str
+    #     if isnan(cp.EIᵈ)
+    #         println(cp)
+    #     end
+    # end
     push!(macro_struct.EI_avg, EI_avg)
     RS_avg = mean(map(cp -> cp.RSᵈ, all_cp_str))
     push!(macro_struct.RS_avg, RS_avg)
@@ -255,6 +263,7 @@ function compute_GDP!(
     push!(macro_struct.GDP_I, total_I)
 
     total_Π_cp = sum(map(cp -> cp.Π[end], all_cp_str))
+
     push!(macro_struct.GDP_Π_cp, total_Π_cp)
     
     total_Π_kp = sum(map(kp -> kp.Π[end], all_kp_str))
@@ -314,4 +323,27 @@ function update_debt!(
 
     Deb_tot = Deb_cp + Deb_kp
     push!(macro_struct.Deb_tot, Deb_tot)
+end
+
+
+function update_CPI!(
+    all_cp_str::Vector{ConsumerGoodProducer},
+    macro_struct::MacroEconomy
+    )
+
+    avg_p_1 = sum(map(cp -> cp.p[1] * cp.f[1], all_cp_str))
+    avg_p_t = sum(map(cp -> cp.p[end] * cp.f[end], all_cp_str))
+    # avg_w = mean(map(cp -> cp.w̄[end], all_cp_str))
+    # avg_c = mean(map(cp -> cp.c[end], all_cp_str))
+    # println(avg_p_1, " ", avg_p_t, " ", avg_w, " ", avg_c)
+    # println(sum(map(cp -> 0.5*cp.f[end], all_cp_str)))
+
+    # Compute average price, weighted by market share
+    if length(macro_struct.CPI) == 0
+        push!(macro_struct.CPI, 100)
+    else
+        # TODO dont compute this again every time
+        CPI_t = 100 / avg_p_1 * avg_p_t
+        push!(macro_struct.CPI, CPI_t)
+    end
 end

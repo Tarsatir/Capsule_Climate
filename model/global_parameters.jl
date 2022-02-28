@@ -47,8 +47,8 @@ function initialize_global_params()
         0.3,                        # ζ: firm search capabilities
         3.0,                        # α1: 1st beta dist param for IN
         3.0,                        # β1: 2nd beta dist param for IN
-        -0.15,                      # κ_lower: 1st beta dist support
-        0.15,                       # κ_upper: 2nd beta dist support
+        -0.05,                      # κ_lower: 1st beta dist support
+        0.05,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
         0.2,                        # μ1: kp markup rule
         0.01,                       # r: (annual) interest rate
@@ -74,7 +74,7 @@ function initialize_global_params()
         0.5,                        # ωQ: memory parameter cp quantity estimation
         0.5,                        # ωL: memory parameter cp labor supply estimation
         0.5,                        # ωW: memory parameter cp offered wage parameter
-        0.99,                       # α_cp: parameter controlling MPC of consumers
+        0.90,                       # α_cp: parameter controlling MPC of consumers
         0.7,                        # c_L_max
         1000,                       # a_σ
         30,                         # b_σ

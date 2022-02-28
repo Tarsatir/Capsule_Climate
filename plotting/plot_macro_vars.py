@@ -80,6 +80,10 @@ def plot_macro_vars():
     ax[5,0].set_title('Production quantity')
     ax[5,0].legend()
 
+    ax[5,1].plot(range(len(df.CPI)), df.CPI)
+    ax[5,1].set_title('CPI')
+
+
     plt.tight_layout()
     plt.savefig('plots/first.png', bbox_inches='tight')
 

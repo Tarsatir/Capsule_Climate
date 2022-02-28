@@ -101,7 +101,15 @@ function initialize_model(;
             push!(machines, machine_struct)
         end
 
-        cp = initialize_cp(id, machines, n_consrgood, type_good, n_init_emp_cp, global_param.μ1)
+        cp = initialize_cp(
+                id, 
+                machines, 
+                n_consrgood, 
+                type_good, 
+                n_init_emp_cp, 
+                global_param.μ1,
+                global_param.ι
+            )
         update_K_cp!(cp)
         add_agent!(cp, model)
 
@@ -263,11 +271,10 @@ function model_step!(
     )
 
     # cp make up profits
-    for cp_id in all_cp
-        # repay_debt_installments_cp!(model[cp_id])
-        payback_debt_p!(model[cp_id])
-        compute_Π_cp!(model[cp_id], global_param.r)
-    end
+    # for cp_id in all_cp
+    #     # repay_debt_installments_cp!(model[cp_id])
+    #     compute_Π_cp!(model[cp_id], global_param.r)
+    # end
 
     # (6) kp deliver goods to cp, kp make up profits
     for kp_id in all_kp
@@ -275,15 +282,13 @@ function model_step!(
     end
 
     for cp_id in all_cp
-        # Update amount of owned capital
+        # Update amount of owned capital, increase machine age
         update_K_cp!(model[cp_id])
         increase_machine_age_cp!(model[cp_id])
-    end
 
-    # Close balances of firms, if insolvent, liquidate firms
-    for cp_id in all_cp
-        close_balance_cp!(model[cp_id], global_param.Λ, global_param.ΔD)
-    end
+        # Close balances of firms, if insolvent, liquidate firms
+        close_balance_cp!(model[cp_id], global_param.Λ, global_param.ΔD, global_param.r)
+    end 
 
     for kp_id in all_kp
         close_balance_kp!(model[kp_id], global_param.Λ, global_param.ΔD)
@@ -317,7 +322,7 @@ end
 to = TimerOutput()
 
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
-for i in 1:100
+for i in 1:400
     println("Step ", i)
     @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, model)
 end

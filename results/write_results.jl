@@ -18,6 +18,9 @@ function save_macro_data(macro_struct)
         GDP_I=macro_struct.GDP_I,
         GDP_cp=macro_struct.GDP_Π_cp,
         GDP_kp=macro_struct.GDP_Π_kp,
+
+        CPI=macro_struct.CPI,
+
         M=macro_struct.M,
         M_hh=macro_struct.M_hh,
         M_cp=macro_struct.M_cp,

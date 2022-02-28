@@ -73,7 +73,6 @@ function pay_workers_p!(
         get_income_hh!(hh, wage)
     end
     
-    # p.balance.NW -= total_wage
     p.curracc.TCL = total_wage
 end
 

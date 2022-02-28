@@ -48,8 +48,8 @@ function initialize_hh(
         [],                     # Iᵀ: hist taxed income
         # [10],                   # S: total savings
         0,                      # s: savings rate
-        [10],                   # W: wealth or cash on hand
-        [10],                   # Wʳ: real wealth or cash on hand
+        [100],                  # W: wealth or cash on hand
+        [100],                  # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
         Vector{Int}(),          # all_cp_B: connected cp basic goods
@@ -237,10 +237,12 @@ function update_sat_req_wage_hh!(
     UB::Float64
     )
 
-    if length(hh.I) > 4
-        hh.wˢ = mean(hh.I[end-4:end]/hh.L)
+    T = 4
+
+    if length(hh.w) > T
+        hh.wˢ = mean(hh.w[end-T:end])
     else
-        hh.wˢ = mean(hh.I/hh.L)
+        hh.wˢ = mean(hh.w)
     end
 
 

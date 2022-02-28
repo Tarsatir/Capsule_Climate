@@ -20,8 +20,12 @@ If firm is insolvent, liquidate firm.
 function close_balance_cp!(
     cp::AbstractAgent,
     Λ::Float64,
-    ΔD::Float64
+    ΔD::Float64,
+    r::Float64
     )
+
+    # Repay debts of period
+    payback_debt_p!(cp)
 
     # Update valuation of inventory
     cp.balance.N = cp.p[end] * cp.N_goods
@@ -34,11 +38,36 @@ function close_balance_cp!(
     curracc_in = cp.curracc.S + cp.curracc.rev_dep
     curracc_out = cp.curracc.TCL + cp.curracc.TCI + cp.curracc.int_Deb + cp.curracc.rep_Deb
     curracc_balance = curracc_in - curracc_out
+    # println(curracc_balance)
+
+    # Decide if extra credit is needed and how much
+    if curracc_balance < 0.0
+        req_borrowing = 0
+        if -curracc_balance > cp.balance.NW
+            # Extra credit is needed, borrow extra funds
+            curr_Deb = sum(cp.Deb_installments)
+            max_Deb = Λ * cp.curracc.S
+            req_borrowing = -curracc_balance - cp.balance.NW
+            add_borrowing = max(min(max_Deb - curr_Deb, req_borrowing), 0)
+
+            if add_borrowing > 0
+                borrow_funds_p!(cp, add_borrowing)
+            end
+        else
+            # Current account deficit can be financed from liquid assets
+            # cp.balance.NW -= -curracc_balance
+        end
+    end
     
     # Borrow liquid assets if needed
-    if curracc_balance < 0
-        borrow_funds_p!(cp, -curracc_balance)
-    end
+    # if curracc_balance < 0
+    #     borrow_funds_p!(cp, -curracc_balance)
+    # end
+
+    # Compute profits
+    compute_Π_cp!(cp, r)
+
+    # println(cp.Π[end], " ", cp.cI)
 
     cp.balance.Deb = sum(cp.Deb_installments)
     cp.balance.NW = cp.balance.NW + cp.Π[end] - cp.cI
