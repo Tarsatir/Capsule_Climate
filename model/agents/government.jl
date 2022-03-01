@@ -14,8 +14,8 @@ function initialize_government()
     gov_struct = Government(
         70,                             # UB: unemployment benefits
         0.0,                            # τᴵ: income tax
-        0.2,                            # τˢ: sales tax
-        0.2,                            # τᴾ: profit tax
+        0.0,                            # τˢ: sales tax
+        0.0,                            # τᴾ: profit tax
         0.0,                            # τᴱ: energy tax
         0.0,                            # τᶜ: emission tax
         0.0,                            # MS: money stock owned by government

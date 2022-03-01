@@ -123,7 +123,7 @@ function plan_production_cp!(
     )
 
     # Update amount of owned capital and desired inventories
-    update_K_cp!(cp)
+    update_n_machines_cp!(cp)
     update_Nᵈ_cp!(cp, global_param.ι)
 
     # Compute expected demand
@@ -356,7 +356,7 @@ end
 """
 Updates capital stock n_machines
 """
-function update_K_cp!(
+function update_n_machines_cp!(
     cp::ConsumerGoodProducer
     )
 
@@ -626,7 +626,8 @@ Computes profit of cp in previous time period
 """
 function compute_Π_cp!(
     cp::ConsumerGoodProducer,
-    r::Float64
+    r::Float64,
+    writeoffs=0::Float64
     )
 
     # Compute total cost of investments
@@ -636,6 +637,7 @@ function compute_Π_cp!(
     # println(cp.curracc.S, " ", cp.curracc.TCL, " ", cp.curracc.int_Deb)
  
     Π = cp.curracc.S + cp.curracc.rev_dep - cp.curracc.TCL - cp.curracc.int_Deb
+    # Π = cp.curracc.S + cp.curracc.rev_dep - cp.curracc.TCL - cp.curracc.int_Deb - writeoffs
     push!(cp.Π, Π)
 end
 
@@ -655,6 +657,7 @@ end
 function reset_brochures_cp!(
     cp::ConsumerGoodProducer
     )
+
     cp.brochures = []
 end
 
@@ -662,6 +665,7 @@ end
 function reset_queue_cp!(
     cp::ConsumerGoodProducer
     )
+
     cp.order_queue = Vector()
 end
 
@@ -693,15 +697,11 @@ function receive_machines!(
     # Add new machine to capital stock
     push!(cp.Ξ, machine)
     # cp.balance.NW -= Iₜ
-
-    cp.curracc.TCI += Iₜ
+    # cp.curracc.TCI += Iₜ
 
     # Add debt to future installments
-    # borrow_funds_p!()
-    # cp.Deb_installments[1] += Iₜ / 3
-    # cp.Deb_installments[2] += Iₜ / 3
-    # cp.Deb_installments[3] += Iₜ / 3
-
+    add_debt = max(Iₜ - cp.cI, 0)
+    borrow_funds_p!(cp, add_debt)
 
     # TODO permutate the balance (in terms of capital and debt)
 

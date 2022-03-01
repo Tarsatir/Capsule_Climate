@@ -110,7 +110,7 @@ function initialize_model(;
                 global_param.μ1,
                 global_param.ι
             )
-        update_K_cp!(cp)
+        update_n_machines_cp!(cp)
         add_agent!(cp, model)
 
         id += 1
@@ -283,11 +283,17 @@ function model_step!(
 
     for cp_id in all_cp
         # Update amount of owned capital, increase machine age
-        update_K_cp!(model[cp_id])
+        update_n_machines_cp!(model[cp_id])
         increase_machine_age_cp!(model[cp_id])
 
         # Close balances of firms, if insolvent, liquidate firms
-        close_balance_cp!(model[cp_id], global_param.Λ, global_param.ΔD, global_param.r)
+        close_balance_cp!(
+            model[cp_id], 
+            global_param.Λ, 
+            global_param.ΔD, 
+            global_param.r,
+            global_param.η
+        )
     end 
 
     for kp_id in all_kp
@@ -322,7 +328,7 @@ end
 to = TimerOutput()
 
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
-for i in 1:400
+for i in 1:100
     println("Step ", i)
     @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, model)
 end

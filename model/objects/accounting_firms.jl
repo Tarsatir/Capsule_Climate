@@ -21,7 +21,8 @@ function close_balance_cp!(
     cp::AbstractAgent,
     Λ::Float64,
     ΔD::Float64,
-    r::Float64
+    r::Float64,
+    η::Int
     )
 
     # Repay debts of period
@@ -31,8 +32,10 @@ function close_balance_cp!(
     cp.balance.N = cp.p[end] * cp.N_goods
 
     # Update valuation of capital stock
-    cp.balance.K = sum(map(machine -> machine.freq * machine.p, cp.Ξ))
+    # cp.balance.K = sum(map(machine -> machine.freq * machine.p, cp.Ξ))
     # TODO: include write-offs
+
+    writeoffs = update_K_cp!(cp, η)
 
     # Compute balance of current account
     curracc_in = cp.curracc.S + cp.curracc.rev_dep
@@ -65,7 +68,7 @@ function close_balance_cp!(
     # end
 
     # Compute profits
-    compute_Π_cp!(cp, r)
+    compute_Π_cp!(cp, r, writeoffs)
 
     # println(cp.Π[end], " ", cp.cI)
 
@@ -104,6 +107,29 @@ function close_balance_kp!(
     if kp.balance.EQ < 0
         # Liquidate firm
     end
+end
+
+
+"""
+Computes current value of capital stock and writeoffs in period
+"""
+function update_K_cp!(
+    cp::AbstractAgent,
+    η::Int
+    )::Float64
+
+    K = 0
+    writeoffs = 0
+
+    for machine in cp.Ξ
+        newval = machine.p * machine.freq
+        K += (η - machine.age) / η * newval
+        writeoffs += (1 / η) * newval
+    end
+
+    cp.balance.K = K
+
+    return writeoffs
 end
 
 

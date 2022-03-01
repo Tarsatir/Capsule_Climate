@@ -295,7 +295,7 @@ function plan_production_kp!(
     end
 
     # determine amount of labor to hire
-    kp.ΔLᵈ = kp.O/kp.B[end] - kp.L
+    kp.ΔLᵈ = kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L
 end
 
 
