@@ -296,7 +296,7 @@ function compute_M!(
     # Wealth of households
     M_hh = sum(map(hh -> hh.W[end], all_hh_str))
     MA_avg = mean(map(hh -> hh.W[end], all_hh_str))
-    println("MA hh avg ", MA_avg)
+    # println("MA hh avg ", MA_avg)
     push!(macro_struct.M_hh, M_hh)
 
     # Liquid assets of cp
@@ -336,7 +336,7 @@ function update_debt!(
     debt_tot = debt_cp + debt_kp
     push!(macro_struct.debt_tot, debt_tot)
 
-    debt_cp_allowed = Λ * sum(map(cp -> cp.D[end], all_cp_str))
+    debt_cp_allowed = Λ * sum(map(cp -> cp.curracc.S, all_cp_str))
     push!(macro_struct.debt_cp_allowed, debt_cp_allowed)
 end
 

@@ -12,7 +12,7 @@ function initialize_labormarket()
         [],
         [],
         0.1,
-        3,
+        1,
         0
     )
     return labormarket_struct
@@ -88,7 +88,8 @@ function labormarket_process!(
     labormarket_struct::LaborMarket,
     all_hh::Vector{Int}, 
     all_p::Vector{Int}, 
-    ϵ :: Float64, 
+    ϵ :: Float64,
+    max_g_wᴼ :: Float64, 
     UB :: Float64,
     model::ABM
     )
@@ -129,7 +130,13 @@ function labormarket_process!(
     # labor market matching process
     # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
-    matching_lm(labormarket_struct, employed_jobseekers, hiring_producers, model)
+    matching_lm(
+        labormarket_struct, 
+        employed_jobseekers, 
+        hiring_producers,
+        max_g_wᴼ, 
+        model
+    )
     # println("m2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
     # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
 
@@ -163,19 +170,17 @@ function fire_workers_lm!(
 
     all_fired_workers = Vector{Int}()
 
-    # choose who gets fired
+    # Choose who gets fired
     for p_id in firing_producers
         fired_workers = fire_excess_workers_p!(model[p_id], model)
         # println(fired_workers)
         append!(all_fired_workers, fired_workers)
     end
 
-    # println(all_fired_workers)
-
-    # update employed and unemployed lists
+    # Update employed and unemployed lists
     update_firedworker_lm!(labormarket_struct, all_fired_workers)
 
-    # change employment status for households
+    # Change employment status for households
     for hh_id in all_fired_workers
         set_unemployed_hh!(model[hh_id])
     end
@@ -189,63 +194,55 @@ function matching_lm(
     labormarket_struct::LaborMarket,
     employed_jobseekers::Vector{Int}, 
     hiring_producers::Vector{Int},
+    max_g_wᴼ::Float64,
     model::ABM
     )
 
     # Concatenate all unemployed and job-seeking employed households
     jobseeking_hh = vcat(employed_jobseekers, labormarket_struct.unemployed)
+    hiring_producers_dict = Dict(p_id => model[p_id].ΔLᵈ for p_id in hiring_producers)
 
-    for n_round in 1:labormarket_struct.n_rounds
+    for i_round in 1:labormarket_struct.n_rounds
 
         # Loop over hiring producers producers
-        for p_id in hiring_producers
+        for (p_id, ΔL) in hiring_producers_dict
 
             # Stop process if no unemployed left
             if length(jobseeking_hh) == 0
                 return
             end
 
-            p = model[p_id]
+            # TODO do this in a more sophisticated way
+            n_sample = min(10, length(jobseeking_hh))
 
-            if p.ΔLᵈ > 0
+            # Make queue of job-seeking households
+            Lˢ = sample(jobseeking_hh, n_sample, replace=false)
 
-                # TODO do this in a more sophisticated way
-                n_sample = min(10, length(jobseeking_hh))
+            # Only select households with a low enough reservation wage
+            Lᵈ = sort(Lˢ, by = hh_id -> model[hh_id].wʳ)
 
-                # Make queue of job-seeking households
-                Lˢ = sample(jobseeking_hh, n_sample, replace=false)
-
-                # Only select households with a low enough reservation wage
-                Lᵈ = sort(Lˢ, by = hh_id -> model[hh_id].wʳ)
-
-                to_be_hired = Vector{Int}()
-                ΔL = p.ΔLᵈ
-
-                for hh_id in Lᵈ
-                   
-                    # Only hire workers if wage can be afforded
-                    # if model[hh_id].wʳ <= p.wᴼₑ
-                    ΔL -= model[hh_id].L
+            to_be_hired = Vector{Int}()
+            for hh_id in Lᵈ
+                
+                # Only hire workers if wage can be afforded
+                if model[hh_id].wʳ <= model[p_id].wᴼ * (1 + max_g_wᴼ)
                     push!(to_be_hired, hh_id)
-
-                    if ΔL < 0
-                        break
-                    end
-                    # else
-                        # break
-                    # end
+                    ΔL -= model[hh_id].L
                 end
 
-                # If no suitable candidates available, producer stops hiring
-                if length(to_be_hired) == 0
+                # TODO: make this a constant
+                # If producer's labor demand is met, remove from seeking producers
+                if ΔL <= 10
                     filter!(p -> p ≠ p_id, hiring_producers)
                     break
                 end
-                
-                # Set offered wage to lowest requested wage that makes producer
-                # meet the labor target
-                p.wᴼ = model[to_be_hired[end]].wʳ
-                # println(p.wᴼ)
+            end
+            
+            # Set offered wage to lowest requested wage that makes producer
+            # meet the labor target
+
+            if length(to_be_hired) > 0
+                model[p_id].wᴼ = model[to_be_hired[end]].wʳ
 
                 # Hire selected workers
                 for hh_id in to_be_hired
@@ -253,9 +250,9 @@ function matching_lm(
                     # If employed, change employer, otherwise get employed
                     if model[hh_id].employed
                         remove_worker_p!(model[model[hh_id].employer_id], model[hh_id])
-                        change_employer_hh!(model[hh_id], p.wᴼ, p_id)
+                        change_employer_hh!(model[hh_id], model[p_id].wᴼ, p_id)
                     else
-                        set_employed_hh!(model[hh_id], p.wᴼ, p_id)
+                        set_employed_hh!(model[hh_id], model[p_id].wᴼ, p_id)
                     end
                     
                     hire_worker_p!(model[p_id], model[hh_id])
@@ -263,32 +260,28 @@ function matching_lm(
                 end
 
                 # Labor market aggregates are updated
-                update_w̄_p!(p, model)
+                update_w̄_p!(model[p_id], model)
                 update_hiredworkers_lm!(labormarket_struct, to_be_hired)
 
-                # If producer's labor demand is met, remove from seeking producers
-                if p.ΔLᵈ < 0
-                    filter!(p -> p ≠ p_id, hiring_producers)
-                end
-
+                hiring_producers_dict[p_id] = ΔL
             end
         end
     end
 end
 
 
-function update_avg_T_unemp_lm(
-    labormarket_struct, 
-    model::ABM
-    )
+# function update_avg_T_unemp_lm(
+#     labormarket_struct, 
+#     model::ABM
+#     )
 
-    if length(labormarket_struct.unemployed) > 0
-        avg_T_unemp = mean(map(hh_id -> model[hh_id].T_unemp, labormarket_struct.unemployed))
-        labormarket_struct.avg_T_unemp = avg_T_unemp
-    else
-        labormarket_struct.avg_T_unemp = 0
-    end
-end
+#     if length(labormarket_struct.unemployed) > 0
+#         avg_T_unemp = mean(map(hh_id -> model[hh_id].T_unemp, labormarket_struct.unemployed))
+#         labormarket_struct.avg_T_unemp = avg_T_unemp
+#     else
+#         labormarket_struct.avg_T_unemp = 0
+#     end
+# end
 
 
 function update_hiredworkers_lm!(

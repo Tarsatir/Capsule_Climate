@@ -68,7 +68,7 @@ function initialize_kp(
         [],                     # IN: hist innovation expenditure
         [100],                  # D: hist revenue
         [],                     # HC: hist clients
-        [],                     # Π: hist profits
+        [0.0],                  # Π: hist profits
         fill(0.0, 4),           # debt installments
         1/n_captlgood,          # f: market share
         [],                     # brochure
@@ -269,6 +269,10 @@ function set_RD_kp!(
     # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
     prev_S = kp.p[end] * kp.Q[end]
     RD_new = ν * prev_S
+    # RD_new = max(ν * kp.Π[end], 0)
+
+    # TODO: now based on prev profit to avoid large losses. If kept, describe!
+
     push!(kp.RD, RD_new)
     kp.curracc.TCI += RD_new
 
@@ -281,6 +285,9 @@ function set_RD_kp!(
 end
 
 
+"""
+Based on received orders, sets labor demand to fulfill production.
+"""
 function plan_production_kp!(
     kp::CapitalGoodProducer,
     model::ABM
@@ -289,18 +296,24 @@ function plan_production_kp!(
     update_w̄_p!(kp, model)
     
     # Determine total amount of machines to produce
-    total_O = 0
     if (length(kp.orders) > 0)
-        total_O += sum(map(order -> order[2], kp.orders)) / kp.p[end]
+        kp.O = sum(map(order -> order[2] / kp.p[end], kp.orders)) 
+    else
+        kp.O = 0.0
     end
 
     # Determine amount of labor to hire
-    kp.O = total_O
-    kp.ΔLᵈ = kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L
+    kp.ΔLᵈ = 100 * floor(max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L) / 100)
+    # kp.ΔLᵈ = max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L)
+
+    # println("labor ", kp.ΔLᵈ, " ", kp.O / kp.B[end], " ", kp.RD[end] / kp.w̄[end], " ", kp.L)
     # kp.ΔLᵈ = kp.O / kp.B[end] - kp.L
 end
 
 
+"""
+Lets kp produce ordered goods based on actual available labor stock.
+"""
 function produce_goods_kp!(
     kp::CapitalGoodProducer
     )
@@ -316,14 +329,24 @@ function produce_goods_kp!(
         req_L = q / kp.B[end]
 
         if unocc_L > req_L
+            # Full order can be fulfilled
             total_Q += q
             push!(kp.prod_queue, order)
             unocc_L -= req_L
+        elseif unocc_L > 0.0
+            # Partial order can be fulfilled
+            part_q = unocc_L * kp.B[end]
+            total_Q += part_q
+            new_Iₜ = part_q * kp.p[end]
+            push!(kp.prod_queue, (order[1], new_Iₜ))
+            unocc_L = 0.0
         end
     end
 
     # Reset order amount back to zero
-    kp.O = 0
+    # kp.O = 0
+
+    # println(length(kp.orders), " ", length(kp.prod_queue), " ", kp.L, " ", kp.O)
 
     # Push production amount
     push!(kp.Q, total_Q)
@@ -331,7 +354,7 @@ end
 
 
 """
-Sends orders from production queue to cp
+Sends orders from production queue to cp.
 """
 function send_orders_kp!(
     kp::CapitalGoodProducer,
@@ -339,9 +362,6 @@ function send_orders_kp!(
     )
 
     tot_freq = 0
-
-    # println(kp.prod_queue)
-
     for order in kp.prod_queue
 
         cp_id = order[1]

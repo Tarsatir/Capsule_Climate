@@ -66,9 +66,10 @@ function close_balance_p!(
     tot_assets = p.balance.N + p.balance.K + p.balance.NW
     p.balance.EQ = tot_assets - p.balance.debt
 
-    if p.balance.EQ < 0
-        # Liquidate firm
-    end
+    # TODO:
+    # if p.balance.EQ < 0
+    #     # Liquidate firm
+    # end
 end
 
 
@@ -141,9 +142,10 @@ function compute_Π_p!(
     )
  
     Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt
-    if typeof(p) == CapitalGoodProducer
-        println(Π, " ", p.curracc.S, " ", p.curracc.TCL, " ", p.curracc.TCI, " ", p.curracc.int_debt)
-    end
+    # if typeof(p) == CapitalGoodProducer
+    #     println("profit ", Π, " S ", p.curracc.S, "  TCL ", p.curracc.TCL, " TCI ", p.curracc.TCI, " int ", p.curracc.int_debt, " p ", p.p[end])
+    #     println("labor ", p.ΔLᵈ, " O ", p.O, " O/B ", p.O/p.B[end], " RD ", p.RD[end] / p.w̄[end], " L ", p.L, " w ", p.w̄[end])
+    # end
     # Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt - writeoffs
 
     push!(p.Π, Π)

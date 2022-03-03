@@ -233,10 +233,12 @@ function model_step!(
         all_hh, 
         all_p,
         global_param.ϵ,
+        global_param.max_g_wᴼ,
         gov_struct.UB,
         model
     )
-    update_avg_T_unemp_lm(labormarket_struct, model)
+    # TODO: check if this is still needed, otherwise delete
+    # update_avg_T_unemp_lm(labormarket_struct, model)
 
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
@@ -334,7 +336,7 @@ function model_step!(
 
 end
 
-T = 100
+T = 400
 
 to = TimerOutput()
 

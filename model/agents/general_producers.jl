@@ -40,7 +40,7 @@ function hire_worker_p!(
     # update labor stock and desired labor
     push!(p.employees, hh.id)
     p.L += hh.L
-    p.ΔLᵈ -= hh.L
+    # p.ΔLᵈ -= hh.L
 end
 
 

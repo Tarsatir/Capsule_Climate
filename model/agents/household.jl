@@ -172,7 +172,7 @@ function compute_consumption_budget_hh!(
     α_cp::Float64
     )
 
-    if hh.W[end] > 0
+    if hh.W[end] > 0 && hh.Iᵀ[end] > 0
         C = min((hh.W[end])^α_cp, hh.W[end])
         s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
     else
@@ -247,12 +247,11 @@ function update_sat_req_wage_hh!(
 
     T = 4
 
-    if length(hh.I) > T
-        hh.wˢ = mean(hh.I[end-T:end])/hh.L
+    if length(hh.w) > T
+        hh.wˢ = mean(hh.w[end-T:end])/hh.L
     else
-        hh.wˢ = mean(hh.I)/hh.L
+        hh.wˢ = mean(hh.w)/hh.L
     end
-
 
     if hh.employed
         hh.wʳ = hh.wʳ * (1 + ϵ)

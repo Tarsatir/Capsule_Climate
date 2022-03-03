@@ -12,10 +12,10 @@ end
 
 function initialize_government()
     gov_struct = Government(
-        0.0,                            # UB: unemployment benefits
-        0.0,                            # τᴵ: income tax
+        70,                          # UB: unemployment benefits
+        0.35,                            # τᴵ: income tax
         0.0,                            # τˢ: sales tax
-        0.0,                            # τᴾ: profit tax
+        0.35,                            # τᴾ: profit tax
         0.0,                            # τᴱ: energy tax
         0.0,                            # τᶜ: emission tax
         0.0,                            # MS: money stock owned by government
@@ -51,7 +51,6 @@ function pay_unemployment_benefits_gov!(
 
     # add total UB spending to government current account
     push!(gov_struct.curracc.Exp_UB, total_UB)
-    gov_struct.MS -= total_UB
 end
 
 
@@ -103,14 +102,12 @@ function compute_budget_balance(
     gov_struct::Government
     )
 
-    ca = gov_struct.curracc
-
     # TODO add sales, energy and emission tax
     # Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τˢ[end] + ca.Rev_τᴾ[end]
-    Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τᴾ[end]
+    Tot_rev = gov_struct.curracc.Rev_τᴵ[end] + gov_struct.curracc.Rev_τᴾ[end]
 
     # TODO add subsidies
-    Tot_exp = ca.Exp_UB[end]
+    Tot_exp = gov_struct.curracc.Exp_UB[end]
 
     gov_balance = Tot_rev - Tot_exp
     println("Gov deficit: ", gov_balance)

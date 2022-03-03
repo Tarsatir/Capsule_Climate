@@ -23,5 +23,6 @@ docs/site/
 # environment.
 Manifest.toml
 
+# Can be removed once results make sense.
 results/
 plotting/

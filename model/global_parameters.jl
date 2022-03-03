@@ -35,6 +35,7 @@ struct GlobalParam
     a_σ :: Float64                  # 1st parameter governing logistic function
     b_σ :: Float64                  # 2nd parameter governing logistic function
     ψ_E :: Float64                  # chance of employed worker looking for a better paying job
+    max_g_wᴼ :: Float64             # max growth rate of offered wages
     # Nᵈ_share::Float64
 end
 
@@ -77,6 +78,7 @@ function initialize_global_params()
         1000,                       # a_σ
         30,                         # b_σ
         0.05,                       # ψ_E, chance of employed worker looking for a better paying job
+        0.1,                        # max_g_wᴼ: max growth rate of offered wages
         # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
     )
     return global_param

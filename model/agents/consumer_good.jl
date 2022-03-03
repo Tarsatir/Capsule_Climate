@@ -20,7 +20,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     Iᵈ :: Float64                   # desired total investments
     EIᵈ :: Float64                  # desired expansionary investments
     RSᵈ :: Float64                  # desired replacement investments
-    RS :: Vector{Machine}           # list of to-be replaced machines
+    mach_tb_repl :: Vector{Machine}           # list of to-be replaced machines
     chosen_kp_id :: Int             # id of chosen kp
     debt_installments :: Vector{Float64}   # installments of debt repayments
 
@@ -81,7 +81,7 @@ function initialize_cp(
         0,                          # Iᵈ: desired investments
         0,                          # EIᵈ: desired expansionary investments
         0,                          # RSᵈ: desired replacement investments
-        [],                         # RS: list of to-be replaced machines
+        [],                         # mach_tb_repl: list of to-be replaced machines
         0,                          # chosen_kp_id: id of chosen kp
         fill(0.0, 4),               # debt installments
         machines,                   # Ξ: machines
@@ -176,9 +176,11 @@ function plan_investment_cp!(
     # TODO: see if I still need this for something
 
     # Compute desired capital stock expansion
-    Kᵈ = cp.Qᵉ / cp.π
-    cp.EIᵈ = min(max(Kᵈ - cp.n_machines, 0), cp.n_machines * global_param.Kg_max)
-    cp.RSᵈ = max(sum(map(machine -> machine.freq, cp.RS)), 0)
+    desired_n_machines = cp.Qᵉ / cp.π
+    p_machine  = brochure[2]
+    cp.EIᵈ = p_machine * min(max(desired_n_machines - cp.n_machines, 0), 
+                             cp.n_machines * global_param.Kg_max)
+    cp.RSᵈ = p_machine * max(sum(map(machine -> machine.freq, cp.mach_tb_repl)), 0)
     # println(Kᵈ, " ", cp.EIᵈ, " ", cp.RSᵈ, " ", cp.n_machines)
     cp.Iᵈ = max(cp.EIᵈ + cp.RSᵈ, 0)
 end
@@ -224,12 +226,12 @@ function check_funding_restrictions_cp!(
                 # Decrease amount of expansionary investment.
                 cp.Iᵈ = max_add_debt
                 cp.RSᵈ = 0.0
-                cp.RS = Vector{Machine}()
+                cp.mach_tb_repl = Vector{Machine}()
             else
                 # No replacement investment, only expansionary investment.
                 cp.Iᵈ = cp.EIᵈ
                 cp.RSᵈ = 0.0
-                cp.RS = Vector{Machine}()
+                cp.mach_tb_repl = Vector{Machine}()
             end
 
         else
@@ -244,7 +246,7 @@ function check_funding_restrictions_cp!(
         cp.Iᵈ = 0.0
         cp.EIᵈ = 0.0
         cp.RSᵈ = 0.0
-        cp.RS = Vector{Machine}()
+        cp.mach_tb_repl = Vector{Machine}()
 
         if NW_no_prod + max_add_debt < TCLᵉ
             # Cost of labor exceeds expected liquid assets plus max additional debt. 
@@ -255,90 +257,6 @@ function check_funding_restrictions_cp!(
             cp.Qˢ = min((cp.L + cp.ΔLᵈ) * cp.π[end], cp.n_machines * cp.π[end])
         end
     end
-
-    # Update offered wage expectation
-    # update_wᴼₑ_cp!(cp, ωW)
-
-    # Compute how much debt cp can make additionally
-    # poss_add_debt = max((cp.D[end] * cp.p[end - 1]) * Λ - sum(cp.debt_installments), 0)
-
-    # # println(cp.D[end] * cp.p[end - 1], " ", cp.balance.NW, " ", poss_add_debt, " ", sum(cp.debt_installments))
-
-    # # Compute the expected total cost of desired production
-    # total_cop = cp.L * cp.w̄[end] + cp.ΔLᵈ * cp.wᴼₑ
-
-    # # Check if enough internal funds available
-    # if cp.balance.NW > total_cop + cp.Iᵈ
-    #     # Production and full investment can be financed from NW
-    #     # Already available in cash amount, no need to borrow
-    #     cp.cI = cp.Iᵈ
-
-    # elseif cp.balance.NW + poss_add_debt > total_cop + cp.Iᵈ
-    #     # Production and full investment partially funded from debt
-    #     # Compute required extra cash and borrow
-    #     # req_cash = total_cop + cp.Iᵈ - cp.balance.NW
-    #     cp.cI = max(cp.balance.NW - total_cop, 0)
-
-    # else
-    #     # Production or investment constrained by financial means
-    #     if cp.balance.NW + poss_add_debt < total_cop
-    #         # Production constrained. Decrease production target and labor demand,
-    #         # No investments possible
-
-    #         # Recompute labor that can be hired
-    #         if cp.balance.NW + poss_add_debt > cp.L * cp.w̄[end]
-    #             # Current stock of labor has to be brought down, no additional hires
-    #             cp.ΔLᵈ = (cp.balance.NW + poss_add_debt) / cp.w̄[end] - cp.L
-    #         else
-    #             # Desired increase in labor stock has to be brought down
-    #             cp.ΔLᵈ = (cp.balance.NW + poss_add_debt - cp.w̄[end] * cp.L)/cp.wᴼₑ
-    #         end
-
-    #         # Set all desired investments to zero
-    #         cp.Iᵈ = 0
-    #         cp.EIᵈ = 0
-    #         cp.RSᵈ = 0
-    #         cp.RS = Vector{Machine}()
-
-    #         cp.cI = 0.0
-
-    #     else
-    #         # Production possible from NW and debt, investment constrained
-
-    #         # Compute extra required cash for production, borrow amount
-    #         # req_cash = total_cop - cp.balance.NW
-
-    #         if cp.balance.NW + poss_add_debt < total_cop + cp.EIᵈ
-    #             # Partial expansion investment, no replacement
-    #             poss_EI = min(cp.balance.NW + poss_add_debt - total_cop, cp.EIᵈ)
-    #             # req_cash += poss_EI
-
-    #             # Update desired investments
-    #             cp.Iᵈ = poss_EI
-    #             cp.EIᵈ = poss_EI
-    #             cp.RSᵈ = 0
-    #             cp.RS = Vector{Machine}()
-
-    #             cp.cI = max(cp.balance.NW - total_cop, 0)
-    #         else
-    #             # Full expansion investment, partial replacement
-    #             # poss_EI = cp.balance.NW + poss_add_debt - total_cop - req_cash
-    #             # poss_RS = cp.balance.NW + poss_add_debt - total_cop - req_cash - poss_EI
-
-    #             # P_RS = model[cp.chosen_kp_id].p[end]
-    #             # TODO let cp replace partial capital goods
-
-    #             # req_cash += cp.EIᵈ
-
-    #             cp.Iᵈ = cp.EIᵈ
-    #             cp.RSᵈ = 0
-    #             cp.RS = Vector{Machine}()
-
-    #             cp.cI = max(cp.balance.NW - total_cop, 0)
-
-    #         end
-    #     end
-    # end
 end
 
 
@@ -351,7 +269,7 @@ function update_Dᵉ_cp!(
     )
 
     if length(cp.D) > 2
-        cp.Dᵉ = ωD * cp.Dᵉ + (1 - ωD) *  (2*cp.D[end] - cp.D[end-1])
+        cp.Dᵉ = ωD * cp.Dᵉ + (1 - ωD) *  (2 * cp.D[end] - cp.D[end-1])
     else
         cp.Dᵉ = ωD * cp.Dᵉ + (1 - ωD) *  cp.D[end]
     end
@@ -458,7 +376,7 @@ function plan_replacement_cp!(
     p_star = brochure[2]
     Aᵈ = brochure[4]
 
-    cp.RS = Vector{Machine}()
+    cp.mach_tb_repl = Vector{Machine}()
 
     for machine in cp.Ξ
         c_A = cp.w̄[end] / machine.A
@@ -466,7 +384,7 @@ function plan_replacement_cp!(
         if c_A > c_star
             if p_star/(c_A - c_star) <= global_param.b || machine.age >= global_param.η
             # if p_star/(c_A - c_star) <= global_param.b
-                push!(cp.RS, machine)
+                push!(cp.mach_tb_repl, machine)
             end
         end
     end
@@ -622,6 +540,9 @@ function update_ΔLᵈ_cp!(
 end
 
 
+"""
+Lets cp order machines from kp of choice.
+"""
 function order_machines_cp!(
     cp::ConsumerGoodProducer,
     model::ABM
@@ -740,8 +661,21 @@ function receive_machines!(
     Iₜ::Float64,
     )
 
-    # Remove machines that were written off
-    filter!(machine -> machine ∉ cp.RS, cp.Ξ)
+    # # Check if complete order was received, otherwise partial replacement
+    # if Iₜ == cp.Iᵈ
+    #     # All investment received, remove all machines that were written off
+    #     filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
+
+    #     # Add new machine to capital stock
+    #     push!(cp.Ξ, machine)
+    # else
+    #     # Partial investment received, remove part of machines.
+
+    #     # TODO
+    # end
+    
+    # All investment received, remove all machines that were written off
+    filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
 
     # Add new machine to capital stock
     push!(cp.Ξ, machine)
