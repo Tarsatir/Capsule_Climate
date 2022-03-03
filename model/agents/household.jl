@@ -48,8 +48,8 @@ function initialize_hh(
         [],                     # Iᵀ: hist taxed income
         # [10],                   # S: total savings
         0,                      # s: savings rate
-        [0],                  # W: wealth or cash on hand
-        [0],                  # Wʳ: real wealth or cash on hand
+        [100],                  # W: wealth or cash on hand
+        [100],                  # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
         Vector{Int}(),          # all_cp_B: connected cp basic goods
@@ -91,6 +91,35 @@ end
 #     W = hh.Iᵀ[end] + hh.S[end]
 #     push!(hh.W, W)
 # end
+
+
+"""
+Sets consumption budget based on current wealth level
+"""
+function set_consumption_budget_hh!(
+    hh::Household,
+    c_L_max::Float64,
+    a_σ::Float64,
+    b_σ::Float64,
+    α_cp::Float64,
+    model::ABM
+    )
+
+    # Update average price level of bp and lp
+    update_average_price_hh!(hh, model)
+
+    # Update real wealth level
+    update_real_wealth_hh!(hh)
+
+    # Update share of goods to bg and lg
+    update_share_goodtypes_hh!(hh, c_L_max, a_σ, b_σ)
+
+    # Compute consumption budget
+    compute_consumption_budget_hh!(hh, α_cp)
+
+    # println(hh.W[end], " ", hh.C[end])
+end
+
 
 
 """
@@ -145,10 +174,10 @@ function compute_consumption_budget_hh!(
 
     if hh.W[end] > 0
         C = min((hh.W[end])^α_cp, hh.W[end])
-        s = (hh.Iᵀ[end] - C)/hh.I[end]
+        s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
     else
         C = 0
-        s =0 
+        s = 0 
     end
 
     push!(hh.C, C)
@@ -156,32 +185,6 @@ function compute_consumption_budget_hh!(
 end
 
 
-"""
-Sets consumption budget based on current wealth level
-"""
-function set_consumption_budget_hh!(
-    hh::Household,
-    c_L_max::Float64,
-    a_σ::Float64,
-    b_σ::Float64,
-    α_cp::Float64,
-    model::ABM
-    )
-
-    # Update average price level of bp and lp
-    update_average_price_hh!(hh, model)
-
-    # Update real wealth level
-    update_real_wealth_hh!(hh)
-
-    # Update share of goods to bg and lg
-    update_share_goodtypes_hh!(hh, c_L_max, a_σ, b_σ)
-
-    # Compute consumption budget
-    compute_consumption_budget_hh!(hh, α_cp)
-
-    # println(hh.W[end], " ", hh.C[end])
-end
 
 
 """

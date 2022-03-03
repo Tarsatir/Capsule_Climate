@@ -14,10 +14,11 @@ mutable struct MacroEconomy
     M_kp :: Vector{Float64}      # total amount of money at kp
     M_gov :: Vector{Float64}     # total amount of money at gov
 
-    # Debt levels
-    Deb_tot :: Vector{Float64}   # total debt
-    Deb_cp :: Vector{Float64}    # cp debt
-    Deb_kp :: Vector{Float64}    # kp debt
+    # debtt levels
+    debt_tot :: Vector{Float64}   # total debt
+    debt_cp :: Vector{Float64}    # cp debt
+    debt_cp_allowed :: Vector{Float64}    # cp allowed debt
+    debt_kp :: Vector{Float64}    # kp debt
 
     # Wage statistics
     w̄_avg :: Vector{Float64}     # average wage over time
@@ -69,7 +70,9 @@ mutable struct MacroEconomy
 end
 
 
-function initialize_macro()
+function initialize_macro(
+    T::Int
+    )
     macro_struct = MacroEconomy(
         [],                     # GDP over time
         [],                     # income share of GDP
@@ -85,9 +88,10 @@ function initialize_macro()
         [],                     # M kp
         [],                     # M gov
 
-        # Debt levels
+        # debtt levels
         [],                     # total debt
         [],                     # cp debt
+        [],                     # cp allowed debt
         [],                     # kp debt
 
         [],                     # average of wage over time
@@ -148,6 +152,7 @@ function update_macro_timeseries(
     all_lp::Vector{Int},
     E::Float64, 
     gov_struct::Government,
+    global_param::GlobalParam,
     model::ABM
     )
 
@@ -217,7 +222,12 @@ function update_macro_timeseries(
     D̄ = mean(map(cp -> cp.D[end], all_cp_str))
     # println(D̄)
 
-    update_debt!(all_cp_str, all_kp_str, macro_struct)
+    update_debt!(
+        all_cp_str, 
+        all_kp_str, 
+        global_param.Λ, 
+        macro_struct
+    )
 
     # Investment
     EI_avg = mean(map(cp -> cp.EIᵈ, all_cp_str))
@@ -226,7 +236,7 @@ function update_macro_timeseries(
     push!(macro_struct.RS_avg, RS_avg)
 
     # Productivity
-    avg_π = mean(map(cp -> cp.π[end], all_cp_str))
+    avg_π = mean(map(cp -> cp.π, all_cp_str))
     push!(macro_struct.avg_π, avg_π)
     avg_A = mean(map(kp -> kp.A[end], all_kp_str))
     push!(macro_struct.avg_A, avg_A)
@@ -255,7 +265,7 @@ function compute_GDP!(
     macro_struct::MacroEconomy
     )
 
-    total_I = sum(map(hh -> hh.I[end], all_hh_str))
+    total_I = sum(map(hh -> hh.Iᵀ[end], all_hh_str))
     push!(macro_struct.GDP_I, total_I)
 
     total_Π_cp = sum(map(cp -> cp.Π[end], all_cp_str))
@@ -285,6 +295,8 @@ function compute_M!(
 
     # Wealth of households
     M_hh = sum(map(hh -> hh.W[end], all_hh_str))
+    MA_avg = mean(map(hh -> hh.W[end], all_hh_str))
+    println("MA hh avg ", MA_avg)
     push!(macro_struct.M_hh, M_hh)
 
     # Liquid assets of cp
@@ -299,26 +311,33 @@ function compute_M!(
     M_gov = gov_struct.MS
     push!(macro_struct.M_gov, M_gov)
 
+    # Total amount of money stocks
     M_tot = M_hh + M_cp + M_kp + M_gov
     push!(macro_struct.M, M_tot)
-
 end
 
 
+"""
+Updates metrics on aggregate debt levels
+"""
 function update_debt!(
     all_cp_str::Vector{ConsumerGoodProducer},
     all_kp_str::Vector{CapitalGoodProducer},
+    Λ::Float64,
     macro_struct::MacroEconomy
     )
 
-    Deb_cp = sum(map(cp -> cp.balance.Deb, all_cp_str))
-    push!(macro_struct.Deb_cp, Deb_cp)
+    debt_cp = sum(map(cp -> cp.balance.debt, all_cp_str))
+    push!(macro_struct.debt_cp, debt_cp)
 
-    Deb_kp = sum(map(kp -> kp.balance.Deb, all_kp_str))
-    push!(macro_struct.Deb_kp, Deb_kp)
+    debt_kp = sum(map(kp -> kp.balance.debt, all_kp_str))
+    push!(macro_struct.debt_kp, debt_kp)
 
-    Deb_tot = Deb_cp + Deb_kp
-    push!(macro_struct.Deb_tot, Deb_tot)
+    debt_tot = debt_cp + debt_kp
+    push!(macro_struct.debt_tot, debt_tot)
+
+    debt_cp_allowed = Λ * sum(map(cp -> cp.D[end], all_cp_str))
+    push!(macro_struct.debt_cp_allowed, debt_cp_allowed)
 end
 
 

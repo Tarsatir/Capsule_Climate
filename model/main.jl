@@ -23,6 +23,7 @@ include("agents/household.jl")
 include("agents/consumer_good.jl")
 include("agents/capital_good.jl")
 include("agents/general_producers.jl")
+include("agents/bank.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
@@ -41,12 +42,13 @@ Initializes model.
     * gov_struct: mutable struct containing variables concerning the government
     * labormarket_struct: mutable struct containing variables concerning the labor market
 """
-function initialize_model(;
+function initialize_model(
+    T;
     n_captlgood = 50,
     n_consrgood = 200,
     n_households = 2500,
-    n_init_emp_cp = 11,
-    n_init_emp_kp = 3,
+    n_init_emp_cp = 10,
+    n_init_emp_kp = 4,
     n_bp = 7,
     n_lp = 7
     )
@@ -59,7 +61,7 @@ function initialize_model(;
     global_param  = initialize_global_params()
 
     # Initialize struct that holds macro variables
-    macro_struct = initialize_macro()
+    macro_struct = initialize_macro(T)
 
     # Initialize labor market struct
     labormarket_struct = initialize_labormarket()
@@ -128,6 +130,9 @@ function initialize_model(;
     # Initialize schedulers
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
+    # Initialize bank struct
+    bank_struct = initialize_bank(all_p, model)
+
     # Let all capital good producers select historical clients
     for kp_id in all_kp
         select_HC_kp!(model[kp_id], all_cp)
@@ -149,7 +154,7 @@ function initialize_model(;
         model
     )
 
-    return model, global_param, macro_struct, gov_struct, labormarket_struct
+    return model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct
 end
 
 
@@ -158,6 +163,7 @@ function model_step!(
     macro_struct::MacroEconomy, 
     gov_struct::Government, 
     labormarket_struct::LaborMarket,
+    bank_struct::Bank,
     model::ABM
     )
 
@@ -210,7 +216,7 @@ function model_step!(
 
         # See if enough funds available for investments and production, otherwise
         # change investments and production to match funding availability.
-        funding_allocation_cp!(cp, global_param.Λ, global_param.ωW, model)
+        check_funding_restrictions_cp!(cp, global_param.Λ, global_param.r, global_param.ωW, model)
 
         # Send orders to kp
         order_machines_cp!(cp, model)
@@ -270,12 +276,6 @@ function model_step!(
         model
     )
 
-    # cp make up profits
-    # for cp_id in all_cp
-    #     # repay_debt_installments_cp!(model[cp_id])
-    #     compute_Π_cp!(model[cp_id], global_param.r)
-    # end
-
     # (6) kp deliver goods to cp, kp make up profits
     for kp_id in all_kp
         send_orders_kp!(model[kp_id], model)
@@ -287,22 +287,30 @@ function model_step!(
         increase_machine_age_cp!(model[cp_id])
 
         # Close balances of firms, if insolvent, liquidate firms
-        close_balance_cp!(
+        close_balance_p!(
             model[cp_id], 
-            global_param.Λ, 
-            global_param.ΔD, 
+            global_param.Λ,
             global_param.r,
-            global_param.η
+            global_param.η,
+            gov_struct.τᴾ,
         )
     end 
 
+    # Close balances of kp firms
     for kp_id in all_kp
-        close_balance_kp!(model[kp_id], global_param.Λ, global_param.ΔD)
+        close_balance_p!(
+            model[kp_id], 
+            global_param.Λ,
+            global_param.r,
+            global_param.η,
+            gov_struct.τᴾ,
+        )
     end
 
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(gov_struct, all_p, model)
     compute_budget_balance(gov_struct)
+    redistribute_surplus_gov!(gov_struct, all_hh, model)
 
     # (7) macro-economic indicators are updated.
     update_macro_timeseries(
@@ -314,6 +322,7 @@ function model_step!(
         all_lp,
         labormarket_struct.E,
         gov_struct,
+        global_param,
         model
     )
 
@@ -325,12 +334,14 @@ function model_step!(
 
 end
 
+T = 100
+
 to = TimerOutput()
 
-@timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct = initialize_model()
-for i in 1:100
-    println("Step ", i)
-    @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, model)
+@timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct = initialize_model(T)
+for t in 1:T
+    println("Step ", t)
+    @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, model)
 end
 
 # @timeit to "step" run!(model, dummystep, model_step!, 10)

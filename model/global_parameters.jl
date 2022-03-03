@@ -17,7 +17,6 @@ struct GlobalParam
     χ :: Float64                    # replicator dynamics coeff
     Λ :: Float64                    # max debt/sales ratio, regular debt
     Λ_max :: Float64                # max debt/sales ratio, including credit
-    ΔD :: Float64                   # share of debt repaid every period
     φ1 :: Float64                   # 1st Uniform dist support, cp entrant cap
     φ2 :: Float64                   # 2nd Uniform dist support, cp entrant cap
     φ3 :: Float64                   # 1st Uniform dist support, cp entrant liq
@@ -51,16 +50,15 @@ function initialize_global_params()
         0.05,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
         0.2,                        # μ1: kp markup rule
-        0.01,                       # r: (annual) interest rate
+        0.0,                        # r: (annual) interest rate
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
         20,                         # η: physical scrapping age
-        0.04,                       # υ: markup coefficient
+        0.01,                       # υ: markup coefficient
         1.0,                        # ω: competetiveness weights
         1.0,                        # χ: replicator dynamics coeff
         2.0,                        # Λ: max debt/sales ratio regular debt
         2.5,                        # Λ_max: max debt/sales ratio including credit
-        1/3,                        # ΔD: share of debt repaid every period
         0.1,                        # φ1: 1st Uniform dist support, cp entrant cap
         0.9,                        # φ2: 2nd Uniform dist support, cp entrant cap
         0.1,                        # φ3: 1st Uniform dist support, cp entrant liq

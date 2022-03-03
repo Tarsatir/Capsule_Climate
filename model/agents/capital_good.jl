@@ -21,7 +21,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     D :: Vector{Float64}                    # hist revenue
     HC :: Vector{Int}                       # hist clients
     Π :: Vector{Float64}                    # hist profits
-    Deb_installments :: Vector{Float64}   # installments of debt repayments
+    debt_installments :: Vector{Float64}   # installments of debt repayments
     f :: Float64                            # market share
     brochure                                # brochure
     orders :: Array                         # orders
@@ -40,18 +40,18 @@ function initialize_kp(
         0.0,                    # - N: inventory
         0.0,                    # - K: capital
         1000.0,                 # - NW: liquid assets
-        0.0,                    # - Deb: debt
+        0.0,                    # - debt: debt
         0.0                     # - EQ: equity
     )
     
-    curracc = FirmCurrentAccount(0,0,0,0,0,0)
+    curracc = FirmCurrentAccount(0,0,0,0,0,0,0)
 
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
         kp_i,                   # kp_i, used for distance matrix
         [1],                    # A: labor prod sold product
         [1],                    # B: labor prod own production
-        [],                     # p: hist price data
+        [1.0],                  # p: hist price data
         [],                     # c: hist cost data
         [],                     # employees: employees in company
         0,                      # L: labor units in company
@@ -62,16 +62,14 @@ function initialize_kp(
         1.0,                    # wᴼₑ: expected offered wage
         0,                      # O: total amount of machines ordered
         [],                     # production queue
-        Vector{Float64}(),      # Q: production quantity
+        [10],                   # Q: production quantity
         [],                     # RD: hist R&D expenditure
         [],                     # IM: hist immitation expenditure
         [],                     # IN: hist innovation expenditure
         [100],                  # D: hist revenue
         [],                     # HC: hist clients
         [],                     # Π: hist profits
-        Vector{Float64}([0.0,
-                         0.0,
-                         0.0]),
+        fill(0.0, 4),           # debt installments
         1/n_captlgood,          # f: market share
         [],                     # brochure
         [],                     # orders
@@ -269,7 +267,8 @@ function set_RD_kp!(
     )
 
     # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
-    RD_new = ν * kp.D[end]
+    prev_S = kp.p[end] * kp.Q[end]
+    RD_new = ν * prev_S
     push!(kp.RD, RD_new)
     kp.curracc.TCI += RD_new
 
@@ -289,13 +288,16 @@ function plan_production_kp!(
 
     update_w̄_p!(kp, model)
     
+    # Determine total amount of machines to produce
+    total_O = 0
     if (length(kp.orders) > 0)
-        # determine total amount of machines to produce
-        kp.O = sum(map(order -> order[2], kp.orders))
+        total_O += sum(map(order -> order[2], kp.orders)) / kp.p[end]
     end
 
-    # determine amount of labor to hire
+    # Determine amount of labor to hire
+    kp.O = total_O
     kp.ΔLᵈ = kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L
+    # kp.ΔLᵈ = kp.O / kp.B[end] - kp.L
 end
 
 
@@ -308,10 +310,13 @@ function produce_goods_kp!(
     # Check if enough labor available for all machines
     unocc_L = kp.L
     for order in kp.orders
+
         # Only push order in production queue if enough labor available
-        req_L = order[2] / kp.B[end]
+        q = order[2] / kp.p[end]
+        req_L = q / kp.B[end]
+
         if unocc_L > req_L
-            total_Q += order[2]
+            total_Q += q
             push!(kp.prod_queue, order)
             unocc_L -= req_L
         end
@@ -341,22 +346,20 @@ function send_orders_kp!(
 
         cp_id = order[1]
         Iₜ = order[2]
+        freq = Iₜ / kp.p[end]
 
-        machine = initialize_machine(Iₜ, 0, kp.p[end], kp.A[end])
+        machine = initialize_machine(freq, 0, kp.p[end], kp.A[end])
 
-        tot_freq += machine.freq
+        tot_freq += freq
 
         receive_machines!(model[cp_id], machine, Iₜ)
     end
     
-    
-    D = tot_freq * kp.p[end]
-    Π = tot_freq * (kp.p[end] - kp.c[end])
+    # Add demand and sales.
+    # D = tot_freq
+    # push!(kp.D, D)
 
-    # println(Π, " ", tot_freq)
-
-    push!(kp.D, D)
-    push!(kp.Π, Π)
+    kp.curracc.S = tot_freq * kp.p[end]
 
     # TODO: request money for machines that were produced
 

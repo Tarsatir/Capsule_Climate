@@ -12,7 +12,7 @@ end
 
 function initialize_government()
     gov_struct = Government(
-        70,                             # UB: unemployment benefits
+        0.0,                            # UB: unemployment benefits
         0.0,                            # τᴵ: income tax
         0.0,                            # τˢ: sales tax
         0.0,                            # τᴾ: profit tax
@@ -59,7 +59,7 @@ end
 Levies income tax on all households
 """
 function levy_income_tax_gov!(
-    gov_struct, 
+    gov_struct::Government, 
     all_hh::Vector{Int},
     model::ABM
     )
@@ -68,13 +68,11 @@ function levy_income_tax_gov!(
     for hh_id in all_hh
         hh = model[hh_id]
         total_τᴵ += hh.I[end] * gov_struct.τᴵ
-        # hh.I[end] = hh.I[end] * (1 - gov_struct.τᴵ)
         push!(hh.Iᵀ, hh.I[end] * (1 - gov_struct.τᴵ))
     end
 
     # add total income tax to government current account
     push!(gov_struct.curracc.Rev_τᴵ, total_τᴵ)
-    gov_struct.MS += total_τᴵ
 end
 
 
@@ -98,7 +96,6 @@ function levy_profit_tax_gov!(
     end
 
     push!(gov_struct.curracc.Rev_τᴾ, total_τᴾ)
-    gov_struct.MS += total_τᴾ
 end
 
 
@@ -115,8 +112,11 @@ function compute_budget_balance(
     # TODO add subsidies
     Tot_exp = ca.Exp_UB[end]
 
-    println("Gov deficit: ", Tot_rev - Tot_exp)
+    gov_balance = Tot_rev - Tot_exp
+    println("Gov deficit: ", gov_balance)
 
+    # Pay off part of debt in case of positive balance
+    gov_struct.MS += gov_balance
 end
 
 
@@ -132,4 +132,27 @@ function add_salestax_transaction_gov!(
     sales_tax_lp::Float64
     )
     gov_struct.curracc.Rev_τˢ[end] += (sales_tax_bp + sales_tax_lp)
+end
+
+
+"""
+Redistributes surplusses such that government does not acquire assets.
+"""
+function redistribute_surplus_gov!(
+    gov_struct::Government,
+    all_hh::Vector{Int},
+    model
+    )
+
+    # NOTE: now does not apply redistribution between income groups!
+    # NOTE: redist goes both ways!
+
+    if gov_struct.MS > 0.0
+
+        total_I = sum(map(hh_id -> model[hh_id].I[end], all_hh))
+        for hh_id in all_hh
+            model[hh_id].W[end] += (model[hh_id].I[end] / total_I) * gov_struct.MS
+        end
+        gov_struct.MS = 0.0
+    end
 end

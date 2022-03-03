@@ -8,7 +8,7 @@ mutable struct Balance
     NW :: Float64           # Liquid assets
 
     # Liabilities
-    Deb :: Float64          # Debt
+    debt :: Float64          # Debt
     EQ :: Float64           # Equity
 end
 
@@ -17,94 +17,56 @@ end
 Closes balance by computing firm's equity.
 If firm is insolvent, liquidate firm.
 """
-function close_balance_cp!(
-    cp::AbstractAgent,
+function close_balance_p!(
+    p::AbstractAgent,
     Λ::Float64,
-    ΔD::Float64,
     r::Float64,
-    η::Int
+    η::Int,
+    τᴾ::Float64
     )
+
+    # Compute interest payment
+    update_interest_payment_p!(p, r)
 
     # Repay debts of period
-    payback_debt_p!(cp)
-
-    # Update valuation of inventory
-    cp.balance.N = cp.p[end] * cp.N_goods
+    payback_debt_p!(p)
 
     # Update valuation of capital stock
-    # cp.balance.K = sum(map(machine -> machine.freq * machine.p, cp.Ξ))
-    # TODO: include write-offs
-
-    writeoffs = update_K_cp!(cp, η)
-
-    # Compute balance of current account
-    curracc_in = cp.curracc.S + cp.curracc.rev_dep
-    curracc_out = cp.curracc.TCL + cp.curracc.TCI + cp.curracc.int_Deb + cp.curracc.rep_Deb
-    curracc_balance = curracc_in - curracc_out
-    # println(curracc_balance)
-
-    # Decide if extra credit is needed and how much
-    if curracc_balance < 0.0
-        req_borrowing = 0
-        if -curracc_balance > cp.balance.NW
-            # Extra credit is needed, borrow extra funds
-            curr_Deb = sum(cp.Deb_installments)
-            max_Deb = Λ * cp.curracc.S
-            req_borrowing = -curracc_balance - cp.balance.NW
-            add_borrowing = max(min(max_Deb - curr_Deb, req_borrowing), 0)
-
-            if add_borrowing > 0
-                borrow_funds_p!(cp, add_borrowing)
-            end
-        else
-            # Current account deficit can be financed from liquid assets
-            # cp.balance.NW -= -curracc_balance
-        end
-    end
-    
-    # Borrow liquid assets if needed
-    # if curracc_balance < 0
-    #     borrow_funds_p!(cp, -curracc_balance)
-    # end
+    writeoffs = update_K_p!(p, η)
 
     # Compute profits
-    compute_Π_cp!(cp, r, writeoffs)
+    compute_Π_p!(p, writeoffs)
 
-    # println(cp.Π[end], " ", cp.cI)
+    # Update stock of liquid assets
+    S = p.curracc.S
+    TCL = p.curracc.TCL
+    TCI = p.curracc.TCI
+    rep_debt = p.curracc.rep_debt
+    int_debt = p.curracc.int_debt
+    rev_dep = p.curracc.rev_dep
+    profit_tax = τᴾ * p.Π[end]
 
-    cp.balance.Deb = sum(cp.Deb_installments)
-    cp.balance.NW = cp.balance.NW + cp.Π[end] - cp.cI
+    p.balance.NW = p.balance.NW + S + rev_dep - TCL - TCI - rep_debt - int_debt - profit_tax
 
-    # Compute Equity
-    tot_assets = cp.balance.N + cp.balance.K + cp.balance.NW
-    cp.balance.EQ = tot_assets - cp.balance.Deb
-    # println(tot_assets, " ", cp.balance.EQ)
-
-    if cp.balance.EQ < 0
-        # Liquidate firm
+    # If not enough liquid assets available, borrow additional funds.
+    if p.balance.NW < 0
+        max_add_debt = p.curracc.S * Λ - p.balance.debt
+        add_debt = min(-p.balance.NW, max_add_debt)
+        borrow_funds_p!(p, add_debt)
+        p.balance.NW += add_debt
+        p.balance.debt += add_debt
     end
-end
 
-
-"""
-Closes balance by computing firm's equity.
-If firm is insolvent, liquidate firm.
-"""
-function close_balance_kp!(
-    kp::AbstractAgent,
-    Λ::Float64,
-    ΔD::Float64
-    )
-
-    kp.balance.Deb = sum(kp.Deb_installments)
-    kp.balance.NW = kp.balance.NW + kp.Π[end] - kp.Deb_installments[1]
+    # Update valuation of inventory. kp do not have inventory.
+    if typeof(p) == ConsumerGoodProducer
+        p.balance.N = p.p[end] * p.N_goods
+    end
 
     # Compute Equity
-    tot_assets = kp.balance.N + kp.balance.K + kp.balance.NW
-    equity = tot_assets - kp.balance.Deb
-    kp.balance.EQ = equity
+    tot_assets = p.balance.N + p.balance.K + p.balance.NW
+    p.balance.EQ = tot_assets - p.balance.debt
 
-    if kp.balance.EQ < 0
+    if p.balance.EQ < 0
         # Liquidate firm
     end
 end
@@ -113,23 +75,78 @@ end
 """
 Computes current value of capital stock and writeoffs in period
 """
-function update_K_cp!(
-    cp::AbstractAgent,
+function update_K_p!(
+    p::AbstractAgent,
     η::Int
     )::Float64
 
-    K = 0
-    writeoffs = 0
+    if typeof(p) == ConsumerGoodProducer
+        K = 0
+        writeoffs = 0
 
-    for machine in cp.Ξ
-        newval = machine.p * machine.freq
-        K += (η - machine.age) / η * newval
-        writeoffs += (1 / η) * newval
+        for machine in p.Ξ
+            newval = machine.p * machine.freq
+            K += max((η - machine.age) / η, 0) * newval
+            if machine.age <= η
+                writeoffs += (1 / η) * newval
+            end
+        end
+
+        p.balance.K = K
+
+        return writeoffs
+    else
+        return 0.0
     end
+end
 
-    cp.balance.K = K
 
-    return writeoffs
+# """
+# Updates NW of firm based on last period's spending.
+# """
+# function update_NW_cp!(
+#     cp::AbstractAgent
+#     )
+
+#     S = cp.curracc.S
+#     TCL = cp.curracc.TCL
+#     TCI = cp.curracc.TCI
+#     rep_debt = cp.curracc.rep_debt
+#     add_debt = cp.curracc.add_debt
+#     int_debt = cp.curracc.int_debt
+#     rev_dep = cp.curracc.rev_dep
+
+#     cp.balance.NW = cp.balance.NW + S - TCL - TCI - rep_debt + add_debt - int_debt + rev_dep
+# end
+
+
+"""
+Computes the amount of interest the firm has to pay over its debts
+"""
+function update_interest_payment_p!(
+    p::AbstractAgent,
+    r::Float64
+    )
+
+    p.curracc.int_debt = r * p.balance.debt
+end
+
+
+"""
+Computes profit of cp in previous time period
+"""
+function compute_Π_p!(
+    p::AbstractAgent,
+    writeoffs=0.0::Float64
+    )
+ 
+    Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt
+    if typeof(p) == CapitalGoodProducer
+        println(Π, " ", p.curracc.S, " ", p.curracc.TCL, " ", p.curracc.TCI, " ", p.curracc.int_debt)
+    end
+    # Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt - writeoffs
+
+    push!(p.Π, Π)
 end
 
 
@@ -139,13 +156,14 @@ CURRENT ACCOUNT
 mutable struct FirmCurrentAccount
     # Inflows
     S :: Float64            # Sales
+    add_debt ::Float64       # Additional debts
     rev_dep :: Float64      # Deposit revenues
 
     # Outflows
     TCL::Float64            # Total cost of labor
     TCI::Float64            # Total cost of investments
-    int_Deb::Float64        # Interest paid over debt
-    rep_Deb::Float64        # Debt repayments
+    int_debt::Float64        # Interest paid over debt
+    rep_debt::Float64        # Debt repayments
 end
 
 
@@ -157,9 +175,10 @@ function clear_firm_currentaccount_p!(
     )
 
     ca.S = 0
+    ca.add_debt = 0
     ca.rev_dep = 0
     ca.TCL = 0
     ca.TCI = 0
-    ca.int_Deb = 0
-    ca.rep_Deb = 0
+    ca.int_debt = 0
+    ca.rep_debt = 0
 end
