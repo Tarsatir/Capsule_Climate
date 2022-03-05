@@ -35,6 +35,8 @@ struct GlobalParam
     a_σ :: Float64                  # 1st parameter governing logistic function
     b_σ :: Float64                  # 2nd parameter governing logistic function
     ψ_E :: Float64                  # chance of employed worker looking for a better paying job
+    ψ_Q :: Float64                  # chance of household switching away from cp when demand constrained
+    ψ_P :: Float64                  # chance of household switching to cp with better price
     max_g_wᴼ :: Float64             # max growth rate of offered wages
     # Nᵈ_share::Float64
 end
@@ -73,11 +75,13 @@ function initialize_global_params()
         0.5,                        # ωQ: memory parameter cp quantity estimation
         0.5,                        # ωL: memory parameter cp labor supply estimation
         0.5,                        # ωW: memory parameter cp offered wage parameter
-        0.90,                       # α_cp: parameter controlling MPC of consumers
+        0.7,                        # α_cp: parameter controlling MPC of consumers
         0.7,                        # c_L_max
         1000,                       # a_σ
         30,                         # b_σ
-        0.05,                       # ψ_E, chance of employed worker looking for a better paying job
+        0.05,                       # ψ_E: chance of employed worker looking for a better paying job
+        0.25,                       # ψ_Q: chance of household switching away from cp when demand constrained
+        0.25,                       # ψ_P: chance of household switching to cp with better price
         0.1,                        # max_g_wᴼ: max growth rate of offered wages
         # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
     )

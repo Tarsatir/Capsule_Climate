@@ -278,6 +278,18 @@ function model_step!(
         model
     )
 
+    # Households decide to switch suppliers based on satisfied demand and prices
+    for hh_id in all_hh
+        decide_switching_hh!(
+            model[hh_id],
+            global_param.ψ_Q,
+            global_param.ψ_P,
+            all_bp,
+            all_lp,
+            model
+        )
+    end
+
     # (6) kp deliver goods to cp, kp make up profits
     for kp_id in all_kp
         send_orders_kp!(model[kp_id], model)
@@ -332,7 +344,11 @@ function model_step!(
     update_marketshare_cp!(all_bp, all_lp, model)
 
     # Remove bankrupt companies and introduce new companies.
-    # TODO
+    for p_id in all_p
+        if check_bankrupty_p(model[p_id])
+
+        end
+    end
 
 end
 

@@ -225,7 +225,8 @@ function matching_lm(
             for hh_id in Lᵈ
                 
                 # Only hire workers if wage can be afforded
-                if model[hh_id].wʳ <= model[p_id].wᴼ * (1 + max_g_wᴼ)
+                # TODO: DESCRIBE IN MODEL
+                if model[hh_id].wʳ <= model[p_id].wᴼ_max
                     push!(to_be_hired, hh_id)
                     ΔL -= model[hh_id].L
                 end

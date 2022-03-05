@@ -11,7 +11,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     P_FE :: Float64                         # probability of getting fired while employed
     w̄ :: Vector{Float64}                    # wage level
     wᴼ :: Float64                           # offered wage
-    wᴼₑ :: Float64                          # expected offered wage
+    wᴼ_max :: Float64                       # maximum offered wage
     O :: Float64                            # total amount of machines ordered
     prod_queue :: Array                     # production queue of machines
     Q :: Vector{Float64}                    # production quantities
@@ -296,7 +296,7 @@ function plan_production_kp!(
     update_w̄_p!(kp, model)
     
     # Determine total amount of machines to produce
-    if (length(kp.orders) > 0)
+    if length(kp.orders) > 0
         kp.O = sum(map(order -> order[2] / kp.p[end], kp.orders)) 
     else
         kp.O = 0.0
@@ -308,6 +308,8 @@ function plan_production_kp!(
 
     # println("labor ", kp.ΔLᵈ, " ", kp.O / kp.B[end], " ", kp.RD[end] / kp.w̄[end], " ", kp.L)
     # kp.ΔLᵈ = kp.O / kp.B[end] - kp.L
+
+    update_wᴼ_max_kp!(kp)
 end
 
 
@@ -413,4 +415,17 @@ function select_HC_kp!(
     )
 
     kp.HC = sample(all_cp, 10; replace=false)
+end
+
+
+function update_wᴼ_max_kp!(
+    kp::CapitalGoodProducer
+    )
+    # TODO: DESCRIBE IN MODEL
+    kp.wᴼ_max = kp.B[end] * kp.p[end] 
+    # if kp.ΔLᵈ > 0
+    #     kp.wᴼ_max = (kp.O * kp.p[end] - kp.w̄[end] * kp.L) / kp.ΔLᵈ
+    # else
+    #     kp.wᴼ_max = 0
+    # end
 end

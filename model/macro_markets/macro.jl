@@ -22,11 +22,12 @@ mutable struct MacroEconomy
 
     # Wage statistics
     w̄_avg :: Vector{Float64}     # average wage over time
-    w̄_std :: Vector{Float64}     # std of wage over time
+    # w̄_std :: Vector{Float64}     # std of wage over time
     wʳ_avg :: Vector{Float64}   # average requested wage over time
-    wʳ_std :: Vector{Float64}   # std of requested wage over time
+    # wʳ_std :: Vector{Float64}   # std of requested wage over time
     wˢ_avg :: Vector{Float64}   # average of satisfying wage over time
-    wˢ_std :: Vector{Float64}   # std of satisfying wage over time
+    # wˢ_std :: Vector{Float64}   # std of satisfying wage over time
+    wᴼ_max_mean :: Vector{Float64} # average of wᴼ_max
 
     Ī_avg :: Vector{Float64}     # average income over time
     Ī_std :: Vector{Float64}     # std of income over time
@@ -95,11 +96,12 @@ function initialize_macro(
         [],                     # kp debt
 
         [],                     # average of wage over time
-        [],                     # std of wage over time
+        # [],                     # std of wage over time
         [],
+        # [],
         [],
-        [],
-        [],
+        # [],
+        [],                     # wᴼ_max_mean: average of wᴼ_max
 
         [],                     # average income over time
         [],                     # std of income over time
@@ -199,20 +201,7 @@ function update_macro_timeseries(
     push!(macro_struct.s̄_std, s̄_std)
 
     # Wage and income statistics
-    w̄_avg = mean(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
-    w̄_std = std(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
-    push!(macro_struct.w̄_avg, w̄_avg)
-    push!(macro_struct.w̄_std, w̄_std)
-
-    wʳ_avg = mean(map(hh -> hh.wʳ, all_hh_str))
-    wʳ_std = std(map(hh -> hh.wʳ, all_hh_str))
-    push!(macro_struct.wʳ_avg, wʳ_avg)
-    push!(macro_struct.wʳ_std, wʳ_std)
-
-    wˢ_avg = mean(map(hh -> hh.wˢ, all_hh_str))
-    wˢ_std = std(map(hh -> hh.wˢ, all_hh_str))
-    push!(macro_struct.wˢ_avg, wˢ_avg)
-    push!(macro_struct.wˢ_std, wˢ_std)
+    update_wage_stats!(all_hh_str, all_cp_str, all_kp_str, macro_struct)
 
     Ī_avg = mean(map(hh -> hh.I[end], all_hh_str))
     Ī_std = std(map(hh -> hh.I[end], all_hh_str))
@@ -314,6 +303,33 @@ function compute_M!(
     # Total amount of money stocks
     M_tot = M_hh + M_cp + M_kp + M_gov
     push!(macro_struct.M, M_tot)
+end
+
+
+function update_wage_stats!(
+    all_hh_str::Vector{Household},
+    all_cp_str::Vector{ConsumerGoodProducer},
+    all_kp_str::Vector{CapitalGoodProducer},
+    macro_struct::MacroEconomy
+    )
+
+    w̄_avg = mean(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
+    # w̄_std = std(map(p -> p.w̄[end], vcat(all_cp_str, all_kp_str)))
+    push!(macro_struct.w̄_avg, w̄_avg)
+    # push!(macro_struct.w̄_std, w̄_std)
+
+    wʳ_avg = mean(map(hh -> hh.wʳ, all_hh_str))
+    # wʳ_std = std(map(hh -> hh.wʳ, all_hh_str))
+    push!(macro_struct.wʳ_avg, wʳ_avg)
+    # push!(macro_struct.wʳ_std, wʳ_std)
+
+    wˢ_avg = mean(map(hh -> hh.wˢ, all_hh_str))
+    # wˢ_std = std(map(hh -> hh.wˢ, all_hh_str))
+    push!(macro_struct.wˢ_avg, wˢ_avg)
+    # push!(macro_struct.wˢ_std, wˢ_std)
+
+    wᴼ_max_mean = mean(map(p -> p.wᴼ_max, vcat(all_cp_str, all_kp_str)))
+    push!(macro_struct.wᴼ_max_mean, wᴼ_max_mean)
 end
 
 

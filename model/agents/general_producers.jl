@@ -166,3 +166,17 @@ function payback_debt_p!(
     p.balance.debt -= p.curracc.rep_debt
 end
 
+
+"""
+Checks whether producers are bankrupt and should be replaced
+"""
+function check_bankrupty_p(
+    p::AbstractAgent
+    )::Bool
+
+    if p.f[end] <= 0.01 || p.balance.EQ < 0
+        return true
+    end
+    return false
+end
+

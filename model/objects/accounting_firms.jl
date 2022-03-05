@@ -8,7 +8,7 @@ mutable struct Balance
     NW :: Float64           # Liquid assets
 
     # Liabilities
-    debt :: Float64          # Debt
+    debt :: Float64         # Debt
     EQ :: Float64           # Equity
 end
 
@@ -37,16 +37,8 @@ function close_balance_p!(
     # Compute profits
     compute_Π_p!(p, writeoffs)
 
-    # Update stock of liquid assets
-    S = p.curracc.S
-    TCL = p.curracc.TCL
-    TCI = p.curracc.TCI
-    rep_debt = p.curracc.rep_debt
-    int_debt = p.curracc.int_debt
-    rev_dep = p.curracc.rev_dep
-    profit_tax = τᴾ * p.Π[end]
-
-    p.balance.NW = p.balance.NW + S + rev_dep - TCL - TCI - rep_debt - int_debt - profit_tax
+    # Update liquid assets NW
+    update_NW_p!(p, τᴾ)
 
     # If not enough liquid assets available, borrow additional funds.
     if p.balance.NW < 0
@@ -81,10 +73,11 @@ function update_K_p!(
     η::Int
     )::Float64
 
+    # Only cp have capital stock
     if typeof(p) == ConsumerGoodProducer
+        # Loop over machines, add current value of machines
         K = 0
         writeoffs = 0
-
         for machine in p.Ξ
             newval = machine.p * machine.freq
             K += max((η - machine.age) / η, 0) * newval
@@ -102,23 +95,30 @@ function update_K_p!(
 end
 
 
-# """
-# Updates NW of firm based on last period's spending.
-# """
-# function update_NW_cp!(
-#     cp::AbstractAgent
-#     )
+"""
+Updates NW of firm based on last period's spending.
+"""
+function update_NW_p!(
+    p::AbstractAgent,
+    τᴾ::Float64
+    )
 
-#     S = cp.curracc.S
-#     TCL = cp.curracc.TCL
-#     TCI = cp.curracc.TCI
-#     rep_debt = cp.curracc.rep_debt
-#     add_debt = cp.curracc.add_debt
-#     int_debt = cp.curracc.int_debt
-#     rev_dep = cp.curracc.rev_dep
+    S = p.curracc.S
+    TCL = p.curracc.TCL
+    TCI = p.curracc.TCI
+    rep_debt = p.curracc.rep_debt
+    int_debt = p.curracc.int_debt
+    rev_dep = p.curracc.rev_dep
+    profit_tax = τᴾ * p.Π[end]
 
-#     cp.balance.NW = cp.balance.NW + S - TCL - TCI - rep_debt + add_debt - int_debt + rev_dep
-# end
+    new_NW = p.balance.NW + S + rev_dep - TCL - TCI - rep_debt - int_debt - profit_tax
+
+    if typeof(p) == ConsumerGoodProducer
+        p.NW_growth = (new_NW - p.balance.NW) / p.balance.NW
+    end
+    
+    p.balance.NW = new_NW
+end
 
 
 """

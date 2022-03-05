@@ -25,19 +25,20 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     debt_installments :: Vector{Float64}   # installments of debt repayments
 
     Ξ :: Vector{Machine}            # machines
-    n_machines :: Float64                    # total freq of machines # TODO rename
+    n_machines :: Float64           # total freq of machines # TODO rename
     employees:: Vector{Int}         # employees list
     L :: Float64                    # labor units
     Lᵉ:: Float64                    # exp labor force
     ΔLᵈ :: Float64                  # desired change in labor force
     w̄ :: Vector{Float64}            # wage level
     wᴼ :: Float64                   # offered wage
-    wᴼₑ :: Float64                  # expected offered wage 
+    wᴼ_max :: Float64               # maximum offered wage
     brochures :: Vector             # brochures from kp
     π :: Float64                    # hist productivity
     f :: Vector{Float64}            # hist market share
     μ :: Float64                    # markup rate
     Π :: Vector{Float64}            # hist profits
+    NW_growth :: Float64            # growth rate of liquid assets
     cI :: Float64                   # internal funds for investments
     balance :: Balance              # balance sheet
     curracc :: FirmCurrentAccount   # current account
@@ -92,12 +93,13 @@ function initialize_cp(
         0,                          # ΔLᵈ: desired change in labor force
         [1.0],                      # w: wage level
         1.0,                        # wᴼ: offered wage
-        1.0,                        # wᴼₑ: expected offered wage
+        1.0,                        # wᴼ_max: maximum offered wage
         [],                         # brochures from kp
         1.0,                        # π: hist productivity
         [2/n_consrgood],            # f: market share
         0.05,                       # μ: hist markup
         [],                         # Π: hist profits
+        0.0,                        # NW_growth: growth rate of liquid assets
         0,                          # cI: internal funds for investments
         balance,                    # balance
         curracc                     # current account
@@ -257,108 +259,9 @@ function check_funding_restrictions_cp!(
             cp.Qˢ = min((cp.L + cp.ΔLᵈ) * cp.π[end], cp.n_machines * cp.π[end])
         end
     end
-end
 
-
-"""
-Updates expected demand based Dᵉ
-"""
-function update_Dᵉ_cp!(
-    cp::ConsumerGoodProducer,
-    ωD::Float64
-    )
-
-    if length(cp.D) > 2
-        cp.Dᵉ = ωD * cp.Dᵉ + (1 - ωD) *  (2 * cp.D[end] - cp.D[end-1])
-    else
-        cp.Dᵉ = ωD * cp.Dᵉ + (1 - ωD) *  cp.D[end]
-    end
-end
-
-
-"""
-Updates desired short-term production Qˢ
-"""
-function update_Qˢ_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    cp.Qˢ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0)
-    # if length(cp.D) > 1
-        # println(cp.Qˢ, " ", cp.Dᵉ, " ", cp.Nᵈ, " ", cp.N_goods, " ", cp.D[end], " ", cp.D[end-1])
-    # end
-    # println(cp.Dᵉ, " ", cp.N_goods)
-end
-
-
-"""
-Updates expected long-term production Qᵉ
-"""
-function update_Qᵉ_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    # TODO: very large sensitivity to this parameter: check out!
-    
-    # if length(cp.D) > 2
-    #     Qg = cp.Q[end] * (1 + (cp.D[end] - cp.D[end-1]) / cp.D[end-1])
-    #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * Qg
-    # else
-    #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
-    # end
-
-    if length(cp.Π) > 2 && cp.Π[end-1] != 0
-        Qg = cp.Q[end] * (1 + (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1])
-        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * Qg
-    else
-        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
-    end
-end
-
-
-"""
-Updates expected long-term labor supply Lᵉ
-"""
-function update_Lᵉ_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
-end
-
-
-"""
-Updates capital stock n_machines
-"""
-function update_n_machines_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    cp.n_machines = sum(map(machine -> machine.freq, cp.Ξ))
-end
-
-
-"""
-Updates weighted producivity of machine stock π
-"""
-function update_π_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    # total_freq = sum(map(machine -> machine.freq, cp.Ξ))
-    cp.π = sum(map(machine -> (machine.freq * machine.A) / cp.n_machines, cp.Ξ))
-end
-
-
-"""
-Adaptively updates expected offered wage
-"""
-function update_wᴼₑ_cp!(
-    cp::ConsumerGoodProducer,
-    ωW::Float64
-    )
-
-    cp.wᴼₑ = ωW * cp.wᴼₑ + (1 - ωW) * cp.wᴼ
+    # Based on final production decisions, update max offered wage
+    update_wᴼ_max_cp!(cp)
 end
 
 
@@ -465,6 +368,237 @@ end
 
 
 """
+Lets cp order machines from kp of choice.
+"""
+function order_machines_cp!(
+    cp::ConsumerGoodProducer,
+    model::ABM
+    )
+
+    if cp.Iᵈ > 0
+        order = (cp.id, cp.Iᵈ)
+        push!(model[cp.chosen_kp_id].orders, order)
+    end
+end
+
+
+"""
+Decides if enough inventory to send orders hh, 
+    if yes: transact, if no: send back order unfulfilled or partially fulfilled
+"""
+function send_orders_cp!(
+    cp::ConsumerGoodProducer,
+    model::ABM
+    )
+
+    # Check if any orders received
+    if length(cp.order_queue) == 0
+        return
+    end
+
+    # Compute total demand for goods, regardless of if it can be fulfilled
+    # Allows producers to produce more if production is insufficient
+    total_D = sum(map(order -> order[2], cp.order_queue))
+    push!(cp.D, total_D)
+
+    # Loop over orders in queue, add realized sales S
+    for order in cp.order_queue
+
+        hh_id = order[1]
+        q = order[2]
+
+        if q > 0
+
+            # Check if enough inventory available
+            share_fulfilled = 0.0
+            if cp.N_goods > q
+                share_fulfilled = 1.0
+                cp.N_goods -= q
+            elseif cp.N_goods > 0.0 && cp.N_goods < q
+                share_fulfilled = cp.N_goods / q
+                cp.N_goods = 0.0
+            end
+
+            tot_price = (q * share_fulfilled) * cp.p[end]
+            cp.curracc.S += tot_price
+            receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
+
+            if cp.N_goods == 0.0
+                return
+            end
+        end
+    end
+end
+
+
+function reset_brochures_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    cp.brochures = []
+end
+
+
+function reset_queue_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    cp.order_queue = Vector()
+end
+
+
+function increase_machine_age_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    for machine in cp.Ξ
+        machine.age += 1
+    end
+end
+
+
+"""
+Lets cp receive machine and include it in capital stock.
+"""
+function receive_machines!(
+    cp::ConsumerGoodProducer, 
+    machine::Machine, 
+    Iₜ::Float64,
+    )
+
+    # # Check if complete order was received, otherwise partial replacement
+    # if Iₜ == cp.Iᵈ
+    #     # All investment received, remove all machines that were written off
+    #     filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
+
+    #     # Add new machine to capital stock
+    #     push!(cp.Ξ, machine)
+    # else
+    #     # Partial investment received, remove part of machines.
+
+    #     # TODO
+    # end
+    
+    # All investment received, remove all machines that were written off
+    filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
+
+    # Add new machine to capital stock
+    push!(cp.Ξ, machine)
+
+    cp.curracc.TCI += Iₜ
+end
+
+
+"""
+UPDATING AND COMPUTING FUNCTIONS
+"""
+
+"""
+Updates expected demand based Dᵉ
+"""
+function update_Dᵉ_cp!(
+    cp::ConsumerGoodProducer,
+    ωD::Float64
+    )
+
+    if length(cp.D) > 2
+        # TODO: DESCRIBE IN MODEL 
+        cp.Dᵉ = ωD * cp.Dᵉ + (1 - ωD) *  (2 * cp.D[end] - cp.D[end-1])
+    else
+        cp.Dᵉ = ωD * cp.Dᵉ + (1 - ωD) *  cp.D[end]
+    end
+end
+
+
+"""
+Updates desired short-term production Qˢ
+"""
+function update_Qˢ_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    cp.Qˢ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0)
+    # if length(cp.D) > 1
+        # println(cp.Qˢ, " ", cp.Dᵉ, " ", cp.Nᵈ, " ", cp.N_goods, " ", cp.D[end], " ", cp.D[end-1])
+    # end
+    # println(cp.Dᵉ, " ", cp.N_goods)
+end
+
+
+"""
+Updates expected long-term production Qᵉ
+"""
+function update_Qᵉ_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    # TODO: very large sensitivity to this parameter: check out!
+    
+    # if length(cp.D) > 2
+    #     Qg = cp.Q[end] * (1 + (cp.D[end] - cp.D[end-1]) / cp.D[end-1])
+    #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * Qg
+    # else
+    #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
+    # end
+
+    if length(cp.Π) > 2 && cp.Π[end-1] != 0
+        Qg = cp.Q[end] * (1 + (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1])
+        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * Qg
+    else
+        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
+    end
+
+    # cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end] * (1 + cp.NW_growth)
+
+end
+
+
+"""
+Updates expected long-term labor supply Lᵉ
+"""
+function update_Lᵉ_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ
+end
+
+
+"""
+Updates capital stock n_machines
+"""
+function update_n_machines_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    cp.n_machines = sum(map(machine -> machine.freq, cp.Ξ))
+end
+
+
+"""
+Updates weighted producivity of machine stock π
+"""
+function update_π_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    # total_freq = sum(map(machine -> machine.freq, cp.Ξ))
+    cp.π = sum(map(machine -> (machine.freq * machine.A) / cp.n_machines, cp.Ξ))
+end
+
+
+# """
+# Adaptively updates expected offered wage
+# """
+# function update_wᴼₑ_cp!(
+#     cp::ConsumerGoodProducer,
+#     ωW::Float64
+#     )
+
+#     cp.wᴼₑ = ωW * cp.wᴼₑ + (1 - ωW) * cp.wᴼ
+# end
+
+"""
 Computes the markup rate μ based on the market share f.
 """
 function update_μ_cp!(
@@ -539,81 +673,6 @@ function update_ΔLᵈ_cp!(
     end
 end
 
-
-"""
-Lets cp order machines from kp of choice.
-"""
-function order_machines_cp!(
-    cp::ConsumerGoodProducer,
-    model::ABM
-    )
-
-    if cp.Iᵈ > 0
-        order = (cp.id, cp.Iᵈ)
-        push!(model[cp.chosen_kp_id].orders, order)
-    end
-end
-
-
-"""
-Decides if enough inventory to send orders hh, 
-    if yes: transact, if no: send back order unfulfilled or partially fulfilled
-"""
-function send_orders_cp!(
-    cp::ConsumerGoodProducer,
-    model::ABM
-    )
-
-    # Compute total demand for goods, regardless of if it can be fulfilled
-    # Allows producers to produce more if production is insufficient
-    total_D = sum(map(order -> order[2], cp.order_queue))
-    push!(cp.D, total_D)
-
-    # Loop over orders in queue, add realized sales S
-    for order in cp.order_queue
-
-        hh_id = order[1]
-        q = order[2]
-
-        if q > 0
-
-            # Check if enough inventory available
-            share_fulfilled = 0.0
-            if cp.N_goods > q
-                share_fulfilled = 1.0
-                cp.N_goods -= q
-            elseif cp.N_goods > 0.0 && cp.N_goods < q
-                share_fulfilled = cp.N_goods / q
-                cp.N_goods = 0.0
-            end
-
-            tot_price = (q * share_fulfilled) * cp.p[end]
-            cp.curracc.S += tot_price
-            receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
-
-            if cp.N_goods == 0.0
-                return
-            end
-        end
-    end
-end
-
-
-# """
-# Computes profit of cp in previous time period
-# """
-# function compute_Π_cp!(
-#     cp::ConsumerGoodProducer,
-#     writeoffs=0.0::Float64
-#     )
- 
-#     # Π = cp.curracc.S + cp.curracc.rev_dep - cp.curracc.TCL - cp.curracc.int_debt
-#     # println(Π, " ", cp.curracc.S, " ", cp.curracc.TCL, " ", cp.curracc.TCI, " ", cp.curracc.int_debt)
-#     Π = cp.curracc.S + cp.curracc.rev_dep - cp.curracc.TCL - cp.curracc.int_debt - writeoffs
-#     push!(cp.Π, Π)
-# end
-
-
 """
 Updates desired inventory to be a share of the previous demand
 """
@@ -626,76 +685,18 @@ function update_Nᵈ_cp!(
 end
 
 
-function reset_brochures_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    cp.brochures = []
-end
-
-
-function reset_queue_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    cp.order_queue = Vector()
-end
-
-
-function increase_machine_age_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    for machine in cp.Ξ
-        machine.age += 1
-    end
-end
-
-
 """
-Lets cp receive machine and include it in capital stock.
+Updates maximum offered wage wᴼ_max
 """
-function receive_machines!(
-    cp::ConsumerGoodProducer, 
-    machine::Machine, 
-    Iₜ::Float64,
+function update_wᴼ_max_cp!(
+    cp::ConsumerGoodProducer
     )
-
-    # # Check if complete order was received, otherwise partial replacement
-    # if Iₜ == cp.Iᵈ
-    #     # All investment received, remove all machines that were written off
-    #     filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
-
-    #     # Add new machine to capital stock
-    #     push!(cp.Ξ, machine)
+    # TODO: DESCRIBE IN MODEL
+    cp.wᴼ_max = cp.π[end] * cp.p[end]
+    # if cp.ΔLᵈ > 0
+    #     # cp.wᴼ_max = (cp.Dᵉ * cp.p[end] - cp.w̄[end] * cp.L) / cp.ΔLᵈ
+    #     cp.wᴼ_max = cp.p[end]
     # else
-    #     # Partial investment received, remove part of machines.
-
-    #     # TODO
+    #     cp.wᴼ_max = 0
     # end
-    
-    # All investment received, remove all machines that were written off
-    filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
-
-    # Add new machine to capital stock
-    push!(cp.Ξ, machine)
-
-    cp.curracc.TCI += Iₜ
 end
-
-
-# """
-# Repays outstanding debts at start of period, shifts debt installments
-# """
-# function repay_debt_installments_cp!(
-#     cp::ConsumerGoodProducer,
-#     b=3::Float64
-#     )
-
-#     to_be_paid = cp.debt_installments[1]
-#     cp.curracc.rep_debt += to_be_paid
-
-#     cp.debt_installments[1] = cp.debt_installments[2]
-#     cp.debt_installments[2] = cp.debt_installments[3]
-#     cp.debt_installments[3] = 0.0
-# end

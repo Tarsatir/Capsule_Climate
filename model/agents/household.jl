@@ -17,7 +17,7 @@ mutable struct Household <: AbstractAgent
     # S :: Vector{Float64}        # total savings
     s :: Float64                # savings rate
     W :: Vector{Float64}        # wealth or cash on hand
-    Wʳ :: Vector{Float64}       # real wealth or cash on hand
+    # Wʳ :: Vector{Float64}       # real wealth or cash on hand
 
     # Consumption variables
     C :: Vector{Float64}        # budget
@@ -48,8 +48,8 @@ function initialize_hh(
         [],                     # Iᵀ: hist taxed income
         # [10],                   # S: total savings
         0,                      # s: savings rate
-        [100],                  # W: wealth or cash on hand
-        [100],                  # Wʳ: real wealth or cash on hand
+        [500],                  # W: wealth or cash on hand
+        # [100],                  # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
         Vector{Int}(),          # all_cp_B: connected cp basic goods
@@ -109,15 +109,14 @@ function set_consumption_budget_hh!(
     update_average_price_hh!(hh, model)
 
     # Update real wealth level
-    update_real_wealth_hh!(hh)
+    # update_real_wealth_hh!(hh)
+    # TODO: check if this is still needed
 
     # Update share of goods to bg and lg
     update_share_goodtypes_hh!(hh, c_L_max, a_σ, b_σ)
 
     # Compute consumption budget
     compute_consumption_budget_hh!(hh, α_cp)
-
-    # println(hh.W[end], " ", hh.C[end])
 end
 
 
@@ -136,16 +135,16 @@ function update_average_price_hh!(
 end
 
 
-"""
-Updates real wealth level based on price division of last period
-"""
-function update_real_wealth_hh!(
-    hh::Household
-    )
+# """
+# Updates real wealth level based on price division of last period
+# """
+# function update_real_wealth_hh!(
+#     hh::Household
+#     )
 
-    Wʳ = hh.W[end] / hh.P̄[end]
-    push!(hh.Wʳ, Wʳ)
-end
+#     Wʳ = hh.W[end] / hh.P̄[end]
+#     push!(hh.Wʳ, Wʳ)
+# end
 
 
 """
@@ -195,7 +194,7 @@ function place_orders_hh!(
     model::ABM
     )
 
-    n_days = 3
+    n_days = 6
 
     C_B = hh.C[end] * (1 - hh.c_L)
     C_L = hh.C[end] * hh.c_L
@@ -239,22 +238,28 @@ function receive_order_hh!(
 end
 
 
+"""
+Updates satisfying wage wˢ and requested wage wʳ
+"""
 function update_sat_req_wage_hh!(
     hh::Household, 
     ϵ::Float64, 
     UB::Float64
     )
 
-    T = 4
+    # T = 4
+    # if length(hh.w) > T
+    #     hh.wˢ = mean(hh.w[end-T:end])/hh.L
+    # else
+    #     hh.wˢ = mean(hh.w)/hh.L
+    # end
 
-    if length(hh.w) > T
-        hh.wˢ = mean(hh.w[end-T:end])/hh.L
-    else
-        hh.wˢ = mean(hh.w)/hh.L
-    end
+    # Try to use adaptive wˢ
+    ωwˢ = 0.99
+    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.I[end] / hh.L
 
     if hh.employed
-        hh.wʳ = hh.wʳ * (1 + ϵ)
+        hh.wʳ = hh.w[end] * (1 + ϵ)
     else
         hh.wʳ = max(UB/hh.L, hh.wˢ)
     end
@@ -333,4 +338,72 @@ function change_employer_hh!(
 
     hh.employer_id = employer_id
     push!(hh.w, wᴼ)
+end
+
+
+"""
+Decides whether to switch to other cp
+"""
+function decide_switching_hh!(
+    hh::Household,
+    ψ_Q::Float64,
+    ψ_P::Float64,
+    all_bp::Vector{Int},
+    all_lp::Vector{Int},
+    model::ABM
+    )
+
+    # Check if demand was constrained and for chance of changing cp
+    if length(hh.unsat_dem) > 0 && rand() < ψ_Q
+
+        # Pick a supplier to change, first set up weights inversely proportional
+        # to supplied share of goods
+        weights = map(p -> 1/max(p[2], 0.001), hh.unsat_dem)
+
+        # Sample producer to replace
+        p_id_replaced = sample(hh.unsat_dem, Weights(weights))[1]
+
+        # Check if replaced supplier is bp or lp, sample new supplier in correct
+        # category and replace in set of hh suppliers.
+        if p_id_replaced in hh.bp
+            p_id_new = sample(setdiff(all_bp, hh.bp))
+            filter!(p_id -> p_id ≠ p_id_replaced, hh.bp)
+            push!(hh.bp, p_id_new)
+        else
+            p_id_new = sample(setdiff(all_lp, hh.lp))
+            filter!(p_id -> p_id ≠ p_id_replaced, hh.lp)
+            push!(hh.lp, p_id_new)
+        end
+    end
+
+    # Reset unsatisfied demand
+    hh.unsat_dem = Vector()
+
+    # Check if household will look for a better price
+    if rand() < ψ_P
+
+        # Randomly select a supplier that may be replaced
+        p_id_candidate1 = sample(vcat(hh.bp, hh.lp))
+
+        # Randomly pick another candidate from same type and see if price is lower
+        if p_id_candidate1 in hh.bp
+            # TODO make this weighted (if needed)
+            # TODO see if you dont always want to sample from already known producers
+            p_id_candidate2 = sample(setdiff(all_bp, hh.bp))
+            
+            # Replace supplier if price of other supplier is lower 
+            if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
+                filter!(p_id -> p_id ≠ p_id_candidate1, hh.bp)
+                push!(hh.bp, p_id_candidate2)
+            end
+        else
+            p_id_candidate2 = sample(setdiff(all_lp, hh.lp))
+        
+            # Replace supplier if price of other supplier is lower
+            if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
+                filter!(p_id -> p_id ≠ p_id_candidate1, hh.lp)
+                push!(hh.lp, p_id_candidate2)
+            end
+        end
+    end
 end
