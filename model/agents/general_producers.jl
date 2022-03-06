@@ -174,11 +174,12 @@ Checks whether producers are bankrupt and should be replaced, returns vectors
 function check_bankrupty_all_p!(
     all_p::Vector{Int}, 
     model::ABM
-    )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}}
+    )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}, Vector{Int}}
 
     bankrupt_bp = Vector{Int}()
     bankrupt_lp = Vector{Int}()
     bankrupt_kp = Vector{Int}()
+    bankrupt_kp_i = Vector{Int}()
 
     for p_id in all_p
         if model[p_id].f[end] <= 0.001 || model[p_id].balance.EQ < 0
@@ -193,11 +194,12 @@ function check_bankrupty_all_p!(
             else
                 println("kp bankrupt")
                 push!(bankrupt_kp, p_id)
+                push!(bankrupt_kp_i, model[p_id].kp_i)
             end
         end
     end
 
-    return bankrupt_bp, bankrupt_lp, bankrupt_kp
+    return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
 end
 
 
@@ -212,6 +214,7 @@ function kill_all_bankrupt_p!(
     bankrupt_lp::Vector{Int},
     bankrupt_kp::Vector{Int},
     all_hh::Vector{Int},
+    all_kp::Vector{Int},
     model::ABM
     )
 

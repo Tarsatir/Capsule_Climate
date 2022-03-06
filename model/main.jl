@@ -121,7 +121,7 @@ function initialize_model(
     # Initialize capital good producers
     for kp_i in 1:n_captlgood
 
-        kp = initialize_kp(id, kp_i, n_captlgood, n_init_emp_kp)
+        kp = initialize_kp(id, kp_i, n_captlgood)
         add_agent!(kp, model)
 
         id += 1
@@ -169,6 +169,14 @@ function model_step!(
 
     # Update schedulers
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
+
+    # Check if households still have enough producers, otherwise sample more
+    refill_suppliers_all_hh!(
+        all_hh,
+        all_bp, 
+        all_lp,
+        model
+    )
 
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
     for cp_id in all_cp
@@ -344,22 +352,21 @@ function model_step!(
     update_marketshare_cp!(all_bp, all_lp, model)
 
     # Remove bankrupt companies.
-    bankrupt_bp, bankrupt_lp, bankrupt_kp = check_bankrupty_all_p!(all_p, model)
+    bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, model)
     kill_all_bankrupt_p!(
         bankrupt_bp, 
         bankrupt_lp, 
         bankrupt_kp, 
-        all_hh, 
+        all_hh,
+        all_kp, 
         model
     )
 
+    println("Number of cp: ", length(all_cp), ", Number of kp: ", length(all_kp))
+
     # Replace bankrupt companies with new companies
     # replace_bankrupt_cp!(bankrupt_bp, bankrupt_lp, all_hh, model)
-    # replace_bankrupt_kp!(bankrupt_kp, model)
-
-    # Check if households still have enough producers, otherwise sample more
-    # TODO
-
+    replace_bankrupt_kp!(bankrupt_kp, bankrupt_kp_i, all_kp, model)
 end
 
 T = 400

@@ -8,7 +8,6 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     employees :: Vector{Int}                # employees in company
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
-    P_FE :: Float64                         # probability of getting fired while employed
     w̄ :: Vector{Float64}                    # wage level
     wᴼ :: Float64                           # offered wage
     wᴼ_max :: Float64                       # maximum offered wage
@@ -21,7 +20,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     D :: Vector{Float64}                    # hist revenue
     HC :: Vector{Int}                       # hist clients
     Π :: Vector{Float64}                    # hist profits
-    debt_installments :: Vector{Float64}   # installments of debt repayments
+    debt_installments :: Vector{Float64}    # installments of debt repayments
     f :: Float64                            # market share
     brochure                                # brochure
     orders :: Array                         # orders
@@ -29,11 +28,23 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     curracc :: FirmCurrentAccount           # current account
 end
 
+
+"""
+Initializes kp agent, default is the heterogeneous state, otherwise properties are given
+    as optional arguments.
+"""
 function initialize_kp(
     id::Int, 
-    n_captlgood::Int,
     kp_i::Int,
-    n_init_emp_kp::Int
+    n_captlgood::Int;
+    A=1.0,
+    B=1.0,
+    p=1.0,
+    w̄=1.0,
+    wᴼ=1.0,
+    Q=100,
+    D=100,
+    f=1/n_captlgood
     )
 
     balance = Balance(               
@@ -49,28 +60,27 @@ function initialize_kp(
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
         kp_i,                   # kp_i, used for distance matrix
-        [1],                    # A: labor prod sold product
-        [1],                    # B: labor prod own production
-        [1.0],                  # p: hist price data
+        [A],                    # A: labor prod sold product
+        [B],                    # B: labor prod own production
+        [p],                    # p: hist price data
         [],                     # c: hist cost data
         [],                     # employees: employees in company
         0,                      # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
-        0,                      # P_FE: probability of getting fired while employed
-        [1.0],                  # w̄: wage level
-        1.0,                    # wᴼ: offered wage
-        1.0,                    # wᴼₑ: expected offered wage
+        [w̄],                    # w̄: wage level
+        wᴼ,                     # wᴼ: offered wage
+        0.0,                    # wᴼ_max: expected offered wage
         0,                      # O: total amount of machines ordered
         [],                     # production queue
-        [10],                   # Q: production quantity
+        [Q],                    # Q: production quantity
         [],                     # RD: hist R&D expenditure
         [],                     # IM: hist immitation expenditure
         [],                     # IN: hist innovation expenditure
-        [100],                  # D: hist revenue
+        [D],                    # D: hist demand
         [],                     # HC: hist clients
         [0.0],                  # Π: hist profits
         fill(0.0, 4),           # debt installments
-        1/n_captlgood,          # f: market share
+        f,                      # f: market share
         [],                     # brochure
         [],                     # orders
         balance,                # balance
@@ -444,4 +454,44 @@ function remove_bankrupt_HC_kp!(
 
     filter!(bp_id -> bp_id ∉ bankrupt_bp, kp.HC)
     filter!(lp_id -> lp_id ∉ bankrupt_lp, kp.HC)
+end
+
+
+"""
+Replaces bankrupt kp with new kp. Gives them a level of technology and expectations
+    from another kp. 
+"""
+function replace_bankrupt_kp!(
+    bankrupt_kp::Vector{Int},
+    bankrupt_kp_i::Vector{Int},
+    all_kp::Vector{Int},
+    model::ABM
+    )
+
+    # Re-use id of bankrupted company
+    for (kp_id, kp_i) in zip(bankrupt_kp, bankrupt_kp_i)
+
+        # Sample a producer of which to take over the technologies, proportional to the 
+        # quality of the technology
+        # TODO: describe in model
+        poss_kp = setdiff(all_kp, bankrupt_kp)
+        weights = map(kp_id -> min(model[kp_id].A[end], model[kp_id].B[end]), poss_kp)
+        kp_to_copy = model[sample(poss_kp, Weights(weights))]
+
+        # Initialize new kp
+        new_kp = initialize_kp(
+            kp_id, 
+            kp_i, 
+            length(all_kp);
+            A=kp_to_copy.A[end],
+            B=kp_to_copy.B[end],
+            p=kp_to_copy.p[end],
+            w̄=kp_to_copy.w̄[end],
+            wᴼ=kp_to_copy.wᴼ[end],
+            Q=kp_to_copy.Q[end],
+            D=kp_to_copy.D[end],
+            f=0.0
+        )
+        add_agent!(new_kp, model)
+    end
 end

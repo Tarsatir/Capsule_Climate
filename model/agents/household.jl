@@ -422,3 +422,49 @@ function decide_switching_hh!(
         end
     end
 end
+
+
+"""
+Refills amount of bp and lp in amount is below minimum. Randomly draws suppliers
+    inversely proportional to prices.
+"""
+function refill_suppliers_all_hh!(
+    all_hh::Vector{Int},
+    all_bp::Vector{Int},
+    all_lp::Vector{Int},
+    model::ABM;
+    n_bp_hh=7::Int,
+    n_lp_hh=7::Int
+    )
+
+    # Check amount of bp and lp of all hh, if insufficient replenish by randomly
+    # drawing other suppliers based on weights
+    for hh_id in all_hh
+
+        # Check bp, sample if insufficient
+        if length(model[hh_id].bp) < n_bp_hh
+
+            # Determine which bp are available
+            n_add_bp = n_bp_hh - length(model[hh_id].bp)
+            poss_bp = filter(p_id -> p_id ∉ model[hh_id].bp, all_bp)
+
+            # Determine weights based on prices, sample and add
+            weights_bp = map(bp_id -> 1 / model[bp_id].p[end], poss_bp)
+            add_bp = sample(poss_bp, Weights(weights_bp), n_add_bp)
+            model[hh_id].bp = vcat(model[hh_id].bp, add_bp)
+        end
+
+        # Check lp, sample if insufficient
+        if length(model[hh_id].lp) < n_lp_hh
+
+            # Determine which lp are available
+            n_add_lp = n_lp_hh - length(model[hh_id].lp)
+            poss_lp = filter(p_id -> p_id ∉ model[hh_id].lp, all_lp)
+
+            # Determine weights based on prices, sample and add
+            weights_lp = map(lp_id -> 1 / model[lp_id].p[end], poss_lp)
+            add_lp = sample(poss_lp, Weights(weights_lp), n_add_lp)
+            model[hh_id].lp = vcat(model[hh_id].lp, add_lp)
+        end
+    end
+end
