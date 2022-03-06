@@ -255,8 +255,9 @@ function update_sat_req_wage_hh!(
     # end
 
     # Try to use adaptive wˢ
-    ωwˢ = 0.99
+    ωwˢ = 0.8
     hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.I[end] / hh.L
+    # hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.w[end]
 
     if hh.employed
         hh.wʳ = hh.w[end] * (1 + ϵ)
@@ -338,6 +339,20 @@ function change_employer_hh!(
 
     hh.employer_id = employer_id
     push!(hh.w, wᴼ)
+end
+
+
+"""
+Removes bankrupt producers from set of producers.
+"""
+function remove_bankrupt_producers_hh!(
+    hh::Household,
+    bankrupt_bp::Vector{Int},
+    bankrupt_lp::Vector{Int}
+    )
+
+    filter!(bp_id -> bp_id ∉ bankrupt_bp, hh.bp)
+    filter!(lp_id -> lp_id ∉ bankrupt_lp, hh.lp)
 end
 
 

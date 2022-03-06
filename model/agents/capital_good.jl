@@ -199,11 +199,13 @@ function imitate_technology_kp(
     all_kp::Vector{Int}, 
     kp_distance_matrix, 
     model::ABM
-    ) :: Tuple{Float64, Float64}
+    )::Tuple{Float64, Float64}
 
-    weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
-    
-    idx = sample(all_kp, Weights(weights))
+    # weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
+    # idx = sample(all_kp, Weights(weights))
+    # TODO: uncomment
+
+    idx = sample(all_kp)
 
     A_t_im = model[idx].A[end]
     B_t_im = model[idx].B[end]
@@ -303,7 +305,7 @@ function plan_production_kp!(
     end
 
     # Determine amount of labor to hire
-    kp.ΔLᵈ = 100 * floor(max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L) / 100)
+    kp.ΔLᵈ = 50 * floor(max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L) / 50)
     # kp.ΔLᵈ = max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L)
 
     # println("labor ", kp.ΔLᵈ, " ", kp.O / kp.B[end], " ", kp.RD[end] / kp.w̄[end], " ", kp.L)
@@ -428,4 +430,18 @@ function update_wᴼ_max_kp!(
     # else
     #     kp.wᴼ_max = 0
     # end
+end
+
+
+"""
+Filters out historical clients if they went bankrupt
+"""
+function remove_bankrupt_HC_kp!(
+    kp::CapitalGoodProducer,
+    bankrupt_lp::Vector{Int},
+    bankrupt_bp::Vector{Int}
+    )
+
+    filter!(bp_id -> bp_id ∉ bankrupt_bp, kp.HC)
+    filter!(lp_id -> lp_id ∉ bankrupt_lp, kp.HC)
 end

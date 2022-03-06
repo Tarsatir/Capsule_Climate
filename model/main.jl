@@ -343,12 +343,22 @@ function model_step!(
     # Update market shares of cp
     update_marketshare_cp!(all_bp, all_lp, model)
 
-    # Remove bankrupt companies and introduce new companies.
-    for p_id in all_p
-        if check_bankrupty_p(model[p_id])
+    # Remove bankrupt companies.
+    bankrupt_bp, bankrupt_lp, bankrupt_kp = check_bankrupty_all_p!(all_p, model)
+    kill_all_bankrupt_p!(
+        bankrupt_bp, 
+        bankrupt_lp, 
+        bankrupt_kp, 
+        all_hh, 
+        model
+    )
 
-        end
-    end
+    # Replace bankrupt companies with new companies
+    # replace_bankrupt_cp!(bankrupt_bp, bankrupt_lp, all_hh, model)
+    # replace_bankrupt_kp!(bankrupt_kp, model)
+
+    # Check if households still have enough producers, otherwise sample more
+    # TODO
 
 end
 

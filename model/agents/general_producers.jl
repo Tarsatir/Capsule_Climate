@@ -168,15 +168,73 @@ end
 
 
 """
-Checks whether producers are bankrupt and should be replaced
+Checks whether producers are bankrupt and should be replaced, returns vectors
+    containing ids of to-be-replaced producers by type
 """
-function check_bankrupty_p(
-    p::AbstractAgent
-    )::Bool
+function check_bankrupty_all_p!(
+    all_p::Vector{Int}, 
+    model::ABM
+    )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}}
 
-    if p.f[end] <= 0.01 || p.balance.EQ < 0
-        return true
+    bankrupt_bp = Vector{Int}()
+    bankrupt_lp = Vector{Int}()
+    bankrupt_kp = Vector{Int}()
+
+    for p_id in all_p
+        if model[p_id].f[end] <= 0.001 || model[p_id].balance.EQ < 0
+            if typeof(model[p_id]) == ConsumerGoodProducer
+                if model[p_id].type_good == "Basic"
+                    println("bp bankrupt")
+                    push!(bankrupt_bp, p_id)
+                else
+                    println("lp bankrupt")
+                    push!(bankrupt_lp, p_id)
+                end
+            else
+                println("kp bankrupt")
+                push!(bankrupt_kp, p_id)
+            end
+        end
     end
-    return false
+
+    return bankrupt_bp, bankrupt_lp, bankrupt_kp
 end
 
+
+"""
+Kills all bankrupt producers.
+    - for cp, removes bankrupt companies from households.
+    - for all, fires all remaining workers.
+    - for all, removes firm agent from model.
+"""
+function kill_all_bankrupt_p!(
+    bankrupt_bp::Vector{Int},
+    bankrupt_lp::Vector{Int},
+    bankrupt_kp::Vector{Int},
+    all_hh::Vector{Int},
+    model::ABM
+    )
+
+    # Remove bankrupt cp ids from households
+    for hh_id in all_hh
+        remove_bankrupt_producers_hh!(model[hh_id], bankrupt_bp, bankrupt_lp)
+    end
+
+    # Remove bankrupt cp ids from kp historical clients
+    for kp_id in all_kp
+        remove_bankrupt_HC_kp!(model[kp_id], bankrupt_bp, bankrupt_lp)
+    end
+
+    # Fire all workers still remaining in the firm, remove firm
+    for p_id in vcat(bankrupt_bp, bankrupt_lp, bankrupt_kp)
+
+        # Fire remaining workers
+        for hh_id in model[p_id].employees
+            # remove_worker_p!(model[p_id], model[hh_id])
+            set_unemployed_hh!(model[hh_id])
+        end
+
+        # Remove firm agents from model
+        kill_agent!(p_id, model)
+    end
+end

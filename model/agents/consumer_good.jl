@@ -664,13 +664,17 @@ function update_ΔLᵈ_cp!(
 
     # Check desired change in labor stock, also check for capital stock
     # as hiring more than this would not increase production.
-    ΔLᵈ = min(cp.Qˢ, cp.n_machines * cp.π)/cp.π - cp.L
+    # ΔLᵈ = min(cp.Qˢ/cp.π, cp.n_machines - cp.L) - cp.L
+    ΔLᵈ = min(cp.Qˢ/cp.π - cp.L, cp.n_machines - cp.L)
 
     if ΔLᵈ < -cp.L
         cp.ΔLᵈ = -cp.L
     else
-        cp.ΔLᵈ = L * floor(ΔLᵈ / L)
+        cp.ΔLᵈ = L/2 * floor(ΔLᵈ / L)
     end
+
+    # cp.ΔLᵈ = max(-cp.L, ΔLᵈ)
+
 end
 
 """
