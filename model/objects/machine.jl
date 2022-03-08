@@ -9,10 +9,10 @@ end
 Initializes machine struct
 """
 function initialize_machine(
-    freq::Float64,
-    η::Int=0,
-    p::Float64=1.0, 
-    A::Float64=1.0
+    freq::Float64;
+    η=0::Int,
+    p=1.0::Float64, 
+    A=1.0::Float64
     )
 
     machine_struct = Machine(

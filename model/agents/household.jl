@@ -194,16 +194,19 @@ function place_orders_hh!(
     model::ABM
     )
 
-    n_days = 6
+    n_days = 4
 
     C_B = hh.C[end] * (1 - hh.c_L)
     C_L = hh.C[end] * hh.c_L
 
+    weights_bp = map(bp_id -> 1 / model[bp_id].p[end]^2, hh.bp)
+    weights_lp = map(lp_id -> 1 / model[lp_id].p[end]^2, hh.lp)
+
     # Send order to queues of bp and lp
     for n_day in 1:n_days
 
-        bp_choice_id = sample(hh.bp)
-        lp_choice_id = sample(hh.lp)
+        bp_choice_id = sample(hh.bp, Weights(weights_bp))
+        lp_choice_id = sample(hh.lp, Weights(weights_lp))
 
         # Compute how many units can be bought, make orders
         q_B = (C_B/n_days) / model[bp_choice_id].p[end]

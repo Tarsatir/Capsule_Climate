@@ -8,6 +8,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     c :: Vector{Float64}            # hist cost
     RD :: Vector{Float64}           # R&D spending
     D :: Vector{Float64}            # hist demand
+    Dᵁ :: Float64                   # unsatisfied demand in last period
     Dᵉ :: Float64                   # exp demand
     order_queue :: Vector           # vector containing orders of demanding households
     Nᵈ :: Float64                   # desired inventory
@@ -46,21 +47,21 @@ end
 
 
 function initialize_cp(
-    id :: Int, 
-    machines::Vector{Machine}, 
-    n_consrgood :: Int, 
-    type_good :: String,
-    n_init_emp_cp :: Int,
+    id::Int, 
+    machines::Vector{Machine},  
+    type_good::String,
+    n_init_emp_cp::Int,
     μ1::Float64,
-    ι::Float64
+    ι::Float64;
+    n_consrgood=200::Int,
     )
 
     balance = Balance(               
-        0,                          # - N: inventory (in money units)
+        0.0,                        # - N: inventory (in money units)
         n_init_emp_cp * 100,        # - K: capital
-        100.0,                      # - NW: liquid assets
+        0.0,                        # - NW: liquid assets
         0.0,                        # - debt: debt
-        0.0                         # - EQ: equity
+        n_init_emp_cp * 100         # - EQ: equity
     )
 
     curracc = FirmCurrentAccount(0,0,0,0,0,0,0)
@@ -72,6 +73,7 @@ function initialize_cp(
         [1.0],                      # c: hist cost
         [],                         # RD: hist R&D spending
         [1100],                     # D: hist demand
+        0.0,                        # Dᵁ unsatisfied demand in last period
         1100,                       # Dᵉ exp demand
         Vector(),                   # hh_queue: vector containing ids of demanding households           
         ι * 1100,                   # Nᵈ: desired inventory
@@ -401,6 +403,8 @@ function send_orders_cp!(
     total_D = sum(map(order -> order[2], cp.order_queue))
     push!(cp.D, total_D)
 
+    total_unsat_demand = 0
+
     # Loop over orders in queue, add realized sales S
     for order in cp.order_queue
 
@@ -416,18 +420,23 @@ function send_orders_cp!(
                 cp.N_goods -= q
             elseif cp.N_goods > 0.0 && cp.N_goods < q
                 share_fulfilled = cp.N_goods / q
+                total_unsat_demand += q - cp.N_goods
                 cp.N_goods = 0.0
+            else
+                total_unsat_demand += q
             end
 
             tot_price = (q * share_fulfilled) * cp.p[end]
             cp.curracc.S += tot_price
             receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
 
-            if cp.N_goods == 0.0
-                return
-            end
+            # if cp.N_goods == 0.0
+            #     return
+            # end
         end
     end
+    # println("Unsatisfied demand: ", total_unsat_demand)
+    cp.Dᵁ = total_unsat_demand
 end
 
 
@@ -486,6 +495,83 @@ function receive_machines!(
     push!(cp.Ξ, machine)
 
     cp.curracc.TCI += Iₜ
+end
+
+
+"""
+Replaces cp, places cp in firm list of hh.
+"""
+function replace_bankrupt_cp!(
+    bankrupt_bp::Vector{Int}, 
+    bankrupt_lp::Vector{Int},
+    bankrupt_kp::Vector{Int},
+    all_hh::Vector{Int},
+    all_kp::Vector{Int},
+    μ1::Float64,
+    ι::Float64,
+    model::ABM;
+    n_machines_init=40::Int,
+    n_init_emp_cp=10::Int
+    )
+
+    # Make weights for allocating cp to hh
+    weights_hh_bp = map(hh_id -> 1 / length(model[hh_id].bp), all_hh)
+    weights_hh_lp = map(hh_id -> 1 / length(model[hh_id].lp), all_hh)
+
+    for p_id in vcat(bankrupt_bp, bankrupt_lp)
+
+        type_good="Basic"
+        if p_id in bankrupt_lp
+            type_good="Luxury"
+        end
+
+        # New cp receive a advanced type of machine, first select kp proportional
+        # to their market share
+        poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
+        weights_kp = map(kp_id -> model[kp_id].f[end], poss_kp)
+        kp_choice_id = sample(poss_kp, Weights(weights_kp))
+        A_choice = model[kp_choice_id].A[end]
+        p_choice = model[kp_choice_id].p[end]
+
+        # Generate vector of machines
+        machines = Vector{Machine}()
+        K = n_init_emp_cp * 100
+        for n in 1:n_machines_init
+            freq = K/n_machines_init
+            machine_struct = initialize_machine(freq; η=0, p=p_choice, A=A_choice)
+            push!(machines, machine_struct)
+        end
+
+        new_cp = initialize_cp(
+                    p_id,
+                    machines,
+                    type_good,
+                    0,
+                    μ1,
+                    ι
+                )
+        update_n_machines_cp!(new_cp)
+        add_agent!(new_cp, model)
+
+        # Add new cp to subset of households, inversely proportional to amount of suppliers
+        # they already have
+        n_init_hh = 10
+        if p_id ∈ bankrupt_bp
+            customers = sample(all_hh, Weights(weights_hh_bp), n_init_hh)
+        else
+            customers = sample(all_hh, Weights(weights_hh_lp), n_init_hh)
+        end
+    
+        # Add cp to list of bp and lp, according to type
+        for hh_id in customers
+            if p_id ∈ bankrupt_bp
+                push!(model[hh_id].bp, p_id)
+            else
+                push!(model[hh_id].lp, p_id)
+            end
+        end
+
+    end
 end
 
 
@@ -549,6 +635,8 @@ function update_Qᵉ_cp!(
     end
 
     # cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end] * (1 + cp.NW_growth)
+
+    # cp.Qᵉ = cp.Q[end] + cp.Dᵁ
 
 end
 
@@ -619,6 +707,7 @@ function update_μ_cp!(
     else
         cp.μ = μ1
     end
+    # println(cp.μ)
 end
 
 

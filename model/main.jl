@@ -29,6 +29,9 @@ include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
 include("macro_markets/macro.jl")
 
+# TEMP
+include("../plotting/plot_D_p.jl")
+
 
 """
 Initializes model.
@@ -99,18 +102,18 @@ function initialize_model(
         for n in 1:n_machines_init
             # Machines have random age as to allow replacement in early periods
             freq = K/n_machines_init
-            machine_struct = initialize_machine(freq, global_param.η)
+            machine_struct = initialize_machine(freq; η=global_param.η)
             push!(machines, machine_struct)
         end
 
         cp = initialize_cp(
                 id, 
-                machines, 
-                n_consrgood, 
+                machines,  
                 type_good, 
                 n_init_emp_cp, 
                 global_param.μ1,
-                global_param.ι
+                global_param.ι;
+                n_consrgood=n_consrgood
             )
         update_n_machines_cp!(cp)
         add_agent!(cp, model)
@@ -159,6 +162,7 @@ end
 
 
 function model_step!(
+    t::Int,
     global_param::GlobalParam, 
     macro_struct::MacroEconomy, 
     gov_struct::Government, 
@@ -350,6 +354,7 @@ function model_step!(
 
     # Update market shares of cp
     update_marketshare_cp!(all_bp, all_lp, model)
+    update_marketshare_kp!(all_kp, model)
 
     # Remove bankrupt companies.
     bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, model)
@@ -365,8 +370,22 @@ function model_step!(
     println("Number of cp: ", length(all_cp), ", Number of kp: ", length(all_kp))
 
     # Replace bankrupt companies with new companies
-    # replace_bankrupt_cp!(bankrupt_bp, bankrupt_lp, all_hh, model)
+    replace_bankrupt_cp!(
+        bankrupt_bp, 
+        bankrupt_lp,
+        bankrupt_kp, 
+        all_hh,
+        all_kp,
+        global_param.μ1,
+        global_param.ι, 
+        model
+    )
     replace_bankrupt_kp!(bankrupt_kp, bankrupt_kp_i, all_kp, model)
+
+    # if t == T
+    #     plot_D_p(all_bp, model)
+    # end
+
 end
 
 T = 400
@@ -376,7 +395,15 @@ to = TimerOutput()
 @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct = initialize_model(T)
 for t in 1:T
     println("Step ", t)
-    @timeit to "step" model_step!(global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, model)
+    @timeit to "step" model_step!(
+                            t, 
+                            global_param, 
+                            macro_struct, 
+                            gov_struct, 
+                            labormarket_struct, 
+                            bank_struct, 
+                            model
+                        )
 end
 
 # @timeit to "step" run!(model, dummystep, model_step!, 10)

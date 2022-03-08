@@ -52,12 +52,12 @@ function initialize_global_params()
         -0.03,                      # κ_lower: 1st beta dist support
         0.03,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
-        0.2,                        # μ1: kp markup rule
+        0.15,                        # μ1: kp markup rule
         0.0,                        # r: (annual) interest rate
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
         20,                         # η: physical scrapping age
-        0.01,                       # υ: markup coefficient
+        0.8,                        # υ: markup coefficient
         1.0,                        # ω: competetiveness weights
         1.0,                        # χ: replicator dynamics coeff
         2.0,                        # Λ: max debt/sales ratio regular debt
@@ -71,7 +71,7 @@ function initialize_global_params()
         0.75, # From rer98          # cu: capacity utilization for cp
         0.02,                       # ϵ: minimum desired wage increase rate
         0.5,                        # Kg_max: maximum capital growth rate
-        0.5,                        # ωD: memory parameter cp demand estimation
+        0.2,                        # ωD: memory parameter cp demand estimation
         0.5,                        # ωQ: memory parameter cp quantity estimation
         0.5,                        # ωL: memory parameter cp labor supply estimation
         0.5,                        # ωW: memory parameter cp offered wage parameter
@@ -80,8 +80,8 @@ function initialize_global_params()
         1000,                       # a_σ
         30,                         # b_σ
         0.05,                       # ψ_E: chance of employed worker looking for a better paying job
-        0.25,                       # ψ_Q: chance of household switching away from cp when demand constrained
-        0.25,                       # ψ_P: chance of household switching to cp with better price
+        0.75,                        # ψ_Q: chance of household switching away from cp when demand constrained
+        0.5,                        # ψ_P: chance of household switching to cp with better price
         0.1,                        # max_g_wᴼ: max growth rate of offered wages
         # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
     )

@@ -17,11 +17,11 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     RD :: Vector{Float64}                   # hist R&D expenditure
     IM :: Vector{Float64}                   # hist immitation expenditure
     IN :: Vector{Float64}                   # hist innovation expenditure
-    D :: Vector{Float64}                    # hist revenue
+    D :: Vector{Float64}                    # hist demand
     HC :: Vector{Int}                       # hist clients
     Π :: Vector{Float64}                    # hist profits
     debt_installments :: Vector{Float64}    # installments of debt repayments
-    f :: Float64                            # market share
+    f :: Vector{Float64}                    # market share
     brochure                                # brochure
     orders :: Array                         # orders
     balance :: Balance                      # balance sheet
@@ -80,7 +80,7 @@ function initialize_kp(
         [],                     # HC: hist clients
         [0.0],                  # Π: hist profits
         fill(0.0, 4),           # debt installments
-        f,                      # f: market share
+        [f],                    # f: market share
         [],                     # brochure
         [],                     # orders
         balance,                # balance
@@ -173,7 +173,8 @@ function send_brochures_kp!(
     kp::CapitalGoodProducer,
     all_cp::Vector{Int}, 
     global_param,
-    model::ABM
+    model::ABM;
+    n_hist_clients=50::Int
     )
 
     # Set up brochure
@@ -189,7 +190,11 @@ function send_brochures_kp!(
     # Select new clients, send brochure
     NC_potential = setdiff(all_cp, kp.HC)
 
-    n_choices = Int(round(global_param.γ * length(kp.HC)))
+    if length(kp.HC) == 0
+        n_choices = n_hist_clients
+    else
+        n_choices = Int(round(global_param.γ * length(kp.HC)))
+    end
     
     # Send brochures to new clients
     NC = sample(NC_potential, n_choices; replace=false)
@@ -211,11 +216,11 @@ function imitate_technology_kp(
     model::ABM
     )::Tuple{Float64, Float64}
 
-    # weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
-    # idx = sample(all_kp, Weights(weights))
+    weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
+    idx = sample(all_kp, Weights(weights))
     # TODO: uncomment
 
-    idx = sample(all_kp)
+    # idx = sample(all_kp)
 
     A_t_im = model[idx].A[end]
     B_t_im = model[idx].B[end]
@@ -382,7 +387,7 @@ function send_orders_kp!(
         Iₜ = order[2]
         freq = Iₜ / kp.p[end]
 
-        machine = initialize_machine(freq, 0, kp.p[end], kp.A[end])
+        machine = initialize_machine(freq; η=0, p=kp.p[end], A=kp.A[end])
 
         tot_freq += freq
 
@@ -390,8 +395,8 @@ function send_orders_kp!(
     end
     
     # Add demand and sales.
-    # D = tot_freq
-    # push!(kp.D, D)
+    D = tot_freq
+    push!(kp.D, D)
 
     kp.curracc.S = tot_freq * kp.p[end]
 
@@ -423,10 +428,11 @@ end
 
 function select_HC_kp!(
     kp::CapitalGoodProducer, 
-    all_cp::Vector{Int}
+    all_cp::Vector{Int};
+    n_hist_clients=10::Int
     )
 
-    kp.HC = sample(all_cp, 10; replace=false)
+    kp.HC = sample(all_cp, n_hist_clients; replace=false)
 end
 
 
@@ -458,6 +464,27 @@ end
 
 
 """
+Updates market share of all kp.
+"""
+function update_marketshare_kp!(
+    all_kp::Vector{Int},
+    model::ABM
+    )
+
+    kp_market = sum(kp_id -> model[kp_id].D[end], all_kp)
+
+    for kp_id in all_kp
+        if kp_market == 0
+            f = 1 / length(all_kp)
+        else
+            f = model[kp_id].D[end] / kp_market
+        end
+        push!(model[kp_id].f, f)
+    end
+end
+
+
+"""
 Replaces bankrupt kp with new kp. Gives them a level of technology and expectations
     from another kp. 
 """
@@ -468,14 +495,18 @@ function replace_bankrupt_kp!(
     model::ABM
     )
 
+    # TODO: describe in model
+
+    # Determine all possible kp and set weights for sampling proportional to the 
+    # quality of their technology
+    poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
+    weights = map(kp_id -> min(model[kp_id].A[end], model[kp_id].B[end]), poss_kp)
+
     # Re-use id of bankrupted company
     for (kp_id, kp_i) in zip(bankrupt_kp, bankrupt_kp_i)
 
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
-        # TODO: describe in model
-        poss_kp = setdiff(all_kp, bankrupt_kp)
-        weights = map(kp_id -> min(model[kp_id].A[end], model[kp_id].B[end]), poss_kp)
         kp_to_copy = model[sample(poss_kp, Weights(weights))]
 
         # Initialize new kp

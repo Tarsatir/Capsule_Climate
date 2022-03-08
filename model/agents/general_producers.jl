@@ -108,7 +108,7 @@ function update_marketshare_cp!(
     # Update market share f for all bp
     for bp_id in all_bp
         if bp_market == 0
-            f = 1/length(all_bp)
+            f = 1 / length(all_bp)
         else
             f = model[bp_id].D[end] / bp_market
         end
@@ -181,23 +181,32 @@ function check_bankrupty_all_p!(
     bankrupt_kp = Vector{Int}()
     bankrupt_kp_i = Vector{Int}()
 
+    bp_counter = 0
+    lp_counter = 0
+    kp_counter = 0
+
     for p_id in all_p
         if model[p_id].f[end] <= 0.001 || model[p_id].balance.EQ < 0
             if typeof(model[p_id]) == ConsumerGoodProducer
                 if model[p_id].type_good == "Basic"
-                    println("bp bankrupt")
+                    # println("bp bankrupt, f=",model[p_id].f[end])
+                    bp_counter += 1
                     push!(bankrupt_bp, p_id)
                 else
-                    println("lp bankrupt")
+                    # println("lp bankrupt, f=",model[p_id].f[end])
+                    lp_counter += 1
                     push!(bankrupt_lp, p_id)
                 end
             else
-                println("kp bankrupt")
+                # println("kp bankrupt, f=",model[p_id].f[end])
+                kp_counter += 1
                 push!(bankrupt_kp, p_id)
                 push!(bankrupt_kp_i, model[p_id].kp_i)
             end
         end
     end
+
+    println("Bankrupties, kp: $kp_counter, bp: $bp_counter, lp: $lp_counter")
 
     return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
 end
