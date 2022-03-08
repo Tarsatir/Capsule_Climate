@@ -284,7 +284,7 @@ function compute_M!(
 
     # Wealth of households
     M_hh = sum(map(hh -> hh.W[end], all_hh_str))
-    MA_avg = mean(map(hh -> hh.W[end], all_hh_str))
+    # MA_avg = mean(map(hh -> hh.W[end], all_hh_str))
     # println("MA hh avg ", MA_avg)
     push!(macro_struct.M_hh, M_hh)
 

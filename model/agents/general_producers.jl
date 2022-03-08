@@ -40,7 +40,6 @@ function hire_worker_p!(
     # update labor stock and desired labor
     push!(p.employees, hh.id)
     p.L += hh.L
-    # p.ΔLᵈ -= hh.L
 end
 
 
@@ -88,6 +87,8 @@ function update_w̄_p!(
     if length(p.employees) > 0
         w̄ = mean(map(hh_id -> model[hh_id].w[end], p.employees))
         push!(p.w̄, w̄)
+    else
+        push!(p.w̄, p.w̄[end])
     end
 end
 
@@ -209,6 +210,7 @@ function check_bankrupty_all_p!(
     println("Bankrupties, kp: $kp_counter, bp: $bp_counter, lp: $lp_counter")
 
     return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
+    # return [], [], [], []
 end
 
 
@@ -224,6 +226,7 @@ function kill_all_bankrupt_p!(
     bankrupt_kp::Vector{Int},
     all_hh::Vector{Int},
     all_kp::Vector{Int},
+    labormarket_struct::LaborMarket,
     model::ABM
     )
 
@@ -236,6 +239,14 @@ function kill_all_bankrupt_p!(
     for kp_id in all_kp
         remove_bankrupt_HC_kp!(model[kp_id], bankrupt_bp, bankrupt_lp)
     end
+
+    # All employees are declared unemployed
+    all_employees = Vector{Int}()
+    for p_id in vcat(bankrupt_bp, bankrupt_lp, bankrupt_kp)
+        append!(all_employees, model[p_id].employees)
+    end
+    
+    update_firedworker_lm!(labormarket_struct, all_employees)
 
     # Fire all workers still remaining in the firm, remove firm
     for p_id in vcat(bankrupt_bp, bankrupt_lp, bankrupt_kp)

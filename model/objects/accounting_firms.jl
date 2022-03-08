@@ -25,6 +25,8 @@ function close_balance_p!(
     τᴾ::Float64
     )
 
+    p.balance.debt = max(0.0, p.balance.debt)
+
     # Compute interest payment
     update_interest_payment_p!(p, r)
 
@@ -54,14 +56,17 @@ function close_balance_p!(
         p.balance.N = p.p[end] * p.N_goods
     end
 
+    # println(p.balance.debt)
+
     # Compute Equity
     tot_assets = p.balance.N + p.balance.K + p.balance.NW
     p.balance.EQ = tot_assets - p.balance.debt
 
-    # TODO:
-    # if p.balance.EQ < 0
-    #     # Liquidate firm
-    # end
+    # If NW is negative, maximum debt is reached, and EQ is set to
+    # a negative value so the firm is declared bankrupt
+    if p.balance.NW < 0
+        p.balance.EQ = -1.0
+    end
 end
 
 
@@ -103,15 +108,21 @@ function update_NW_p!(
     τᴾ::Float64
     )
 
+    NW = p.balance.NW
     S = p.curracc.S
     TCL = p.curracc.TCL
     TCI = p.curracc.TCI
     rep_debt = p.curracc.rep_debt
+    add_debt = p.curracc.add_debt
     int_debt = p.curracc.int_debt
     rev_dep = p.curracc.rev_dep
-    profit_tax = τᴾ * p.Π[end]
+    profit_tax = max(τᴾ * p.Π[end], 0)
 
-    new_NW = p.balance.NW + S + rev_dep - TCL - TCI - rep_debt - int_debt - profit_tax
+    # if typeof(p) == ConsumerGoodProducer
+    #     println("NW: $NW, S: $S, TCL: $TCL, TCI: $TCI, rd: $rep_debt, ad: $add_debt, id: $int_debt, pt: $profit_tax")
+    # end
+
+    new_NW = NW + S + add_debt + rev_dep - TCL - TCI - rep_debt - int_debt - profit_tax
 
     if typeof(p) == ConsumerGoodProducer
         p.NW_growth = (new_NW - p.balance.NW) / p.balance.NW

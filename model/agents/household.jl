@@ -196,17 +196,18 @@ function place_orders_hh!(
 
     n_days = 4
 
-    C_B = hh.C[end] * (1 - hh.c_L)
-    C_L = hh.C[end] * hh.c_L
-
+    # Sample from bp and lp
     weights_bp = map(bp_id -> 1 / model[bp_id].p[end]^2, hh.bp)
     weights_lp = map(lp_id -> 1 / model[lp_id].p[end]^2, hh.lp)
 
-    # Send order to queues of bp and lp
-    for n_day in 1:n_days
+    bp_choices = sample(hh.bp, Weights(weights_bp), n_days)
+    lp_choices = sample(hh.lp, Weights(weights_lp), n_days)
 
-        bp_choice_id = sample(hh.bp, Weights(weights_bp))
-        lp_choice_id = sample(hh.lp, Weights(weights_lp))
+    C_B = hh.C[end] * (1 - hh.c_L)
+    C_L = hh.C[end] * hh.c_L
+
+    # Send order to queues of bp and lp
+    for (bp_choice_id, lp_choice_id) in zip(bp_choices, lp_choices)
 
         # Compute how many units can be bought, make orders
         q_B = (C_B/n_days) / model[bp_choice_id].p[end]

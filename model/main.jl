@@ -157,6 +157,16 @@ function initialize_model(
         model
     )
 
+    for p_id in all_p
+        close_balance_p!(
+            model[p_id], 
+            global_param.Λ,
+            global_param.r,
+            global_param.η,
+            gov_struct.τᴾ,
+        )
+    end
+
     return model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct
 end
 
@@ -363,9 +373,12 @@ function model_step!(
         bankrupt_lp, 
         bankrupt_kp, 
         all_hh,
-        all_kp, 
+        all_kp,
+        labormarket_struct, 
         model
     )
+    update_unemploymentrate_lm!(labormarket_struct)
+    println("E 4: ", labormarket_struct.E[end])
 
     println("Number of cp: ", length(all_cp), ", Number of kp: ", length(all_kp))
 
@@ -386,9 +399,11 @@ function model_step!(
     #     plot_D_p(all_bp, model)
     # end
 
+    println("All employed: ", sum(map(p_id -> length(model[p_id].employees), all_p)))
+
 end
 
-T = 400
+T = 100
 
 to = TimerOutput()
 
@@ -414,7 +429,7 @@ println(macro_struct.GDP)
 
 all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
-@timeit to "save findist" save_final_dist(all_hh, model)
+@timeit to "save findist" save_final_dist(all_hh, all_bp, all_lp, all_kp, model)
 
 show(to)
 println()

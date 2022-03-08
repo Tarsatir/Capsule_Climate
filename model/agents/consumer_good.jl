@@ -53,15 +53,18 @@ function initialize_cp(
     n_init_emp_cp::Int,
     μ1::Float64,
     ι::Float64;
+    L=n_init_emp_cp * 100::Int,
+    Lᵉ=n_init_emp_cp * 100::Int,
+    N_goods=110::Int,
     n_consrgood=200::Int,
     )
 
     balance = Balance(               
         0.0,                        # - N: inventory (in money units)
-        n_init_emp_cp * 100,        # - K: capital
+        0.0,                        # - K: capital
         0.0,                        # - NW: liquid assets
         0.0,                        # - debt: debt
-        n_init_emp_cp * 100         # - EQ: equity
+        0.0                         # - EQ: equity
     )
 
     curracc = FirmCurrentAccount(0,0,0,0,0,0,0)
@@ -77,30 +80,33 @@ function initialize_cp(
         1100,                       # Dᵉ exp demand
         Vector(),                   # hh_queue: vector containing ids of demanding households           
         ι * 1100,                   # Nᵈ: desired inventory
-        0,                          # N_goods: inventory in goods 
+        N_goods,                    # N_goods: inventory in goods 
         [1210],                     # Q: hist production
         1210,                       # Qᵉ: exp production
         0,                          # Qˢ: desired short-term production
+
         0,                          # Iᵈ: desired investments
         0,                          # EIᵈ: desired expansionary investments
         0,                          # RSᵈ: desired replacement investments
         [],                         # mach_tb_repl: list of to-be replaced machines
         0,                          # chosen_kp_id: id of chosen kp
         fill(0.0, 4),               # debt installments
+
         machines,                   # Ξ: machines
         0,                          # n_machines: total number of machines
         [],                         # employees: employees
-        n_init_emp_cp * 100,        # L: labor units in company
-        n_init_emp_cp * 100,        # Lᵉ: exp labor force
-        0,                          # ΔLᵈ: desired change in labor force
+        L,                          # L: labor units in company
+        Lᵉ,                         # Lᵉ: exp labor force
+        0.0,                        # ΔLᵈ: desired change in labor force
         [1.0],                      # w: wage level
         1.0,                        # wᴼ: offered wage
         1.0,                        # wᴼ_max: maximum offered wage
         [],                         # brochures from kp
+
         1.0,                        # π: hist productivity
         [2/n_consrgood],            # f: market share
-        0.05,                       # μ: hist markup
-        [],                         # Π: hist profits
+        μ1,                         # μ: hist markup
+        [0.0],                      # Π: hist profits
         0.0,                        # NW_growth: growth rate of liquid assets
         0,                          # cI: internal funds for investments
         balance,                    # balance
@@ -180,7 +186,7 @@ function plan_investment_cp!(
     # TODO: see if I still need this for something
 
     # Compute desired capital stock expansion
-    desired_n_machines = cp.Qᵉ / cp.π
+    desired_n_machines = max(cp.Qᵉ / cp.π, cp.n_machines)
     p_machine  = brochure[2]
     cp.EIᵈ = p_machine * min(max(desired_n_machines - cp.n_machines, 0), 
                              cp.n_machines * global_param.Kg_max)
@@ -361,7 +367,8 @@ function produce_goods_cp!(
 
     # Compute total production amount
     Q = max(min(cp.π * cp.L, cp.π * cp.n_machines, cp.Qˢ), 0)
-    # println("L ", cp.π * cp.L, " ", cp.n_machines, " ", cp.Qˢ)
+    # @printf("L: %i, K: %i, Qˢ: %i\n", cp.L, cp.n_machines, cp.Qˢ)
+    # @printf("πL: %i, πK: %i, Qˢ: %i\n", cp.π * cp.L, cp.π * cp.n_machines, cp.Qˢ)
     push!(cp.Q, Q)
     
     # Change inventory, will be amount households can buy from
@@ -405,6 +412,8 @@ function send_orders_cp!(
 
     total_unsat_demand = 0
 
+    actual_S = 0.0
+
     # Loop over orders in queue, add realized sales S
     for order in cp.order_queue
 
@@ -426,8 +435,8 @@ function send_orders_cp!(
                 total_unsat_demand += q
             end
 
-            tot_price = (q * share_fulfilled) * cp.p[end]
-            cp.curracc.S += tot_price
+            tot_price = q * share_fulfilled * cp.p[end]
+            actual_S += tot_price
             receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
 
             # if cp.N_goods == 0.0
@@ -437,6 +446,7 @@ function send_orders_cp!(
     end
     # println("Unsatisfied demand: ", total_unsat_demand)
     cp.Dᵁ = total_unsat_demand
+    cp.curracc.S = actual_S
 end
 
 
@@ -535,9 +545,9 @@ function replace_bankrupt_cp!(
 
         # Generate vector of machines
         machines = Vector{Machine}()
-        K = n_init_emp_cp * 100
-        for n in 1:n_machines_init
-            freq = K/n_machines_init
+        tot_freq_machines = n_init_emp_cp * 100
+        for i in 1:n_machines_init
+            freq = tot_freq_machines/n_machines_init
             machine_struct = initialize_machine(freq; η=0, p=p_choice, A=A_choice)
             push!(machines, machine_struct)
         end
@@ -548,9 +558,22 @@ function replace_bankrupt_cp!(
                     type_good,
                     0,
                     μ1,
-                    ι
+                    ι;
+                    L=0,
+                    Lᵉ=0,
+                    N_goods=0.0
                 )
         update_n_machines_cp!(new_cp)
+        update_π_cp!(new_cp)
+
+        # Borrow funds for the machine and liquid assets
+        NW_to_borrow = tot_freq_machines * p_choice
+        borrow_funds_p!(new_cp, tot_freq_machines * p_choice + NW_to_borrow)
+        # TODO: a kp firm has to receive revenue for this
+
+        new_cp.balance.K = tot_freq_machines * p_choice
+        new_cp.balance.debt = tot_freq_machines * p_choice + NW_to_borrow
+
         add_agent!(new_cp, model)
 
         # Add new cp to subset of households, inversely proportional to amount of suppliers
@@ -626,6 +649,8 @@ function update_Qᵉ_cp!(
     # else
     #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
     # end
+
+    # cp.Qᵉ = cp.Dᵉ + cp.Dᵁ
 
     if length(cp.Π) > 2 && cp.Π[end-1] != 0
         Qg = cp.Q[end] * (1 + (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1])
@@ -755,6 +780,7 @@ function update_ΔLᵈ_cp!(
     # as hiring more than this would not increase production.
     # ΔLᵈ = min(cp.Qˢ/cp.π, cp.n_machines - cp.L) - cp.L
     ΔLᵈ = min(cp.Qˢ/cp.π - cp.L, cp.n_machines - cp.L)
+    # ΔLᵈ = cp.Qˢ/cp.π - cp.L
 
     if ΔLᵈ < -cp.L
         cp.ΔLᵈ = -cp.L

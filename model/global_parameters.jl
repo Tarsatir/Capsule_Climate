@@ -80,7 +80,7 @@ function initialize_global_params()
         1000,                       # a_σ
         30,                         # b_σ
         0.05,                       # ψ_E: chance of employed worker looking for a better paying job
-        0.75,                        # ψ_Q: chance of household switching away from cp when demand constrained
+        0.75,                       # ψ_Q: chance of household switching away from cp when demand constrained
         0.5,                        # ψ_P: chance of household switching to cp with better price
         0.1,                        # max_g_wᴼ: max growth rate of offered wages
         # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory

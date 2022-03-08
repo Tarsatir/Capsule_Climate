@@ -52,7 +52,7 @@ function initialize_kp(
         0.0,                    # - K: capital
         1000.0,                 # - NW: liquid assets
         0.0,                    # - debt: debt
-        0.0                     # - EQ: equity
+        1000.0                  # - EQ: equity
     )
     
     curracc = FirmCurrentAccount(0,0,0,0,0,0,0)
