@@ -4,6 +4,7 @@ mutable struct MacroEconomy
     GDP_I :: Vector{Float64}     # income share of GDP over time
     GDP_Π_cp :: Vector{Float64}  # profit share of GDP of cp over time
     GDP_Π_kp :: Vector{Float64}  # profit share of GDP of kp over time
+    p̄::Vector{Float64}           # average price over time
     CPI :: Vector{Float64}       # inflation over time
     C :: Vector{Float64}         # aggregate consumption over time
 
@@ -79,6 +80,7 @@ function initialize_macro(
         [],                     # income share of GDP
         [],                     # profit share of GDP of cp over time
         [],                     # profit share of GDP of kp over time
+        [],                     # p̄: average price over time
         [],                     # CPI: inflation rate
         [],                     # aggregate consumption
 
@@ -364,6 +366,8 @@ function update_CPI!(
 
     avg_p_1 = sum(map(cp -> cp.p[1] * cp.f[1], all_cp_str))
     avg_p_t = sum(map(cp -> cp.p[end] * cp.f[end], all_cp_str))
+
+    push!(macro_struct.p̄, avg_p_t)
     # avg_w = mean(map(cp -> cp.w̄[end], all_cp_str))
     # avg_c = mean(map(cp -> cp.c[end], all_cp_str))
     # println(avg_p_1, " ", avg_p_t, " ", avg_w, " ", avg_c)

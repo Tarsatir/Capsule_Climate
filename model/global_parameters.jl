@@ -52,7 +52,7 @@ function initialize_global_params()
         -0.03,                      # κ_lower: 1st beta dist support
         0.03,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
-        0.15,                        # μ1: kp markup rule
+        0.15,                       # μ1: kp markup rule
         0.0,                        # r: (annual) interest rate
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
@@ -66,8 +66,8 @@ function initialize_global_params()
         0.9,                        # φ2: 2nd Uniform dist support, cp entrant cap
         0.1,                        # φ3: 1st Uniform dist support, cp entrant liq
         0.9,                        # φ4: 2nd Uniform dist support, cp entrant liq
-        2.0,                        # α2: 1st beta dist param for kp entrant
-        4.0,                        # β2: 2nd beta dist param for kp entrant
+        4.0,    # was 2.0           # α2: 1st beta dist param for kp entrant
+        2.0,    # was 4.0           # β2: 2nd beta dist param for kp entrant
         0.75, # From rer98          # cu: capacity utilization for cp
         0.02,                       # ϵ: minimum desired wage increase rate
         0.5,                        # Kg_max: maximum capital growth rate

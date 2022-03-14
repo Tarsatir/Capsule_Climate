@@ -24,6 +24,7 @@ include("agents/consumer_good.jl")
 include("agents/capital_good.jl")
 include("agents/general_producers.jl")
 include("agents/bank.jl")
+include("agents/indexfund.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
@@ -136,6 +137,9 @@ function initialize_model(
     # Initialize bank struct
     bank_struct = initialize_bank(all_p, model)
 
+    # Initialize index fund struct
+    indexfund_struct = initialize_indexfund()
+
     # Let all capital good producers select historical clients
     for kp_id in all_kp
         select_HC_kp!(model[kp_id], all_cp)
@@ -164,10 +168,11 @@ function initialize_model(
             global_param.r,
             global_param.η,
             gov_struct.τᴾ,
+            indexfund_struct
         )
     end
 
-    return model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct
+    return model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct
 end
 
 
@@ -178,6 +183,7 @@ function model_step!(
     gov_struct::Government, 
     labormarket_struct::LaborMarket,
     bank_struct::Bank,
+    indexfund_struct::IndexFund,
     model::ABM
     )
 
@@ -286,6 +292,11 @@ function model_step!(
     # (6) Transactions take place on consumer market
 
     # Households update wealth level
+    distribute_dividends_if!(
+        indexfund_struct,
+        all_hh,
+        model
+    )
     for hh_id in all_hh
         update_wealth_hh!(model[hh_id])
     end
@@ -329,6 +340,7 @@ function model_step!(
             global_param.r,
             global_param.η,
             gov_struct.τᴾ,
+            indexfund_struct
         )
     end 
 
@@ -340,6 +352,7 @@ function model_step!(
             global_param.r,
             global_param.η,
             gov_struct.τᴾ,
+            indexfund_struct,
         )
     end
 
@@ -388,12 +401,24 @@ function model_step!(
         bankrupt_lp,
         bankrupt_kp, 
         all_hh,
+        all_bp,
+        all_lp,
         all_kp,
+        macro_struct.p̄[end],
+        macro_struct.w̄_avg[end],
         global_param.μ1,
         global_param.ι, 
         model
     )
-    replace_bankrupt_kp!(bankrupt_kp, bankrupt_kp_i, all_kp, model)
+
+    replace_bankrupt_kp!(
+        bankrupt_kp, 
+        bankrupt_kp_i, 
+        all_kp, 
+        global_param.α2,
+        global_param.β2,
+        model
+    )
 
     # if t == T
     #     plot_D_p(all_bp, model)
@@ -407,7 +432,7 @@ T = 100
 
 to = TimerOutput()
 
-@timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct = initialize_model(T)
+@timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T)
 for t in 1:T
     println("Step ", t)
     @timeit to "step" model_step!(
@@ -417,6 +442,7 @@ for t in 1:T
                             gov_struct, 
                             labormarket_struct, 
                             bank_struct, 
+                            indexfund_struct,
                             model
                         )
 end

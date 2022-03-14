@@ -22,7 +22,8 @@ function close_balance_p!(
     Λ::Float64,
     r::Float64,
     η::Int,
-    τᴾ::Float64
+    τᴾ::Float64,
+    indexfund_struct
     )
 
     p.balance.debt = max(0.0, p.balance.debt)
@@ -61,6 +62,18 @@ function close_balance_p!(
     # Compute Equity
     tot_assets = p.balance.N + p.balance.K + p.balance.NW
     p.balance.EQ = tot_assets - p.balance.debt
+
+    # TRIAL OF INDEX FUND
+    d = 2
+
+    max_net_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.curracc.rep_debt)
+
+    if p.balance.NW - p.balance.debt > max_net_NW
+        indexfund_struct.Assets += (p.balance.NW - p.balance.debt - max_net_NW)
+        p.balance.NW = max_net_NW + p.balance.debt
+        tot_assets = p.balance.N + p.balance.K + p.balance.NW
+        p.balance.EQ = tot_assets - p.balance.debt
+    end
 
     # If NW is negative, maximum debt is reached, and EQ is set to
     # a negative value so the firm is declared bankrupt

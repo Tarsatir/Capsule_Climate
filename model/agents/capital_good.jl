@@ -492,15 +492,42 @@ function replace_bankrupt_kp!(
     bankrupt_kp::Vector{Int},
     bankrupt_kp_i::Vector{Int},
     all_kp::Vector{Int},
+    α2::Float64,
+    β2::Float64,
     model::ABM
     )
 
     # TODO: describe in model
 
+    # Check if not all kp have gone bankrupt, in this case, 
+    # kp with highest NW will not be removed
+    if length(bankrupt_kp) == length(all_kp)
+        kp_id_max_NW = all_kp[1]
+        for i in 2:length(all_kp)
+            if model[all_kp[i]].curracc.NW > model[kp_id_max_NW].curracc.NW
+                kp_id_max_NW = all_kp[i]
+            end
+        end
+        bankrupt_kp = bankrupt_kp[!i]
+    end
+
     # Determine all possible kp and set weights for sampling proportional to the 
     # quality of their technology
     poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
     weights = map(kp_id -> min(model[kp_id].A[end], model[kp_id].B[end]), poss_kp)
+
+    # Get the technology frontier
+    A_max = 0
+    B_max = 0
+    for kp_id in poss_kp
+        if model[kp_id].A[end] > A_max
+            A_max = model[kp_id].A[end]
+        end
+
+        if model[kp_id].B[end] > B_max
+            B_max = model[kp_id].B[end]
+        end 
+    end
 
     # Re-use id of bankrupted company
     for (kp_id, kp_i) in zip(bankrupt_kp, bankrupt_kp_i)
@@ -508,6 +535,10 @@ function replace_bankrupt_kp!(
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
         kp_to_copy = model[sample(poss_kp, Weights(weights))]
+
+        tech_coeff = rand(Beta(α2, β2))
+        new_A = A_max * tech_coeff
+        new_B = B_max * tech_coeff
 
         # Initialize new kp
         new_kp = initialize_kp(

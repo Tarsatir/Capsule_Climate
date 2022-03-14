@@ -226,7 +226,7 @@ function kill_all_bankrupt_p!(
     bankrupt_kp::Vector{Int},
     all_hh::Vector{Int},
     all_kp::Vector{Int},
-    labormarket_struct::LaborMarket,
+    labormarket_struct,
     model::ABM
     )
 

@@ -53,6 +53,8 @@ function initialize_cp(
     n_init_emp_cp::Int,
     μ1::Float64,
     ι::Float64;
+    p=1.0 * (1 + μ1)::Float64,
+    w=1.0,
     L=n_init_emp_cp * 100::Int,
     Lᵉ=n_init_emp_cp * 100::Int,
     N_goods=110::Int,
@@ -72,7 +74,7 @@ function initialize_cp(
     cp = ConsumerGoodProducer(
         id,                         # global id
         type_good,                  # type of good produced by producer
-        [1.0 * (1 + μ1)],           # p: hist prices
+        [p],                        # p: hist prices
         [1.0],                      # c: hist cost
         [],                         # RD: hist R&D spending
         [1100],                     # D: hist demand
@@ -98,7 +100,7 @@ function initialize_cp(
         L,                          # L: labor units in company
         Lᵉ,                         # Lᵉ: exp labor force
         0.0,                        # ΔLᵈ: desired change in labor force
-        [1.0],                      # w: wage level
+        [w],                        # w: wage level
         1.0,                        # wᴼ: offered wage
         1.0,                        # wᴼ_max: maximum offered wage
         [],                         # brochures from kp
@@ -186,7 +188,8 @@ function plan_investment_cp!(
     # TODO: see if I still need this for something
 
     # Compute desired capital stock expansion
-    desired_n_machines = max(cp.Qᵉ / cp.π, cp.n_machines)
+    # desired_n_machines = max(cp.Qᵉ / cp.π, cp.n_machines)
+    desired_n_machines = max(cp.Qˢ / cp.π, cp.n_machines)
     p_machine  = brochure[2]
     cp.EIᵈ = p_machine * min(max(desired_n_machines - cp.n_machines, 0), 
                              cp.n_machines * global_param.Kg_max)
@@ -516,13 +519,23 @@ function replace_bankrupt_cp!(
     bankrupt_lp::Vector{Int},
     bankrupt_kp::Vector{Int},
     all_hh::Vector{Int},
+    all_bp::Vector{Int},
+    all_lp::Vector{Int},
     all_kp::Vector{Int},
+    p̄::Float64,
+    w̄::Float64,
     μ1::Float64,
     ι::Float64,
     model::ABM;
     n_machines_init=40::Int,
     n_init_emp_cp=10::Int
     )
+
+    # Create vectors containing ids of non-bankrupt bp and lp
+    nonbankrupt_bp = setdiff(all_bp, bankrupt_bp)
+    nonbankrupt_lp = setdiff(all_lp, bankrupt_lp)
+
+    avg_n_machines = mean(map(kp_id -> model[kp_id].n_machines, vcat(nonbankrupt_bp, nonbankrupt_lp)))
 
     # Make weights for allocating cp to hh
     weights_hh_bp = map(hh_id -> 1 / length(model[hh_id].bp), all_hh)
@@ -559,6 +572,8 @@ function replace_bankrupt_cp!(
                     0,
                     μ1,
                     ι;
+                    p=p̄,
+                    w=w̄,
                     L=0,
                     Lᵉ=0,
                     N_goods=0.0
@@ -567,18 +582,19 @@ function replace_bankrupt_cp!(
         update_π_cp!(new_cp)
 
         # Borrow funds for the machine and liquid assets
-        NW_to_borrow = tot_freq_machines * p_choice
+        NW_to_borrow = 2 * tot_freq_machines * p_choice
         borrow_funds_p!(new_cp, tot_freq_machines * p_choice + NW_to_borrow)
         # TODO: a kp firm has to receive revenue for this
 
+        new_cp.balance.NW = tot_freq_machines * p_choice
         new_cp.balance.K = tot_freq_machines * p_choice
-        new_cp.balance.debt = tot_freq_machines * p_choice + NW_to_borrow
+        # new_cp.balance.debt = tot_freq_machines * p_choice + NW_to_borrow
 
         add_agent!(new_cp, model)
 
         # Add new cp to subset of households, inversely proportional to amount of suppliers
         # they already have
-        n_init_hh = 10
+        n_init_hh = 100
         if p_id ∈ bankrupt_bp
             customers = sample(all_hh, Weights(weights_hh_bp), n_init_hh)
         else
@@ -593,7 +609,6 @@ function replace_bankrupt_cp!(
                 push!(model[hh_id].lp, p_id)
             end
         end
-
     end
 end
 
@@ -643,21 +658,27 @@ function update_Qᵉ_cp!(
 
     # TODO: very large sensitivity to this parameter: check out!
     
-    # if length(cp.D) > 2
-    #     Qg = cp.Q[end] * (1 + (cp.D[end] - cp.D[end-1]) / cp.D[end-1])
+    if length(cp.D) > 2
+        Qg = cp.Q[end] * (1 + (cp.D[end] - cp.D[end-1]) / cp.D[end-1])
+        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * Qg
+    else
+        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
+    end
+
+    # cp.Qᵉ = cp.Dᵉ + cp.Dᵁ
+
+    # if length(cp.Π) > 2 && cp.Π[end-1] != 0
+    #     Qg = cp.Q[end] * (1 + (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1])
     #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * Qg
     # else
     #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
     # end
 
-    # cp.Qᵉ = cp.Dᵉ + cp.Dᵁ
-
-    if length(cp.Π) > 2 && cp.Π[end-1] != 0
-        Qg = cp.Q[end] * (1 + (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1])
-        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * Qg
-    else
-        cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
-    end
+    # if cp.NW_growth != 0
+    #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end] * (1 + cp.NW_growth)
+    # else
+    #     cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end]
+    # end
 
     # cp.Qᵉ = global_param.ωQ * cp.Qᵉ + (1 - global_param.ωQ) * cp.Q[end] * (1 + cp.NW_growth)
 
@@ -745,7 +766,7 @@ function compute_c_cp!(
 
     # Check if any employees available
     if cp.L + cp.ΔLᵈ > 0
-        # wᵉ = (cp.w̄[end] * cp.L + cp.wᴼₑ * cp.ΔLᵈ) / (cp.L + cp.ΔLᵈ)
+        # wᵉ = (cp.w̄[end] * (cp.L + cp.ΔLᵈ)) / (cp.L + cp.ΔLᵈ)
         # println("c ", wᵉ)
         # c = wᵉ / cp.π
         c = cp.w̄[end] / cp.π
@@ -785,7 +806,8 @@ function update_ΔLᵈ_cp!(
     if ΔLᵈ < -cp.L
         cp.ΔLᵈ = -cp.L
     else
-        cp.ΔLᵈ = L/2 * floor(ΔLᵈ / L)
+        # cp.ΔLᵈ = L/2 * floor(ΔLᵈ / L)
+        cp.ΔLᵈ = ΔLᵈ
     end
 
     # cp.ΔLᵈ = max(-cp.L, ΔLᵈ)
