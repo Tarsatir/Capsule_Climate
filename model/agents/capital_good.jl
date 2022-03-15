@@ -132,7 +132,7 @@ function innovate_kp!(
         end
     end
 
-    choose_technology_kp!(kp, w̄, tech_choices)
+    choose_technology_kp!(kp, w̄, global_param, tech_choices)
 end
 
 
@@ -142,6 +142,7 @@ Lets kp choose technology
 function choose_technology_kp!(
     kp::CapitalGoodProducer,
     w̄::Float64,
+    global_param::GlobalParam,
     tech_choices
     )
 

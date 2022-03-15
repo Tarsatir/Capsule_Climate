@@ -110,7 +110,7 @@ function compute_budget_balance(
     Tot_exp = gov_struct.curracc.Exp_UB[end]
 
     gov_balance = Tot_rev - Tot_exp
-    println("Gov deficit: ", gov_balance)
+    # println("Gov deficit: ", gov_balance)
 
     # Pay off part of debt in case of positive balance
     gov_struct.MS += gov_balance

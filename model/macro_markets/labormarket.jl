@@ -91,6 +91,7 @@ function labormarket_process!(
     ϵ :: Float64,
     max_g_wᴼ :: Float64, 
     UB :: Float64,
+    global_param::GlobalParam,
     model::ABM
     )
 
@@ -99,7 +100,7 @@ function labormarket_process!(
     hiring_producers = Vector{Int}()
 
     update_unemploymentrate_lm!(labormarket_struct)
-    println("E 1: ", labormarket_struct.E[end])
+    # println("E 1: ", labormarket_struct.E[end])
 
     for p_id in all_p
         if model[p_id].ΔLᵈ > 0
@@ -122,7 +123,7 @@ function labormarket_process!(
     end
 
     update_unemploymentrate_lm!(labormarket_struct)
-    println("E 2: ", labormarket_struct.E)
+    # println("E 2: ", labormarket_struct.E)
 
     # Find all employed households that want to change jobs
     employed_jobseekers = find_employed_jobseekers_lm(labormarket_struct.employed, global_param.ψ_E)
@@ -144,7 +145,7 @@ function labormarket_process!(
 
     # update the unemployment rate
     update_unemploymentrate_lm!(labormarket_struct)
-    println("E 3: ", labormarket_struct.E)
+    # println("E 3: ", labormarket_struct.E)
 
     # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
 

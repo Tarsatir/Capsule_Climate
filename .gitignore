@@ -28,4 +28,9 @@ results/
 plotting/
 
 # As to not push in SAFE code
-parameters/SAFE
+# parameters/SAFE
+
+
+# Avoid clutter files and folders
+parameters/sensitivity/__pycache__
+parameters/sensitivity/sensitivity_runs

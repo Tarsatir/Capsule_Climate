@@ -4,6 +4,7 @@ function consumermarket_process!(
     all_bp::Vector{Int}, 
     all_lp::Vector{Int}, 
     gov_struct::Government,
+    global_param::GlobalParam,
     model::ABM
     )
 

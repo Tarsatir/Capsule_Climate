@@ -237,7 +237,7 @@ function update_macro_timeseries(
     # Production quantity
     avg_Q_bp = mean(map(bp -> bp.Q[end], all_bp_str))
     push!(macro_struct.avg_Q_bp, avg_Q_bp)
-    println(mean(map(cp -> cp.Qˢ, all_cp_str)))
+    # println(mean(map(cp -> cp.Qˢ, all_cp_str)))
     avg_Q_lp = mean(map(lp -> lp.Q[end], all_lp_str))
     push!(macro_struct.avg_Q_lp, avg_Q_lp)
     avg_Q_kp = mean(map(kp -> kp.Q[end], all_kp_str))
@@ -266,7 +266,7 @@ function compute_GDP!(
     total_Π_kp = sum(map(kp -> kp.Π[end], all_kp_str))
     push!(macro_struct.GDP_Π_kp, total_Π_kp)
 
-    println("total I: ", total_I, ", Π cp: ", total_Π_cp, ", Π kp: ", total_Π_kp)
+    # println("total I: ", total_I, ", Π cp: ", total_Π_cp, ", Π kp: ", total_Π_kp)
 
     GDP = total_I + total_Π_cp + total_Π_kp
     push!(macro_struct.GDP, GDP)

@@ -1,4 +1,4 @@
-struct GlobalParam
+mutable struct GlobalParam
     ν :: Float64                    # R&D inv propensity
     ξ :: Float64                    # R&D allocation to IN
     ζ :: Float64                    # firm search capabilities
@@ -42,7 +42,10 @@ struct GlobalParam
 end
 
 
-function initialize_global_params()
+function initialize_global_params(
+        changed_params
+    )
+
     global_param = GlobalParam(
         0.04,                       # ν: R&D inv propensity
         0.5,                        # ξ: R&D allocation to IN
@@ -85,5 +88,19 @@ function initialize_global_params()
         0.1,                        # max_g_wᴼ: max growth rate of offered wages
         # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
     )
+
+    # Change parameters if needed before returning.
+    if changed_params !== nothing
+
+        for (key, new_param) in changed_params
+            # println("$key, $new_param")
+            setproperty!(global_param, Symbol(key), new_param)
+        end
+    end
+
+
+    # df = DataFrame(Dict(x=>getfield(global_param, x) for x in fieldnames(GlobalParam)))
+    # CSV.write("parameters/param_global_default.csv", df)
+
     return global_param
 end

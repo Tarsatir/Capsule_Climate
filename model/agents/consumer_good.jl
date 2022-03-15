@@ -184,7 +184,7 @@ function plan_investment_cp!(
     plan_replacement_cp!(cp, global_param, brochure)
 
     # Update LT production
-    update_Qᵉ_cp!(cp)
+    update_Qᵉ_cp!(cp, global_param)
 
     # Update expected labor supply
     # update_Lᵉ_cp!(cp)
@@ -537,8 +537,9 @@ function replace_bankrupt_cp!(
     avg_n_machines = mean(map(kp_id -> model[kp_id].n_machines, vcat(nonbankrupt_bp, nonbankrupt_lp)))
 
     # Make weights for allocating cp to hh
-    weights_hh_bp = map(hh_id -> 1 / length(model[hh_id].bp), all_hh)
-    weights_hh_lp = map(hh_id -> 1 / length(model[hh_id].lp), all_hh)
+    # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
+    weights_hh_bp = map(hh_id -> min(1, 1 / length(model[hh_id].bp)), all_hh)
+    weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
 
     for p_id in vcat(bankrupt_bp, bankrupt_lp)
 
@@ -595,6 +596,7 @@ function replace_bankrupt_cp!(
         # Add new cp to subset of households, inversely proportional to amount of suppliers
         # they already have
         n_init_hh = 100
+        # println("Len hh $(length(all_hh))")
         if p_id ∈ bankrupt_bp
             customers = sample(all_hh, Weights(weights_hh_bp), n_init_hh)
         else
@@ -653,7 +655,8 @@ end
 Updates expected long-term production Qᵉ
 """
 function update_Qᵉ_cp!(
-    cp::ConsumerGoodProducer
+    cp::ConsumerGoodProducer,
+    global_param::GlobalParam
     )
 
     # TODO: very large sensitivity to this parameter: check out!
@@ -691,7 +694,8 @@ end
 Updates expected long-term labor supply Lᵉ
 """
 function update_Lᵉ_cp!(
-    cp::ConsumerGoodProducer
+    cp::ConsumerGoodProducer,
+    global_param
     )
 
     cp.Lᵉ = global_param.ωL * cp.L[end] + (1 - global_param.ωL) * cp.Lᵉ

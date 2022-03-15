@@ -210,7 +210,7 @@ function check_bankrupty_all_p!(
         end
     end
 
-    println("Bankrupties, kp: $kp_counter, bp: $bp_counter, lp: $lp_counter")
+    # println("Bankrupties, kp: $kp_counter, bp: $bp_counter, lp: $lp_counter")
 
     return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
 end
@@ -261,7 +261,7 @@ function kill_all_bankrupt_p!(
         end
 
         # TODO: TEMP SOLUTION, DESCRIBE IT WORKS
-        indexfund_struct.Assets -= (model[p_id].balance.debt - model[p_id].balance.NW)
+        # indexfund_struct.Assets -= (model[p_id].balance.debt - model[p_id].balance.NW)
 
         # Remove firm agents from model
         kill_agent!(p_id, model)

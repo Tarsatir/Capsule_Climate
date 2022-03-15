@@ -54,15 +54,17 @@ function initialize_model(
     n_init_emp_cp = 10,
     n_init_emp_kp = 4,
     n_bp = 7,
-    n_lp = 7
+    n_lp = 7,
+    changed_params
     )
 
     # Initialise model struct
     model = ABM(Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
-                scheduler = by_type(true,true))
+                scheduler = by_type(true,true),
+                warn=false)
 
     # Initialize struct that holds global params
-    global_param  = initialize_global_params()
+    global_param  = initialize_global_params(changed_params)
 
     # Initialize struct that holds macro variables
     macro_struct = initialize_macro(T)
@@ -263,6 +265,7 @@ function model_step!(
         global_param.ϵ,
         global_param.max_g_wᴼ,
         gov_struct.UB,
+        global_param,
         model
     )
     # TODO: check if this is still needed, otherwise delete
@@ -308,6 +311,7 @@ function model_step!(
         all_bp,
         all_lp,
         gov_struct,
+        global_param,
         model
     )
 
@@ -347,18 +351,6 @@ function model_step!(
         )
     end 
 
-    # Close balances of kp firms
-    # for kp_id in all_kp
-    #     close_balance_p!(
-    #         model[kp_id], 
-    #         global_param.Λ,
-    #         global_param.r,
-    #         global_param.η,
-    #         gov_struct.τᴾ,
-    #         indexfund_struct,
-    #     )
-    # end
-
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(gov_struct, all_p, model)
     compute_budget_balance(gov_struct)
@@ -395,9 +387,9 @@ function model_step!(
         model
     )
     update_unemploymentrate_lm!(labormarket_struct)
-    println("E 4: ", labormarket_struct.E[end])
+    # println("E 4: ", labormarket_struct.E[end])
 
-    println("Number of cp: ", length(all_cp), ", Number of kp: ", length(all_kp))
+    # println("Number of cp: ", length(all_cp), ", Number of kp: ", length(all_kp))
 
     # Replace bankrupt companies with new companies
     replace_bankrupt_cp!(
@@ -428,38 +420,46 @@ function model_step!(
     #     plot_D_p(all_bp, model)
     # end
 
-    println("All employed: ", sum(map(p_id -> length(model[p_id].employees), all_p)))
+    # println("All employed: ", sum(map(p_id -> length(model[p_id].employees), all_p)))
 
 end
 
-T = 400
 
-to = TimerOutput()
+function run_simulation(;
+    T=100::Int,
+    changed_params=nothing,
+    full_output=true::Bool
+    )::Float64
 
-@timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T)
-for t in 1:T
-    println("Step ", t)
-    @timeit to "step" model_step!(
-                            t, 
-                            global_param, 
-                            macro_struct, 
-                            gov_struct, 
-                            labormarket_struct, 
-                            bank_struct, 
-                            indexfund_struct,
-                            model
-                        )
+    to = TimerOutput()
+
+    @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T; changed_params=changed_params)
+    for t in 1:T
+        # println("Step ", t)
+        @timeit to "step" model_step!(
+                                t, 
+                                global_param, 
+                                macro_struct, 
+                                gov_struct, 
+                                labormarket_struct, 
+                                bank_struct, 
+                                indexfund_struct,
+                                model
+                            )
+    end
+
+    @timeit to "save macro" save_macro_data(macro_struct)
+
+    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
+
+    @timeit to "save findist" save_final_dist(all_hh, all_bp, all_lp, all_kp, model)
+
+    if full_output
+        show(to)
+        println()
+    end
+
+    return macro_struct.GDP[end]
 end
 
-# @timeit to "step" run!(model, dummystep, model_step!, 10)
-
-println(macro_struct.GDP)
-
-@timeit to "save macro" save_macro_data(macro_struct)
-
-all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
-
-@timeit to "save findist" save_final_dist(all_hh, all_bp, all_lp, all_kp, model)
-
-show(to)
-println()
+run_simulation()
