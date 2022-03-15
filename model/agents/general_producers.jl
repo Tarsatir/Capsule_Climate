@@ -173,7 +173,8 @@ Checks whether producers are bankrupt and should be replaced, returns vectors
     containing ids of to-be-replaced producers by type
 """
 function check_bankrupty_all_p!(
-    all_p::Vector{Int}, 
+    all_p::Vector{Int},
+    all_kp::Vector{Int}, 
     model::ABM
     )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}, Vector{Int}}
 
@@ -187,7 +188,7 @@ function check_bankrupty_all_p!(
     kp_counter = 0
 
     for p_id in all_p
-        if model[p_id].f[end] <= 0.001 || model[p_id].balance.EQ < 0
+        if check_if_bankrupt_p!(model[p_id])
             if typeof(model[p_id]) == ConsumerGoodProducer
                 if model[p_id].type_good == "Basic"
                     # println("bp bankrupt, f=",model[p_id].f[end])
@@ -201,8 +202,10 @@ function check_bankrupty_all_p!(
             else
                 # println("kp bankrupt, f=",model[p_id].f[end])
                 kp_counter += 1
-                push!(bankrupt_kp, p_id)
-                push!(bankrupt_kp_i, model[p_id].kp_i)
+                if kp_counter != length(all_kp)
+                    push!(bankrupt_kp, p_id)
+                    push!(bankrupt_kp_i, model[p_id].kp_i)
+                end
             end
         end
     end
@@ -210,7 +213,6 @@ function check_bankrupty_all_p!(
     println("Bankrupties, kp: $kp_counter, bp: $bp_counter, lp: $lp_counter")
 
     return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
-    # return [], [], [], []
 end
 
 
@@ -227,6 +229,7 @@ function kill_all_bankrupt_p!(
     all_hh::Vector{Int},
     all_kp::Vector{Int},
     labormarket_struct,
+    indexfund_struct,
     model::ABM
     )
 
@@ -257,7 +260,27 @@ function kill_all_bankrupt_p!(
             set_unemployed_hh!(model[hh_id])
         end
 
+        # TODO: TEMP SOLUTION, DESCRIBE IT WORKS
+        indexfund_struct.Assets -= (model[p_id].balance.debt - model[p_id].balance.NW)
+
         # Remove firm agents from model
         kill_agent!(p_id, model)
     end
 end
+
+
+function check_if_bankrupt_p!(
+    p::AbstractAgent
+    )
+
+    # return false
+
+    # TODO: describe waiting period
+    t_wait = 4
+
+    # if p.f[end] <= 0.001 || p.balance.EQ < 0
+    if (length(p.D) > t_wait || p.first_gen) && (p.f[end] <= 0.001 || p.balance.EQ < 0)
+        return true
+    end
+    return false
+end 

@@ -3,7 +3,8 @@ Defines struct for consumer good producer
 """
 mutable struct ConsumerGoodProducer <: AbstractAgent
     id :: Int                       # id
-    type_good :: String             # type of good produced by producer 
+    type_good :: String             # type of good produced by producer
+    first_gen :: Bool               # shows if producer is in first generation 
     p :: Vector{Float64}            # hist prices
     c :: Vector{Float64}            # hist cost
     RD :: Vector{Float64}           # R&D spending
@@ -59,6 +60,7 @@ function initialize_cp(
     Lᵉ=n_init_emp_cp * 100::Int,
     N_goods=110::Int,
     n_consrgood=200::Int,
+    first_gen=true
     )
 
     balance = Balance(               
@@ -74,6 +76,7 @@ function initialize_cp(
     cp = ConsumerGoodProducer(
         id,                         # global id
         type_good,                  # type of good produced by producer
+        first_gen,
         [p],                        # p: hist prices
         [1.0],                      # c: hist cost
         [],                         # RD: hist R&D spending
@@ -316,14 +319,11 @@ function choose_producer_cp!(
     )
 
     # In case of no brochures, pick a random kp
-    if (length(cp.brochures) == 0)
+    # TODO change this back
+    if (length(cp.brochures) >= 0)
         cp.chosen_kp_id = sample(all_kp)
         brochure = model[cp.chosen_kp_id].brochure
-        # p_star = brochure[2]
-        # c_star = brochure[3]
-        # A_star = brochure[4]
-        
-        # return p_star, A_star
+
         return brochure
     end
 
@@ -356,7 +356,6 @@ function choose_producer_cp!(
 
     cp.chosen_kp_id = chosen_kp_id
 
-    # return p_star, A_star
     return brochure_star
 end
 
@@ -576,7 +575,8 @@ function replace_bankrupt_cp!(
                     w=w̄,
                     L=0,
                     Lᵉ=0,
-                    N_goods=0.0
+                    N_goods=0.0,
+                    first_gen=false
                 )
         update_n_machines_cp!(new_cp)
         update_π_cp!(new_cp)
@@ -588,7 +588,7 @@ function replace_bankrupt_cp!(
 
         new_cp.balance.NW = tot_freq_machines * p_choice
         new_cp.balance.K = tot_freq_machines * p_choice
-        # new_cp.balance.debt = tot_freq_machines * p_choice + NW_to_borrow
+        new_cp.balance.debt = tot_freq_machines * p_choice + NW_to_borrow
 
         add_agent!(new_cp, model)
 

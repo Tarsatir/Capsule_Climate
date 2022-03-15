@@ -1,6 +1,7 @@
 mutable struct CapitalGoodProducer <: AbstractAgent
     id :: Int                               # global id
     kp_i :: Int                             # kp id, used for distance matrix
+    first_gen :: Bool                       # shows if producer is in first generation 
     A :: Vector{Float64}                    # labor prod sold product
     B :: Vector{Float64}                    # labor prod own production
     p :: Vector{Float64}                    # hist price data
@@ -44,7 +45,8 @@ function initialize_kp(
     wᴼ=1.0,
     Q=100,
     D=100,
-    f=1/n_captlgood
+    f=1/n_captlgood,
+    first_gen=true
     )
 
     balance = Balance(               
@@ -60,6 +62,7 @@ function initialize_kp(
     kp = CapitalGoodProducer(   # initial parameters based on rer98
         id,                     # global id
         kp_i,                   # kp_i, used for distance matrix
+        first_gen,              # shows if producer is in first generation
         [A],                    # A: labor prod sold product
         [B],                    # B: labor prod own production
         [p],                    # p: hist price data
@@ -552,7 +555,8 @@ function replace_bankrupt_kp!(
             wᴼ=kp_to_copy.wᴼ[end],
             Q=kp_to_copy.Q[end],
             D=kp_to_copy.D[end],
-            f=0.0
+            f=0.0,
+            first_gen=false
         )
         add_agent!(new_kp, model)
     end

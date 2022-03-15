@@ -328,14 +328,17 @@ function model_step!(
         send_orders_kp!(model[kp_id], model)
     end
 
-    for cp_id in all_cp
+    # Close balances of all firms
+    for p_id in all_p
         # Update amount of owned capital, increase machine age
-        update_n_machines_cp!(model[cp_id])
-        increase_machine_age_cp!(model[cp_id])
+        if typeof(model[p_id]) == ConsumerGoodProducer
+            update_n_machines_cp!(model[p_id])
+            increase_machine_age_cp!(model[p_id])
+        end
 
         # Close balances of firms, if insolvent, liquidate firms
         close_balance_p!(
-            model[cp_id], 
+            model[p_id], 
             global_param.Λ,
             global_param.r,
             global_param.η,
@@ -345,16 +348,16 @@ function model_step!(
     end 
 
     # Close balances of kp firms
-    for kp_id in all_kp
-        close_balance_p!(
-            model[kp_id], 
-            global_param.Λ,
-            global_param.r,
-            global_param.η,
-            gov_struct.τᴾ,
-            indexfund_struct,
-        )
-    end
+    # for kp_id in all_kp
+    #     close_balance_p!(
+    #         model[kp_id], 
+    #         global_param.Λ,
+    #         global_param.r,
+    #         global_param.η,
+    #         gov_struct.τᴾ,
+    #         indexfund_struct,
+    #     )
+    # end
 
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(gov_struct, all_p, model)
@@ -380,14 +383,15 @@ function model_step!(
     update_marketshare_kp!(all_kp, model)
 
     # Remove bankrupt companies.
-    bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, model)
+    bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
     kill_all_bankrupt_p!(
         bankrupt_bp, 
         bankrupt_lp, 
         bankrupt_kp, 
         all_hh,
         all_kp,
-        labormarket_struct, 
+        labormarket_struct,
+        indexfund_struct, 
         model
     )
     update_unemploymentrate_lm!(labormarket_struct)
@@ -428,7 +432,7 @@ function model_step!(
 
 end
 
-T = 100
+T = 400
 
 to = TimerOutput()
 

@@ -26,3 +26,6 @@ Manifest.toml
 # Can be removed once results make sense.
 results/
 plotting/
+
+# As to not push in SAFE code
+parameters/SAFE

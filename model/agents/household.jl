@@ -197,8 +197,8 @@ function place_orders_hh!(
     n_days = 4
 
     # Sample from bp and lp
-    weights_bp = map(bp_id -> 1 / model[bp_id].p[end]^2, hh.bp)
-    weights_lp = map(lp_id -> 1 / model[lp_id].p[end]^2, hh.lp)
+    weights_bp = map(bp_id -> 1 / model[bp_id].p[end], hh.bp)
+    weights_lp = map(lp_id -> 1 / model[lp_id].p[end], hh.lp)
 
     bp_choices = sample(hh.bp, Weights(weights_bp), n_days)
     lp_choices = sample(hh.lp, Weights(weights_lp), n_days)
