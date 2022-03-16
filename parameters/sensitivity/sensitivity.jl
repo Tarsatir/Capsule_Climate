@@ -13,47 +13,22 @@ include("../../model/main.jl")
 Generates data used by sensitivity analysis.
     Code augmented from SAFE package preparation of variables.
 """
-function generate_data()
+function generate_data(
+    X_labels::Dict,
+    path::String;
+    N=100::Int
+    )
 
     # Set up which parameter to apply GSA to, and the range of the parameter
-    X_labels = Dict([
-        ["α_cp", [0.6, 1.0]],
-        ["μ1", [0.0, 0.5]]
-        ])
 
     # Number of uncertain parameters
     M = length(X_labels)
 
-    # println(X_labels)
-
     # Define parameter distributions
     samp_strat = "lhs"
-    N = 100
 
-    # Call SAMP function to get the input parameters for running the model
-    py"""
-
-    def call_AAT_sampling(samp_strat, M, X_labels, N):
-        
-        import scipy.stats as stats
-        import numpy as np
-        from SAFEpython.sampling import AAT_sampling
-        
-        # Define distribution of parameters
-        distr_fun = [stats.uniform] * M
-
-        distr_par = [np.nan] * M
-        for i,key in enumerate(X_labels):
-            distr_par[i] = [X_labels[key][0], X_labels[key][1] - X_labels[key][0]]
-
-        X = AAT_sampling(samp_strat, M, distr_fun, distr_par, N)
-        
-        return X
-
-    """
-
+    # Call SAMP function to get the input parameters for running the models
     X = py"call_AAT_sampling"(samp_strat, M, X_labels, N)
-    # display(X)
     
     # Run simulations for the given parameter values
     Y = zeros(N)
@@ -83,7 +58,7 @@ function generate_data()
     df[!, "GDP"] = Y
 
     # Write results to csv
-    CSV.write("parameters/sensitivity/sensitivity_runs/sensitivity_run_1.csv", df)
+    CSV.write(path, df)
 
 end
 
@@ -91,15 +66,39 @@ end
 """
 Calls SAFE toolbox in Python script.
 """
-function run_PAWN()
+function run_PAWN(
+    X_labels::Dict,
+    path::String;
+    N=100
+    )
 
-    # Include Python file containing GSA functions
-    @pyinclude("parameters/sensitivity/run_GSA.py")
+    # Read simulation data, save X and Y as matrices
+    X = zeros(N, length(X_labels))
+    df = DataFrame(CSV.File(path))
+
+    for (i,label) in enumerate(keys(X_labels))
+        X[:,i] = df[!, Symbol(label)]
+    end
+
+    Y = df[!, Symbol("GDP")]
 
     # Call PAWN function
-    py"run_PAWN"()
+    py"run_PAWN"(collect(keys(X_labels)), X, Y)
 
 end
 
-generate_data()
-# run_PAWN()
+
+# Include Python file containing GSA functions
+@pyinclude("parameters/sensitivity/run_GSA.py")
+
+path = "parameters/sensitivity/sensitivity_runs/sensitivity_run_1.csv"
+
+N = 100
+
+X_labels = Dict([
+        ["α_cp", [0.6, 1.0]],
+        ["μ1", [0.0, 0.5]]
+        ])
+
+# generate_data(X_labels, path; N=N)
+run_PAWN(X_labels, path; N=N)
