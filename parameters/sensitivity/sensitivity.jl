@@ -68,7 +68,8 @@ Calls SAFE toolbox in Python script.
 """
 function run_PAWN(
     X_labels::Dict,
-    path::String;
+    path::String,
+    run_nr;
     N=100
     )
 
@@ -83,7 +84,7 @@ function run_PAWN(
     Y = df[!, Symbol("GDP")]
 
     # Call PAWN function
-    py"run_PAWN"(collect(keys(X_labels)), X, Y)
+    py"run_PAWN"(collect(keys(X_labels)), X, Y, run_nr)
 
 end
 
@@ -91,14 +92,18 @@ end
 # Include Python file containing GSA functions
 @pyinclude("parameters/sensitivity/run_GSA.py")
 
-path = "parameters/sensitivity/sensitivity_runs/sensitivity_run_1.csv"
+run_nr = 2
+
+path = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr).csv"
 
 N = 100
 
 X_labels = Dict([
-        ["α_cp", [0.6, 1.0]],
-        ["μ1", [0.0, 0.5]]
-        ])
+                ["α_cp", [0.6, 1.0]],
+                ["μ1", [0.0, 0.5]],
+                ["ωD", [0.0, 1.0]],
+                ["κ_upper", [0.01, 0.3]]
+                ])
 
-# generate_data(X_labels, path; N=N)
-run_PAWN(X_labels, path; N=N)
+generate_data(X_labels, path; N=N)
+run_PAWN(X_labels, path, run_nr; N=N)

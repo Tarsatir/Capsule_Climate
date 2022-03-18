@@ -66,12 +66,12 @@ function close_balance_p!(
 
     max_net_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.curracc.rep_debt)
 
-    if p.balance.NW - p.balance.debt > max_net_NW && !check_if_bankrupt_p!(p)
-        indexfund_struct.Assets += (p.balance.NW - p.balance.debt - max_net_NW)
-        p.balance.NW = max_net_NW + p.balance.debt
-        tot_assets = p.balance.N + p.balance.K + p.balance.NW
-        p.balance.EQ = tot_assets - p.balance.debt
-    end
+    # if p.balance.NW - p.balance.debt > max_net_NW && !check_if_bankrupt_p!(p)
+    #     indexfund_struct.Assets += (p.balance.NW - p.balance.debt - max_net_NW)
+    #     p.balance.NW = max_net_NW + p.balance.debt
+    #     tot_assets = p.balance.N + p.balance.K + p.balance.NW
+    #     p.balance.EQ = tot_assets - p.balance.debt
+    # end
 
     # If NW is negative, maximum debt is reached, and EQ is set to
     # a negative value so the firm is declared bankrupt

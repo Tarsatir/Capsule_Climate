@@ -38,7 +38,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     brochures :: Vector             # brochures from kp
     π :: Float64                    # hist productivity
     f :: Vector{Float64}            # hist market share
-    μ :: Float64                    # markup rate
+    μ :: Vector{Float64}            # markup rate
     Π :: Vector{Float64}            # hist profits
     NW_growth :: Float64            # growth rate of liquid assets
     cI :: Float64                   # internal funds for investments
@@ -80,14 +80,14 @@ function initialize_cp(
         [p],                        # p: hist prices
         [1.0],                      # c: hist cost
         [],                         # RD: hist R&D spending
-        [1100],                     # D: hist demand
+        [1000],                     # D: hist demand
         0.0,                        # Dᵁ unsatisfied demand in last period
-        1100,                       # Dᵉ exp demand
+        1000,                       # Dᵉ exp demand
         Vector(),                   # hh_queue: vector containing ids of demanding households           
-        ι * 1100,                   # Nᵈ: desired inventory
+        ι * 1000,                   # Nᵈ: desired inventory
         N_goods,                    # N_goods: inventory in goods 
-        [1210],                     # Q: hist production
-        1210,                       # Qᵉ: exp production
+        [1100],                     # Q: hist production
+        1100,                       # Qᵉ: exp production
         0,                          # Qˢ: desired short-term production
 
         0,                          # Iᵈ: desired investments
@@ -110,7 +110,7 @@ function initialize_cp(
 
         1.0,                        # π: hist productivity
         [2/n_consrgood],            # f: market share
-        μ1,                         # μ: hist markup
+        [μ1],                       # μ: hist markup
         [0.0],                      # Π: hist profits
         0.0,                        # NW_growth: growth rate of liquid assets
         0,                          # cI: internal funds for investments
@@ -521,6 +521,10 @@ function replace_bankrupt_cp!(
     all_bp::Vector{Int},
     all_lp::Vector{Int},
     all_kp::Vector{Int},
+    φ1::Float64,
+    φ2::Float64,
+    φ3::Float64,
+    φ4::Float64,
     p̄::Float64,
     w̄::Float64,
     μ1::Float64,
@@ -534,12 +538,16 @@ function replace_bankrupt_cp!(
     nonbankrupt_bp = setdiff(all_bp, bankrupt_bp)
     nonbankrupt_lp = setdiff(all_lp, bankrupt_lp)
 
-    avg_n_machines = mean(map(kp_id -> model[kp_id].n_machines, vcat(nonbankrupt_bp, nonbankrupt_lp)))
+    avg_n_machines = mean(map(cp_id -> model[cp_id].n_machines, vcat(nonbankrupt_bp, nonbankrupt_lp)))
+    avg_NW = mean(map(cp_id -> model[cp_id].balance.NW, vcat(nonbankrupt_bp, nonbankrupt_lp)))
 
     # Make weights for allocating cp to hh
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
     weights_hh_bp = map(hh_id -> min(1, 1 / length(model[hh_id].bp)), all_hh)
     weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
+
+    # Generate a vector of all kp that did not go bankrupt
+    # poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
 
     for p_id in vcat(bankrupt_bp, bankrupt_lp)
 
@@ -549,21 +557,24 @@ function replace_bankrupt_cp!(
         end
 
         # New cp receive a advanced type of machine, first select kp proportional
-        # to their market share
-        poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
-        weights_kp = map(kp_id -> model[kp_id].f[end], poss_kp)
-        kp_choice_id = sample(poss_kp, Weights(weights_kp))
+        # to their market share. cp can also select kp ids that went bankrupt in this 
+        # period, as these producers have already been replaced with new companies
+        weights_kp = map(kp_id -> model[kp_id].f[end], all_kp)
+        kp_choice_id = sample(all_kp, Weights(weights_kp))
         A_choice = model[kp_choice_id].A[end]
         p_choice = model[kp_choice_id].p[end]
 
+        # Sample what the size of the capital stock will be
+        capital_coefficient = rand(Uniform(φ1, φ2))
+        tot_freq_machines = capital_coefficient * avg_n_machines
+
         # Generate vector of machines
-        machines = Vector{Machine}()
-        tot_freq_machines = n_init_emp_cp * 100
-        for i in 1:n_machines_init
-            freq = tot_freq_machines/n_machines_init
-            machine_struct = initialize_machine(freq; η=0, p=p_choice, A=A_choice)
-            push!(machines, machine_struct)
-        end
+        machines = initialize_machine_stock(
+                        tot_freq_machines, 
+                        p_choice, 
+                        A_choice, 
+                        n_machines_init
+                    )
 
         new_cp = initialize_cp(
                     p_id,
@@ -582,14 +593,22 @@ function replace_bankrupt_cp!(
         update_n_machines_cp!(new_cp)
         update_π_cp!(new_cp)
 
+        # Sample what the stock of liquid assets will be
+        NW_coefficient = rand(Uniform(φ3, φ4))
+        NW_stock = NW_coefficient * avg_NW
+
+        # Augment the balance with acquired NW and K
+        new_cp.balance.NW = NW_stock
+        new_cp.balance.K = tot_freq_machines * p_choice
+
         # Borrow funds for the machine and liquid assets
-        NW_to_borrow = 2 * tot_freq_machines * p_choice
-        borrow_funds_p!(new_cp, tot_freq_machines * p_choice + NW_to_borrow)
+        # NW_to_borrow = 2 * tot_freq_machines * p_choice
+        # borrow_funds_p!(new_cp, tot_freq_machines * p_choice + NW_to_borrow)
         # TODO: a kp firm has to receive revenue for this
 
-        new_cp.balance.NW = tot_freq_machines * p_choice
-        new_cp.balance.K = tot_freq_machines * p_choice
-        new_cp.balance.debt = tot_freq_machines * p_choice + NW_to_borrow
+        # new_cp.balance.NW = tot_freq_machines * p_choice
+        # new_cp.balance.K = tot_freq_machines * p_choice
+        # new_cp.balance.debt = tot_freq_machines * p_choice + NW_to_borrow
 
         add_agent!(new_cp, model)
 
@@ -746,18 +765,55 @@ function update_μ_cp!(
     )
 
     # First check if market share is nonzero, else liquidate firm
-    if cp.f[end] <= 0.001
-        # TODO: liquidate firm
-        cp.f[end] = 0.001
-    end
+    # if cp.f[end] <= 0.001
+    #     # TODO: liquidate firm
+    #     cp.f[end] = 0.001
+    # end
 
-    # Compute market share
-    if length(cp.f) > 2
-        cp.μ = cp.μ * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
-    else
-        cp.μ = μ1
-    end
+    # # Compute market share
+    # if length(cp.f) > 2
+    #     cp.μ = cp.μ * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
+    # else
+    #     cp.μ = μ1
+    # end
     # println(cp.μ)
+
+    # println(cp.μ)
+    # println(cp.Π)
+
+    b = 0.3
+    l = 4
+
+    if length(cp.μ) > l && length(cp.Π) > l && cp.Π[end] != 0
+        mean_μ = mean(cp.μ[end-l:end-1])
+        # Δμ = (cp.μ[end] - cp.μ[end-1]) / cp.μ[end-1]
+        Δμ = (cp.μ[end] - mean_μ) / mean_μ
+
+        mean_Π = mean(cp.Π[end-l:end-1])
+        # ΔΠ = (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1]
+        ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
+
+        # println("$mean_μ, $mean_Π")
+        # println("Δμ: $Δμ, $(sign(Δμ)), ΔΠ: $ΔΠ, $(sign(ΔΠ))")
+
+        shock = rand(Uniform(0.0, b))
+
+        new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+        push!(cp.μ, new_μ)
+
+        # if ΔΠ > 0
+        #     new_μ = cp.μ[end] * (1 + Δμ)
+        #     push!(cp.μ, new_μ)
+        # else
+        #     new_μ = max(cp.μ[end] * (1 - Δμ), 0)
+        #     push!(cp.μ, new_μ)
+        # end
+
+    elseif cp.Π[end] == 0
+        push!(cp.μ, cp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
+    else
+        push!(cp.μ, cp.μ[end] * (1 + rand(Uniform(-b, b))))
+    end
 end
 
 
@@ -786,7 +842,7 @@ function compute_p_cp!(
     cp::ConsumerGoodProducer
     )
 
-    p = (1 + cp.μ) * cp.c[end]
+    p = (1 + cp.μ[end]) * cp.c[end]
     # println("p ", p, " c ", cp.c[end], " μ ", cp.μ)
     push!(cp.p, p)
 end

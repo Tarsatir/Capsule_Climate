@@ -180,6 +180,7 @@ end
 
 function model_step!(
     t::Int,
+    T::Int,
     global_param::GlobalParam, 
     macro_struct::MacroEconomy, 
     gov_struct::Government, 
@@ -300,6 +301,7 @@ function model_step!(
         all_hh,
         model
     )
+
     for hh_id in all_hh
         update_wealth_hh!(model[hh_id])
     end
@@ -356,6 +358,13 @@ function model_step!(
     compute_budget_balance(gov_struct)
     redistribute_surplus_gov!(gov_struct, all_hh, model)
 
+    # Update market shares of cp
+    update_marketshare_cp!(all_bp, all_lp, model)
+    update_marketshare_kp!(all_kp, model)
+
+    # Select producers that will be declared bankrupt and removed
+    bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
+
     # (7) macro-economic indicators are updated.
     update_macro_timeseries(
         macro_struct, 
@@ -364,18 +373,16 @@ function model_step!(
         all_kp,
         all_bp,
         all_lp,
+        bankrupt_bp,
+        bankrupt_lp,
+        bankrupt_kp,
         labormarket_struct.E,
         gov_struct,
         global_param,
         model
     )
 
-    # Update market shares of cp
-    update_marketshare_cp!(all_bp, all_lp, model)
-    update_marketshare_kp!(all_kp, model)
-
     # Remove bankrupt companies.
-    bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
     kill_all_bankrupt_p!(
         bankrupt_bp, 
         bankrupt_lp, 
@@ -391,6 +398,20 @@ function model_step!(
 
     # println("Number of cp: ", length(all_cp), ", Number of kp: ", length(all_kp))
 
+
+    # Replace bankrupt kp. Do this before you replace cp, such that new cp can also choose
+    # from new kp 
+    replace_bankrupt_kp!(
+        bankrupt_kp, 
+        bankrupt_kp_i, 
+        all_kp,
+        global_param.φ3,
+        global_param.φ4, 
+        global_param.α2,
+        global_param.β2,
+        model
+    )
+
     # Replace bankrupt companies with new companies
     replace_bankrupt_cp!(
         bankrupt_bp, 
@@ -400,19 +421,14 @@ function model_step!(
         all_bp,
         all_lp,
         all_kp,
+        global_param.φ1,
+        global_param.φ2,
+        global_param.φ3,
+        global_param.φ4,
         macro_struct.p̄[end],
         macro_struct.w̄_avg[end],
         global_param.μ1,
         global_param.ι, 
-        model
-    )
-
-    replace_bankrupt_kp!(
-        bankrupt_kp, 
-        bankrupt_kp_i, 
-        all_kp, 
-        global_param.α2,
-        global_param.β2,
         model
     )
 
@@ -426,7 +442,7 @@ end
 
 
 function run_simulation(;
-    T=100::Int,
+    T=400::Int,
     changed_params=nothing,
     full_output=true::Bool
     )::Float64
@@ -437,7 +453,8 @@ function run_simulation(;
     for t in 1:T
         # println("Step ", t)
         @timeit to "step" model_step!(
-                                t, 
+                                t,
+                                T, 
                                 global_param, 
                                 macro_struct, 
                                 gov_struct, 

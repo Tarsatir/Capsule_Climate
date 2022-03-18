@@ -6,6 +6,7 @@ mutable struct CapitalGoodProducer <: AbstractAgent
     B :: Vector{Float64}                    # labor prod own production
     p :: Vector{Float64}                    # hist price data
     c :: Vector{Float64}                    # hist cost data
+    μ :: Vector{Float64}                    # hist markup rate
     employees :: Vector{Int}                # employees in company
     L :: Float64                            # labor units in company
     ΔLᵈ :: Float64                          # desired change in labor force
@@ -38,9 +39,11 @@ function initialize_kp(
     id::Int, 
     kp_i::Int,
     n_captlgood::Int;
+    NW=1000,
     A=1.0,
     B=1.0,
     p=1.0,
+    μ1=1.0,
     w̄=1.0,
     wᴼ=1.0,
     Q=100,
@@ -52,9 +55,9 @@ function initialize_kp(
     balance = Balance(               
         0.0,                    # - N: inventory
         0.0,                    # - K: capital
-        1000.0,                 # - NW: liquid assets
+        NW,                     # - NW: liquid assets
         0.0,                    # - debt: debt
-        1000.0                  # - EQ: equity
+        NW                      # - EQ: equity
     )
     
     curracc = FirmCurrentAccount(0,0,0,0,0,0,0)
@@ -67,6 +70,7 @@ function initialize_kp(
         [B],                    # B: labor prod own production
         [p],                    # p: hist price data
         [],                     # c: hist cost data
+        [μ1],                   # μ: hist markup rate
         [],                     # employees: employees in company
         0,                      # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
@@ -152,14 +156,16 @@ function choose_technology_kp!(
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
         c_h = kp.w̄[end]/kp.B[end]
-        p_h = (1 + global_param.μ1) * c_h
+        # p_h = (1 + global_param.μ1) * c_h
+        p_h = (1 + kp.μ[end]) * c_h
         push!(kp.c, c_h)
         push!(kp.p, p_h)
     else
         # If new technologies, update price data
         c_h_kp = map(tech -> kp.w̄[end]/tech[2], tech_choices)
         c_h_cp = map(tech -> w̄/tech[1], tech_choices)
-        p_h = map(c -> (1 + global_param.μ1)*c, c_h_kp)
+        # p_h = map(c -> (1 + global_param.μ1)*c, c_h_kp)
+        p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
         r_h = p_h + global_param.b * c_h_cp 
         index = argmin(r_h)
         push!(kp.A, tech_choices[index][1])
@@ -271,7 +277,8 @@ function set_price_kp!(
     )
 
     c_t = kp.w̄[end] / kp.B[end]
-    p_t = (1 + μ1) * c_t
+    # p_t = (1 + μ1) * c_t
+    p_t = (1 + kp.μ[end]) * c_t
     push!(kp.c, c_t)
     push!(kp.p, p_t)
 end
@@ -487,6 +494,47 @@ function update_marketshare_kp!(
     end
 end
 
+# TRIAL: DESCRIBE
+function update_μ_kp!(
+    kp::CapitalGoodProducer
+    )
+
+    b = 0.3
+    l = 4
+
+    if length(kp.μ) > l && length(kp.Π) > l && kp.Π[end] != 0
+        mean_μ = mean(kp.μ[end-l:end-1])
+        # Δμ = (cp.μ[end] - cp.μ[end-1]) / cp.μ[end-1]
+        Δμ = (kp.μ[end] - mean_μ) / mean_μ
+
+        mean_Π = mean(kp.Π[end-l:end-1])
+        # ΔΠ = (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1]
+        ΔΠ = (kp.Π[end] - mean_Π) / mean_Π
+
+        # println("$mean_μ, $mean_Π")
+        # println("Δμ: $Δμ, $(sign(Δμ)), ΔΠ: $ΔΠ, $(sign(ΔΠ))")
+
+        shock = rand(Uniform(0.0, b))
+
+        new_μ = max(kp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+        push!(kp.μ, new_μ)
+
+        # if ΔΠ > 0
+        #     new_μ = cp.μ[end] * (1 + Δμ)
+        #     push!(cp.μ, new_μ)
+        # else
+        #     new_μ = max(cp.μ[end] * (1 - Δμ), 0)
+        #     push!(cp.μ, new_μ)
+        # end
+
+    elseif kp.Π[end] == 0
+        push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
+    else
+        push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
+    end
+
+end
+
 
 """
 Replaces bankrupt kp with new kp. Gives them a level of technology and expectations
@@ -496,6 +544,8 @@ function replace_bankrupt_kp!(
     bankrupt_kp::Vector{Int},
     bankrupt_kp_i::Vector{Int},
     all_kp::Vector{Int},
+    φ3::Float64,
+    φ4::Float64,
     α2::Float64,
     β2::Float64,
     model::ABM
@@ -533,8 +583,13 @@ function replace_bankrupt_kp!(
         end 
     end
 
+    # Compute the average stock of liquid assets of non-bankrupt kp
+    avg_NW = mean(map(kp_id -> model[kp_id].balance.NW, poss_kp))
+
     # Re-use id of bankrupted company
     for (kp_id, kp_i) in zip(bankrupt_kp, bankrupt_kp_i)
+
+        coeff_NW = rand(Uniform(φ3, φ4))
 
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
@@ -549,6 +604,7 @@ function replace_bankrupt_kp!(
             kp_id, 
             kp_i, 
             length(all_kp);
+            NW=coeff_NW * avg_NW,
             A=kp_to_copy.A[end],
             B=kp_to_copy.B[end],
             p=kp_to_copy.p[end],

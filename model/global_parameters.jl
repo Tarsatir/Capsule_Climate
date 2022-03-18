@@ -52,15 +52,15 @@ function initialize_global_params(
         0.3,                        # ζ: firm search capabilities
         3.0,                        # α1: 1st beta dist param for IN
         3.0,                        # β1: 2nd beta dist param for IN
-        -0.03,                      # κ_lower: 1st beta dist support
-        0.03,                       # κ_upper: 2nd beta dist support
+        -0.05,                      # κ_lower: 1st beta dist support
+        0.05,                       # κ_upper: 2nd beta dist support
         0.5,                        # γ: new custommer sample parameter
         0.15,                       # μ1: kp markup rule
         0.0,                        # r: (annual) interest rate
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
         20,                         # η: physical scrapping age
-        0.8,                        # υ: markup coefficient
+        0.05,                       # υ: markup coefficient
         1.0,                        # ω: competetiveness weights
         1.0,                        # χ: replicator dynamics coeff
         2.0,                        # Λ: max debt/sales ratio regular debt
@@ -84,7 +84,7 @@ function initialize_global_params(
         30,                         # b_σ
         0.05,                       # ψ_E: chance of employed worker looking for a better paying job
         0.75,                       # ψ_Q: chance of household switching away from cp when demand constrained
-        0.5,                        # ψ_P: chance of household switching to cp with better price
+        0.75,                       # ψ_P: chance of household switching to cp with better price
         0.1,                        # max_g_wᴼ: max growth rate of offered wages
         # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
     )

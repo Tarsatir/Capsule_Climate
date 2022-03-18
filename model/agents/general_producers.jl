@@ -183,6 +183,8 @@ function check_bankrupty_all_p!(
     bankrupt_kp = Vector{Int}()
     bankrupt_kp_i = Vector{Int}()
 
+    # return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
+
     bp_counter = 0
     lp_counter = 0
     kp_counter = 0
@@ -262,6 +264,7 @@ function kill_all_bankrupt_p!(
 
         # TODO: TEMP SOLUTION, DESCRIBE IT WORKS
         # indexfund_struct.Assets -= (model[p_id].balance.debt - model[p_id].balance.NW)
+        # indexfund_struct.Assets += (model[p_id].balance.NW - model[p_id].balance.debt)
 
         # Remove firm agents from model
         kill_agent!(p_id, model)
@@ -279,7 +282,7 @@ function check_if_bankrupt_p!(
     t_wait = 4
 
     # if p.f[end] <= 0.001 || p.balance.EQ < 0
-    if (length(p.D) > t_wait || p.first_gen) && (p.f[end] <= 0.001 || p.balance.EQ < 0)
+    if (length(p.D) > t_wait || p.first_gen) && (mean(p.f[end])<= 0.001 || p.balance.EQ < 0)
         return true
     end
     return false

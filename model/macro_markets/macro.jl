@@ -16,10 +16,11 @@ mutable struct MacroEconomy
     M_gov :: Vector{Float64}     # total amount of money at gov
 
     # debtt levels
-    debt_tot :: Vector{Float64}   # total debt
-    debt_cp :: Vector{Float64}    # cp debt
-    debt_cp_allowed :: Vector{Float64}    # cp allowed debt
-    debt_kp :: Vector{Float64}    # kp debt
+    debt_tot :: Vector{Float64}             # total debt
+    debt_cp :: Vector{Float64}              # cp debt
+    debt_cp_allowed :: Vector{Float64}      # cp allowed debt
+    debt_kp :: Vector{Float64}              # kp debt
+    debt_kp_allowed :: Vector{Float64}      # kp debt allowed
 
     # Wage statistics
     w̄_avg :: Vector{Float64}     # average wage over time
@@ -69,6 +70,11 @@ mutable struct MacroEconomy
     avg_Q_lp :: Vector{Float64}  # average production of lp
     avg_Q_kp :: Vector{Float64}  # average production of kp
 
+    # Bankrupties
+    bankrupt_bp :: Vector{Float64}      # fraction of bp that went bankrupt
+    bankrupt_lp :: Vector{Float64}      # fraction of lp that went bankrupt
+    bankrupt_kp :: Vector{Float64}      # fraction of kp that went bankrupt
+
 end
 
 
@@ -91,11 +97,12 @@ function initialize_macro(
         [],                     # M kp
         [],                     # M gov
 
-        # debtt levels
+        # debt levels
         [],                     # total debt
         [],                     # cp debt
         [],                     # cp allowed debt
         [],                     # kp debt
+        [],                     # kp allowed debt
 
         [],                     # average of wage over time
         # [],                     # std of wage over time
@@ -138,6 +145,11 @@ function initialize_macro(
         # Production
         [],
         [],
+        [],
+
+        # Bankrupties
+        [],
+        [],
         []
     )
     return macro_struct
@@ -154,6 +166,9 @@ function update_macro_timeseries(
     all_kp::Vector{Int},
     all_bp::Vector{Int},
     all_lp::Vector{Int},
+    bankrupt_bp::Vector{Int},
+    bankrupt_lp::Vector{Int},
+    bankrupt_kp::Vector{Int},
     E::Float64, 
     gov_struct::Government,
     global_param::GlobalParam,
@@ -166,6 +181,10 @@ function update_macro_timeseries(
     all_kp_str = map(kp_id -> model[kp_id], all_kp)
     all_bp_str = map(bp_id -> model[bp_id], all_bp)
     all_lp_str = map(lp_id -> model[lp_id], all_lp)
+
+
+    avg_μ = mean(map(p -> p.μ[end], vcat(all_cp_str)))
+    println("avg μ: $avg_μ")
 
     # Compute GDP
     compute_GDP!(all_hh_str, all_cp_str, all_kp_str, macro_struct)
@@ -243,6 +262,16 @@ function update_macro_timeseries(
     avg_Q_kp = mean(map(kp -> kp.Q[end], all_kp_str))
     push!(macro_struct.avg_Q_kp, avg_Q_kp)
 
+    compute_bankrupties(
+        all_bp, 
+        all_lp, 
+        all_kp, 
+        bankrupt_bp, 
+        bankrupt_lp, 
+        bankrupt_kp,
+        macro_struct
+    )
+
 end
 
 
@@ -275,6 +304,32 @@ end
 function update_labor_stats(macro_struct, labormarket_struct)
 
 end
+
+
+"""
+Computes the ratios of bankrupt bp, lp and kp.
+"""
+function compute_bankrupties(
+    all_bp,
+    all_lp,
+    all_kp,
+    bankrupt_bp,
+    bankrupt_lp,
+    bankrupt_kp,
+    macro_struct
+    )
+
+    bankrupt_bp = length(bankrupt_bp) / length(all_bp)
+    push!(macro_struct.bankrupt_bp, bankrupt_bp)
+
+    bankrupt_lp = length(bankrupt_lp) / length(all_lp)
+    push!(macro_struct.bankrupt_lp, bankrupt_lp)
+
+    bankrupt_kp = length(bankrupt_kp) / length(all_kp)
+    push!(macro_struct.bankrupt_kp, bankrupt_kp)
+
+end
+
 
 function compute_M!(
     all_hh_str::Vector{Household},
@@ -356,6 +411,9 @@ function update_debt!(
 
     debt_cp_allowed = Λ * sum(map(cp -> cp.curracc.S, all_cp_str))
     push!(macro_struct.debt_cp_allowed, debt_cp_allowed)
+
+    debt_kp_allowed = Λ * sum(map(kp -> kp.curracc.S, all_kp_str))
+    push!(macro_struct.debt_kp_allowed, debt_kp_allowed)
 end
 
 

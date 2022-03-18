@@ -24,12 +24,9 @@ docs/site/
 Manifest.toml
 
 # Can be removed once results make sense.
-results/
-plotting/
-
-# As to not push in SAFE code
-# parameters/SAFE
-
+results/result_data
+plotting/plots
+plotting/plot_D_p.jl
 
 # Avoid clutter files and folders
 parameters/sensitivity/__pycache__
