@@ -19,7 +19,16 @@ function save_macro_data(macro_struct)
         GDP_cp=macro_struct.GDP_Π_cp,
         GDP_kp=macro_struct.GDP_Π_kp,
 
+        C = macro_struct.C,
+
+        unsat_demand = macro_struct.unsat_demand,
+
         CPI=macro_struct.CPI,
+        CPI_kp = macro_struct.CPI_kp,
+
+        mu_bp = macro_struct.μ_bp,
+        mu_lp = macro_struct.μ_lp,
+        mu_kp = macro_struct.μ_kp,
 
         M=macro_struct.M,
         M_hh=macro_struct.M_hh,
@@ -66,7 +75,12 @@ function save_macro_data(macro_struct)
 
         bankrupt_bp = macro_struct.bankrupt_bp,
         bankrupt_lp = macro_struct.bankrupt_lp,
-        bankrupt_kp = macro_struct.bankrupt_kp
+        bankrupt_kp = macro_struct.bankrupt_kp,
+
+        cu = macro_struct.cu,
+        avg_n_machines_bp = macro_struct.avg_n_machines_bp,
+        avg_n_machines_lp = macro_struct.avg_n_machines_lp
+
         )
     CSV.write("results/result_data/first.csv", df)
 end

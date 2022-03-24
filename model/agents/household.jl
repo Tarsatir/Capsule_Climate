@@ -6,7 +6,7 @@ mutable struct Household <: AbstractAgent
     employed :: Bool            # is employed
     employer_id :: Int          # id of employer
     L :: Float64                # labor units in household
-    w :: Vector{Float64}        # wage
+    w :: Vector{Float64}       # wage
     wˢ :: Float64               # satisfying wage
     wʳ :: Float64               # requested wage
     T_unemp :: Int              # time periods unemployed
@@ -21,6 +21,7 @@ mutable struct Household <: AbstractAgent
 
     # Consumption variables
     C :: Vector{Float64}        # budget
+    N_goods :: Float64          # number of goods bought
     bp :: Vector{Int}           # connected cp basic goods
     lp :: Vector{Int}           # connected cp luxury goods
     unsat_dem :: Vector         # unsatisfied demands
@@ -39,7 +40,7 @@ function initialize_hh(
         false,                  # bool: employed
         0,                      # id of employer
         100,                    # L: labor units
-        [1.0],                  # w: wage
+        ones(4),                # w: wage
         1.0,                    # wˢ: satisfying wage
         1.0,                    # wʳ: requested wage
         0,                      # T_unemp: time periods unemployed
@@ -48,10 +49,11 @@ function initialize_hh(
         [],                     # Iᵀ: hist taxed income
         # [10],                   # S: total savings
         0,                      # s: savings rate
-        [500],                  # W: wealth or cash on hand
+        [30],                  # W: wealth or cash on hand
         # [100],                  # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
+        0.0,                    # N_goods: number of goods bought
         Vector{Int}(),          # all_cp_B: connected cp basic goods
         Vector{Int}(),          # all_cp_L: connected cp luxury goods
         Vector(),
@@ -176,14 +178,12 @@ function compute_consumption_budget_hh!(
         s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
     else
         C = 0
-        s = 0 
+        s = 0
     end
 
     push!(hh.C, C)
     hh.s = s
 end
-
-
 
 
 """
@@ -196,9 +196,11 @@ function place_orders_hh!(
 
     n_days = 4
 
+    hh.N_goods = 0.0
+
     # Sample from bp and lp
-    weights_bp = map(bp_id -> 1 / model[bp_id].p[end]^2, hh.bp)
-    weights_lp = map(lp_id -> 1 / model[lp_id].p[end]^2, hh.lp)
+    weights_bp = map(bp_id -> 1 / model[bp_id].p[end], hh.bp)
+    weights_lp = map(lp_id -> 1 / model[lp_id].p[end], hh.lp)
 
     bp_choices = sample(hh.bp, Weights(weights_bp), n_days)
     lp_choices = sample(hh.lp, Weights(weights_lp), n_days)
@@ -210,8 +212,10 @@ function place_orders_hh!(
     for (bp_choice_id, lp_choice_id) in zip(bp_choices, lp_choices)
 
         # Compute how many units can be bought, make orders
-        q_B = (C_B/n_days) / model[bp_choice_id].p[end]
-        q_L = (C_L/n_days) / model[lp_choice_id].p[end]
+        q_B = (C_B / n_days) / model[bp_choice_id].p[end]
+        q_L = (C_L / n_days) / model[lp_choice_id].p[end]
+
+        hh.N_goods += (q_B + q_L)
 
         order_B = (hh.id, q_B)
         order_L = (hh.id, q_L)
@@ -284,7 +288,7 @@ function get_income_hh!(
     # println(amount)
     push!(hh.I, amount)
     if hh.employed
-        push!(hh.w, hh.w[end])
+        hh.w[1:3] = hh.w[2:4]
     end
     # println("1 ", amount, " ", hh.W[end])
     # push!(hh.W, amount + hh.W[end])
@@ -328,7 +332,9 @@ function set_employed_hh!(
     hh.employed = true
     hh.employer_id = employer_id
     hh.T_unemp = 0
-    push!(hh.w, wᴼ)
+    # push!(hh.w, wᴼ)
+    hh.w[1:3] = hh.w[2:4]
+    hh.w[4] = wᴼ
 end
 
 
@@ -342,7 +348,9 @@ function change_employer_hh!(
     )
 
     hh.employer_id = employer_id
-    push!(hh.w, wᴼ)
+    # push!(hh.w, wᴼ)
+    hh.w[1:3] = hh.w[2:4]
+    hh.w[4] = wᴼ
 end
 
 
@@ -394,9 +402,6 @@ function decide_switching_hh!(
             push!(hh.lp, p_id_new)
         end
     end
-
-    # Reset unsatisfied demand
-    hh.unsat_dem = Vector()
 
     n_attempts = 1
 

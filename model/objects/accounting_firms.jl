@@ -62,9 +62,9 @@ function close_balance_p!(
     p.balance.EQ = tot_assets - p.balance.debt
 
     # TRIAL OF INDEX FUND
-    d = 2
+    # d = 2
 
-    max_net_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.curracc.rep_debt)
+    # max_net_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.curracc.rep_debt)
 
     # if p.balance.NW - p.balance.debt > max_net_NW && !check_if_bankrupt_p!(p)
     #     indexfund_struct.Assets += (p.balance.NW - p.balance.debt - max_net_NW)

@@ -102,7 +102,7 @@ function initialize_model(
 
         machines = Vector{Machine}()
         K = n_init_emp_cp * 100
-        for n in 1:n_machines_init
+        for _ in 1:n_machines_init
             # Machines have random age as to allow replacement in early periods
             freq = K/n_machines_init
             machine_struct = initialize_machine(freq; η=global_param.η)
@@ -303,6 +303,10 @@ function model_step!(
     )
 
     for hh_id in all_hh
+        # Reset unsatisfied demand
+        model[hh_id].unsat_dem = Vector()
+
+        # Update household wealth
         update_wealth_hh!(model[hh_id])
     end
 
@@ -421,6 +425,7 @@ function model_step!(
         all_bp,
         all_lp,
         all_kp,
+        macro_struct.cu[end],
         global_param.φ1,
         global_param.φ2,
         global_param.φ3,
@@ -451,7 +456,11 @@ function run_simulation(;
 
     @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T; changed_params=changed_params)
     for t in 1:T
-        # println("Step ", t)
+        
+        if t % 100 == 0
+            println("Step $t")
+        end
+
         @timeit to "step" model_step!(
                                 t,
                                 T, 

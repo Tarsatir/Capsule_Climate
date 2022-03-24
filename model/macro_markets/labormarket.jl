@@ -12,7 +12,7 @@ function initialize_labormarket()
         [],
         [],
         0.1,
-        1,
+        3,
         0
     )
     return labormarket_struct
@@ -203,7 +203,7 @@ function matching_lm(
     jobseeking_hh = vcat(employed_jobseekers, labormarket_struct.unemployed)
     hiring_producers_dict = Dict(p_id => model[p_id].ΔLᵈ for p_id in hiring_producers)
 
-    for i_round in 1:labormarket_struct.n_rounds
+    for _ in 1:labormarket_struct.n_rounds
 
         # Loop over hiring producers producers
         for (p_id, ΔL) in hiring_producers_dict

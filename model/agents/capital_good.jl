@@ -43,7 +43,7 @@ function initialize_kp(
     A=1.0,
     B=1.0,
     p=1.0,
-    μ1=1.0,
+    μ1=0.2,
     w̄=1.0,
     wᴼ=1.0,
     Q=100,
@@ -149,6 +149,9 @@ function choose_technology_kp!(
     global_param::GlobalParam,
     tech_choices
     )
+
+    # TODO: DESCRIBE
+    update_μ_kp!(kp)
 
     # Make choice between possible technologies
     if length(tech_choices) == 1
@@ -310,6 +313,24 @@ function set_RD_kp!(
     IM_t_new = (1 - ξ) * RD_new
     push!(kp.IN, IN_t_new)
     push!(kp.IM, IM_t_new)
+end
+
+
+"""
+Lets kp receive orders, adds client as historical clients if it is not yet.
+"""
+function receive_order_kp!(
+    kp::CapitalGoodProducer,
+    cp_id::Int,
+    order
+    )
+
+    push!(kp.orders, order)
+
+    # If cp not in HC yet, add as a historical client
+    if cp_id ∉ kp.HC
+        push!(kp.HC, cp_id)
+    end
 end
 
 
@@ -562,7 +583,7 @@ function replace_bankrupt_kp!(
                 kp_id_max_NW = all_kp[i]
             end
         end
-        bankrupt_kp = bankrupt_kp[!i]
+        bankrupt_kp = bankrupt_kp[!kp_id_max_NW]
     end
 
     # Determine all possible kp and set weights for sampling proportional to the 
@@ -595,9 +616,12 @@ function replace_bankrupt_kp!(
         # quality of the technology
         kp_to_copy = model[sample(poss_kp, Weights(weights))]
 
-        tech_coeff = rand(Beta(α2, β2))
-        new_A = A_max * tech_coeff
-        new_B = B_max * tech_coeff
+        # TODO: scale
+        a1 = -0.1
+        a2 = 0.02
+        tech_coeff = a1 + rand(Beta(α2, β2)) * (a2 - a1)
+        new_A = A_max * (1 + tech_coeff)
+        new_B = B_max * (1 + tech_coeff)
 
         # Initialize new kp
         new_kp = initialize_kp(
@@ -605,8 +629,8 @@ function replace_bankrupt_kp!(
             kp_i, 
             length(all_kp);
             NW=coeff_NW * avg_NW,
-            A=kp_to_copy.A[end],
-            B=kp_to_copy.B[end],
+            A=new_A,
+            B=new_B,
             p=kp_to_copy.p[end],
             w̄=kp_to_copy.w̄[end],
             wᴼ=kp_to_copy.wᴼ[end],

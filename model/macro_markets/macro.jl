@@ -4,9 +4,17 @@ mutable struct MacroEconomy
     GDP_I :: Vector{Float64}     # income share of GDP over time
     GDP_Π_cp :: Vector{Float64}  # profit share of GDP of cp over time
     GDP_Π_kp :: Vector{Float64}  # profit share of GDP of kp over time
-    p̄::Vector{Float64}           # average price over time
-    CPI :: Vector{Float64}       # inflation over time
+
+    p̄::Vector{Float64}           # average price of cp goods over time
+    p̄_kp::Vector{Float64}        # average price of kp goods over time
+    μ_bp::Vector{Float64}
+    μ_lp::Vector{Float64}
+    μ_kp::Vector{Float64}
+    CPI :: Vector{Float64}       # price index consumer goods over time
+    CPI_kp :: Vector{Float64}    # price index capital goods over time
+
     C :: Vector{Float64}         # aggregate consumption over time
+    unsat_demand :: Vector{Float64} # average ratio of unsatisfied demand
 
     # Division of money over sectors
     M :: Vector{Float64}         # total amount of money (should be stable)
@@ -75,6 +83,10 @@ mutable struct MacroEconomy
     bankrupt_lp :: Vector{Float64}      # fraction of lp that went bankrupt
     bankrupt_kp :: Vector{Float64}      # fraction of kp that went bankrupt
 
+    cu :: Vector{Float64}               # average rate of capital utilization
+    avg_n_machines_bp :: Vector{Float64}# average number of machines bp
+    avg_n_machines_lp :: Vector{Float64}# average number of machines lp
+
 end
 
 
@@ -86,9 +98,17 @@ function initialize_macro(
         [],                     # income share of GDP
         [],                     # profit share of GDP of cp over time
         [],                     # profit share of GDP of kp over time
+
         [],                     # p̄: average price over time
+        [],                     # p̄_kp: average price of kp goods over time
+        [],
+        [],
+        [],
         [],                     # CPI: inflation rate
+        [],                     # CPI_kp: price index capital goods
+
         [],                     # aggregate consumption
+        [],                     # unsat_dem: ratio of unsatisfied demand
 
         # Money amounts
         [],                     # M total
@@ -150,7 +170,11 @@ function initialize_macro(
         # Bankrupties
         [],
         [],
-        []
+        [],
+
+        [],                     # cu: capital utilization rate
+        [],                     # avg_n_machines_bp
+        []                      # avg_n_machines_lp
     )
     return macro_struct
 end
@@ -184,13 +208,19 @@ function update_macro_timeseries(
 
 
     avg_μ = mean(map(p -> p.μ[end], vcat(all_cp_str)))
-    println("avg μ: $avg_μ")
+    # println("avg μ: $avg_μ")
 
     # Compute GDP
     compute_GDP!(all_hh_str, all_cp_str, all_kp_str, macro_struct)
 
     # Compute CPI
-    update_CPI!(all_cp_str, macro_struct)
+    compute_price_data!(
+        all_cp_str,
+        all_bp_str,
+        all_lp_str, 
+        all_kp_str, 
+        macro_struct
+    )
 
     ΔL̄_avg = mean(map(p -> p.ΔLᵈ, vcat(all_cp_str, all_kp_str)))
     ΔL̄_std = std(map(p -> p.ΔLᵈ, vcat(all_cp_str, all_kp_str)))
@@ -206,6 +236,10 @@ function update_macro_timeseries(
     ΔL̄_kp_std = std(map(kp -> kp.ΔLᵈ, all_kp_str))
     push!(macro_struct.ΔL̄_kp_avg, ΔL̄_kp_avg)
     push!(macro_struct.ΔL̄_kp_std, ΔL̄_kp_std)
+
+    # Consumption 
+    C = sum(map(hh->hh.C[end], all_hh_str))
+    push!(macro_struct.C, C)
 
     push!(macro_struct.U, E)
 
@@ -271,6 +305,29 @@ function update_macro_timeseries(
         bankrupt_kp,
         macro_struct
     )
+
+    compute_unsatisfied_demand(
+        all_hh_str,
+        macro_struct
+    )
+
+    # Mean rate of capital utilization
+    cu = mean(map(cp -> cp.cu, all_cp_str))
+    push!(macro_struct.cu, cu)
+
+    avg_n_machines_bp = mean(map(bp->bp.n_machines, all_bp_str))
+    push!(macro_struct.avg_n_machines_bp, avg_n_machines_bp)
+
+    avg_n_machines_lp = mean(map(lp->lp.n_machines, all_lp_str))
+    push!(macro_struct.avg_n_machines_lp, avg_n_machines_lp)
+
+    # println("mean D: ", mean(map(cp->cp.D[end], all_cp_str)),
+    #         " mean Dᵉ: ", mean(map(cp->cp.Dᵉ, all_cp_str)),
+    #         " mean Qˢ: ", mean(map(cp->cp.Qˢ, all_cp_str)))
+
+    # println("sum D: ", sum(map(cp->cp.D[end], all_cp_str)), 
+    #         " sum N_goods: ", sum(map(hh->hh.N_goods, all_hh_str)),
+    #         " sum Q: ", sum(map(cp->cp.Q[end], all_cp_str)))
 
 end
 
@@ -417,26 +474,66 @@ function update_debt!(
 end
 
 
-function update_CPI!(
+function compute_price_data!(
     all_cp_str::Vector{ConsumerGoodProducer},
+    all_bp_str::Vector{ConsumerGoodProducer},
+    all_lp_str::Vector{ConsumerGoodProducer},
+    all_kp_str::Vector{CapitalGoodProducer},
     macro_struct::MacroEconomy
     )
 
-    avg_p_1 = sum(map(cp -> cp.p[1] * cp.f[1], all_cp_str))
-    avg_p_t = sum(map(cp -> cp.p[end] * cp.f[end], all_cp_str))
-
-    push!(macro_struct.p̄, avg_p_t)
-    # avg_w = mean(map(cp -> cp.w̄[end], all_cp_str))
-    # avg_c = mean(map(cp -> cp.c[end], all_cp_str))
-    # println(avg_p_1, " ", avg_p_t, " ", avg_w, " ", avg_c)
-    # println(sum(map(cp -> 0.5*cp.f[end], all_cp_str)))
-
     # Compute average price, weighted by market share
+    avg_p_t = sum(map(cp -> cp.p[end] * cp.f[end], all_cp_str))
+    push!(macro_struct.p̄, avg_p_t)
     if length(macro_struct.CPI) == 0
         push!(macro_struct.CPI, 100)
     else
         # TODO dont compute this again every time
-        CPI_t = 100 / avg_p_1 * avg_p_t
+        CPI_t = 100 / macro_struct.p̄[1] * avg_p_t
         push!(macro_struct.CPI, CPI_t)
     end
+
+    # Compute average price of capital goods
+    avg_p_kp_t = mean(map(kp -> kp.p[end], all_kp_str))
+    push!(macro_struct.p̄_kp, avg_p_kp_t)
+    if length(macro_struct.CPI_kp) == 0
+        push!(macro_struct.CPI_kp, 100)
+    else
+        # TODO dont compute this again every time
+        CPI_kp_t = 100 / macro_struct.p̄_kp[1] * avg_p_kp_t
+        push!(macro_struct.CPI_kp, CPI_kp_t)
+    end
+
+    # Update markup rates
+    μ_bp = mean(map(bp -> bp.μ[end], all_bp_str))
+    push!(macro_struct.μ_bp, μ_bp)
+
+    μ_lp = mean(map(lp -> lp.μ[end], all_lp_str))
+    push!(macro_struct.μ_lp, μ_lp)
+
+    μ_kp = mean(map(kp -> kp.μ[end], all_kp_str))
+    push!(macro_struct.μ_kp, μ_kp)
+
+end
+
+
+function compute_unsatisfied_demand(
+    all_hh_str::Vector{Household},
+    macro_struct::MacroEconomy
+    )
+
+    avg_unsat_dem = Vector{Float64}()
+
+    for hh in all_hh_str
+        # println(hh.unsat_dem)
+        if length(hh.unsat_dem) > 0 
+            unsat_dem = mean(map(ud->ud[2], hh.unsat_dem))
+        else
+            unsat_dem = 0.0
+        end
+        push!(avg_unsat_dem, unsat_dem)
+    end
+
+    avg_unsat_dem = mean(avg_unsat_dem)
+    push!(macro_struct.unsat_demand, avg_unsat_dem)
 end
