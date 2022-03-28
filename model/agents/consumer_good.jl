@@ -4,6 +4,7 @@ Defines struct for consumer good producer
 mutable struct ConsumerGoodProducer <: AbstractAgent
     id :: Int                       # id
     type_good :: String             # type of good produced by producer
+    age :: Int                      # firm age
     first_gen :: Bool               # shows if producer is in first generation 
     p :: Vector{Float64}            # hist prices
     c :: Vector{Float64}            # hist cost
@@ -79,6 +80,7 @@ function initialize_cp(
     cp = ConsumerGoodProducer(
         id,                         # global id
         type_good,                  # type of good produced by producer
+        0,                          # firm age
         first_gen,
         [p],                        # p: hist prices
         [1.0],                      # c: hist cost
@@ -296,19 +298,16 @@ function plan_replacement_cp!(
     brochure
     )
 
-    p_star = brochure[2]
     Aᵈ = brochure[4]
+    p_star = brochure[2]
+    c_star = cp.w̄[end] / Aᵈ
 
     cp.mach_tb_repl = Vector{Machine}()
 
     for machine in cp.Ξ
         c_A = cp.w̄[end] / machine.A
-        c_star = cp.w̄[end] / Aᵈ
-        if c_A > c_star
-            if p_star/(c_A - c_star) <= global_param.b || machine.age >= global_param.η
-            # if p_star/(c_A - c_star) <= global_param.b
-                push!(cp.mach_tb_repl, machine)
-            end
+        if (c_A != c_star && p_star/(c_A - c_star) <= global_param.b) || machine.age >= global_param.η
+            push!(cp.mach_tb_repl, machine)
         end
     end
 end
@@ -325,44 +324,18 @@ function choose_producer_cp!(
     )
 
     # In case of no brochures, pick a random kp
-    # TODO change this back
-    if (length(cp.brochures) >= 0)
-        cp.chosen_kp_id = sample(all_kp)
-        brochure = model[cp.chosen_kp_id].brochure
-
+    if length(cp.brochures) == 0
+        brochure = model[sample(all_kp)].brochure
+        cp.chosen_kp_id = brochure[1]
         return brochure
     end
 
-    # Take first producer as best, then compare to other producers
-    chosen_kp_id = cp.brochures[1][1]
-    p_star = cp.brochures[1][2]
-    c_star = cp.brochures[1][3]
-    A_star = cp.brochures[1][4]
-    brochure_star = cp.brochures[1]
-    cop_star = p_star + b * c_star
+    # If multiple brochures, find brochure with lowest cost of production
+    all_cop = map(broch -> broch[2] + b * cp.w̄[end] / broch[4], cp.brochures)
+    brochure = cp.brochures[argmin(all_cop)]
+    cp.chosen_kp_id = brochure[1]
 
-    for brochure in cp.brochures
-
-        p_h = brochure[2]
-        c_h = brochure[3]
-        A_h = brochure[4]
-        potential_cop = p_h + b * c_h
-
-        # if cheaper, choose cheaper option
-        if potential_cop < cop_star
-            brochure_star = brochure
-            chosen_kp_id = brochure[1]
-            p_star = p_h
-            c_star = c_h
-            A_star = A_h
-            cop_star = potential_cop
-        end
-
-    end
-
-    cp.chosen_kp_id = chosen_kp_id
-
-    return brochure_star
+    return brochure
 end
 
 
@@ -376,6 +349,7 @@ function produce_goods_cp!(
     # Compute total production amount
     # Q = max(min(cp.π * cp.L, cp.π * cp.n_machines, cp.Qˢ), 0)
     Q = max(min(cp.π * cp.L, cp.n_machines, cp.Qˢ), 0)
+    # println("Q: $Q, πL: $(cp.π * cp.L), n_mach: $(cp.n_machines), Qˢ: $(cp.Qˢ), L: $(cp.L)")
     # @printf("L: %i, K: %i, Qˢ: %i\n", cp.L, cp.n_machines, cp.Qˢ)
     # @printf("πL: %i, πK: %i, Qˢ: %i\n", cp.π * cp.L, cp.π * cp.n_machines, cp.Qˢ)
     push!(cp.Q, Q)
@@ -615,8 +589,8 @@ function replace_bankrupt_cp!(
         new_cp.balance.K = tot_freq_machines * p_choice
 
         # Borrow funds for the machine and liquid assets
-        NW_to_borrow = NW_stock + tot_freq_machines * p_choice
-        borrow_funds_p!(new_cp, tot_freq_machines * p_choice + NW_to_borrow)
+        # NW_to_borrow = NW_stock + tot_freq_machines * p_choice
+        # borrow_funds_p!(new_cp, tot_freq_machines * p_choice + NW_to_borrow)
         # TODO: a kp firm has to receive revenue for this
 
         # new_cp.balance.NW = tot_freq_machines * p_choice
@@ -750,21 +724,9 @@ function update_π_cp!(
     cp::ConsumerGoodProducer
     )
 
-    # total_freq = sum(map(machine -> machine.freq, cp.Ξ))
     cp.π = sum(map(machine -> (machine.freq * machine.A) / cp.n_machines, cp.Ξ))
 end
 
-
-# """
-# Adaptively updates expected offered wage
-# """
-# function update_wᴼₑ_cp!(
-#     cp::ConsumerGoodProducer,
-#     ωW::Float64
-#     )
-
-#     cp.wᴼₑ = ωW * cp.wᴼₑ + (1 - ωW) * cp.wᴼ
-# end
 
 """
 Computes the markup rate μ based on the market share f.
@@ -860,16 +822,18 @@ end
 
 """
 Computes the desired change in labor supply ΔLᵈ
+    Check desired change in labor stock, also check for capital stock
+    as hiring more than this would not increase production.
 """
 function update_ΔLᵈ_cp!(
     cp::ConsumerGoodProducer
     )
 
-    # Check desired change in labor stock, also check for capital stock
-    # as hiring more than this would not increase production.
-    # cp.ΔLᵈ = max(min(cp.Qˢ/cp.π - cp.L, cp.n_machines * cp.π - cp.L), -cp.L)
-    cp.ΔLᵈ = max(min(cp.Qˢ / cp.π - cp.L, cp.n_machines / cp.π - cp.L), -cp.L)
+    Lᵈ = min(cp.Qˢ / cp.π - cp.L, cp.n_machines / cp.π - cp.L)
+    # println("Lᵈ: $(Lᵈ), L: $(cp.L), Qˢ/π: $(cp.Qˢ / cp.π) n_mach/π: $(cp.n_machines / cp.π)")
+    cp.ΔLᵈ = max(Lᵈ, -cp.L)
 end
+
 
 """
 Updates desired inventory to be a share of the previous demand

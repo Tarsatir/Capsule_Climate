@@ -1,3 +1,5 @@
+# @pyimport scipy.stats as stats
+
 mutable struct Household <: AbstractAgent
 
     id :: Int                   # global id
@@ -49,7 +51,7 @@ function initialize_hh(
         [],                     # Iᵀ: hist taxed income
         # [10],                   # S: total savings
         0,                      # s: savings rate
-        [30],                  # W: wealth or cash on hand
+        [50],                  # W: wealth or cash on hand
         # [100],                  # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
@@ -100,6 +102,7 @@ Sets consumption budget based on current wealth level
 """
 function set_consumption_budget_hh!(
     hh::Household,
+    all_W_hh::Vector{Float64},
     c_L_max::Float64,
     a_σ::Float64,
     b_σ::Float64,
@@ -118,7 +121,7 @@ function set_consumption_budget_hh!(
     update_share_goodtypes_hh!(hh, c_L_max, a_σ, b_σ)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, α_cp)
+    compute_consumption_budget_hh!(hh, α_cp, all_W_hh)
 end
 
 
@@ -170,11 +173,18 @@ Computes consumption budget, updates savings rate
 """
 function compute_consumption_budget_hh!(
     hh::Household,
-    α_cp::Float64
+    α_cp::Float64,
+    all_W_hh::Vector{Float64}
     )
 
     if hh.W[end] > 0 && hh.Iᵀ[end] > 0
+        # percentile = stats.percentileofscore(all_W_hh, hh.W[end])
+        # percentile = 50
+        # frac_cons = percentile^α_cp / percentile
+        # println("$frac_cons, $percentile")
         C = min(hh.P̄[end] * (hh.W[end] / hh.P̄[end])^α_cp, hh.W[end])
+        # C = hh.Iᵀ[end]
+        # C = frac_cons * hh.W[end] / 100
         s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
     else
         C = 0
@@ -393,13 +403,21 @@ function decide_switching_hh!(
         # Check if replaced supplier is bp or lp, sample new supplier in correct
         # category and replace in set of hh suppliers.
         if p_id_replaced in hh.bp
-            p_id_new = sample(setdiff(all_bp, hh.bp))
             filter!(p_id -> p_id ≠ p_id_replaced, hh.bp)
-            push!(hh.bp, p_id_new)
+
+            # Add new bp if list not already too long
+            if length(hh.bp) < 10
+                p_id_new = sample(setdiff(all_bp, hh.bp))
+                push!(hh.bp, p_id_new)
+            end
         else
-            p_id_new = sample(setdiff(all_lp, hh.lp))
             filter!(p_id -> p_id ≠ p_id_replaced, hh.lp)
-            push!(hh.lp, p_id_new)
+
+            # Add new bp if list not already too long
+            if length(hh.lp) < 10
+                p_id_new = sample(setdiff(all_lp, hh.lp))
+                push!(hh.lp, p_id_new)
+            end
         end
     end
 
@@ -408,7 +426,7 @@ function decide_switching_hh!(
     # Check if household will look for a better price
     if rand() < ψ_P
 
-        for i in 1:n_attempts
+        for _ in 1:n_attempts
 
             # Randomly select a supplier that may be replaced
             p_id_candidate1 = sample(vcat(hh.bp, hh.lp))
@@ -433,7 +451,9 @@ function decide_switching_hh!(
                     push!(hh.lp, p_id_candidate2)
                 end
             end
+
         end
+        
     end
 end
 

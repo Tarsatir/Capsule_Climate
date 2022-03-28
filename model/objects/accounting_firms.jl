@@ -43,40 +43,35 @@ function close_balance_p!(
     # Update liquid assets NW
     update_NW_p!(p, τᴾ)
 
-    # If not enough liquid assets available, borrow additional funds.
-    if p.balance.NW < 0
-        max_add_debt = p.curracc.S * Λ - p.balance.debt
-        add_debt = min(-p.balance.NW, max_add_debt)
-        borrow_funds_p!(p, add_debt)
-        p.balance.NW += add_debt
-        p.balance.debt += add_debt
-    end
-
     # Update valuation of inventory. kp do not have inventory.
     if typeof(p) == ConsumerGoodProducer
         p.balance.N = p.p[end] * p.N_goods
+    end
+
+    # TRIAL OF INDEX FUND
+    d = 3
+    max_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.debt_installments[1])
+
+    # If not enough liquid assets available, borrow additional funds.
+    if p.balance.NW < 0
+        max_add_debt = max(p.curracc.S * Λ - p.balance.debt, 0)
+        add_debt = min(-p.balance.NW, max_add_debt)
+        borrow_funds_p!(p, add_debt)
+        p.balance.NW += add_debt
+    # elseif p.balance.NW > max_NW && !check_if_bankrupt_p!(p)
+    #     indexfund_struct.Assets += (p.balance.NW - max_NW)
+    #     p.balance.NW = max_NW 
     end
 
     # Compute Equity
     tot_assets = p.balance.N + p.balance.K + p.balance.NW
     p.balance.EQ = tot_assets - p.balance.debt
 
-    # TRIAL OF INDEX FUND
-    # d = 2
-
-    # max_net_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.curracc.rep_debt)
-
-    # if p.balance.NW - p.balance.debt > max_net_NW && !check_if_bankrupt_p!(p)
-    #     indexfund_struct.Assets += (p.balance.NW - p.balance.debt - max_net_NW)
-    #     p.balance.NW = max_net_NW + p.balance.debt
-    #     tot_assets = p.balance.N + p.balance.K + p.balance.NW
-    #     p.balance.EQ = tot_assets - p.balance.debt
-    # end
-
     # If NW is negative, maximum debt is reached, and EQ is set to
     # a negative value so the firm is declared bankrupt
-    if p.balance.NW < 0
+    if p.balance.NW < 0 || p.balance.debt > Λ * p.curracc.S
         p.balance.EQ = -1.0
+        p.f[end] = 0.0
     end
 end
 

@@ -105,7 +105,7 @@ function labormarket_process!(
     for p_id in all_p
         if model[p_id].ΔLᵈ > 0
             push!(hiring_producers, p_id)
-        elseif model[p_id].ΔLᵈ < -100
+        elseif model[p_id].ΔLᵈ < 0
             push!(firing_producers, p_id)
         end
     end

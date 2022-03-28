@@ -7,6 +7,7 @@ using Agents
 using BenchmarkTools
 using TimerOutputs
 using RecursiveArrayTools
+# using PyCall
 
 # Include files
 include("../results/write_results.jl")
@@ -193,6 +194,11 @@ function model_step!(
     # Update schedulers
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
+    # Update firm age
+    for p_id in all_p
+        model[p_id].age += 1
+    end
+
     # Check if households still have enough producers, otherwise sample more
     refill_suppliers_all_hh!(
         all_hh,
@@ -310,12 +316,17 @@ function model_step!(
         update_wealth_hh!(model[hh_id])
     end
 
+    # TODO: put this somewhere else
+    # all_W_hh = map(hh_id -> model[hh_id].W[end], all_hh)
+    all_W_hh = Vector{Float64}()
+
     # Consumer market process
     consumermarket_process!(
         all_hh,
         all_cp,
         all_bp,
         all_lp,
+        all_W_hh,
         gov_struct,
         global_param,
         model
@@ -368,6 +379,8 @@ function model_step!(
 
     # Select producers that will be declared bankrupt and removed
     bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
+
+    println("avg age bankrupt kp: $(mean(map(kp_id -> model[kp_id].age, bankrupt_kp)))")
 
     # (7) macro-economic indicators are updated.
     update_macro_timeseries(

@@ -23,7 +23,7 @@ mutable struct MacroEconomy
     M_kp :: Vector{Float64}      # total amount of money at kp
     M_gov :: Vector{Float64}     # total amount of money at gov
 
-    # debtt levels
+    # debt levels
     debt_tot :: Vector{Float64}             # total debt
     debt_cp :: Vector{Float64}              # cp debt
     debt_cp_allowed :: Vector{Float64}      # cp allowed debt

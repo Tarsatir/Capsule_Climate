@@ -144,6 +144,7 @@ function borrow_funds_p!(
 
     # Add received funds as incoming cashflow
     p.curracc.add_debt += amount
+    p.balance.debt = sum(p.debt_installments)
 end
 
 
@@ -155,6 +156,8 @@ function payback_debt_p!(
     b=3::Int64
     )
 
+    # println("debt: $(p.balance.debt), debt installments: $(p.debt_installments)")
+
     # Add repaid debt as outgoing cashflow
     p.curracc.rep_debt = p.debt_installments[1]
 
@@ -164,7 +167,8 @@ function payback_debt_p!(
     end
     p.debt_installments[b+1] = 0.0
 
-    p.balance.debt -= p.curracc.rep_debt
+    # p.balance.debt -= p.curracc.rep_debt
+    p.balance.debt = sum(p.debt_installments)
 end
 
 
@@ -193,16 +197,13 @@ function check_bankrupty_all_p!(
         if check_if_bankrupt_p!(model[p_id])
             if typeof(model[p_id]) == ConsumerGoodProducer
                 if model[p_id].type_good == "Basic"
-                    # println("bp bankrupt, f=",model[p_id].f[end])
                     bp_counter += 1
                     push!(bankrupt_bp, p_id)
                 else
-                    # println("lp bankrupt, f=",model[p_id].f[end])
                     lp_counter += 1
                     push!(bankrupt_lp, p_id)
                 end
             else
-                # println("kp bankrupt, f=",model[p_id].f[end])
                 kp_counter += 1
                 if kp_counter != length(all_kp)
                     push!(bankrupt_kp, p_id)
@@ -235,6 +236,9 @@ function kill_all_bankrupt_p!(
     model::ABM
     )
 
+    all_unpaid_debt = sum(map(p_id -> model[p_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp, bankrupt_lp)))
+    println("Unpaid debt: $(all_unpaid_debt)")
+
     # Remove bankrupt cp ids from households
     for hh_id in all_hh
         remove_bankrupt_producers_hh!(model[hh_id], bankrupt_bp, bankrupt_lp)
@@ -264,7 +268,7 @@ function kill_all_bankrupt_p!(
 
         # TODO: TEMP SOLUTION, DESCRIBE IT WORKS
         # indexfund_struct.Assets -= (model[p_id].balance.debt - model[p_id].balance.NW)
-        # indexfund_struct.Assets += (model[p_id].balance.NW - model[p_id].balance.debt)
+        indexfund_struct.Assets += (model[p_id].balance.NW - model[p_id].balance.debt)
 
         # Remove firm agents from model
         kill_agent!(p_id, model)
@@ -281,8 +285,8 @@ function check_if_bankrupt_p!(
     # TODO: describe waiting period
     t_wait = 4
 
-    # if p.f[end] <= 0.001 || p.balance.EQ < 0
-    if (length(p.D) > t_wait || p.first_gen) && (mean(p.f[end])<= 0.001 || p.balance.EQ < 0)
+    if p.f[end] <= 0.001 || p.balance.EQ < 0
+    # if (length(p.D) > t_wait || p.first_gen) && (mean(p.f[end])<= 0.0001 || p.balance.EQ < 0)
         return true
     end
     return false

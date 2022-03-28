@@ -90,8 +90,8 @@ def plot_macro_vars(df):
     ax[3,1].set_title('Debt levels')
     ax[3,1].legend()
 
-    ax[4,0].plot(range(len(df.EI_avg)), 100 * df.EI_avg / df.CPI, label='EI')
-    ax[4,0].plot(range(len(df.RS_avg)), 100 * df.RS_avg / df.CPI, label='RS')
+    ax[4,0].plot(range(len(df.EI_avg)), 100 * df.EI_avg / df.CPI_kp, label='EI')
+    ax[4,0].plot(range(len(df.RS_avg)), 100 * df.RS_avg / df.CPI_kp, label='RS')
     ax[4,0].set_title('Real investments')
     ax[4,0].legend()
 

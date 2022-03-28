@@ -1,6 +1,7 @@
 mutable struct CapitalGoodProducer <: AbstractAgent
     id :: Int                               # global id
     kp_i :: Int                             # kp id, used for distance matrix
+    age :: Int                              # firm age
     first_gen :: Bool                       # shows if producer is in first generation 
     A :: Vector{Float64}                    # labor prod sold product
     B :: Vector{Float64}                    # labor prod own production
@@ -43,7 +44,7 @@ function initialize_kp(
     A=1.0,
     B=1.0,
     p=1.0,
-    μ1=0.2,
+    μ=0.2,
     w̄=1.0,
     wᴼ=1.0,
     Q=100,
@@ -62,15 +63,16 @@ function initialize_kp(
     
     curracc = FirmCurrentAccount(0,0,0,0,0,0,0)
 
-    kp = CapitalGoodProducer(   # initial parameters based on rer98
+    kp = CapitalGoodProducer(   
         id,                     # global id
         kp_i,                   # kp_i, used for distance matrix
+        0,                      # firm age
         first_gen,              # shows if producer is in first generation
         [A],                    # A: labor prod sold product
         [B],                    # B: labor prod own production
         [p],                    # p: hist price data
         [],                     # c: hist cost data
-        [μ1],                   # μ: hist markup rate
+        [μ],                    # μ: hist markup rate
         [],                     # employees: employees in company
         0,                      # L: labor units in company
         0,                      # ΔLᵈ: desired change in labor force
@@ -79,14 +81,14 @@ function initialize_kp(
         0.0,                    # wᴼ_max: expected offered wage
         0,                      # O: total amount of machines ordered
         [],                     # production queue
-        [Q],                    # Q: production quantity
+        [],                     # Q: production quantity
         [],                     # RD: hist R&D expenditure
         [],                     # IM: hist immitation expenditure
         [],                     # IN: hist innovation expenditure
-        [D],                    # D: hist demand
+        [],                     # D: hist demand
         [],                     # HC: hist clients
         [0.0],                  # Π: hist profits
-        fill(0.0, 4),           # debt installments
+        zeros(4),               # debt installments
         [f],                    # f: market share
         [],                     # brochure
         [],                     # orders
@@ -158,23 +160,24 @@ function choose_technology_kp!(
         # If no new technologies, keep current technologies
         push!(kp.A, kp.A[end])
         push!(kp.B, kp.B[end])
+
         c_h = kp.w̄[end]/kp.B[end]
-        # p_h = (1 + global_param.μ1) * c_h
         p_h = (1 + kp.μ[end]) * c_h
         push!(kp.c, c_h)
         push!(kp.p, p_h)
     else
         # If new technologies, update price data
-        c_h_kp = map(tech -> kp.w̄[end]/tech[2], tech_choices)
         c_h_cp = map(tech -> w̄/tech[1], tech_choices)
-        # p_h = map(c -> (1 + global_param.μ1)*c, c_h_kp)
+        c_h_kp = map(tech -> kp.w̄[end]/tech[2], tech_choices)
+ 
         p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
         r_h = p_h + global_param.b * c_h_cp 
-        index = argmin(r_h)
-        push!(kp.A, tech_choices[index][1])
-        push!(kp.B, tech_choices[index][2])
-        push!(kp.c, c_h_kp[index])
-        push!(kp.p, p_h[index])
+        idx = argmin(r_h)
+
+        push!(kp.A, tech_choices[idx][1])
+        push!(kp.B, tech_choices[idx][2])
+        push!(kp.c, c_h_kp[idx])
+        push!(kp.p, p_h[idx])
     end
 end
 
@@ -196,8 +199,7 @@ function send_brochures_kp!(
 
     # Send brochure to historical clients
     for cp_id in kp.HC
-        cp = model[cp_id]
-        push!(cp.brochures, brochure)
+        push!(model[cp_id].brochures, brochure)
     end
 
     # Select new clients, send brochure
@@ -210,10 +212,9 @@ function send_brochures_kp!(
     end
     
     # Send brochures to new clients
-    NC = sample(NC_potential, n_choices; replace=false)
+    NC = sample(NC_potential, min(n_choices, length(NC_potential)); replace=false)
     for cp_id in NC
-        cp = model[cp_id]
-        push!(cp.brochures, brochure)
+        push!(model[cp_id].brochures, brochure)
     end 
 
 end
@@ -231,9 +232,6 @@ function imitate_technology_kp(
 
     weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
     idx = sample(all_kp, Weights(weights))
-    # TODO: uncomment
-
-    # idx = sample(all_kp)
 
     A_t_im = model[idx].A[end]
     B_t_im = model[idx].B[end]
@@ -298,8 +296,12 @@ function set_RD_kp!(
     )
 
     # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
-    prev_S = kp.p[end] * kp.Q[end]
-    RD_new = ν * prev_S
+    if length(kp.Q) > 0
+        prev_S = kp.p[end] * kp.Q[end]
+        RD_new = ν * prev_S
+    else
+        RD_new = 0
+    end
     # RD_new = max(ν * kp.Π[end], 0)
 
     # TODO: now based on prev profit to avoid large losses. If kept, describe!
@@ -346,13 +348,13 @@ function plan_production_kp!(
     
     # Determine total amount of machines to produce
     if length(kp.orders) > 0
-        kp.O = sum(map(order -> order[2] / kp.p[end], kp.orders)) 
+        kp.O = sum(map(order -> order[2] / kp.p[end], kp.orders))
     else
         kp.O = 0.0
     end
 
     # Determine amount of labor to hire
-    kp.ΔLᵈ = 50 * floor(max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L) / 50)
+    kp.ΔLᵈ = max(floor(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L), -kp.L)
     # kp.ΔLᵈ = max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L)
 
     # println("labor ", kp.ΔLᵈ, " ", kp.O / kp.B[end], " ", kp.RD[end] / kp.w̄[end], " ", kp.L)
@@ -515,6 +517,7 @@ function update_marketshare_kp!(
     end
 end
 
+
 # TRIAL: DESCRIBE
 function update_μ_kp!(
     kp::CapitalGoodProducer
@@ -553,6 +556,8 @@ function update_μ_kp!(
     else
         push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
     end
+
+    # push!(kp.μ, kp.μ[end])
 
 end
 
@@ -593,12 +598,14 @@ function replace_bankrupt_kp!(
 
     # Get the technology frontier
     A_max = 0
+    A_max_id = 0
     B_max = 0
+
     for kp_id in poss_kp
         if model[kp_id].A[end] > A_max
             A_max = model[kp_id].A[end]
+            A_max_id = kp_id
         end
-
         if model[kp_id].B[end] > B_max
             B_max = model[kp_id].B[end]
         end 
@@ -618,10 +625,10 @@ function replace_bankrupt_kp!(
 
         # TODO: scale
         a1 = -0.1
-        a2 = 0.02
+        a2 = 0.01
         tech_coeff = a1 + rand(Beta(α2, β2)) * (a2 - a1)
-        new_A = A_max * (1 + tech_coeff)
-        new_B = B_max * (1 + tech_coeff)
+        new_A = max(A_max * (1 + tech_coeff), 1)
+        new_B = max(B_max * (1 + tech_coeff), 1)
 
         # Initialize new kp
         new_kp = initialize_kp(
@@ -631,11 +638,8 @@ function replace_bankrupt_kp!(
             NW=coeff_NW * avg_NW,
             A=new_A,
             B=new_B,
-            p=kp_to_copy.p[end],
-            w̄=kp_to_copy.w̄[end],
-            wᴼ=kp_to_copy.wᴼ[end],
-            Q=kp_to_copy.Q[end],
-            D=kp_to_copy.D[end],
+            μ=model[A_max_id].μ[end],
+            w̄=model[A_max_id].w̄[end],
             f=0.0,
             first_gen=false
         )

@@ -102,12 +102,12 @@ function initialize_global_params(
         0.5,                        # ωL: memory parameter cp labor supply estimation
         0.5,                        # ωW: memory parameter cp offered wage parameter
 
-        0.95,                       # α_cp: parameter controlling MPC of consumers
+        0.9,                       # α_cp: parameter controlling MPC of consumers
         0.7,                        # c_L_max
         1000,                       # a_σ
         30,                         # b_σ
 
-        0.05,                       # ψ_E: chance of employed worker looking for a better paying job
+        0.15,                       # ψ_E: chance of employed worker looking for a better paying job
         0.75,                       # ψ_Q: chance of household switching away from cp when demand constrained
         0.75,                       # ψ_P: chance of household switching to cp with better price
 

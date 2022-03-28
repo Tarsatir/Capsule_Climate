@@ -3,6 +3,7 @@ function consumermarket_process!(
     all_cp::Vector{Int}, 
     all_bp::Vector{Int}, 
     all_lp::Vector{Int}, 
+    all_W_hh::Vector{Float64},
     gov_struct::Government,
     global_param::GlobalParam,
     model::ABM
@@ -14,6 +15,7 @@ function consumermarket_process!(
         # Set consumption budget and shares of good types
         set_consumption_budget_hh!(
             model[hh_id],
+            all_W_hh,
             global_param.c_L_max,
             global_param.a_σ,
             global_param.b_σ, 
