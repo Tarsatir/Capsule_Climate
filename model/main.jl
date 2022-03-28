@@ -7,6 +7,7 @@ using Agents
 using BenchmarkTools
 using TimerOutputs
 using RecursiveArrayTools
+using DataStructures
 # using PyCall
 
 # Include files
@@ -80,7 +81,7 @@ function initialize_model(
     id = 1
 
     # Initialize households
-    for hh_i in 1:n_households
+    for _ in 1:n_households
 
         hh = initialize_hh(id)
         add_agent!(hh, model)
@@ -101,17 +102,18 @@ function initialize_model(
         # Initialize capital good stock
         n_machines_init = 40  #TODO: put this in parameters
 
-        machines = Vector{Machine}()
-        K = n_init_emp_cp * 100
-        for _ in 1:n_machines_init
-            # Machines have random age as to allow replacement in early periods
-            freq = K/n_machines_init
-            machine_struct = initialize_machine(freq; η=global_param.η)
-            push!(machines, machine_struct)
-        end
+        # machines = Vector{Machine}()
+        # for _ in 1:n_machines_init
+        #     # Machines have random age as to allow replacement in early periods
+        #     freq = global_param.freq_per_machine
+        #     machine_struct = initialize_machine(freq; η=global_param.η)
+        #     push!(machines, machine_struct)
+        # end
+
+        machines = initialize_machine_stock(global_param.freq_per_machine, n_machines_init)
 
         cp = initialize_cp(
-                id, 
+                id,
                 machines,  
                 type_good, 
                 n_init_emp_cp, 
@@ -119,7 +121,7 @@ function initialize_model(
                 global_param.ι;
                 n_consrgood=n_consrgood
             )
-        update_n_machines_cp!(cp)
+        update_n_machines_cp!(cp, global_param.freq_per_machine)
         add_agent!(cp, model)
 
         id += 1
@@ -249,19 +251,12 @@ function model_step!(
         plan_production_cp!(cp, global_param, model)
 
         # Plan investments for this period
-        plan_investment_cp!(cp, global_param, all_kp, model)
-
-        # See if enough funds available for investments and production, otherwise
-        # change investments and production to match funding availability.
-        check_funding_restrictions_cp!(cp, global_param.Λ, global_param.r, global_param.ωW, model)
-
-        # Send orders to kp
-        order_machines_cp!(cp, model)
+        plan_investment_cp!(cp, all_kp, global_param, model)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
     for kp_id in all_kp
-        plan_production_kp!(model[kp_id], model)
+        plan_production_kp!(model[kp_id], global_param, model)
     end
 
     # (3) labor market matching process
@@ -295,7 +290,7 @@ function model_step!(
     end
 
     for kp_id in all_kp
-        produce_goods_kp!(model[kp_id])
+        produce_goods_kp!(model[kp_id], global_param)
     end
 
     
@@ -346,14 +341,14 @@ function model_step!(
 
     # (6) kp deliver goods to cp, kp make up profits
     for kp_id in all_kp
-        send_orders_kp!(model[kp_id], model)
+        send_orders_kp!(model[kp_id], global_param, model)
     end
 
     # Close balances of all firms
     for p_id in all_p
         # Update amount of owned capital, increase machine age
         if typeof(model[p_id]) == ConsumerGoodProducer
-            update_n_machines_cp!(model[p_id])
+            update_n_machines_cp!(model[p_id], global_param.freq_per_machine)
             increase_machine_age_cp!(model[p_id])
         end
 
@@ -422,10 +417,7 @@ function model_step!(
         bankrupt_kp, 
         bankrupt_kp_i, 
         all_kp,
-        global_param.φ3,
-        global_param.φ4, 
-        global_param.α2,
-        global_param.β2,
+        global_param,
         model
     )
 
@@ -438,15 +430,10 @@ function model_step!(
         all_bp,
         all_lp,
         all_kp,
+        global_param,
         macro_struct.cu[end],
-        global_param.φ1,
-        global_param.φ2,
-        global_param.φ3,
-        global_param.φ4,
         macro_struct.p̄[end],
         macro_struct.w̄_avg[end],
-        global_param.μ1,
-        global_param.ι, 
         model
     )
 
@@ -460,7 +447,7 @@ end
 
 
 function run_simulation(;
-    T=400::Int,
+    T=100::Int,
     changed_params=nothing,
     full_output=true::Bool
     )::Float64

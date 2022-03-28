@@ -8,20 +8,13 @@ mutable struct GlobalParam
     κ_lower :: Float64              # 1st beta dist support
     κ_upper :: Float64              # 2nd beta dist support
 
-
     γ :: Float64                    # new custommer sample parameter
     μ1 :: Float64                   # kp markup rule
     r :: Float64                    # interest rate
     ι :: Float64                    # desired inventories
     b :: Int                        # payback period
     η :: Int                        # physical scrapping age
-
-    # υ :: Float64                    # markup coefficient
-    # ω :: Float64                    # competetiveness weights
-    # χ :: Float64                    # replicator dynamics coeff
-
     Λ :: Float64                    # max debt/sales ratio, regular debt
-    # Λ_max :: Float64                # max debt/sales ratio, including credit
 
     # Determine entrant composition
     φ1 :: Float64                   # 1st Uniform dist support, cp entrant cap
@@ -37,10 +30,7 @@ mutable struct GlobalParam
     Kg_max :: Float64               # maximum capital growth rate
 
     # Determine expectation updating cp
-    ωD :: Float64                   # memory parameter cp demand estimation
-    ωQ :: Float64                   # memory parameter cp quantity estimation
-    ωL :: Float64                   # memory parameter cp labor supply estimation
-    ωW :: Float64                   # memory parameter cp offered wage estimation
+    ω :: Float64                    # memory parameter adaptive updating rules
 
     # Determine household consumption
     α_cp :: Float64                 # parameter controlling MPC of consumers
@@ -52,7 +42,8 @@ mutable struct GlobalParam
     ψ_E :: Float64                  # chance of employed worker looking for a better paying job
     ψ_Q :: Float64                  # chance of household switching away from cp when demand constrained
     ψ_P :: Float64                  # chance of household switching to cp with better price
-    # Nᵈ_share::Float64
+
+    freq_per_machine                # capital units per machine
 end
 
 
@@ -75,14 +66,7 @@ function initialize_global_params(
         0.1,                        # ι: desired inventories
         3,                          # b: payback period
         20,                         # η: physical scrapping age
-
-        # 0.05,                       # υ: markup coefficient
-        # 1.0,                        # ω: competetiveness weights
-        # 1.0,                        # χ: replicator dynamics coeff
-
         2.0,                        # Λ: max debt/sales ratio regular debt
-
-        # 2.5,                        # Λ_max: max debt/sales ratio including credit
 
         0.1,                        # φ1: 1st Uniform dist support, cp entrant cap
         0.9,                        # φ2: 2nd Uniform dist support, cp entrant cap
@@ -97,10 +81,7 @@ function initialize_global_params(
         0.1,                        # max_g_wᴼ: max growth rate of offered wages
         0.5,                        # Kg_max: maximum capital growth rate
 
-        0.5,                        # ωD: memory parameter cp demand estimation
-        0.5,                        # ωQ: memory parameter cp quantity estimation
-        0.5,                        # ωL: memory parameter cp labor supply estimation
-        0.5,                        # ωW: memory parameter cp offered wage parameter
+        0.5,                        # ω: memory parameter adaptive updating rules
 
         0.9,                       # α_cp: parameter controlling MPC of consumers
         0.7,                        # c_L_max
@@ -111,7 +92,7 @@ function initialize_global_params(
         0.75,                       # ψ_Q: chance of household switching away from cp when demand constrained
         0.75,                       # ψ_P: chance of household switching to cp with better price
 
-        # 0.4                         # Nᵈ_share: share of expected demand cp wants to have in inventory
+        50                          # capital units per machine
     )
 
     # Change parameters if needed before returning.

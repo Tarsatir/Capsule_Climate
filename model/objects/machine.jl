@@ -6,14 +6,14 @@ mutable struct Machine
 end
 
 """
-Initializes machine struct
+Initializes a machine struct.
 """
 function initialize_machine(
-    freq::Float64;
-    η=0::Int,
-    p=1.0::Float64, 
-    A=1.0::Float64
-    )
+    freq::Int,
+    η::Int,
+    p::Float64, 
+    A::Float64
+    )::Machine
 
     machine_struct = Machine(
         A,                      # A: labor productivity machine
@@ -25,17 +25,20 @@ function initialize_machine(
 end
 
 
+"""
+Initializes a stock of machines for a new cp firm.
+"""
 function initialize_machine_stock(
-    tot_freq_machines::Float64,
-    p::Float64,
-    A::Float64,
-    n_machines_init::Int
-    )
+    freq_per_machine::Int,
+    n_machines_init::Int;
+    η=0::Int,
+    p=1.2::Float64,
+    A=1.0::Float64,
+    )::Vector{Machine}
 
     machines = Vector{Machine}()
-    for i in 1:n_machines_init
-        freq = tot_freq_machines/n_machines_init
-        machine_struct = initialize_machine(freq; η=0, p=p, A=A)
+    for _ in 1:n_machines_init
+        machine_struct = initialize_machine(freq_per_machine, η, p, A)
         push!(machines, machine_struct)
     end
 

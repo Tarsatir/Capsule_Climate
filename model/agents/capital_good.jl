@@ -323,11 +323,10 @@ Lets kp receive orders, adds client as historical clients if it is not yet.
 """
 function receive_order_kp!(
     kp::CapitalGoodProducer,
-    cp_id::Int,
-    order
+    cp_id::Int
     )
 
-    push!(kp.orders, order)
+    push!(kp.orders, cp_id)
 
     # If cp not in HC yet, add as a historical client
     if cp_id ∉ kp.HC
@@ -341,68 +340,85 @@ Based on received orders, sets labor demand to fulfill production.
 """
 function plan_production_kp!(
     kp::CapitalGoodProducer,
+    global_param::GlobalParam,
     model::ABM
     )
 
     update_w̄_p!(kp, model)
     
-    # Determine total amount of machines to produce
-    if length(kp.orders) > 0
-        kp.O = sum(map(order -> order[2] / kp.p[end], kp.orders))
-    else
-        kp.O = 0.0
-    end
+    # Determine total amount of capital units to produce and amount of labor to hire
+    kp.O = length(kp.orders) * global_param.freq_per_machine
 
     # Determine amount of labor to hire
-    kp.ΔLᵈ = max(floor(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L), -kp.L)
-    # kp.ΔLᵈ = max(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L, -kp.L)
-
-    # println("labor ", kp.ΔLᵈ, " ", kp.O / kp.B[end], " ", kp.RD[end] / kp.w̄[end], " ", kp.L)
-    # kp.ΔLᵈ = kp.O / kp.B[end] - kp.L
+    kp.ΔLᵈ = floor(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L)
 
     update_wᴼ_max_kp!(kp)
 end
 
 
 """
-Lets kp produce ordered goods based on actual available labor stock.
+Lets kp add goods to the production queue, based on available labor supply
 """
 function produce_goods_kp!(
-    kp::CapitalGoodProducer
+    kp::CapitalGoodProducer,
+    global_param::GlobalParam,
     )
 
-    total_Q = 0
+    # Determine what the total demand is, regardless if it can be satisfied
+    D = length(kp.orders) * global_param.freq_per_machine
+    push!(kp.D, D)
 
-    # Check if enough labor available for all machines
-    unocc_L = kp.L
-    for order in kp.orders
+    # Determine how much labor is needed to produce a full machine
+    req_L = global_param.freq_per_machine / kp.B[end]
 
-        # Only push order in production queue if enough labor available
-        q = order[2] / kp.p[end]
-        req_L = q / kp.B[end]
+    # Check if production is constrained
+    if kp.L >= req_L * length(kp.orders)
 
-        if unocc_L > req_L
-            # Full order can be fulfilled
-            total_Q += q
-            push!(kp.prod_queue, order)
-            unocc_L -= req_L
-        elseif unocc_L > 0.0
-            # Partial order can be fulfilled
-            part_q = unocc_L * kp.B[end]
-            total_Q += part_q
-            new_Iₜ = part_q * kp.p[end]
-            push!(kp.prod_queue, (order[1], new_Iₜ))
-            unocc_L = 0.0
-        end
+        # Enough labor available, perform full production
+        kp.prod_queue = kp.orders
+
+    else
+
+        # Production constrained, determine amount of production possible
+        # and randomly select which machines to produce
+        n_poss_prod = floor(Int, kp.L / req_L)
+        kp.prod_queue = sample(kp.orders, n_poss_prod; replace=false)
+
     end
 
-    # Reset order amount back to zero
-    # kp.O = 0
+    # Append total production amount of capital units
+    Q = length(kp.prod_queue) * global_param.freq_per_machine
+    push!(kp.Q, Q)
 
-    # println(length(kp.orders), " ", length(kp.prod_queue), " ", kp.L, " ", kp.O)
+    println("len orders: $(length(kp.orders)), len prod queue: $(length(kp.prod_queue))")
 
-    # Push production amount
-    push!(kp.Q, total_Q)
+    # Empty order queue
+    kp.orders = []
+
+    # for cp_id in kp.orders
+
+    #     # Only push order in production queue if enough labor available
+    #     # q = order[2] / kp.p[end]
+    #     # req_L = q / kp.B[end]
+
+    #     if unocc_L > req_L
+    #         # Full order can be fulfilled
+    #         total_Q += global_param.freq_per_machine
+    #         push!(kp.prod_queue, cp_id)
+    #         unocc_L -= req_L
+    #     # elseif unocc_L > 0.0
+    #     #     # Partial order can be fulfilled
+    #     #     part_q = unocc_L * kp.B[end]
+    #     #     total_Q += part_q
+    #     #     new_Iₜ = part_q * kp.p[end]
+    #     #     new_n_machine_instances = ceil(Int, order[3] * (new_Iₜ / order[2]))
+    #     #     # print("Old n mach: $(order[2]), new n mach: $(new_n_machine_instances)")
+    #     #     push!(kp.prod_queue, (order[1], new_Iₜ, new_n_machine_instances))
+    #     #     unocc_L = 0.0
+    #     else
+    #         break
+    #     end
+    # end
 end
 
 
@@ -411,36 +427,33 @@ Sends orders from production queue to cp.
 """
 function send_orders_kp!(
     kp::CapitalGoodProducer,
+    global_param::GlobalParam,
     model::ABM
     )
 
-    tot_freq = 0
-    for order in kp.prod_queue
+    if length(kp.prod_queue) == 0
+        return nothing
+    end
 
-        cp_id = order[1]
-        Iₜ = order[2]
-        freq = Iₜ / kp.p[end]
+    # Count how many machines each individual cp ordered
+    # println(kp.prod_queue)
+    machines_per_cp = counter(kp.prod_queue)
+    # println(machines_per_cp)
 
-        machine = initialize_machine(freq; η=0, p=kp.p[end], A=kp.A[end])
+    for (cp_id, n_machines) in machines_per_cp
 
-        tot_freq += freq
-
-        receive_machines!(model[cp_id], machine, Iₜ)
+        # Produce machines in production queue, send to cp
+        machines = initialize_machine_stock(global_param.freq_per_machine, n_machines;
+                                            p=kp.p[end], A=kp.A[end])
+        Iₜ = length(machines) * global_param.freq_per_machine * kp.p[end]
+        receive_machines_cp!(model[cp_id], machines, Iₜ)
     end
     
-    # Add demand and sales.
-    D = tot_freq
-    push!(kp.D, D)
+    # Update sales
+    kp.curracc.S = kp.Q[end] * kp.p[end]
 
-    kp.curracc.S = tot_freq * kp.p[end]
-
-    # TODO: request money for machines that were produced
-
-    # TODO: describe how labor market frictions affect delivery machines
-
-    # Empty order and production queue
-    reset_order_queue_kp!(kp)
-    reset_prod_queue_kp!(kp)
+    # Empty production queue
+    kp.prod_queue = []
 end
 
 
@@ -449,14 +462,6 @@ function reset_order_queue_kp!(
     )
 
     kp.orders = []
-end
-
-
-function reset_prod_queue_kp!(
-    kp::CapitalGoodProducer
-    )
-
-    kp.prod_queue = []
 end
 
 
@@ -570,10 +575,7 @@ function replace_bankrupt_kp!(
     bankrupt_kp::Vector{Int},
     bankrupt_kp_i::Vector{Int},
     all_kp::Vector{Int},
-    φ3::Float64,
-    φ4::Float64,
-    α2::Float64,
-    β2::Float64,
+    global_param::GlobalParam,
     model::ABM
     )
 
@@ -598,16 +600,26 @@ function replace_bankrupt_kp!(
 
     # Get the technology frontier
     A_max = 0
+    A_min = 0
     A_max_id = 0
+
     B_max = 0
+    B_min = 0
 
     for kp_id in poss_kp
+        # Check if A is max or min in population
         if model[kp_id].A[end] > A_max
             A_max = model[kp_id].A[end]
             A_max_id = kp_id
+        elseif model[kp_id].A[end] < A_min
+            A_min = model[kp_id].A[end]
         end
+
+        # Check if B is max or min in population
         if model[kp_id].B[end] > B_max
             B_max = model[kp_id].B[end]
+        elseif model[kp_id].B[end] < B_min
+            B_min = model[kp_id].B_min
         end 
     end
 
@@ -617,18 +629,16 @@ function replace_bankrupt_kp!(
     # Re-use id of bankrupted company
     for (kp_id, kp_i) in zip(bankrupt_kp, bankrupt_kp_i)
 
-        coeff_NW = rand(Uniform(φ3, φ4))
+        coeff_NW = rand(Uniform(global_param.φ3, global_param.φ4))
 
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
-        kp_to_copy = model[sample(poss_kp, Weights(weights))]
 
-        # TODO: scale
-        a1 = -0.1
-        a2 = 0.01
-        tech_coeff = a1 + rand(Beta(α2, β2)) * (a2 - a1)
-        new_A = max(A_max * (1 + tech_coeff), 1)
-        new_B = max(B_max * (1 + tech_coeff), 1)
+        a1 = -0.05
+        a2 = 0.02
+        tech_coeff = a1 + rand(Beta(global_param.α2, global_param.β2)) * (a2 - a1)
+        new_A = max(A_max * (1 + tech_coeff), A_min, 1)
+        new_B = max(B_max * (1 + tech_coeff), B_min, 1)
 
         # Initialize new kp
         new_kp = initialize_kp(
