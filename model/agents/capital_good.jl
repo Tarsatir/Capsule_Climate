@@ -350,7 +350,7 @@ function plan_production_kp!(
     kp.O = length(kp.orders) * global_param.freq_per_machine
 
     # Determine amount of labor to hire
-    kp.ΔLᵈ = floor(kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L)
+    kp.ΔLᵈ = kp.O / kp.B[end] + kp.RD[end] / kp.w̄[end] - kp.L
 
     update_wᴼ_max_kp!(kp)
 end
@@ -390,7 +390,7 @@ function produce_goods_kp!(
     Q = length(kp.prod_queue) * global_param.freq_per_machine
     push!(kp.Q, Q)
 
-    println("len orders: $(length(kp.orders)), len prod queue: $(length(kp.prod_queue))")
+    # println("len orders: $(length(kp.orders)), len prod queue: $(length(kp.prod_queue))")
 
     # Empty order queue
     kp.orders = []
@@ -528,41 +528,41 @@ function update_μ_kp!(
     kp::CapitalGoodProducer
     )
 
-    b = 0.3
-    l = 4
+    # b = 0.3
+    # l = 4
 
-    if length(kp.μ) > l && length(kp.Π) > l && kp.Π[end] != 0
-        mean_μ = mean(kp.μ[end-l:end-1])
-        # Δμ = (cp.μ[end] - cp.μ[end-1]) / cp.μ[end-1]
-        Δμ = (kp.μ[end] - mean_μ) / mean_μ
+    # if length(kp.μ) > l && length(kp.Π) > l && kp.Π[end] != 0
+    #     mean_μ = mean(kp.μ[end-l:end-1])
+    #     # Δμ = (cp.μ[end] - cp.μ[end-1]) / cp.μ[end-1]
+    #     Δμ = (kp.μ[end] - mean_μ) / mean_μ
 
-        mean_Π = mean(kp.Π[end-l:end-1])
-        # ΔΠ = (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1]
-        ΔΠ = (kp.Π[end] - mean_Π) / mean_Π
+    #     mean_Π = mean(kp.Π[end-l:end-1])
+    #     # ΔΠ = (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1]
+    #     ΔΠ = (kp.Π[end] - mean_Π) / mean_Π
 
-        # println("$mean_μ, $mean_Π")
-        # println("Δμ: $Δμ, $(sign(Δμ)), ΔΠ: $ΔΠ, $(sign(ΔΠ))")
+    #     # println("$mean_μ, $mean_Π")
+    #     # println("Δμ: $Δμ, $(sign(Δμ)), ΔΠ: $ΔΠ, $(sign(ΔΠ))")
 
-        shock = rand(Uniform(0.0, b))
+    #     shock = rand(Uniform(0.0, b))
 
-        new_μ = max(kp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
-        push!(kp.μ, new_μ)
+    #     new_μ = max(kp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+    #     push!(kp.μ, new_μ)
 
-        # if ΔΠ > 0
-        #     new_μ = cp.μ[end] * (1 + Δμ)
-        #     push!(cp.μ, new_μ)
-        # else
-        #     new_μ = max(cp.μ[end] * (1 - Δμ), 0)
-        #     push!(cp.μ, new_μ)
-        # end
+    #     # if ΔΠ > 0
+    #     #     new_μ = cp.μ[end] * (1 + Δμ)
+    #     #     push!(cp.μ, new_μ)
+    #     # else
+    #     #     new_μ = max(cp.μ[end] * (1 - Δμ), 0)
+    #     #     push!(cp.μ, new_μ)
+    #     # end
 
-    elseif kp.Π[end] == 0
-        push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
-    else
-        push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
-    end
+    # elseif kp.Π[end] == 0
+    #     push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
+    # else
+    #     push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
+    # end
 
-    # push!(kp.μ, kp.μ[end])
+    push!(kp.μ, kp.μ[end])
 
 end
 

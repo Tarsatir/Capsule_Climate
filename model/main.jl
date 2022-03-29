@@ -10,6 +10,8 @@ using RecursiveArrayTools
 using DataStructures
 # using PyCall
 
+using Dates
+
 # Include files
 include("../results/write_results.jl")
 include("helpers/custom_schedulers.jl")
@@ -50,7 +52,7 @@ Initializes model.
 """
 function initialize_model(
     T;
-    n_captlgood = 50,
+    n_captlgood = 30,
     n_consrgood = 200,
     n_households = 2500,
     n_init_emp_cp = 10,
@@ -100,16 +102,8 @@ function initialize_model(
         end
 
         # Initialize capital good stock
-        n_machines_init = 40  #TODO: put this in parameters
-
-        # machines = Vector{Machine}()
-        # for _ in 1:n_machines_init
-        #     # Machines have random age as to allow replacement in early periods
-        #     freq = global_param.freq_per_machine
-        #     machine_struct = initialize_machine(freq; η=global_param.η)
-        #     push!(machines, machine_struct)
-        # end
-
+        n_machines_init = 50  #TODO: put this in parameters
+        
         machines = initialize_machine_stock(global_param.freq_per_machine, n_machines_init)
 
         cp = initialize_cp(
@@ -201,7 +195,7 @@ function model_step!(
         model[p_id].age += 1
     end
 
-    # Check if households still have enough producers, otherwise sample more
+    # Check if households still have enough bp and lp, otherwise sample more
     refill_suppliers_all_hh!(
         all_hh,
         all_bp, 
@@ -270,8 +264,6 @@ function model_step!(
         global_param,
         model
     )
-    # TODO: check if this is still needed, otherwise delete
-    # update_avg_T_unemp_lm(labormarket_struct, model)
 
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
@@ -286,7 +278,7 @@ function model_step!(
 
     # (5) Production takes place for cp and kp
     for cp_id in all_cp
-        produce_goods_cp!(model[cp_id])
+        produce_goods_cp!(model[cp_id], global_param)
     end
 
     for kp_id in all_kp
@@ -447,7 +439,7 @@ end
 
 
 function run_simulation(;
-    T=100::Int,
+    T=400::Int,
     changed_params=nothing,
     full_output=true::Bool
     )::Float64

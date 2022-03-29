@@ -40,7 +40,7 @@ mutable struct ConsumerGoodProducer <: AbstractAgent
     wᴼ :: Float64                   # offered wage
     wᴼ_max :: Float64               # maximum offered wage
     brochures :: Vector             # brochures from kp
-    π :: Float64                    # hist productivity
+    π :: Float64                    # hist productivity of total capital stock
     f :: Vector{Float64}            # hist market share
     μ :: Vector{Float64}            # markup rate
     Π :: Vector{Float64}            # hist profits
@@ -68,6 +68,8 @@ function initialize_cp(
     f=2/n_consrgood,
     first_gen=true::Bool
     )
+
+    # Initialize machine s
 
     balance = Balance(               
         0.0,                        # - N: inventory (in money units)
@@ -200,11 +202,11 @@ function plan_investment_cp!(
     # Update LT production
     update_Qᵉ_cp!(cp, global_param.ω)
 
-    p_machine  = brochure[2]
+    p_machine  = brochure[2] * global_param.freq_per_machine
 
     # Compute desired capital stock expansion
     if cp.Qᵉ > cp.n_machines
-        cp.n_mach_ordered_EI = floor((cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine) * global_param.freq_per_machine
+        cp.n_mach_ordered_EI = floor((cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine)
         cp.EIᵈ = p_machine * cp.n_mach_ordered_EI
     else
         cp.EIᵈ = 0
@@ -264,7 +266,7 @@ function check_funding_restrictions_cp!(
                 poss_EI = cp.cI + max_add_debt
                 cp.n_mach_ordered_EI = floor(Int, cp.n_mach_ordered_EI * (poss_EI / cp.EIᵈ))
                 cp.n_mach_ordered_RS = 0
-                cp.mach_tb_repl = Vector{Machine}()
+                cp.mach_tb_repl = []
 
                 # cp.Iᵈ = cp.cI + max_add_debt
                 # cp.EIᵈ = cp.cI + max_add_debt
@@ -275,7 +277,12 @@ function check_funding_restrictions_cp!(
 
                 poss_RS = cp.cI + max_add_debt - cp.EIᵈ
                 cp.n_mach_ordered_RS = floor(Int, cp.n_mach_ordered_RS * (poss_RS / cp.RSᵈ))
-                cp.mach_tb_repl = cp.mach_tb_repl[:cp.n_mach_ordered_RS]
+
+                if cp.n_mach_ordered_RS > 0
+                    cp.mach_tb_repl = cp.mach_tb_repl[1:cp.n_mach_ordered_RS]
+                else
+                    cp.mach_tb_repl = []
+                end
 
                 # cp.Iᵈ = cp.EIᵈ
                 # cp.RSᵈ = 0.0
@@ -322,7 +329,7 @@ function plan_replacement_cp!(
     p_star = brochure[2]
     c_star = cp.w̄[end] / Aᵈ
 
-    cp.mach_tb_repl = Vector{Machine}()
+    cp.mach_tb_repl = []
 
     for machine in cp.Ξ
         c_A = cp.w̄[end] / machine.A
@@ -369,11 +376,24 @@ end
 Produces goods based on planned production and actual amount of hired workers
 """
 function produce_goods_cp!(
-    cp::ConsumerGoodProducer
+    cp::ConsumerGoodProducer,
+    global_param::GlobalParam
     )
 
+    # If the cp does not need to use its complete capital stock, only use most productive 
+    # machines
+    n_machines_req = ceil(Int, cp.Qˢ / global_param.freq_per_machine)
+    if n_machines_req < length(cp.Ξ)
+        # Compute number of machines needed (machines already ordered on productivity, 
+        # least to most productive)
+        req_machines = cp.Ξ[end-n_machines_req:end]
+        actual_π = mean(machine -> machine.A, req_machines)
+    else
+        actual_π = cp.π[end]
+    end
+
     # Compute total production amount
-    Q = max(min(cp.π * cp.L, cp.n_machines, cp.Qˢ), 0)
+    Q = max(min(actual_π * cp.L, cp.n_machines, cp.Qˢ), 0)
     # println("Q: $Q, πL: $(cp.π * cp.L), n_mach: $(cp.n_machines), Qˢ: $(cp.Qˢ), L: $(cp.L)")
     push!(cp.Q, Q)
     
@@ -497,11 +517,9 @@ function receive_machines_cp!(
     Iₜ::Float64,
     )
 
-    println("len repl: $(length(cp.mach_tb_repl)), len new: $(length(new_machines))")
+    # println("1: len exp: $(cp.n_mach_ordered_EI), len repl: $(length(cp.mach_tb_repl)), len new: $(length(new_machines)), len all: $(length(cp.Ξ))")
 
     # Add new machines to capital stock, add investment expenditure
-    # println(new_machines)
-    # println(cp.Ξ)
     cp.Ξ = vcat(cp.Ξ, new_machines)
     cp.curracc.TCI = Iₜ
 
@@ -509,20 +527,22 @@ function receive_machines_cp!(
     if cp.n_mach_ordered_EI == 0 && cp.n_mach_ordered_RS > length(new_machines)
 
         # All machines are meant for replacement
-        # cp.mach_tb_repl = cp.mach_tb_repl[1:length(new_machines)]
+        cp.mach_tb_repl = cp.mach_tb_repl[1:length(new_machines)]
 
     elseif length(new_machines) < cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
 
         # Decide how many old machines to discard
         n_old_replace = max(length(new_machines) - cp.n_mach_ordered_EI, 0)
         if n_old_replace > 0
-            # cp.mach_tb_repl = cp.mach_tb_repl[1:n_old_replace+1]
+            cp.mach_tb_repl = cp.mach_tb_repl[1:n_old_replace+1]
         else
-            # cp.mach_tb_repl = []
+            cp.mach_tb_repl = []
         end
     end
 
     filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
+
+    # println("2: len exp: $(cp.n_mach_ordered_EI), len repl: $(length(cp.mach_tb_repl)), len new: $(length(new_machines)), len all: $(length(cp.Ξ))")
 end
 
 
@@ -544,9 +564,10 @@ function replace_bankrupt_cp!(
     model::ABM
     )
 
-    # Create vectors containing ids of non-bankrupt bp and lp
+    # Create vectors containing ids of non-bankrupt bp, lp and kp
     nonbankrupt_bp = setdiff(all_bp, bankrupt_bp)
     nonbankrupt_lp = setdiff(all_lp, bankrupt_lp)
+    nonbankrupt_kp = setdiff(all_kp, bankrupt_kp)
 
     avg_n_machines = mean(map(cp_id -> model[cp_id].n_machines, vcat(nonbankrupt_bp, nonbankrupt_lp)))
     avg_NW = mean(map(cp_id -> model[cp_id].balance.NW, vcat(nonbankrupt_bp, nonbankrupt_lp)))
@@ -556,8 +577,6 @@ function replace_bankrupt_cp!(
     weights_hh_bp = map(hh_id -> min(1, 1 / length(model[hh_id].bp)), all_hh)
     weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
 
-    # Generate a vector of all kp that did not go bankrupt
-    # poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
 
     for p_id in vcat(bankrupt_bp, bankrupt_lp)
 
@@ -569,14 +588,14 @@ function replace_bankrupt_cp!(
         # New cp receive a advanced type of machine, first select kp proportional
         # to their market share. cp can also select kp ids that went bankrupt in this 
         # period, as these producers have already been replaced with new companies
-        weights_kp = map(kp_id -> model[kp_id].f[end], all_kp)
+        weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
         kp_choice_id = sample(all_kp, Weights(weights_kp))
         A_choice = model[kp_choice_id].A[end]
         p_choice = model[kp_choice_id].p[end]
 
         # Sample what the size of the capital stock will be
         capital_coefficient = rand(Uniform(global_param.φ1, global_param.φ2))
-        n_machines = floor(Int, capital_coefficient * avg_n_machines / global_param.freq_per_machine) * global_param.freq_per_machine
+        n_machines = floor(Int, capital_coefficient * avg_n_machines / global_param.freq_per_machine)
         D = avg_cu * n_machines * global_param.freq_per_machine
 
         # Generate vector of machines

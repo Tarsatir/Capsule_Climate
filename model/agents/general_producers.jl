@@ -285,8 +285,8 @@ function check_if_bankrupt_p!(
     # TODO: describe waiting period
     t_wait = 4
 
-    if p.f[end] <= 0.001 || p.balance.EQ < 0
-    # if (length(p.D) > t_wait || p.first_gen) && (mean(p.f[end])<= 0.0001 || p.balance.EQ < 0)
+    # if p.f[end] <= 0.001 || p.balance.EQ < 0
+    if (length(p.D) > t_wait || p.first_gen) && (mean(p.f[end])<= 0.0001 || p.balance.EQ < 0)
         return true
     end
     return false
