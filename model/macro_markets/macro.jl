@@ -5,6 +5,8 @@ mutable struct MacroEconomy
     GDP_Π_cp :: Vector{Float64}  # profit share of GDP of cp over time
     GDP_Π_kp :: Vector{Float64}  # profit share of GDP of kp over time
 
+    GDP_growth :: Vector{Float64}   # GDP growth rates over time
+
     p̄::Vector{Float64}           # average price of cp goods over time
     p̄_kp::Vector{Float64}        # average price of kp goods over time
     μ_bp::Vector{Float64}
@@ -15,6 +17,7 @@ mutable struct MacroEconomy
 
     C :: Vector{Float64}         # aggregate consumption over time
     unsat_demand :: Vector{Float64} # average ratio of unsatisfied demand
+    avg_N_goods :: Vector{Float64}
 
     # Division of money over sectors
     M :: Vector{Float64}         # total amount of money (should be stable)
@@ -65,8 +68,10 @@ mutable struct MacroEconomy
     ΔL̄_kp_std :: Vector{Float64}
 
     # Investment levels
-    EI_avg :: Vector{Float64}    # average expansion investment
-    RS_avg :: Vector{Float64}    # average replacement investment
+    EI_avg :: Vector{Float64}           # average expansion investment
+    n_mach_EI_avg :: Vector{Float64}    # average amount of ordered machines for EI
+    RS_avg :: Vector{Float64}           # average replacement investment
+    n_mach_RS_avg :: Vector{Float64}    # average amounf of ordered machines for RS
 
     # Productivity
     avg_π :: Vector{Float64}     # average productivity cp
@@ -99,6 +104,8 @@ function initialize_macro(
         [],                     # profit share of GDP of cp over time
         [],                     # profit share of GDP of kp over time
 
+        [],                     # GDP growth rates over time
+
         [],                     # p̄: average price over time
         [],                     # p̄_kp: average price of kp goods over time
         [],
@@ -109,6 +116,7 @@ function initialize_macro(
 
         [],                     # aggregate consumption
         [],                     # unsat_dem: ratio of unsatisfied demand
+        [],                     # Inventory ratio
 
         # Money amounts
         [],                     # M total
@@ -155,7 +163,9 @@ function initialize_macro(
 
         # Investments
         [],                     # EI
+        [],                     # n mach EI
         [],                     # RS
+        [],                     # n mach RS
 
         # Productivity
         [],
@@ -276,8 +286,12 @@ function update_macro_timeseries(
     # Investment
     EI_avg = mean(map(cp -> cp.EIᵈ, all_cp_str))
     push!(macro_struct.EI_avg, EI_avg)
+    n_mach_EI_avg = mean(cp -> cp.n_mach_ordered_EI, all_cp_str)
+    push!(macro_struct.n_mach_EI_avg, n_mach_EI_avg)
     RS_avg = mean(map(cp -> cp.RSᵈ, all_cp_str))
     push!(macro_struct.RS_avg, RS_avg)
+    n_mach_RS_avg = mean(cp -> cp.n_mach_ordered_RS, all_cp_str)
+    push!(macro_struct.n_mach_RS_avg, n_mach_RS_avg)
 
     # Productivity
     avg_π = mean(map(cp -> cp.π, all_cp_str))
@@ -310,6 +324,9 @@ function update_macro_timeseries(
         all_hh_str,
         macro_struct
     )
+
+    avg_N_goods = mean(map(cp -> cp.N_goods, all_cp_str))
+    push!(macro_struct.avg_N_goods, avg_N_goods)
 
     # Mean rate of capital utilization
     cu = mean(map(cp -> cp.cu, all_cp_str))
@@ -356,6 +373,13 @@ function compute_GDP!(
 
     GDP = total_I + total_Π_cp + total_Π_kp
     push!(macro_struct.GDP, GDP)
+
+    if length(GDP) > 1
+        GDP_growth = (GDP[end] - GDP[end-1]) / GDP[end-1]
+    else
+        GDP_growth = 0
+    end
+    push!(macro_struct.GDP_growth, GDP_growth)
 end
 
 function update_labor_stats(macro_struct, labormarket_struct)

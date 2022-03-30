@@ -217,10 +217,9 @@ function matching_lm(
             n_sample = min(10, length(jobseeking_hh))
 
             # Make queue of job-seeking households
-            Lˢ = sample(jobseeking_hh, n_sample, replace=false)
-
             # Only select households with a low enough reservation wage
-            Lᵈ = sort(Lˢ, by = hh_id -> model[hh_id].wʳ)
+            Lᵈ = sort(sample(jobseeking_hh, n_sample, replace=false), 
+                      by = hh_id -> model[hh_id].wʳ)
 
             to_be_hired = Vector{Int}()
             for hh_id in Lᵈ

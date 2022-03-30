@@ -18,10 +18,12 @@ function save_macro_data(macro_struct)
         GDP_I=macro_struct.GDP_I,
         GDP_cp=macro_struct.GDP_Π_cp,
         GDP_kp=macro_struct.GDP_Π_kp,
+        GDP_growth=macro_struct.GDP_growth,
 
         C = macro_struct.C,
 
         unsat_demand = macro_struct.unsat_demand,
+        avg_N_goods = macro_struct.avg_N_goods,
 
         CPI=macro_struct.CPI,
         CPI_kp = macro_struct.CPI_kp,
@@ -63,7 +65,9 @@ function save_macro_data(macro_struct)
         dL_kp_avg=macro_struct.ΔL̄_kp_avg,
 
         EI_avg=macro_struct.EI_avg,
+        n_mach_EI=macro_struct.n_mach_EI_avg,
         RS_avg=macro_struct.RS_avg,
+        n_mach_RS=macro_struct.n_mach_RS_avg,
 
         avg_pi=macro_struct.avg_π,
         avg_A=macro_struct.avg_A,

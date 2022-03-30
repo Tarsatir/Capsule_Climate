@@ -236,8 +236,8 @@ function kill_all_bankrupt_p!(
     model::ABM
     )
 
-    all_unpaid_debt = sum(map(p_id -> model[p_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp, bankrupt_lp)))
-    println("Unpaid debt: $(all_unpaid_debt)")
+    # all_unpaid_debt = sum(map(p_id -> model[p_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp, bankrupt_lp)))
+    # println("Unpaid debt: $(all_unpaid_debt)")
 
     # Remove bankrupt cp ids from households
     for hh_id in all_hh

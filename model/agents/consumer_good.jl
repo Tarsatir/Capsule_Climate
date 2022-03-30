@@ -243,7 +243,7 @@ function check_funding_restrictions_cp!(
     end
 
     # Determine how much additional debt can be made
-    max_add_debt = global_param.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt
+    max_add_debt = max(global_param.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
 
     # Check if cost of labor and investment can be financed from liquid assets
     NW_no_prod = (cp.balance.NW + cp.Dᵉ * cp.p[end] + cp.curracc.rev_dep 
@@ -264,6 +264,7 @@ function check_funding_restrictions_cp!(
                 # Decrease amount of expansionary investment.
 
                 poss_EI = cp.cI + max_add_debt
+                # println(cp.n_mach_ordered_EI, " ", poss_EI, " ", cp.EIᵈ)
                 cp.n_mach_ordered_EI = floor(Int, cp.n_mach_ordered_EI * (poss_EI / cp.EIᵈ))
                 cp.n_mach_ordered_RS = 0
                 cp.mach_tb_repl = []
@@ -394,7 +395,7 @@ function produce_goods_cp!(
 
     # Compute total production amount
     Q = max(min(actual_π * cp.L, cp.n_machines, cp.Qˢ), 0)
-    # println("Q: $Q, πL: $(cp.π * cp.L), n_mach: $(cp.n_machines), Qˢ: $(cp.Qˢ), L: $(cp.L)")
+    # println("D: $(cp.D[end]), Q: $Q, πL: $(actual_π * cp.L), n_mach: $(cp.n_machines), Qˢ: $(cp.Qˢ), L: $(cp.L)")
     push!(cp.Q, Q)
     
     # Update rate of capital utilization
@@ -440,7 +441,7 @@ function send_orders_cp!(
         push!(cp.D, 0)
         cp.Dᵁ = 0
         cp.curracc.S = 0
-        return
+        return nothing
     end
 
     # Keep track of total demand, sales and unsatisfied demand
@@ -455,6 +456,8 @@ function send_orders_cp!(
         q = order[2]
 
         total_D += q
+
+        # share_fulfilled = 1.0
 
         # Check if enough inventory available
         if cp.N_goods > q
@@ -705,9 +708,8 @@ function update_Qᵉ_cp!(
     ω::Float64
     )
 
-    # TODO: very large sensitivity to this parameter: check out!
-
-    cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * (cp.Dᵉ + cp.Nᵈ)
+    # cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * (cp.Dᵉ + cp.Nᵈ)
+    cp.Qᵉ = cp.Dᵉ + cp.Nᵈ + cp.Dᵁ
     
     # if length(cp.D) > 2
     #     Qg = cp.Q[end] * (1 + (cp.D[end] - cp.D[end-1]) / cp.D[end-1])

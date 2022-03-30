@@ -31,7 +31,7 @@ def call_AAT_sampling(samp_strat, M, X_labels, N):
     return X
 
 
-def run_PAWN(X_labels, X, Y, run_nr, n=10, Nboot=3000):
+def run_PAWN(X_labels, X, Y, run_nr, name_dep_var, n=10, Nboot=3000):
     """
     Runs code required for PAWN sensitivity analysis.
     """
@@ -45,15 +45,15 @@ def run_PAWN(X_labels, X, Y, run_nr, n=10, Nboot=3000):
     # Plot bootstrapping results (for instance for KS_max):
     plt.figure()
     pf.boxplot1(KS_max_m, S_lb=KS_max_lb, S_ub=KS_max_ub,
-                X_Labels=X_labels, Y_Label='Ks (max)')
+                X_Labels=X_labels, Y_Label=f'{name_dep_var} (max)')
     plt.savefig(f'parameters/sensitivity/sensitivity_runs/sensitivity_max_plot{run_nr}.png')
 
     plt.figure()
     pf.boxplot1(KS_mean_m, S_lb=KS_mean_lb, S_ub=KS_mean_ub,
-                X_Labels=X_labels, Y_Label='Ks (mean)')
+                X_Labels=X_labels, Y_Label=f'{name_dep_var} (mean)')
     plt.savefig(f'parameters/sensitivity/sensitivity_runs/sensitivity_mean_plot{run_nr}.png')
 
     plt.figure()
     pf.boxplot1(KS_median_m, S_lb=KS_median_lb, S_ub=KS_median_ub,
-                X_Labels=X_labels, Y_Label='Ks (median)')
+                X_Labels=X_labels, Y_Label=f'{name_dep_var} (median)')
     plt.savefig(f'parameters/sensitivity/sensitivity_runs/sensitivity_median_plot{run_nr}.png')

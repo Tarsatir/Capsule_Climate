@@ -57,11 +57,11 @@ function initialize_global_params(
         0.3,                        # ζ: firm search capabilities
         3.0,                        # α1: 1st beta dist param for IN
         3.0,                        # β1: 2nd beta dist param for IN
-        -0.03,                      # κ_lower: 1st beta dist support
-        0.03,                       # κ_upper: 2nd beta dist support
+        -0.02,                      # κ_lower: 1st beta dist support
+        0.02,                       # κ_upper: 2nd beta dist support
 
         0.5,                        # γ: new custommer sample parameter
-        0.15,                       # μ1: kp markup rule
+        0.2,                        # μ1: kp markup rule
         0.0,                        # r: (annual) interest rate
         0.1,                        # ι: desired inventories
         3,                          # b: payback period

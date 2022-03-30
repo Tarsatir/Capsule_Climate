@@ -445,7 +445,7 @@ function send_orders_kp!(
         # Produce machines in production queue, send to cp
         machines = initialize_machine_stock(global_param.freq_per_machine, n_machines;
                                             p=kp.p[end], A=kp.A[end])
-        Iₜ = length(machines) * global_param.freq_per_machine * kp.p[end]
+        Iₜ = n_machines * global_param.freq_per_machine * kp.p[end]
         receive_machines_cp!(model[cp_id], machines, Iₜ)
     end
     
@@ -576,6 +576,7 @@ function replace_bankrupt_kp!(
     bankrupt_kp_i::Vector{Int},
     all_kp::Vector{Int},
     global_param::GlobalParam,
+    init_param::InitParam,
     model::ABM
     )
 
@@ -596,7 +597,7 @@ function replace_bankrupt_kp!(
     # Determine all possible kp and set weights for sampling proportional to the 
     # quality of their technology
     poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
-    weights = map(kp_id -> min(model[kp_id].A[end], model[kp_id].B[end]), poss_kp)
+    # weights = map(kp_id -> min(model[kp_id].A[end], model[kp_id].B[end]), poss_kp)
 
     # Get the technology frontier
     A_max = 0
@@ -637,8 +638,8 @@ function replace_bankrupt_kp!(
         a1 = -0.05
         a2 = 0.02
         tech_coeff = a1 + rand(Beta(global_param.α2, global_param.β2)) * (a2 - a1)
-        new_A = max(A_max * (1 + tech_coeff), A_min, 1)
-        new_B = max(B_max * (1 + tech_coeff), B_min, 1)
+        new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_0)
+        new_B = max(B_max * (1 + tech_coeff), B_min, init_param.B_0)
 
         # Initialize new kp
         new_kp = initialize_kp(

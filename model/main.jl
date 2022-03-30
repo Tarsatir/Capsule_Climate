@@ -17,6 +17,7 @@ include("../results/write_results.jl")
 include("helpers/custom_schedulers.jl")
 include("helpers/dist_matrix.jl")
 include("global_parameters.jl")
+include("init_parameters.jl")
 
 include("objects/accounting_firms.jl")
 include("objects/accounting_govt.jl")
@@ -52,13 +53,6 @@ Initializes model.
 """
 function initialize_model(
     T;
-    n_captlgood = 30,
-    n_consrgood = 200,
-    n_households = 2500,
-    n_init_emp_cp = 10,
-    n_init_emp_kp = 4,
-    n_bp = 7,
-    n_lp = 7,
     changed_params
     )
 
@@ -67,8 +61,9 @@ function initialize_model(
                 scheduler = by_type(true,true),
                 warn=false)
 
-    # Initialize struct that holds global params
+    # Initialize struct that holds global params and initial parameters
     global_param  = initialize_global_params(changed_params)
+    init_param = initialize_init_params()
 
     # Initialize struct that holds macro variables
     macro_struct = initialize_macro(T)
@@ -83,7 +78,7 @@ function initialize_model(
     id = 1
 
     # Initialize households
-    for _ in 1:n_households
+    for _ in 1:init_param.n_hh
 
         hh = initialize_hh(id)
         add_agent!(hh, model)
@@ -92,28 +87,29 @@ function initialize_model(
     end
 
     # Initialize consumer good producers
-    for cp_i in 1:n_consrgood
+    for cp_i in 1:init_param.n_cp
 
         # Decide if producer makes basic or luxury goods
         # In init, half of producers are allocated basic and half luxury
         type_good = "Basic"
-        if cp_i > n_consrgood / 2
+        if cp_i > init_param.n_cp / 2
             type_good = "Luxury"
         end
 
         # Initialize capital good stock
-        n_machines_init = 50  #TODO: put this in parameters
+        # n_machines_init = 50  #TODO: put this in parameters
         
-        machines = initialize_machine_stock(global_param.freq_per_machine, n_machines_init)
+        machines = initialize_machine_stock(global_param.freq_per_machine, 
+                                            init_param.n_machines_init; A=init_param.A_0)
 
         cp = initialize_cp(
                 id,
                 machines,  
                 type_good, 
-                n_init_emp_cp, 
+                init_param.n_init_emp_cp, 
                 global_param.μ1,
                 global_param.ι;
-                n_consrgood=n_consrgood
+                n_consrgood=init_param.n_cp
             )
         update_n_machines_cp!(cp, global_param.freq_per_machine)
         add_agent!(cp, model)
@@ -122,9 +118,9 @@ function initialize_model(
     end
 
     # Initialize capital good producers
-    for kp_i in 1:n_captlgood
+    for kp_i in 1:init_param.n_kp
 
-        kp = initialize_kp(id, kp_i, n_captlgood)
+        kp = initialize_kp(id, kp_i, init_param.n_kp; A=init_param.A_0, B=init_param.B_0)
         add_agent!(kp, model)
 
         id += 1
@@ -146,7 +142,8 @@ function initialize_model(
 
     # Let all households select cp of both types for trading network
     for hh_id in all_hh
-        select_bp_lp_hh!(model[hh_id], all_bp, all_lp, n_bp, n_lp)
+        select_bp_lp_hh!(model[hh_id], all_bp, all_lp, 
+                         init_param.n_bp_hh, init_param.n_lp_hh)
     end
 
     # Spread employed households over producerss
@@ -155,8 +152,8 @@ function initialize_model(
         all_hh, 
         all_cp, 
         all_kp,
-        n_init_emp_cp,
-        n_init_emp_kp,
+        init_param.n_init_emp_cp,
+        init_param.n_init_emp_kp,
         model
     )
 
@@ -171,7 +168,7 @@ function initialize_model(
         )
     end
 
-    return model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct
+    return model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct
 end
 
 
@@ -179,6 +176,7 @@ function model_step!(
     t::Int,
     T::Int,
     global_param::GlobalParam, 
+    init_param::InitParam,
     macro_struct::MacroEconomy, 
     gov_struct::Government, 
     labormarket_struct::LaborMarket,
@@ -367,7 +365,7 @@ function model_step!(
     # Select producers that will be declared bankrupt and removed
     bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
 
-    println("avg age bankrupt kp: $(mean(map(kp_id -> model[kp_id].age, bankrupt_kp)))")
+    # println("avg age bankrupt kp: $(mean(map(kp_id -> model[kp_id].age, bankrupt_kp)))")
 
     # (7) macro-economic indicators are updated.
     update_macro_timeseries(
@@ -410,6 +408,7 @@ function model_step!(
         bankrupt_kp_i, 
         all_kp,
         global_param,
+        init_param,
         model
     )
 
@@ -442,21 +441,23 @@ function run_simulation(;
     T=400::Int,
     changed_params=nothing,
     full_output=true::Bool
-    )::Float64
+    )::Tuple{Float64, Float64}
 
     to = TimerOutput()
 
-    @timeit to "init" model, global_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T; changed_params=changed_params)
+    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T; changed_params=changed_params)
     for t in 1:T
-        
-        if t % 100 == 0
-            println("Step $t")
-        end
+
+        println("Step $t")
+        # if t % 100 == 0
+        #     println("Step $t")
+        # end
 
         @timeit to "step" model_step!(
                                 t,
                                 T, 
                                 global_param, 
+                                init_param,
                                 macro_struct, 
                                 gov_struct, 
                                 labormarket_struct, 
@@ -477,7 +478,7 @@ function run_simulation(;
         println()
     end
 
-    return macro_struct.GDP[end]
+    return macro_struct.GDP[end], mean(macro_struct.GDP_growth)
 end
 
 run_simulation()

@@ -23,7 +23,7 @@ mutable struct Household <: AbstractAgent
 
     # Consumption variables
     C :: Vector{Float64}        # budget
-    N_goods :: Float64          # number of goods bought
+    # N_goods :: Float64          # number of goods bought
     bp :: Vector{Int}           # connected cp basic goods
     lp :: Vector{Int}           # connected cp luxury goods
     unsat_dem :: Vector         # unsatisfied demands
@@ -55,7 +55,7 @@ function initialize_hh(
         # [100],                  # Wʳ: real wealth or cash on hand
 
         [],                     # C: budget
-        0.0,                    # N_goods: number of goods bought
+        # 0.0,                    # N_goods: number of goods bought
         Vector{Int}(),          # all_cp_B: connected cp basic goods
         Vector{Int}(),          # all_cp_L: connected cp luxury goods
         Vector(),
@@ -103,10 +103,7 @@ Sets consumption budget based on current wealth level
 function set_consumption_budget_hh!(
     hh::Household,
     all_W_hh::Vector{Float64},
-    c_L_max::Float64,
-    a_σ::Float64,
-    b_σ::Float64,
-    α_cp::Float64,
+    global_param::GlobalParam,
     model::ABM
     )
 
@@ -118,10 +115,10 @@ function set_consumption_budget_hh!(
     # TODO: check if this is still needed
 
     # Update share of goods to bg and lg
-    update_share_goodtypes_hh!(hh, c_L_max, a_σ, b_σ)
+    update_share_goodtypes_hh!(hh, global_param.c_L_max, global_param.a_σ, global_param.b_σ)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, α_cp, all_W_hh)
+    compute_consumption_budget_hh!(hh, global_param.α_cp, all_W_hh)
 end
 
 
@@ -200,39 +197,57 @@ end
 Places orders at bp and lp
 """
 function place_orders_hh!(
-    hh::Household, 
+    hh_p::Vector{Int},
+    C_i::Float64,
+    cp_inventories,
+    p_with_inventory::Vector{Int},
     model::ABM
     )
 
     n_days = 4
 
-    hh.N_goods = 0.0
+    # If none of the known suppliers has products in stock, randomly select
+    # other suppliers until demand can be met.
+    poss_p = Dict(p_id => 1 / model[p_id].p[end] for p_id ∈ intersect(hh_p, p_with_inventory))
 
-    # Sample from bp and lp
-    weights_bp = map(bp_id -> 1 / model[bp_id].p[end], hh.bp)
-    weights_lp = map(lp_id -> 1 / model[lp_id].p[end], hh.lp)
+    add_p_id = 0
 
-    bp_choices = sample(hh.bp, Weights(weights_bp), n_days)
-    lp_choices = sample(hh.lp, Weights(weights_lp), n_days)
+    # As long as the current producers do not have enough inventory and there are still
+    # possible producers to sample, randomly sample producers and add to pool of possible cp
+    while (sum(map(p_id -> cp_inventories[p_id], collect(keys(poss_p)))) < C_i && 
+           length(poss_p) != length(p_with_inventory))
 
-    C_B = hh.C[end] * (1 - hh.c_L)
-    C_L = hh.C[end] * hh.c_L
-
-    # Send order to queues of bp and lp
-    for (bp_choice_id, lp_choice_id) in zip(bp_choices, lp_choices)
-
-        # Compute how many units can be bought, make orders
-        q_B = (C_B / n_days) / model[bp_choice_id].p[end]
-        q_L = (C_L / n_days) / model[lp_choice_id].p[end]
-
-        hh.N_goods += (q_B + q_L)
-
-        order_B = (hh.id, q_B)
-        order_L = (hh.id, q_L)
-
-        push!(model[bp_choice_id].order_queue, order_B)
-        push!(model[lp_choice_id].order_queue, order_L)
+        add_p_id = sample(setdiff(p_with_inventory, keys(poss_p)))
+        poss_p[add_p_id] = 1 / model[add_p_id].p[end] 
     end
+
+    # Place orders based on the availability of goods
+    chosen_amount = 0
+    chosen_p_id = 0
+    C_per_day = C_i / n_days
+
+    p_orders = Dict()
+    
+    while C_i > 0 && length(poss_p) > 0
+        chosen_p_id = sample(collect(keys(poss_p)), Weights(collect(values(poss_p))))
+        chosen_amount = min(min(C_i, C_per_day), cp_inventories[chosen_p_id])
+
+        if chosen_p_id ∉ keys(p_orders)
+            p_orders[chosen_p_id] = chosen_amount
+        else
+            p_orders[chosen_p_id] += chosen_amount
+        end
+
+        C_i -= chosen_amount
+        cp_inventories[chosen_p_id] -= chosen_amount
+
+        if cp_inventories[chosen_p_id] == 0
+            delete!(poss_p, chosen_p_id)
+            filter!(p_id -> p_id ≠ chosen_p_id, p_with_inventory)
+        end
+    end
+
+    return p_orders, cp_inventories, p_with_inventory
 end
 
 

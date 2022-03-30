@@ -41,13 +41,13 @@ def plot_macro_vars(df):
     # ax[1,1].fill_between(range(len(df.w_avg)), df.w_avg + df.w_std, df.w_avg - df.w_std, 
     #                  color='green', alpha=0.4)
 
-    real_wr_avg = 100 * df.wr_avg / df.CPI
-    ax[1,1].plot(range(len(real_wr_avg)), real_wr_avg, color='red', label='$w^r$')
+    # real_wr_avg = 100 * df.wr_avg / df.CPI
+    # ax[1,1].plot(range(len(real_wr_avg)), real_wr_avg, color='red', label='$w^r$')
     # ax[1,1].fill_between(range(len(df.wr_avg)), df.wr_avg + df.wr_std, df.wr_avg - df.wr_std, 
     #                  color='red', alpha=0.4)
 
-    real_ws_avg = 100 * df.ws_avg / df.CPI
-    ax[1,1].plot(range(len(real_ws_avg)), real_ws_avg, color='blue', label='$w^s$')
+    # real_ws_avg = 100 * df.ws_avg / df.CPI
+    # ax[1,1].plot(range(len(real_ws_avg)), real_ws_avg, color='blue', label='$w^s$')
     # ax[1,1].fill_between(range(len(df.ws_avg)), df.ws_avg + df.ws_std, df.ws_avg - df.ws_std, 
     #                  color='blue', alpha=0.4)
     # ax[1,1].plot(range(len(df.wo_max_avg)), df.wo_max_avg, color='orange', label='$w^o_\max$')
@@ -90,9 +90,11 @@ def plot_macro_vars(df):
     ax[3,1].set_title('Debt levels')
     ax[3,1].legend()
 
-    ax[4,0].plot(range(len(df.EI_avg)), 100 * df.EI_avg / df.CPI_kp, label='EI')
-    ax[4,0].plot(range(len(df.RS_avg)), 100 * df.RS_avg / df.CPI_kp, label='RS')
-    ax[4,0].set_title('Real investments')
+    # ax[4,0].plot(range(len(df.EI_avg)), 100 * df.EI_avg / df.CPI_kp, label='EI')
+    # ax[4,0].plot(range(len(df.RS_avg)), 100 * df.RS_avg / df.CPI_kp, label='RS')
+    # ax[4,0].set_title('Real investments')
+    ax[4,0].plot(range(len(df.n_mach_EI)), df.n_mach_EI, label='n EI')
+    ax[4,0].plot(range(len(df.n_mach_RS)), df.n_mach_RS, label='n RS')
     ax[4,0].legend()
 
     ax[4,1].plot(range(len(df.avg_pi)), df.avg_pi, label='$\\bar{\pi}$')
@@ -108,6 +110,7 @@ def plot_macro_vars(df):
     ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_n_machines_lp, 
                  label='lp n machines', color='red', linestyle='dashed')
     ax[5,0].plot(range(len(df.avg_Q_kp)), df.avg_Q_kp, label='kp')
+    ax[5,0].plot(range(len(df.avg_N_goods)), df.avg_N_goods, label='avg $N$', color='orange')
     ax[5,0].set_title('Average production quantity')
     ax[5,0].legend()
 

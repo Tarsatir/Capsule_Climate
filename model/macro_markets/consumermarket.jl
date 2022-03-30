@@ -9,22 +9,42 @@ function consumermarket_process!(
     model::ABM
     )
 
-    # Households set budget and send demand to queues of producers
-    for hh_id in all_hh
+    # Make a dictionary with all cp and the inventory they own
+    cp_inventories = Dict(cp_id => model[cp_id].p[end] * model[cp_id].N_goods for cp_id in all_cp)
+    # bp_with_inventory = map(bp_id -> model[bp_id].N_goods > 0 ? bp_id : , all_bp)
+    # lp_with_inventory = map(lp_id -> model[lp_id].N_goods > 0 ? lp_id : nothing, all_lp)
 
-        # Set consumption budget and shares of good types
-        set_consumption_budget_hh!(
-            model[hh_id],
-            all_W_hh,
-            global_param.c_L_max,
-            global_param.a_σ,
-            global_param.b_σ, 
-            global_param.α_cp, 
-            model
-        )
-        
-        # Place orders at bp and lp
-        place_orders_hh!(model[hh_id], model)
+    bp_with_inventory = Vector{Int}()
+    for bp_id in all_bp
+        if model[bp_id].N_goods > 0
+            push!(bp_with_inventory, bp_id)
+        end
+    end
+
+    lp_with_inventory = Vector{Int}()
+    for lp_id in all_lp
+        if model[lp_id].N_goods > 0
+            push!(lp_with_inventory, lp_id)
+        end
+    end
+
+    # Let households set their budget and order their goods
+    for hh_id in all_hh
+        # Set consumption budget and shares of good types and place orders
+        set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
+
+        # Divide budget by chosen category
+        C_b = model[hh_id].C[end] * (1 - model[hh_id].c_L)
+        C_l = model[hh_id].C[end] - C_b
+
+        bp_orders, cp_inventories, bp_with_inventory = place_orders_hh!(model[hh_id].bp, C_b, cp_inventories, 
+                                                         bp_with_inventory, model)
+        lp_orders, cp_inventories, lp_with_inventory = place_orders_hh!(model[hh_id].lp, C_l, cp_inventories, 
+                                                         lp_with_inventory, model)
+        # Send order to queues of bp and lp
+        for (cp_id, qp) in merge(bp_orders, lp_orders)
+            push!(model[cp_id].order_queue, (hh_id, qp / model[cp_id].p[end]))
+        end
     end
 
     # cp's handle order queue, send orders, households track which cp could not
@@ -33,7 +53,6 @@ function consumermarket_process!(
         send_orders_cp!(model[cp_id], model)
         reset_queue_cp!(model[cp_id])
     end
-
 end
 
 
