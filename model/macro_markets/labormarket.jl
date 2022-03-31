@@ -88,8 +88,6 @@ function labormarket_process!(
     labormarket_struct::LaborMarket,
     all_hh::Vector{Int}, 
     all_p::Vector{Int}, 
-    ϵ :: Float64,
-    max_g_wᴼ :: Float64, 
     UB :: Float64,
     global_param::GlobalParam,
     model::ABM
@@ -99,8 +97,7 @@ function labormarket_process!(
     firing_producers = Vector{Int}()
     hiring_producers = Vector{Int}()
 
-    update_unemploymentrate_lm!(labormarket_struct)
-    # println("E 1: ", labormarket_struct.E[end])
+    # update_unemploymentrate_lm!(labormarket_struct)
 
     for p_id in all_p
         if model[p_id].ΔLᵈ > 0
@@ -110,48 +107,40 @@ function labormarket_process!(
         end
     end
 
-    # let producers fire excess workers
-    # println("f1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
+    # Let producers fire excess workers
     fire_workers_lm!(labormarket_struct, firing_producers, model)
-    # println("f2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
 
     # Update wage parameters households
     for hh_id in all_hh
-        update_sat_req_wage_hh!(model[hh_id], ϵ, UB)
+        update_sat_req_wage_hh!(model[hh_id], global_param.ϵ, UB)
     end
 
-    update_unemploymentrate_lm!(labormarket_struct)
-    # println("E 2: ", labormarket_struct.E)
+    if !global_param.fordist_lm
+        # Find all employed households that want to change jobs
+        employed_jobseekers = find_employed_jobseekers_lm(labormarket_struct.employed, global_param.ψ_E)
+    else
+        # In the Fordist regime, employed workers do not look for
+        # a better paying job.
+        employed_jobseekers = Vector{Int}()
+    end
 
-    # Find all employed households that want to change jobs
-    employed_jobseekers = find_employed_jobseekers_lm(labormarket_struct.employed, global_param.ψ_E)
-
-    # labor market matching process
-    # println("m1 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
+    # Labor market matching process
     matching_lm(
         labormarket_struct, 
         employed_jobseekers, 
         hiring_producers,
-        max_g_wᴼ, 
+        global_param.max_g_wᴼ, 
         model
     )
-    # println("m2 ", length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-    # println(sum(map(p_id -> length(model[p_id].employees), all_p)))
 
-    # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-
-    # update the unemployment rate
+    # Update the unemployment rate
     update_unemploymentrate_lm!(labormarket_struct)
-    # println("E 3: ", labormarket_struct.E)
-
-    # println(length(labormarket_struct.employed), " ", length(labormarket_struct.unemployed))
-
 end
 
 
+"""
+Updates the unemployment rate in the economy
+"""
 function update_unemploymentrate_lm!(
     labormarket_struct::LaborMarket
     )

@@ -77,6 +77,7 @@ def plot_macro_vars(df):
     ax[3,0].plot(range(len(df.M)), df.M_cp, label='cp')
     ax[3,0].plot(range(len(df.M)), df.M_kp, label='kp')
     ax[3,0].plot(range(len(df.M)), df.M_gov, label='gov')
+    ax[3,0].plot(range(len(df.M)), df.debt_tot, label='total debts')
     ax[3,0].set_title('Money supply')
     ax[3,0].legend()
 

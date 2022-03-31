@@ -201,14 +201,13 @@ function place_orders_hh!(
     C_i::Float64,
     cp_inventories,
     p_with_inventory::Vector{Int},
+    global_param::GlobalParam,
     model::ABM
     )
 
-    n_days = 4
-
     # If none of the known suppliers has products in stock, randomly select
     # other suppliers until demand can be met.
-    poss_p = Dict(p_id => 1 / model[p_id].p[end] for p_id ∈ intersect(hh_p, p_with_inventory))
+    poss_p = Dict(p_id => 1 / model[p_id].p[end] for p_id ∈ intersect(Set(hh_p), Set(p_with_inventory)))
 
     add_p_id = 0
 
@@ -224,7 +223,7 @@ function place_orders_hh!(
     # Place orders based on the availability of goods
     chosen_amount = 0
     chosen_p_id = 0
-    C_per_day = C_i / n_days
+    C_per_day = C_i / global_param.n_cons_market_days
 
     p_orders = Dict()
     

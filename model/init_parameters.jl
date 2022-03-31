@@ -21,7 +21,7 @@ end
 function initialize_init_params()
     init_params = InitParam(
         # Agent counts
-        30,                                 # n_kp: number of kp
+        20,                                 # n_kp: number of kp
         200,                                # n_cp: number of cp
         2500,                               # n_hh: number of hh
 

@@ -52,7 +52,8 @@ Initializes model.
     * labormarket_struct: mutable struct containing variables concerning the labor market
 """
 function initialize_model(
-    T;
+    T,
+    labormarket_is_fordist;
     changed_params
     )
 
@@ -62,7 +63,7 @@ function initialize_model(
                 warn=false)
 
     # Initialize struct that holds global params and initial parameters
-    global_param  = initialize_global_params(changed_params)
+    global_param  = initialize_global_params(labormarket_is_fordist, changed_params)
     init_param = initialize_init_params()
 
     # Initialize struct that holds macro variables
@@ -203,7 +204,7 @@ function model_step!(
 
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
     for cp_id in all_cp
-        clear_firm_currentaccount_p!(model[cp_id].curracc)
+        model[cp_id].curracc = clear_firm_currentaccount_p!(model[cp_id].curracc)
         reset_brochures_cp!(model[cp_id])
     end
 
@@ -214,8 +215,7 @@ function model_step!(
 
     for kp_id in all_kp
 
-        kp = model[kp_id]
-        clear_firm_currentaccount_p!(model[kp_id].curracc)
+        model[kp_id].curracc = clear_firm_currentaccount_p!(model[kp_id].curracc)
 
         if length(macro_struct.w̄_avg) == 0
             w̄ = 1.0
@@ -224,14 +224,14 @@ function model_step!(
         end
 
         innovate_kp!(
-            kp, 
+            model[kp_id], 
             global_param, 
             all_kp, 
             kp_distance_matrix,
             w̄,
             model
         )
-        send_brochures_kp!(kp, all_cp, global_param, model)
+        send_brochures_kp!(model[kp_id], all_cp, global_param, model)
     end
 
     # (2) consumer good producers estimate demand, set production and set
@@ -256,8 +256,6 @@ function model_step!(
         labormarket_struct,
         all_hh, 
         all_p,
-        global_param.ϵ,
-        global_param.max_g_wᴼ,
         gov_struct.UB,
         global_param,
         model
@@ -365,8 +363,6 @@ function model_step!(
     # Select producers that will be declared bankrupt and removed
     bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
 
-    # println("avg age bankrupt kp: $(mean(map(kp_id -> model[kp_id].age, bankrupt_kp)))")
-
     # (7) macro-economic indicators are updated.
     update_macro_timeseries(
         macro_struct, 
@@ -396,9 +392,6 @@ function model_step!(
         model
     )
     update_unemploymentrate_lm!(labormarket_struct)
-    # println("E 4: ", labormarket_struct.E[end])
-
-    # println("Number of cp: ", length(all_cp), ", Number of kp: ", length(all_kp))
 
 
     # Replace bankrupt kp. Do this before you replace cp, such that new cp can also choose
@@ -427,25 +420,19 @@ function model_step!(
         macro_struct.w̄_avg[end],
         model
     )
-
-    # if t == T
-    #     plot_D_p(all_bp, model)
-    # end
-
-    # println("All employed: ", sum(map(p_id -> length(model[p_id].employees), all_p)))
-
 end
 
 
 function run_simulation(;
     T=400::Int,
     changed_params=nothing,
-    full_output=true::Bool
+    full_output=true::Bool,
+    labormarket_is_fordist=false::Bool,
     )::Tuple{Float64, Float64}
 
     to = TimerOutput()
 
-    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T; changed_params=changed_params)
+    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
         println("Step $t")

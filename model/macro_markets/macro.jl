@@ -427,11 +427,11 @@ function compute_M!(
     push!(macro_struct.M_hh, M_hh)
 
     # Liquid assets of cp
-    M_cp = sum(map(cp -> cp.balance.NW - cp.balance.debt, all_cp_str))
+    M_cp = sum(map(cp -> cp.balance.NW, all_cp_str))
     push!(macro_struct.M_cp, M_cp)
 
     # Liquid assets of kp
-    M_kp = sum(map(kp -> kp.balance.NW - kp.balance.debt, all_kp_str))
+    M_kp = sum(map(kp -> kp.balance.NW, all_kp_str))
     push!(macro_struct.M_kp, M_kp)
 
     # Money owned by government

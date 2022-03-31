@@ -189,9 +189,9 @@ end
 """
 Clears firms current account for next period.
 """
-function clear_firm_currentaccount_p!(
+function clear_firm_currentaccount_p!( 
     ca::FirmCurrentAccount
-    )
+    )::FirmCurrentAccount
 
     ca.S = 0
     ca.add_debt = 0
@@ -200,4 +200,6 @@ function clear_firm_currentaccount_p!(
     ca.TCI = 0
     ca.int_debt = 0
     ca.rep_debt = 0
+
+    return ca
 end

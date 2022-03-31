@@ -579,6 +579,7 @@ function replace_bankrupt_cp!(
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
     weights_hh_bp = map(hh_id -> min(1, 1 / length(model[hh_id].bp)), all_hh)
     weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
+    weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
 
 
     for p_id in vcat(bankrupt_bp, bankrupt_lp)
@@ -588,12 +589,18 @@ function replace_bankrupt_cp!(
             type_good="Luxury"
         end
 
+        # Generate vector of machines
+        # machines = initialize_machine_stock(
+        #                 global_param.freq_per_machine,
+        #                 n_machines; 
+        #                 p=p_choice, 
+        #                 A=A_choice
+        #             )
+
         # New cp receive a advanced type of machine, first select kp proportional
         # to their market share. cp can also select kp ids that went bankrupt in this 
         # period, as these producers have already been replaced with new companies
-        weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
         kp_choice_id = sample(all_kp, Weights(weights_kp))
-        A_choice = model[kp_choice_id].A[end]
         p_choice = model[kp_choice_id].p[end]
 
         # Sample what the size of the capital stock will be
@@ -601,17 +608,11 @@ function replace_bankrupt_cp!(
         n_machines = floor(Int, capital_coefficient * avg_n_machines / global_param.freq_per_machine)
         D = avg_cu * n_machines * global_param.freq_per_machine
 
-        # Generate vector of machines
-        machines = initialize_machine_stock(
-                        global_param.freq_per_machine,
-                        n_machines; 
-                        p=p_choice, 
-                        A=A_choice
-                    )
-
+        # In the first period, the cp has no machines yet, these are delivered at the end
+        # of the first period
         new_cp = initialize_cp(
                     p_id,
-                    machines,
+                    Vector{Machine}(),
                     type_good,
                     0,
                     global_param.μ1,
@@ -624,20 +625,25 @@ function replace_bankrupt_cp!(
                     N_goods=0.0,
                     first_gen=false
                 )
-        update_n_machines_cp!(new_cp, global_param.freq_per_machine)
-        update_π_cp!(new_cp)
+        # update_n_machines_cp!(new_cp, global_param.freq_per_machine)
+        # update_π_cp!(new_cp)
 
-        # Sample what the stock of liquid assets will be
+        # Order machines at kp of choice
+        new_cp.chosen_kp_id = kp_choice_id
+        new_cp.n_mach_ordered_EI = n_machines
+        order_machines_cp!(new_cp, model)
+
+        # Sample what the stock of liquid assets will be, add liquid assets needed to pay for 
+        # machines. (this can differ somewhat as the price is redetermined in the next period)
         NW_coefficient = rand(Uniform(global_param.φ3, global_param.φ4))
-        NW_stock = NW_coefficient * avg_NW
+        NW_stock = NW_coefficient * avg_NW + p_choice * n_machines * global_param.freq_per_machine
 
         # Augment the balance with acquired NW and K
         new_cp.balance.NW = NW_stock
-        new_cp.balance.K = n_machines * global_param.freq_per_machine * p_choice
+        # new_cp.balance.K = n_machines * global_param.freq_per_machine * p_choice
 
         # Borrow funds for the machine and liquid assets
-        # NW_to_borrow = NW_stock + tot_freq_machines * p_choice
-        # borrow_funds_p!(new_cp, tot_freq_machines * p_choice + NW_to_borrow)
+        # borrow_funds_p!(new_cp, new_cp.balance.NW)
         # TODO: a kp firm has to receive revenue for this
 
         # new_cp.balance.NW = tot_freq_machines * p_choice
@@ -709,7 +715,7 @@ function update_Qᵉ_cp!(
     )
 
     # cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * (cp.Dᵉ + cp.Nᵈ)
-    cp.Qᵉ = cp.Dᵉ + cp.Nᵈ + cp.Dᵁ
+    cp.Qᵉ = cp.Dᵉ + cp.Nᵈ
     
     # if length(cp.D) > 2
     #     Qg = cp.Q[end] * (1 + (cp.D[end] - cp.D[end-1]) / cp.D[end-1])

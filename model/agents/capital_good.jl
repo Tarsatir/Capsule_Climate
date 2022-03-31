@@ -296,13 +296,17 @@ function set_RD_kp!(
     )
 
     # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
+    # TODO: describe change of added NW
+    
     if length(kp.Q) > 0
         prev_S = kp.p[end] * kp.Q[end]
         RD_new = ν * prev_S
+        if prev_S == 0
+            RD_new = 0.3 * max(kp.balance.NW, 0)
+        end
     else
-        RD_new = 0
+        RD_new = 0.3 * max(kp.balance.NW, 0)
     end
-    # RD_new = max(ν * kp.Π[end], 0)
 
     # TODO: now based on prev profit to avoid large losses. If kept, describe!
 
@@ -394,31 +398,6 @@ function produce_goods_kp!(
 
     # Empty order queue
     kp.orders = []
-
-    # for cp_id in kp.orders
-
-    #     # Only push order in production queue if enough labor available
-    #     # q = order[2] / kp.p[end]
-    #     # req_L = q / kp.B[end]
-
-    #     if unocc_L > req_L
-    #         # Full order can be fulfilled
-    #         total_Q += global_param.freq_per_machine
-    #         push!(kp.prod_queue, cp_id)
-    #         unocc_L -= req_L
-    #     # elseif unocc_L > 0.0
-    #     #     # Partial order can be fulfilled
-    #     #     part_q = unocc_L * kp.B[end]
-    #     #     total_Q += part_q
-    #     #     new_Iₜ = part_q * kp.p[end]
-    #     #     new_n_machine_instances = ceil(Int, order[3] * (new_Iₜ / order[2]))
-    #     #     # print("Old n mach: $(order[2]), new n mach: $(new_n_machine_instances)")
-    #     #     push!(kp.prod_queue, (order[1], new_Iₜ, new_n_machine_instances))
-    #     #     unocc_L = 0.0
-    #     else
-    #         break
-    #     end
-    # end
 end
 
 
@@ -529,32 +508,28 @@ function update_μ_kp!(
     )
 
     # b = 0.3
-    # l = 4
+    # l = 2
 
-    # if length(kp.μ) > l && length(kp.Π) > l && kp.Π[end] != 0
-    #     mean_μ = mean(kp.μ[end-l:end-1])
+    # if length(kp.Π) > l
+    #     # mean_μ = mean(kp.μ[end-l:end-1])
     #     # Δμ = (cp.μ[end] - cp.μ[end-1]) / cp.μ[end-1]
-    #     Δμ = (kp.μ[end] - mean_μ) / mean_μ
+    #     # Δμ = (kp.μ[end] - mean_μ) / mean_μ
 
-    #     mean_Π = mean(kp.Π[end-l:end-1])
+    #     # mean_Π = mean(kp.Π[end-l:end-1])
     #     # ΔΠ = (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1]
-    #     ΔΠ = (kp.Π[end] - mean_Π) / mean_Π
+    #     # ΔΠ = (kp.Π[end] - mean_Π) / mean_Π
+    #     shock_sign = 1
+    #     if kp.Π[end] <= kp.Π[end-1]
+    #         shock_sign = -1
+    #     end
 
     #     # println("$mean_μ, $mean_Π")
     #     # println("Δμ: $Δμ, $(sign(Δμ)), ΔΠ: $ΔΠ, $(sign(ΔΠ))")
 
     #     shock = rand(Uniform(0.0, b))
 
-    #     new_μ = max(kp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+    #     new_μ = max(kp.μ[end] * (1 + shock_sign * shock), 0)
     #     push!(kp.μ, new_μ)
-
-    #     # if ΔΠ > 0
-    #     #     new_μ = cp.μ[end] * (1 + Δμ)
-    #     #     push!(cp.μ, new_μ)
-    #     # else
-    #     #     new_μ = max(cp.μ[end] * (1 - Δμ), 0)
-    #     #     push!(cp.μ, new_μ)
-    #     # end
 
     # elseif kp.Π[end] == 0
     #     push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
@@ -635,7 +610,7 @@ function replace_bankrupt_kp!(
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
 
-        a1 = -0.05
+        a1 = -0.04
         a2 = 0.02
         tech_coeff = a1 + rand(Beta(global_param.α2, global_param.β2)) * (a2 - a1)
         new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_0)

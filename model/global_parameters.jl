@@ -43,12 +43,17 @@ mutable struct GlobalParam
     ψ_Q :: Float64                  # chance of household switching away from cp when demand constrained
     ψ_P :: Float64                  # chance of household switching to cp with better price
 
-    freq_per_machine                # capital units per machine
+    freq_per_machine :: Int         # capital units per machine
+
+    n_cons_market_days :: Int       # number of days in the consumer market process
+
+    fordist_lm :: Bool              # determines whether the labormarket is Fordist or competetive
 end
 
 
 function initialize_global_params(
-        changed_params
+    labormarket_is_fordist::Bool,
+    changed_params
     )
 
     global_param = GlobalParam(
@@ -92,7 +97,10 @@ function initialize_global_params(
         0.75,                       # ψ_Q: chance of household switching away from cp when demand constrained
         0.75,                       # ψ_P: chance of household switching to cp with better price
 
-        50                          # capital units per machine
+        50,                         # capital units per machine
+
+        4,                           # number of days in consumer market proces
+        labormarket_is_fordist
     )
 
     # Change parameters if needed before returning.

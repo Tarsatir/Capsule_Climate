@@ -11,8 +11,6 @@ function consumermarket_process!(
 
     # Make a dictionary with all cp and the inventory they own
     cp_inventories = Dict(cp_id => model[cp_id].p[end] * model[cp_id].N_goods for cp_id in all_cp)
-    # bp_with_inventory = map(bp_id -> model[bp_id].N_goods > 0 ? bp_id : , all_bp)
-    # lp_with_inventory = map(lp_id -> model[lp_id].N_goods > 0 ? lp_id : nothing, all_lp)
 
     bp_with_inventory = Vector{Int}()
     for bp_id in all_bp
@@ -28,8 +26,9 @@ function consumermarket_process!(
         end
     end
 
+
     # Let households set their budget and order their goods
-    for hh_id in all_hh
+    @inbounds for hh_id in all_hh
         # Set consumption budget and shares of good types and place orders
         set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
 
@@ -38,9 +37,9 @@ function consumermarket_process!(
         C_l = model[hh_id].C[end] - C_b
 
         bp_orders, cp_inventories, bp_with_inventory = place_orders_hh!(model[hh_id].bp, C_b, cp_inventories, 
-                                                         bp_with_inventory, model)
+                                                         bp_with_inventory, global_param, model)
         lp_orders, cp_inventories, lp_with_inventory = place_orders_hh!(model[hh_id].lp, C_l, cp_inventories, 
-                                                         lp_with_inventory, model)
+                                                         lp_with_inventory, global_param, model)
         # Send order to queues of bp and lp
         for (cp_id, qp) in merge(bp_orders, lp_orders)
             push!(model[cp_id].order_queue, (hh_id, qp / model[cp_id].p[end]))

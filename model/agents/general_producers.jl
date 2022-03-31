@@ -276,16 +276,14 @@ function kill_all_bankrupt_p!(
 end
 
 
+"""
+Checks if producers must be declared bankrupt
+"""
 function check_if_bankrupt_p!(
-    p::AbstractAgent
-    )
+    p::AbstractAgent;
+    t_wait=4::Int
+    )::Bool
 
-    # return false
-
-    # TODO: describe waiting period
-    t_wait = 4
-
-    # if p.f[end] <= 0.001 || p.balance.EQ < 0
     if (length(p.D) > t_wait || p.first_gen) && (mean(p.f[end])<= 0.0001 || p.balance.EQ < 0)
         return true
     end
