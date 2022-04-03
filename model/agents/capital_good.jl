@@ -551,6 +551,7 @@ function replace_bankrupt_kp!(
     bankrupt_kp_i::Vector{Int},
     all_kp::Vector{Int},
     global_param::GlobalParam,
+    indexfund_struct::IndexFund,
     init_param::InitParam,
     model::ABM
     )
@@ -601,11 +602,19 @@ function replace_bankrupt_kp!(
 
     # Compute the average stock of liquid assets of non-bankrupt kp
     avg_NW = mean(map(kp_id -> model[kp_id].balance.NW, poss_kp))
+    NW_coefficients = rand(Uniform(global_param.φ3, global_param.φ4),
+                           length(bankrupt_kp))
+    all_req_NW = sum(avg_NW .* NW_coefficients)
+    frac_NW_if = max(0, min(indexfund_struct.Assets / all_req_NW, 1))
+    # TODO: now kp have an advantage, rewrite this?
+
+    # Let indexfund deduct funds that will be invested in new companies
+    make_investments_if!(indexfund_struct, frac_NW_if * all_req_NW)
 
     # Re-use id of bankrupted company
-    for (kp_id, kp_i) in zip(bankrupt_kp, bankrupt_kp_i)
+    for (i, (kp_id, kp_i)) in enumerate(zip(bankrupt_kp, bankrupt_kp_i))
 
-        coeff_NW = rand(Uniform(global_param.φ3, global_param.φ4))
+        # coeff_NW = rand(Uniform(global_param.φ3, global_param.φ4))
 
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
@@ -616,12 +625,14 @@ function replace_bankrupt_kp!(
         new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_0)
         new_B = max(B_max * (1 + tech_coeff), B_min, init_param.B_0)
 
+        NW_stock = NW_coefficients[i] * avg_NW
+
         # Initialize new kp
         new_kp = initialize_kp(
             kp_id, 
             kp_i, 
             length(all_kp);
-            NW=coeff_NW * avg_NW,
+            NW=NW_stock,
             A=new_A,
             B=new_B,
             μ=model[A_max_id].μ[end],
@@ -629,6 +640,10 @@ function replace_bankrupt_kp!(
             f=0.0,
             first_gen=false
         )
+
+        # Borrow the remaining funds
+        borrow_funds_p!(new_kp, (1 - frac_NW_if) * NW_stock)
+
         add_agent!(new_kp, model)
     end
 end

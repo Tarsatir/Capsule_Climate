@@ -25,6 +25,17 @@ end
 
 
 """
+Deducts funds for investment in company
+"""
+function make_investments_if!(
+    indexfund_struct::IndexFund,
+    amount::Float64
+    )
+    indexfund_struct.Assets -= amount
+end
+
+
+"""
 Distributes dividends over participants in indexfund
 """
 function distribute_dividends_if!(

@@ -37,12 +37,15 @@ function save_macro_data(macro_struct)
         M_cp=macro_struct.M_cp,
         M_kp=macro_struct.M_kp,
         M_gov=macro_struct.M_gov,
+        M_if=macro_struct.M_if,
 
         debt_tot=macro_struct.debt_tot,
         debt_cp=macro_struct.debt_cp,
         debt_cp_allowed=macro_struct.debt_cp_allowed,
         debt_kp=macro_struct.debt_kp,
         debt_kp_allowed=macro_struct.debt_kp_allowed,
+        debt_unpaid_kp = macro_struct.debt_unpaid_kp,
+        debt_unpaid_cp = macro_struct.debt_unpaid_cp,
 
         UR=macro_struct.U,
         Exp_UB=macro_struct.Exp_UB,
@@ -83,9 +86,11 @@ function save_macro_data(macro_struct)
 
         cu = macro_struct.cu,
         avg_n_machines_bp = macro_struct.avg_n_machines_bp,
-        avg_n_machines_lp = macro_struct.avg_n_machines_lp
+        avg_n_machines_lp = macro_struct.avg_n_machines_lp,
 
-        )
+        gini_I = macro_struct.GINI_I,
+        gini_W = macro_struct.GINI_W
+    )
     CSV.write("results/result_data/first.csv", df)
 end
 

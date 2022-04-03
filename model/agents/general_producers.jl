@@ -236,6 +236,8 @@ function kill_all_bankrupt_p!(
     model::ABM
     )
 
+    all_money_outflow = 0
+
     # all_unpaid_debt = sum(map(p_id -> model[p_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp, bankrupt_lp)))
     # println("Unpaid debt: $(all_unpaid_debt)")
 
@@ -270,9 +272,13 @@ function kill_all_bankrupt_p!(
         # indexfund_struct.Assets -= (model[p_id].balance.debt - model[p_id].balance.NW)
         indexfund_struct.Assets += (model[p_id].balance.NW - model[p_id].balance.debt)
 
+        all_money_outflow += model[p_id].balance.debt - model[p_id].balance.NW 
+
         # Remove firm agents from model
         kill_agent!(p_id, model)
     end
+
+    println("All money outflow: $(all_money_outflow)")
 end
 
 

@@ -25,6 +25,7 @@ mutable struct MacroEconomy
     M_cp :: Vector{Float64}      # total amount of money at cp
     M_kp :: Vector{Float64}      # total amount of money at kp
     M_gov :: Vector{Float64}     # total amount of money at gov
+    M_if :: Vector{Float64}      # total amount of money at if
 
     # debt levels
     debt_tot :: Vector{Float64}             # total debt
@@ -32,6 +33,8 @@ mutable struct MacroEconomy
     debt_cp_allowed :: Vector{Float64}      # cp allowed debt
     debt_kp :: Vector{Float64}              # kp debt
     debt_kp_allowed :: Vector{Float64}      # kp debt allowed
+    debt_unpaid_kp :: Vector{Float64}       # kp debt that went unpaid after bankrupcy
+    debt_unpaid_cp :: Vector{Float64}       # cp debt that went unpaid after bankrupcy
 
     # Wage statistics
     w̄_avg :: Vector{Float64}     # average wage over time
@@ -92,6 +95,9 @@ mutable struct MacroEconomy
     avg_n_machines_bp :: Vector{Float64}# average number of machines bp
     avg_n_machines_lp :: Vector{Float64}# average number of machines lp
 
+    GINI_I::Vector{Float64}
+    GINI_W::Vector{Float64}
+
 end
 
 
@@ -124,6 +130,7 @@ function initialize_macro(
         [],                     # M cp
         [],                     # M kp
         [],                     # M gov
+        [],                     # M if
 
         # debt levels
         [],                     # total debt
@@ -131,6 +138,8 @@ function initialize_macro(
         [],                     # cp allowed debt
         [],                     # kp debt
         [],                     # kp allowed debt
+        [],                     # kp unpaid debt
+        [],                     # cp unpaid debt
 
         [],                     # average of wage over time
         # [],                     # std of wage over time
@@ -184,7 +193,11 @@ function initialize_macro(
 
         [],                     # cu: capital utilization rate
         [],                     # avg_n_machines_bp
-        []                      # avg_n_machines_lp
+        [],                     # avg_n_machines_lp
+
+        # Inequality
+        [],                     # GINI_I
+        [],                     # GINI_W
     )
     return macro_struct
 end
@@ -205,6 +218,7 @@ function update_macro_timeseries(
     bankrupt_kp::Vector{Int},
     E::Float64, 
     gov_struct::Government,
+    indexfund_struct::IndexFund,
     global_param::GlobalParam,
     model::ABM
     )
@@ -256,12 +270,12 @@ function update_macro_timeseries(
     push!(macro_struct.Exp_UB, gov_struct.curracc.Exp_UB[end])
 
     # Compute total amount in system
-    compute_M!(all_hh_str, all_cp_str, all_kp_str, gov_struct, macro_struct)
+    compute_M!(all_hh_str, all_cp_str, all_kp_str, gov_struct, 
+               indexfund_struct, macro_struct)
 
     # Compute average savings rate
     s̄_avg = mean(map(hh -> hh.s, all_hh_str))
     s̄_std = std(map(hh -> hh.s, all_hh_str))
-    # println(map(hh -> hh.s, all_hh_str))
     push!(macro_struct.s̄_avg, s̄_avg)
     push!(macro_struct.s̄_std, s̄_std)
 
@@ -273,14 +287,18 @@ function update_macro_timeseries(
     push!(macro_struct.Ī_avg, Ī_avg)
     push!(macro_struct.Ī_std, Ī_std)
 
-    D̄ = mean(map(cp -> cp.D[end], all_cp_str))
+    # D̄ = mean(map(cp -> cp.D[end], all_cp_str))
     # println(D̄)
 
     update_debt!(
         all_cp_str, 
-        all_kp_str, 
+        all_kp_str,
+        bankrupt_bp,
+        bankrupt_lp, 
+        bankrupt_kp,
         global_param.Λ, 
-        macro_struct
+        macro_struct,
+        model
     )
 
     # Investment
@@ -345,6 +363,9 @@ function update_macro_timeseries(
     # println("sum D: ", sum(map(cp->cp.D[end], all_cp_str)), 
     #         " sum N_goods: ", sum(map(hh->hh.N_goods, all_hh_str)),
     #         " sum Q: ", sum(map(cp->cp.Q[end], all_cp_str)))
+
+    # Compute GINI coefficients
+    compute_GINI(all_hh_str, macro_struct)
 
 end
 
@@ -417,6 +438,7 @@ function compute_M!(
     all_cp_str::Vector{ConsumerGoodProducer},
     all_kp_str::Vector{CapitalGoodProducer},
     gov_struct::Government,
+    indexfund_struct::IndexFund,
     macro_struct::MacroEconomy
     )
 
@@ -437,6 +459,9 @@ function compute_M!(
     # Money owned by government
     M_gov = gov_struct.MS
     push!(macro_struct.M_gov, M_gov)
+
+    # Money in investment fund
+    push!(macro_struct.M_if, indexfund_struct.Assets)
 
     # Total amount of money stocks
     M_tot = M_hh + M_cp + M_kp + M_gov
@@ -477,8 +502,12 @@ Updates metrics on aggregate debt levels
 function update_debt!(
     all_cp_str::Vector{ConsumerGoodProducer},
     all_kp_str::Vector{CapitalGoodProducer},
+    bankrupt_bp::Vector{Int},
+    bankrupt_lp::Vector{Int},
+    bankrupt_kp::Vector{Int},
     Λ::Float64,
-    macro_struct::MacroEconomy
+    macro_struct::MacroEconomy,
+    model::ABM
     )
 
     debt_cp = sum(map(cp -> cp.balance.debt, all_cp_str))
@@ -495,6 +524,12 @@ function update_debt!(
 
     debt_kp_allowed = Λ * sum(map(kp -> kp.curracc.S, all_kp_str))
     push!(macro_struct.debt_kp_allowed, debt_kp_allowed)
+
+    debt_unpaid_cp = sum(map(cp_id -> model[cp_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp)))
+    push!(macro_struct.debt_unpaid_cp, debt_unpaid_cp)
+
+    debt_unpaid_kp = sum(map(kp_id -> model[kp_id].balance.debt, bankrupt_kp))
+    push!(macro_struct.debt_unpaid_kp, debt_unpaid_kp)
 end
 
 
@@ -560,4 +595,29 @@ function compute_unsatisfied_demand(
 
     avg_unsat_dem = mean(avg_unsat_dem)
     push!(macro_struct.unsat_demand, avg_unsat_dem)
+end
+
+
+"""
+Computes the GINI coefficient for wealth and income
+"""
+function compute_GINI(
+    all_hh_str::Vector{Household},
+    macro_struct::MacroEconomy
+    )
+
+    # Compute GINI for income
+    all_I = map(hh -> hh.Iᵀ[end], all_hh_str)
+    GINI_I = sum(map(hh -> sum(broadcast(abs, hh.Iᵀ[end] .- all_I)), all_hh_str))
+    GINI_I = GINI_I / (2 * length(all_hh_str)^2 * macro_struct.Ī_avg[end])
+    push!(macro_struct.GINI_I, GINI_I)
+
+    # Compute GINI for wealth
+    all_W = map(hh -> hh.W[end], all_hh_str)
+    GINI_W = sum(map(hh -> sum(broadcast(abs, hh.W[end] .- all_W)), all_hh_str))
+    GINI_W = GINI_W / (2 * length(all_hh_str)^2 * macro_struct.M_hh[end] / length(all_hh_str))
+    push!(macro_struct.GINI_W, GINI_W)
+
+    # println("GINI income: $GINI_I, GINI wealth: $GINI_W")
+
 end

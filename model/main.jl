@@ -24,12 +24,12 @@ include("objects/accounting_govt.jl")
 include("objects/machine.jl")
 
 include("agents/government.jl")
+include("agents/indexfund.jl")
 include("agents/household.jl")
 include("agents/consumer_good.jl")
 include("agents/capital_good.jl")
 include("agents/general_producers.jl")
 include("agents/bank.jl")
-include("agents/indexfund.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
@@ -285,12 +285,6 @@ function model_step!(
     # (6) Transactions take place on consumer market
 
     # Households update wealth level
-    distribute_dividends_if!(
-        indexfund_struct,
-        all_hh,
-        model
-    )
-
     for hh_id in all_hh
         # Reset unsatisfied demand
         model[hh_id].unsat_dem = Vector()
@@ -376,6 +370,7 @@ function model_step!(
         bankrupt_kp,
         labormarket_struct.E,
         gov_struct,
+        indexfund_struct,
         global_param,
         model
     )
@@ -401,6 +396,7 @@ function model_step!(
         bankrupt_kp_i, 
         all_kp,
         global_param,
+        indexfund_struct,
         init_param,
         model
     )
@@ -415,11 +411,19 @@ function model_step!(
         all_lp,
         all_kp,
         global_param,
+        indexfund_struct,
         macro_struct.cu[end],
         macro_struct.p̄[end],
         macro_struct.w̄_avg[end],
         model
     )
+
+    # Redistrubute remaining stock of dividents to households
+    # distribute_dividends_if!(
+    #     indexfund_struct,
+    #     all_hh,
+    #     model
+    # )
 end
 
 
@@ -435,10 +439,10 @@ function run_simulation(;
     @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
-        println("Step $t")
-        # if t % 100 == 0
-        #     println("Step $t")
-        # end
+        # println("Step $t")
+        if t % 100 == 0
+            println("Step $t")
+        end
 
         @timeit to "step" model_step!(
                                 t,

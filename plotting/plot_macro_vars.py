@@ -78,6 +78,9 @@ def plot_macro_vars(df):
     ax[3,0].plot(range(len(df.M)), df.M_kp, label='kp')
     ax[3,0].plot(range(len(df.M)), df.M_gov, label='gov')
     ax[3,0].plot(range(len(df.M)), df.debt_tot, label='total debts')
+    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_cp.to_numpy()), label='unpaid cp debt')
+    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_kp.to_numpy()), label='unpaid kp debt')
+    ax[3,0].plot(range(len(df.M)), df.M_if, label='if')
     ax[3,0].set_title('Money supply')
     ax[3,0].legend()
 
@@ -271,6 +274,30 @@ def plot_sales_dist():
     plt.tight_layout()
     plt.savefig('plots/final_dist_profit.png')
 
+
+def plot_inequality(df_macro):
+    """
+    Plot GINI coefficients for income and wealth over time
+    """
+
+    fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+    ax[0].plot(range(len(df_macro.gini_I)), df_macro.gini_I, label='model output')
+    ax[0].hlines(0.282, 0, len(df_macro.gini_I), linestyle='dashed', color='black', 
+                 label='Netherlands (2015)')
+    ax[0].set_ylim(0,1)
+    ax[0].set_title("Income inequality")
+    ax[0].legend()
+
+    ax[1].plot(range(len(df_macro.gini_W)), df_macro.gini_W, label='model output')
+    ax[1].hlines(0.789, 0, len(df_macro.gini_W), linestyle='dashed', color='black', 
+                 label='Netherlands (2018)')
+    ax[1].set_title("Wealth inequality")
+    ax[1].set_ylim(0,1)
+    ax[1].legend()
+
+    plt.tight_layout()
+    plt.savefig('plots/inequality.png')
     
 if __name__=="__main__":
 
@@ -280,4 +307,5 @@ if __name__=="__main__":
     plot_cons_vars(df_macro)
 
     plot_income_dist()
+    plot_inequality(df_macro)
     plot_sales_dist()

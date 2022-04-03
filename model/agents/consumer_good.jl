@@ -561,6 +561,7 @@ function replace_bankrupt_cp!(
     all_lp::Vector{Int},
     all_kp::Vector{Int},
     global_param::GlobalParam,
+    indexfund_struct::IndexFund,
     avg_cu::Float64,
     p̄::Float64,
     w̄::Float64,
@@ -581,21 +582,27 @@ function replace_bankrupt_cp!(
     weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
     weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
 
+    # Sample all NW coefficients and capital coefficients
+    capital_coefficients = rand(Uniform(global_param.φ1, global_param.φ2), 
+                                length(bankrupt_bp)+length(bankrupt_lp))
+    NW_coefficients = rand(Uniform(global_param.φ3, global_param.φ4), 
+                           length(bankrupt_bp)+length(bankrupt_lp))
 
-    for p_id in vcat(bankrupt_bp, bankrupt_lp)
+    # Compute share of investments that can be paid from the investment fund
+    all_req_NW = sum(avg_NW .* NW_coefficients)
+    frac_NW_if = max(0, min(indexfund_struct.Assets / all_req_NW, 1))
+
+    # Let indexfund deduct funds that will be invested in new companies
+    make_investments_if!(indexfund_struct, frac_NW_if * all_req_NW)
+
+    all_money_inflow = 0
+
+    for (i,cp_id) in enumerate(vcat(bankrupt_bp, bankrupt_lp))
 
         type_good="Basic"
-        if p_id in bankrupt_lp
+        if cp_id in bankrupt_lp
             type_good="Luxury"
         end
-
-        # Generate vector of machines
-        # machines = initialize_machine_stock(
-        #                 global_param.freq_per_machine,
-        #                 n_machines; 
-        #                 p=p_choice, 
-        #                 A=A_choice
-        #             )
 
         # New cp receive a advanced type of machine, first select kp proportional
         # to their market share. cp can also select kp ids that went bankrupt in this 
@@ -604,14 +611,14 @@ function replace_bankrupt_cp!(
         p_choice = model[kp_choice_id].p[end]
 
         # Sample what the size of the capital stock will be
-        capital_coefficient = rand(Uniform(global_param.φ1, global_param.φ2))
-        n_machines = floor(Int, capital_coefficient * avg_n_machines / global_param.freq_per_machine)
+        # capital_coefficient = rand(Uniform(global_param.φ1, global_param.φ2))
+        n_machines = floor(Int, capital_coefficients[i] * avg_n_machines / global_param.freq_per_machine)
         D = avg_cu * n_machines * global_param.freq_per_machine
 
         # In the first period, the cp has no machines yet, these are delivered at the end
         # of the first period
         new_cp = initialize_cp(
-                    p_id,
+                    cp_id,
                     Vector{Machine}(),
                     type_good,
                     0,
@@ -625,8 +632,6 @@ function replace_bankrupt_cp!(
                     N_goods=0.0,
                     first_gen=false
                 )
-        # update_n_machines_cp!(new_cp, global_param.freq_per_machine)
-        # update_π_cp!(new_cp)
 
         # Order machines at kp of choice
         new_cp.chosen_kp_id = kp_choice_id
@@ -635,16 +640,17 @@ function replace_bankrupt_cp!(
 
         # Sample what the stock of liquid assets will be, add liquid assets needed to pay for 
         # machines. (this can differ somewhat as the price is redetermined in the next period)
-        NW_coefficient = rand(Uniform(global_param.φ3, global_param.φ4))
-        NW_stock = NW_coefficient * avg_NW + p_choice * n_machines * global_param.freq_per_machine
+        # NW_coefficient = rand(Uniform(global_param.φ3, global_param.φ4))
+        NW_stock = NW_coefficients[i] * avg_NW + p_choice * n_machines * global_param.freq_per_machine
+        all_money_inflow += NW_stock
 
         # Augment the balance with acquired NW and K
         new_cp.balance.NW = NW_stock
         # new_cp.balance.K = n_machines * global_param.freq_per_machine * p_choice
 
-        # Borrow funds for the machine and liquid assets
-        # borrow_funds_p!(new_cp, new_cp.balance.NW)
-        # TODO: a kp firm has to receive revenue for this
+        # Borrow remaining required funds for the machine, the other part of the 
+        # funds come from the investment fund
+        borrow_funds_p!(new_cp, (1 - frac_NW_if) * NW_stock)
 
         # new_cp.balance.NW = tot_freq_machines * p_choice
         # new_cp.balance.K = tot_freq_machines * p_choice
@@ -655,8 +661,7 @@ function replace_bankrupt_cp!(
         # Add new cp to subset of households, inversely proportional to amount of suppliers
         # they already have
         n_init_hh = 100
-        # println("Len hh $(length(all_hh))")
-        if p_id ∈ bankrupt_bp
+        if cp_id ∈ bankrupt_bp
             customers = sample(all_hh, Weights(weights_hh_bp), n_init_hh)
         else
             customers = sample(all_hh, Weights(weights_hh_lp), n_init_hh)
@@ -664,13 +669,14 @@ function replace_bankrupt_cp!(
     
         # Add cp to list of bp and lp, according to type
         for hh_id in customers
-            if p_id ∈ bankrupt_bp
-                push!(model[hh_id].bp, p_id)
+            if cp_id ∈ bankrupt_bp
+                push!(model[hh_id].bp, cp_id)
             else
-                push!(model[hh_id].lp, p_id)
+                push!(model[hh_id].lp, cp_id)
             end
         end
     end
+    println("All inflow: $(all_money_inflow)")
 end
 
 
@@ -777,7 +783,12 @@ function update_π_cp!(
     cp::ConsumerGoodProducer
     )
 
-    cp.π = sum(map(machine -> (machine.freq * machine.A) / cp.n_machines, cp.Ξ))
+    # Check if machines were already received
+    if length(cp.Ξ) > 0
+        cp.π = sum(map(machine -> (machine.freq * machine.A) / cp.n_machines, cp.Ξ))
+    else
+        cp.π = 1.0
+    end
 end
 
 
@@ -883,7 +894,6 @@ function update_ΔLᵈ_cp!(
     )
 
     Lᵈ = min(cp.Qˢ / cp.π - cp.L, cp.n_machines / cp.π - cp.L)
-    # println("Lᵈ: $(Lᵈ), L: $(cp.L), Qˢ/π: $(cp.Qˢ / cp.π) n_mach/π: $(cp.n_machines / cp.π)")
     cp.ΔLᵈ = max(Lᵈ, -cp.L)
 end
 

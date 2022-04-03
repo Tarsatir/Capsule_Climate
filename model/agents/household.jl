@@ -207,7 +207,7 @@ function place_orders_hh!(
 
     # If none of the known suppliers has products in stock, randomly select
     # other suppliers until demand can be met.
-    poss_p = Dict(p_id => 1 / model[p_id].p[end] for p_id ∈ intersect(Set(hh_p), Set(p_with_inventory)))
+    poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ intersect(Set(hh_p), Set(p_with_inventory)))
 
     add_p_id = 0
 
@@ -435,39 +435,39 @@ function decide_switching_hh!(
         end
     end
 
-    n_attempts = 1
+    n_attempts = 5
 
     # Check if household will look for a better price
     if rand() < ψ_P
 
-        for _ in 1:n_attempts
+        # Randomly select a supplier that may be replaced
+        # p_id_candidate1 = max(p_id -> model[p_id].p[end], vcat(hh.bp, hh.lp))
+        p_id_candidate1 = sort(vcat(hh.bp, hh.lp), by = p_id -> model[p_id].p[end])[end]
 
-            # Randomly select a supplier that may be replaced
-            p_id_candidate1 = sample(vcat(hh.bp, hh.lp))
-
-            # Randomly pick another candidate from same type and see if price is lower
-            if p_id_candidate1 in hh.bp
-                # TODO make this weighted (if needed)
-                # TODO see if you dont always want to sample from already known producers
-                p_id_candidate2 = sample(setdiff(all_bp, hh.bp))
-                
-                # Replace supplier if price of other supplier is lower 
-                if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-                    filter!(p_id -> p_id ≠ p_id_candidate1, hh.bp)
-                    push!(hh.bp, p_id_candidate2)
-                end
-            else
-                p_id_candidate2 = sample(setdiff(all_lp, hh.lp))
+        # Randomly pick another candidate from same type and see if price is lower
+        if p_id_candidate1 ∈ hh.bp
+            # TODO make this weighted (if needed)
+            # TODO see if you dont always want to sample from already known producers
+            p_id_candidate2 = sort(sample(setdiff(all_bp, hh.bp), n_attempts), 
+                                   by = bp_id -> model[bp_id].p[end])[1]
             
-                # Replace supplier if price of other supplier is lower
-                if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-                    filter!(p_id -> p_id ≠ p_id_candidate1, hh.lp)
-                    push!(hh.lp, p_id_candidate2)
-                end
+            # Replace supplier if price of other supplier is lower 
+            if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
+                hh.bp[findall(x->x==p_id_candidate1, hh.bp)] .= p_id_candidate2
+                # filter!(p_id -> p_id ≠ p_id_candidate1, hh.bp)
+                # push!(hh.bp, p_id_candidate2)
             end
-
-        end
+        else
+            p_id_candidate2 = sort(sample(setdiff(all_lp, hh.lp), n_attempts), 
+                                   by = lp_id -> model[lp_id].p[end])[1]
         
+            # Replace supplier if price of other supplier is lower
+            if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
+                hh.lp[findall(x->x==p_id_candidate1, hh.lp)] .= p_id_candidate2
+                # filter!(p_id -> p_id ≠ p_id_candidate1, hh.lp)
+                # push!(hh.lp, p_id_candidate2)
+            end
+        end
     end
 end
 

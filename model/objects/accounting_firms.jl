@@ -58,9 +58,9 @@ function close_balance_p!(
         add_debt = min(-p.balance.NW, max_add_debt)
         borrow_funds_p!(p, add_debt)
         p.balance.NW += add_debt
-    # elseif p.balance.NW > max_NW && !check_if_bankrupt_p!(p)
-    #     indexfund_struct.Assets += (p.balance.NW - max_NW)
-    #     p.balance.NW = max_NW 
+    elseif p.balance.NW > max_NW && !check_if_bankrupt_p!(p)
+        indexfund_struct.Assets += (p.balance.NW - max_NW)
+        p.balance.NW = max_NW 
     end
 
     # Compute Equity
