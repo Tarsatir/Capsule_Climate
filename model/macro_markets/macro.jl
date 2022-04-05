@@ -1,207 +1,100 @@
 
 @Base.kwdef mutable struct MacroEconomy
-    T::Int=T                                            # number of timesteps
-    GDP::Vector{Float64} = zeros(Float64, T)            # GDP over time
-    GDP_I::Vector{Float64} = zeros(Float64, T)          # income share of GDP over time
-    GDP_Π_cp::Vector{Float64} = zeros(Float64, T)       # profit share of GDP of cp over time
-    GDP_Π_kp::Vector{Float64} = zeros(Float64, T)       # profit share of GDP of kp over time
+    T::Int=T                                                # number of timesteps
+    GDP::Vector{Float64} = zeros(Float64, T)                # GDP over time
+    GDP_I::Vector{Float64} = zeros(Float64, T)              # income share of GDP over time
+    GDP_Π_cp::Vector{Float64} = zeros(Float64, T)           # profit share of GDP of cp over time
+    GDP_Π_kp::Vector{Float64} = zeros(Float64, T)           # profit share of GDP of kp over time
 
-    GDP_growth :: Vector{Float64} = zeros(Float64, T)   # GDP growth rates over time
+    GDP_growth :: Vector{Float64} = zeros(Float64, T)       # GDP growth rates over time
 
-    p̄::Vector{Float64} = zeros(Float64, T)              # average price of cp goods over time
-    p̄_kp::Vector{Float64} = zeros(Float64, T)           # average price of kp goods over time
+    p̄::Vector{Float64} = zeros(Float64, T)                  # average price of cp goods over time
+    p̄_kp::Vector{Float64} = zeros(Float64, T)               # average price of kp goods over time
     μ_bp::Vector{Float64} = zeros(Float64, T)
     μ_lp::Vector{Float64} = zeros(Float64, T)
     μ_kp::Vector{Float64} = zeros(Float64, T)
-    CPI :: Vector{Float64} = zeros(Float64, T)         # price index consumer goods over time
-    CPI_kp :: Vector{Float64} = zeros(Float64, T)      # price index capital goods over time
+    CPI :: Vector{Float64} = zeros(Float64, T)              # price index consumer goods over time
+    CPI_kp :: Vector{Float64} = zeros(Float64, T)           # price index capital goods over time
 
-    C::Vector{Float64} = zeros(Float64, T)             # aggregate consumption over time
-    unsat_demand::Vector{Float64} = zeros(Float64, T)  # average ratio of unsatisfied demand
-    avg_N_goods::Vector{Float64} = zeros(Float64, T)   # average number of goods in cp firm inventory
+    C::Vector{Float64} = zeros(Float64, T)                  # aggregate consumption over time
+    unsat_demand::Vector{Float64} = zeros(Float64, T)       # average ratio of unsatisfied demand
+    avg_N_goods::Vector{Float64} = zeros(Float64, T)        # average number of goods in cp firm inventory
 
     # Division of money over sectors
-    M::Vector{Float64} = zeros(Float64, T)             # total amount of money (should be stable)
-    M_hh::Vector{Float64} = zeros(Float64, T)          # total amount of money at hh
-    M_cp::Vector{Float64} = zeros(Float64, T)          # total amount of money at cp
-    M_kp::Vector{Float64} = zeros(Float64, T)          # total amount of money at kp
-    M_gov::Vector{Float64} = zeros(Float64, T)         # total amount of money at gov
-    M_if::Vector{Float64}  = zeros(Float64, T)         # total amount of money at if
+    M::Vector{Float64} = zeros(Float64, T)                  # total amount of money (should be stable)
+    M_hh::Vector{Float64} = zeros(Float64, T)               # total amount of money at hh
+    M_cp::Vector{Float64} = zeros(Float64, T)               # total amount of money at cp
+    M_kp::Vector{Float64} = zeros(Float64, T)               # total amount of money at kp
+    M_gov::Vector{Float64} = zeros(Float64, T)              # total amount of money at gov
+    M_if::Vector{Float64}  = zeros(Float64, T)              # total amount of money at if
 
     # debt levels
-    debt_tot::Vector{Float64} = zeros(Float64, T)      # total debt
-    debt_cp::Vector{Float64} = zeros(Float64, T)       # cp debt
-    debt_cp_allowed::Vector{Float64} = zeros(Float64, T)     # cp allowed debt
-    debt_kp::Vector{Float64} = zeros(Float64, T)       # kp debt
-    debt_kp_allowed::Vector{Float64} = zeros(Float64, T) # kp debt allowed
-    debt_unpaid_kp::Vector{Float64} = zeros(Float64, T)  # kp debt that went unpaid after bankrupcy
-    debt_unpaid_cp::Vector{Float64} = zeros(Float64, T)  # cp debt that went unpaid after bankrupcy
+    debt_tot::Vector{Float64} = zeros(Float64, T)           # total debt
+    debt_cp::Vector{Float64} = zeros(Float64, T)            # cp debt
+    debt_cp_allowed::Vector{Float64} = zeros(Float64, T)    # cp allowed debt
+    debt_kp::Vector{Float64} = zeros(Float64, T)            # kp debt
+    debt_kp_allowed::Vector{Float64} = zeros(Float64, T)    # kp debt allowed
+    debt_unpaid_kp::Vector{Float64} = zeros(Float64, T)     # kp debt that went unpaid after bankrupcy
+    debt_unpaid_cp::Vector{Float64} = zeros(Float64, T)     # cp debt that went unpaid after bankrupcy
 
     # Wage statistics
-    w̄_avg::Vector{Float64} = ones(Float64, T)          # average wage over time
-    # w̄_std :: Vector{Float64}     # std of wage over time
-    wʳ_avg::Vector{Float64} = ones(Float64, T)         # average requested wage over time
-    # wʳ_std :: Vector{Float64}   # std of requested wage over time
-    wˢ_avg::Vector{Float64} = ones(Float64, T)         # average of satisfying wage over time
-    # wˢ_std :: Vector{Float64}   # std of satisfying wage over time
-    wᴼ_max_mean::Vector{Float64} = ones(Float64, T)    # average of wᴼ_max
+    w̄_avg::Vector{Float64} = ones(Float64, T)               # average wage over time
+    wʳ_avg::Vector{Float64} = ones(Float64, T)              # average requested wage over time
+    wˢ_avg::Vector{Float64} = ones(Float64, T)              # average of satisfying wage over time
+    wᴼ_max_mean::Vector{Float64} = ones(Float64, T)         # average of wᴼ_max
 
-    Ī_avg::Vector{Float64} = zeros(Float64, T)         # average income over time
-    Ī_std::Vector{Float64} = zeros(Float64, T)         # std of income over time
-    B̄_avg::Vector{Float64} = zeros(Float64, T)         # average of budget over time
-    B̄_std::Vector{Float64} = zeros(Float64, T)         # std of budget over time
-    U::Vector{Float64} = zeros(Float64, T)             # unemployment over time
-    Exp_UB::Vector{Float64} = zeros(Float64, T)        # total spending on UB
-    AB::Vector{Float64} = zeros(Float64, T)            # average labor productivity over time
-    l::Vector{Float64} = zeros(Float64, T)             # unfilled demand over time
-    E_bar::Vector{Float64} = zeros(Float64, T)         # average competetiveness over time
-    r::Vector{Float64} = zeros(Float64, T)             # interest rate over time
-    Ls::Vector{Float64} = zeros(Float64, T)            # labor supply over time
-    Ld::Vector{Float64} = zeros(Float64, T)            # labor demand over time
+    Ī_avg::Vector{Float64} = zeros(Float64, T)              # average income over time
+    Ī_std::Vector{Float64} = zeros(Float64, T)              # std of income over time
+    B̄_avg::Vector{Float64} = zeros(Float64, T)              # average of budget over time
+    B̄_std::Vector{Float64} = zeros(Float64, T)              # std of budget over time
+    U::Vector{Float64} = zeros(Float64, T)                  # unemployment over time
+    Exp_UB::Vector{Float64} = zeros(Float64, T)             # total spending on UB
+    AB::Vector{Float64} = zeros(Float64, T)                 # average labor productivity over time
+    l::Vector{Float64} = zeros(Float64, T)                  # unfilled demand over time
+    E_bar::Vector{Float64} = zeros(Float64, T)              # average competetiveness over time
+    r::Vector{Float64} = zeros(Float64, T)                  # interest rate over time
+    Ls::Vector{Float64} = zeros(Float64, T)                 # labor supply over time
+    Ld::Vector{Float64} = zeros(Float64, T)                 # labor demand over time
 
     # Changes in savings rate
-    s̄_avg::Vector{Float64} = zeros(Float64, T)         # average savings rate over time
-    s̄_std::Vector{Float64} = zeros(Float64, T)         # std of savings over time
+    s̄_avg::Vector{Float64} = zeros(Float64, T)              # average savings rate over time
+    s̄_std::Vector{Float64} = zeros(Float64, T)              # std of savings over time
 
     # Changes in labor demand
-    ΔL̄_avg::Vector{Float64} = zeros(Float64, T)        # average desired labor change
-    ΔL̄_std::Vector{Float64} = zeros(Float64, T)        # std desired labor change
-    ΔL̄_cp_avg::Vector{Float64} = zeros(Float64, T)     # average desired over time for cp
-    ΔL̄_cp_std::Vector{Float64} = zeros(Float64, T)     # std desired labor change for cp
-    ΔL̄_kp_avg::Vector{Float64} = zeros(Float64, T)     # ' ' for kp
-    ΔL̄_kp_std::Vector{Float64} = zeros(Float64, T)
+    ΔL̄_avg::Vector{Float64} = zeros(Float64, T)             # average desired labor change
+    ΔL̄_std::Vector{Float64} = zeros(Float64, T)             # std desired labor change
+    ΔL̄_cp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for cp
+    ΔL̄_cp_std::Vector{Float64} = zeros(Float64, T)          # std desired labor change for cp
+    ΔL̄_kp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for kp
+    ΔL̄_kp_std::Vector{Float64} = zeros(Float64, T)          # std desired labor change for kp
 
     # Investment levels
-    EI_avg::Vector{Float64}  = zeros(Float64, T)       # average expansion investment
-    n_mach_EI_avg::Vector{Float64} = zeros(Float64, T) # average amount of ordered machines for EI
-    RS_avg::Vector{Float64} = zeros(Float64, T)        # average replacement investment
-    n_mach_RS_avg::Vector{Float64} = zeros(Float64, T) # average amounf of ordered machines for RS
+    EI_avg::Vector{Float64}  = zeros(Float64, T)            # average expansion investment
+    n_mach_EI_avg::Vector{Float64} = zeros(Float64, T)      # average amount of ordered machines for EI
+    RS_avg::Vector{Float64} = zeros(Float64, T)             # average replacement investment
+    n_mach_RS_avg::Vector{Float64} = zeros(Float64, T)      # average amounf of ordered machines for RS
 
     # Productivity
-    avg_π::Vector{Float64} = zeros(Float64, T)         # average productivity cp
-    avg_A::Vector{Float64} = zeros(Float64, T)         # average A at kp
-    avg_B::Vector{Float64} = zeros(Float64, T)         # average B at kp
+    avg_π::Vector{Float64} = zeros(Float64, T)              # average productivity cp
+    avg_A::Vector{Float64} = zeros(Float64, T)              # average A at kp
+    avg_B::Vector{Float64} = zeros(Float64, T)              # average B at kp
 
     # Production
-    avg_Q_bp::Vector{Float64} = zeros(Float64, T)      # average production of bp
-    avg_Q_lp::Vector{Float64} = zeros(Float64, T)      # average production of lp
-    avg_Q_kp::Vector{Float64} = zeros(Float64, T)      # average production of kp
+    avg_Q_bp::Vector{Float64} = zeros(Float64, T)           # average production of bp
+    avg_Q_lp::Vector{Float64} = zeros(Float64, T)           # average production of lp
+    avg_Q_kp::Vector{Float64} = zeros(Float64, T)           # average production of kp
 
     # Bankrupties
-    bankrupt_bp::Vector{Float64} = zeros(Float64, T)   # fraction of bp that went bankrupt
-    bankrupt_lp::Vector{Float64} = zeros(Float64, T)   # fraction of lp that went bankrupt
-    bankrupt_kp::Vector{Float64} = zeros(Float64, T)   # fraction of kp that went bankrupt
+    bankrupt_bp::Vector{Float64} = zeros(Float64, T)        # fraction of bp that went bankrupt
+    bankrupt_lp::Vector{Float64} = zeros(Float64, T)        # fraction of lp that went bankrupt
+    bankrupt_kp::Vector{Float64} = zeros(Float64, T)        # fraction of kp that went bankrupt
 
-    cu::Vector{Float64} = zeros(Float64, T)            # average rate of capital utilization
-    avg_n_machines_bp::Vector{Float64} = zeros(Float64, T) # average number of machines bp
-    avg_n_machines_lp::Vector{Float64} = zeros(Float64, T) # average number of machines lp
+    cu::Vector{Float64} = zeros(Float64, T)                 # average rate of capital utilization
+    avg_n_machines_bp::Vector{Float64} = zeros(Float64, T)  # average number of machines bp
+    avg_n_machines_lp::Vector{Float64} = zeros(Float64, T)  # average number of machines lp
 
-    GINI_I::Vector{Float64} = zeros(Float64, T)
-    GINI_W::Vector{Float64} = zeros(Float64, T)
-
-end
-
-
-function initialize_macro(
-    T::Int
-    )
-    return MacroEconomy(T=T)
-    # macro_struct = MacroEconomy(
-    #     [],                     # GDP over time
-    #     [],                     # income share of GDP
-    #     [],                     # profit share of GDP of cp over time
-    #     [],                     # profit share of GDP of kp over time
-
-    #     [],                     # GDP growth rates over time
-
-    #     [],                     # p̄: average price over time
-    #     [],                     # p̄_kp: average price of kp goods over time
-    #     [],
-    #     [],
-    #     [],
-    #     [],                     # CPI: inflation rate
-    #     [],                     # CPI_kp: price index capital goods
-
-    #     [],                     # aggregate consumption
-    #     [],                     # unsat_dem: ratio of unsatisfied demand
-    #     [],                     # Inventory ratio
-
-    #     # Money amounts
-    #     [],                     # M total
-    #     [],                     # M hh
-    #     [],                     # M cp
-    #     [],                     # M kp
-    #     [],                     # M gov
-    #     [],                     # M if
-
-    #     # debt levels
-    #     [],                     # total debt
-    #     [],                     # cp debt
-    #     [],                     # cp allowed debt
-    #     [],                     # kp debt
-    #     [],                     # kp allowed debt
-    #     [],                     # kp unpaid debt
-    #     [],                     # cp unpaid debt
-
-    #     [],                     # average of wage over time
-    #     # [],                     # std of wage over time
-    #     [],
-    #     # [],
-    #     [],
-    #     # [],
-    #     [],                     # wᴼ_max_mean: average of wᴼ_max
-
-    #     [],                     # average income over time
-    #     [],                     # std of income over time
-    #     [],                     # average budget over time
-    #     [],                     # std of budget over time
-    #     [],                     
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-    #     [],
-
-    #     # Investments
-    #     [],                     # EI
-    #     [],                     # n mach EI
-    #     [],                     # RS
-    #     [],                     # n mach RS
-
-    #     # Productivity
-    #     [],
-    #     [],
-    #     [],
-
-    #     # Production
-    #     [],
-    #     [],
-    #     [],
-
-    #     # Bankrupties
-    #     [],
-    #     [],
-    #     [],
-
-    #     [],                     # cu: capital utilization rate
-    #     [],                     # avg_n_machines_bp
-    #     [],                     # avg_n_machines_lp
-
-    #     # Inequality
-    #     [],                     # GINI_I
-    #     [],                     # GINI_W
-    # )
-    return macro_struct
+    GINI_I::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for income
+    GINI_W::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for wealth
 end
 
 
@@ -287,7 +180,6 @@ function update_macro_timeseries(
 
     macro_struct.avg_N_goods[t] = mean(map(cp_id -> model[cp_id].N_goods, all_cp))
 
-
     # Mean rate of capital utilization
     macro_struct.cu[t] = mean(map(cp_id -> model[cp_id].cu, all_cp))
 
@@ -296,7 +188,7 @@ function update_macro_timeseries(
     macro_struct.avg_n_machines_lp[t] = mean(map(lp_id -> model[lp_id].n_machines, all_lp))
 
     # Compute GINI coefficients
-    @time compute_GINI(all_hh, macro_struct, t, model)
+    compute_GINI(all_hh, macro_struct, t, model)
 
 end
 

@@ -406,77 +406,85 @@ end
 """
 Decides whether to switch to other cp
 """
-function decide_switching_hh!(
-    hh::Household,
-    ψ_Q::Float64,
-    ψ_P::Float64,
+function decide_switching_all_hh!(
+    global_param::GlobalParam,
+    all_hh::Vector{Int},
+    all_p::Vector{Int},
     all_bp::Vector{Int},
     all_lp::Vector{Int},
     model::ABM
     )
 
-    # Check if demand was constrained and for chance of changing cp
-    if length(hh.unsat_dem) > 0 && rand() < ψ_Q
+    # all_P_weights = Dict(p_id => 1/max(model[p_id].p[end], 0.001) for p_id in all_p)
 
-        # Pick a supplier to change, first set up weights inversely proportional
-        # to supplied share of goods
-        weights = map(p -> 1/max(p[2], 0.001), hh.unsat_dem)
+    for hh_id in all_hh
+        # Check if demand was constrained and for chance of changing cp
+        if length(model[hh_id].unsat_dem) > 0 && rand() < global_param.ψ_Q
 
-        # Sample producer to replace
-        p_id_replaced = sample(hh.unsat_dem, Weights(weights))[1]
+            # Pick a supplier to change, first set up weights inversely proportional
+            # to supplied share of goods
+            weights = map(p -> 1/max(p[2], 0.001), model[hh_id].unsat_dem)
 
-        # Check if replaced supplier is bp or lp, sample new supplier in correct
-        # category and replace in set of hh suppliers.
-        if p_id_replaced in hh.bp
-            filter!(p_id -> p_id ≠ p_id_replaced, hh.bp)
+            # Sample producer to replace
+            p_id_replaced = sample(model[hh_id].unsat_dem, Weights(weights))[1]
 
-            # Add new bp if list not already too long
-            if length(hh.bp) < 10
-                p_id_new = sample(setdiff(all_bp, hh.bp))
-                push!(hh.bp, p_id_new)
-            end
-        else
-            filter!(p_id -> p_id ≠ p_id_replaced, hh.lp)
+            # Check if replaced supplier is bp or lp, sample new supplier in correct
+            # category and replace in set of hh suppliers.
+            if p_id_replaced ∈ model[hh_id].bp
+                filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].bp)
 
-            # Add new bp if list not already too long
-            if length(hh.lp) < 10
-                p_id_new = sample(setdiff(all_lp, hh.lp))
-                push!(hh.lp, p_id_new)
+                # Add new bp if list not already too long
+                if length(model[hh_id].bp) < 10
+                    # p_id_new = sample(setdiff(all_bp, model[hh_id].bp))
+                    p_id_new = sample(all_bp)
+                    push!(model[hh_id].bp, p_id_new)
+                end
+            else
+                filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].lp)
+
+                # Add new bp if list not already too long
+                if length(model[hh_id].lp) < 10
+                    # p_id_new = sample(setdiff(all_lp, model[hh_id].lp))
+                    p_id_new = sample(all_lp)
+                    push!(model[hh_id].lp, p_id_new)
+                end
             end
         end
-    end
 
-    n_attempts = 5
+        # Check if household will look for a better price
+        if rand() < global_param.ψ_P
 
-    # Check if household will look for a better price
-    if rand() < ψ_P
+            # Randomly select a supplier that may be replaced
+            # p_id_candidate1 = sort(vcat(model[hh_id].bp, model[hh_id].lp), by=p_id -> model[p_id].p[end])[end]
+            p_id_candidate1 = sample(vcat(model[hh_id].bp, model[hh_id].lp))
 
-        # Randomly select a supplier that may be replaced
-        # p_id_candidate1 = max(p_id -> model[p_id].p[end], vcat(hh.bp, hh.lp))
-        p_id_candidate1 = sort(vcat(hh.bp, hh.lp), by = p_id -> model[p_id].p[end])[end]
+            # Randomly pick another candidate from same type and see if price is lower
+            if p_id_candidate1 ∈ model[hh_id].bp
+                # TODO make this weighted (if needed)
+                # TODO see if you dont always want to sample from already known producers
+                # p_id_candidate2 = sample(setdiff(all_bp, model[hh_id].bp))
 
-        # Randomly pick another candidate from same type and see if price is lower
-        if p_id_candidate1 ∈ hh.bp
-            # TODO make this weighted (if needed)
-            # TODO see if you dont always want to sample from already known producers
-            p_id_candidate2 = sort(sample(setdiff(all_bp, hh.bp), n_attempts), 
-                                   by = bp_id -> model[bp_id].p[end])[1]
+                # Ugly sample to boost performance
+                p_id_candidate2 = sample(all_bp)
+                while p_id_candidate2 ∈ model[hh_id].bp
+                    p_id_candidate2 = sample(all_bp)
+                end
+                
+                # Replace supplier if price of other supplier is lower 
+                if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
+                    model[hh_id].bp[findfirst(x->x==p_id_candidate1, model[hh_id].bp)] = p_id_candidate2
+                end
+            else
+                # p_id_candidate2 = sample(setdiff(all_lp, model[hh_id].lp))
+                p_id_candidate2 = sample(all_lp)
+                while p_id_candidate2 ∈ model[hh_id].lp
+                    p_id_candidate2 = sample(all_lp)
+                end
             
-            # Replace supplier if price of other supplier is lower 
-            if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-                hh.bp[findall(x->x==p_id_candidate1, hh.bp)] .= p_id_candidate2
-                # filter!(p_id -> p_id ≠ p_id_candidate1, hh.bp)
-                # push!(hh.bp, p_id_candidate2)
-            end
-        else
-            p_id_candidate2 = sort(sample(setdiff(all_lp, hh.lp), n_attempts), 
-                                   by = lp_id -> model[lp_id].p[end])[1]
-        
-            # Replace supplier if price of other supplier is lower
-            if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-                hh.lp[findall(x->x==p_id_candidate1, hh.lp)] .= p_id_candidate2
-                # filter!(p_id -> p_id ≠ p_id_candidate1, hh.lp)
-                # push!(hh.lp, p_id_candidate2)
+                # Replace supplier if price of other supplier is lower
+                if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
+                    model[hh_id].lp[findfirst(x->x==p_id_candidate1, model[hh_id].lp)] = p_id_candidate2
+                end
             end
         end
     end

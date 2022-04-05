@@ -189,7 +189,7 @@ function model_step!(
     )
 
     # Update schedulers
-    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
+    @timeit to "schedule" all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
     # Update firm age
     for p_id in all_p
@@ -213,7 +213,7 @@ function model_step!(
     # (1) capital good producers innovate and send brochures
 
     # Determine distance matrix between capital good producers
-    kp_distance_matrix = get_capgood_euclidian(all_kp, model)
+    @timeit to "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
     for kp_id in all_kp
 
@@ -225,7 +225,7 @@ function model_step!(
         #     w̄ = macro_struct.w̄_avg[t]
         # end
 
-        innovate_kp!(
+        @timeit to "kp innov" innovate_kp!(
             model[kp_id], 
             global_param, 
             all_kp, 
@@ -242,15 +242,15 @@ function model_step!(
         cp = model[cp_id]
         
         # Plan production for this period
-        plan_production_cp!(cp, global_param, model)
+        @timeit to "plan prod cp" plan_production_cp!(cp, global_param, model)
 
         # Plan investments for this period
-        plan_investment_cp!(cp, all_kp, global_param, model)
+        @timeit to "plan inv cp" plan_investment_cp!(cp, all_kp, global_param, model)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
     for kp_id in all_kp
-        plan_production_kp!(model[kp_id], global_param, model)
+        @timeit to "plan prod kp" plan_production_kp!(model[kp_id], global_param, model)
     end
 
     # (3) labor market matching process
@@ -312,16 +312,16 @@ function model_step!(
     )
 
     # Households decide to switch suppliers based on satisfied demand and prices
-    for hh_id in all_hh
-        decide_switching_hh!(
-            model[hh_id],
-            global_param.ψ_Q,
-            global_param.ψ_P,
-            all_bp,
-            all_lp,
-            model
-        )
-    end
+    # for hh_id in all_hh
+    @timeit to "decide switching hh" decide_switching_all_hh!(
+        global_param,
+        all_hh,
+        all_p,
+        all_bp,
+        all_lp,
+        model
+    )
+    # end
 
     # (6) kp deliver goods to cp, kp make up profits
     for kp_id in all_kp
@@ -337,7 +337,7 @@ function model_step!(
         end
 
         # Close balances of firms, if insolvent, liquidate firms
-        close_balance_p!(
+        @timeit to "close balance" close_balance_p!(
             model[p_id], 
             global_param.Λ,
             global_param.r,
@@ -357,7 +357,7 @@ function model_step!(
     update_marketshare_kp!(all_kp, model)
 
     # Select producers that will be declared bankrupt and removed
-    bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
+    @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
 
     # (7) macro-economic indicators are updated.
     @timeit to "update macro ts" update_macro_timeseries(
