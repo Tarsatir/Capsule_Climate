@@ -49,7 +49,7 @@ function close_balance_p!(
     end
 
     # TRIAL OF INDEX FUND
-    d = 3
+    d = 2
     max_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.debt_installments[1])
 
     # If not enough liquid assets available, borrow additional funds.

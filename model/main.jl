@@ -19,6 +19,8 @@ include("helpers/dist_matrix.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
 
+include("macro_markets/macro.jl")
+
 include("objects/accounting_firms.jl")
 include("objects/accounting_govt.jl")
 include("objects/machine.jl")
@@ -33,10 +35,9 @@ include("agents/bank.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
-include("macro_markets/macro.jl")
 
 # TEMP
-include("../plotting/plot_D_p.jl")
+# include("../plotting/plot_D_p.jl")
 
 
 """
@@ -67,7 +68,7 @@ function initialize_model(
     init_param = initialize_init_params()
 
     # Initialize struct that holds macro variables
-    macro_struct = initialize_macro(T)
+    macro_struct = MacroEconomy(T=T)
 
     # Initialize labor market struct
     labormarket_struct = initialize_labormarket()
@@ -176,6 +177,7 @@ end
 function model_step!(
     t::Int,
     T::Int,
+    to,
     global_param::GlobalParam, 
     init_param::InitParam,
     macro_struct::MacroEconomy, 
@@ -217,18 +219,18 @@ function model_step!(
 
         model[kp_id].curracc = clear_firm_currentaccount_p!(model[kp_id].curracc)
 
-        if length(macro_struct.w̄_avg) == 0
-            w̄ = 1.0
-        else
-            w̄ = macro_struct.w̄_avg[end]
-        end
+        # if t == 1
+        #     w̄ = 1.0
+        # else
+        #     w̄ = macro_struct.w̄_avg[t]
+        # end
 
         innovate_kp!(
             model[kp_id], 
             global_param, 
             all_kp, 
             kp_distance_matrix,
-            w̄,
+            macro_struct.w̄_avg[max(t-1,1)],
             model
         )
         send_brochures_kp!(model[kp_id], all_cp, global_param, model)
@@ -252,7 +254,7 @@ function model_step!(
     end
 
     # (3) labor market matching process
-    labormarket_process!(
+    @timeit to "labormarket" labormarket_process!(
         labormarket_struct,
         all_hh, 
         all_p,
@@ -273,11 +275,11 @@ function model_step!(
 
 
     # (5) Production takes place for cp and kp
-    for cp_id in all_cp
+    @timeit to "consumer prod" for cp_id in all_cp
         produce_goods_cp!(model[cp_id], global_param)
     end
 
-    for kp_id in all_kp
+    @timeit to "capital prod" for kp_id in all_kp
         produce_goods_kp!(model[kp_id], global_param)
     end
 
@@ -298,7 +300,7 @@ function model_step!(
     all_W_hh = Vector{Float64}()
 
     # Consumer market process
-    consumermarket_process!(
+    @timeit to "consumermarket" consumermarket_process!(
         all_hh,
         all_cp,
         all_bp,
@@ -358,13 +360,15 @@ function model_step!(
     bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
 
     # (7) macro-economic indicators are updated.
-    update_macro_timeseries(
-        macro_struct, 
+    @timeit to "update macro ts" update_macro_timeseries(
+        macro_struct,
+        t, 
         all_hh, 
         all_cp, 
         all_kp,
         all_bp,
         all_lp,
+        all_p,
         bankrupt_bp,
         bankrupt_lp,
         bankrupt_kp,
@@ -376,7 +380,7 @@ function model_step!(
     )
 
     # Remove bankrupt companies.
-    kill_all_bankrupt_p!(
+    @timeit to "kill bankr p" kill_all_bankrupt_p!(
         bankrupt_bp, 
         bankrupt_lp, 
         bankrupt_kp, 
@@ -390,8 +394,8 @@ function model_step!(
 
 
     # Replace bankrupt kp. Do this before you replace cp, such that new cp can also choose
-    # from new kp 
-    replace_bankrupt_kp!(
+    # from new kp
+    @timeit to "replace kp" replace_bankrupt_kp!(
         bankrupt_kp, 
         bankrupt_kp_i, 
         all_kp,
@@ -402,7 +406,7 @@ function model_step!(
     )
 
     # Replace bankrupt companies with new companies
-    replace_bankrupt_cp!(
+    @timeit to "replace cp" replace_bankrupt_cp!(
         bankrupt_bp, 
         bankrupt_lp,
         bankrupt_kp, 
@@ -412,9 +416,8 @@ function model_step!(
         all_kp,
         global_param,
         indexfund_struct,
-        macro_struct.cu[end],
-        macro_struct.p̄[end],
-        macro_struct.w̄_avg[end],
+        macro_struct,
+        t,
         model
     )
 
@@ -428,7 +431,7 @@ end
 
 
 function run_simulation(;
-    T=400::Int,
+    T=100::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
@@ -446,7 +449,8 @@ function run_simulation(;
 
         @timeit to "step" model_step!(
                                 t,
-                                T, 
+                                T,
+                                to, 
                                 global_param, 
                                 init_param,
                                 macro_struct, 

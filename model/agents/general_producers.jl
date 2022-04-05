@@ -12,8 +12,6 @@ function fire_excess_workers_p!(
         fired_workers = sample(p.employees, n_to_be_fired, replace=false)
     end
 
-    # println(fired_workers, length(fired_workers))
-
     # Remove employees from labor stock
     if length(fired_workers) > 0
 

@@ -562,9 +562,8 @@ function replace_bankrupt_cp!(
     all_kp::Vector{Int},
     global_param::GlobalParam,
     indexfund_struct::IndexFund,
-    avg_cu::Float64,
-    p̄::Float64,
-    w̄::Float64,
+    macro_struct::MacroEconomy,
+    t::Int,
     model::ABM
     )
 
@@ -597,6 +596,8 @@ function replace_bankrupt_cp!(
 
     all_money_inflow = 0
 
+    println(length(bankrupt_bp) + length(bankrupt_lp))
+
     for (i,cp_id) in enumerate(vcat(bankrupt_bp, bankrupt_lp))
 
         type_good="Basic"
@@ -612,8 +613,9 @@ function replace_bankrupt_cp!(
 
         # Sample what the size of the capital stock will be
         # capital_coefficient = rand(Uniform(global_param.φ1, global_param.φ2))
+        # println("$(capital_coefficients[i]), $(avg_n_machines)")
         n_machines = floor(Int, capital_coefficients[i] * avg_n_machines / global_param.freq_per_machine)
-        D = avg_cu * n_machines * global_param.freq_per_machine
+        D = macro_struct.cu[t] * n_machines * global_param.freq_per_machine
 
         # In the first period, the cp has no machines yet, these are delivered at the end
         # of the first period
@@ -625,8 +627,8 @@ function replace_bankrupt_cp!(
                     global_param.μ1,
                     global_param.ι;
                     D=D,
-                    p=p̄,
-                    w=w̄,
+                    p=macro_struct.p̄[t],
+                    w=macro_struct.w̄_avg[t],
                     L=0,
                     Lᵉ=0,
                     N_goods=0.0,

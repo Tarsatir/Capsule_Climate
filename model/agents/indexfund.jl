@@ -1,5 +1,5 @@
-mutable struct IndexFund 
-    Assets::Float64             # Total amount of assets alocated in the fund
+Base.@kwdef mutable struct IndexFund 
+    Assets::Float64 = 0.0           # Total amount of assets alocated in the fund
 end
 
 
@@ -8,7 +8,7 @@ Initializes index fund struct
 """
 function initialize_indexfund()::IndexFund
 
-    indexfund_struct = IndexFund(0.0)
+    indexfund_struct = IndexFund()
     
     return indexfund_struct
 end

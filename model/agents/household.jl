@@ -188,6 +188,17 @@ function compute_consumption_budget_hh!(
         s = 0
     end
 
+    # a = 50
+    # b = 2.5
+
+    # ymax_total = 1.2
+    # ymin_total = 0.8
+
+    # s = 1 / (1 + exp((hh.Iᵀ[end] / hh.P̄[end]) / a - b))
+    # cons_frac = ymin_total + s * (ymax_total - ymin_total)
+    # C = max(min(hh.W[end], cons_frac * hh.Iᵀ[end]), 0)
+    # s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
+
     push!(hh.C, C)
     hh.s = s
 end
