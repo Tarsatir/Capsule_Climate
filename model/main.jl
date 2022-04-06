@@ -19,7 +19,6 @@ include("helpers/dist_matrix.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
 
-include("macro_markets/macro.jl")
 
 include("objects/accounting_firms.jl")
 include("objects/accounting_govt.jl")
@@ -27,6 +26,7 @@ include("objects/machine.jl")
 
 include("agents/government.jl")
 include("agents/indexfund.jl")
+include("macro_markets/macro.jl")
 include("agents/household.jl")
 include("agents/consumer_good.jl")
 include("agents/capital_good.jl")
@@ -82,7 +82,8 @@ function initialize_model(
     # Initialize households
     for _ in 1:init_param.n_hh
 
-        hh = initialize_hh(id)
+        # hh = initialize_hh(id)
+        hh = Household(id=id)
         add_agent!(hh, model)
 
         id += 1
@@ -219,12 +220,6 @@ function model_step!(
 
         model[kp_id].curracc = clear_firm_currentaccount_p!(model[kp_id].curracc)
 
-        # if t == 1
-        #     w̄ = 1.0
-        # else
-        #     w̄ = macro_struct.w̄_avg[t]
-        # end
-
         @timeit to "kp innov" innovate_kp!(
             model[kp_id], 
             global_param, 
@@ -308,7 +303,8 @@ function model_step!(
         all_W_hh,
         gov_struct,
         global_param,
-        model
+        model,
+        to
     )
 
     # Households decide to switch suppliers based on satisfied demand and prices

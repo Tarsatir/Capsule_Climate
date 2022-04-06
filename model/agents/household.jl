@@ -1,69 +1,63 @@
-# @pyimport scipy.stats as stats
+@Base.kwdef mutable struct Household <: AbstractAgent
 
-mutable struct Household <: AbstractAgent
-
-    id :: Int                   # global id
+    id :: Int                                   # global id
 
     # Employment variables
-    employed :: Bool            # is employed
-    employer_id :: Int          # id of employer
-    L :: Float64                # labor units in household
-    w :: Vector{Float64}       # wage
-    wˢ :: Float64               # satisfying wage
-    wʳ :: Float64               # requested wage
-    T_unemp :: Int              # time periods unemployed
+    employed::Bool = false                      # is employed
+    employer_id::Union{Int} = 0                 # id of employer
+    L::Float64 = 100.0                          # labor units in household
+    w::Vector{Float64} = ones(4)                # wage
+    wˢ::Float64 = 1.0                           # satisfying wage
+    wʳ::Float64 = 1.0                           # requested wage
+    T_unemp::Int = 0                            # time periods unemployed
 
     # Income and wealth variables
-    I :: Vector{Float64}        # hist income
-    Iᵀ :: Vector{Float64}       # hist taxed income
-    # S :: Vector{Float64}        # total savings
-    s :: Float64                # savings rate
-    W :: Vector{Float64}        # wealth or cash on hand
-    # Wʳ :: Vector{Float64}       # real wealth or cash on hand
+    I::Vector{Float64} = [100]                  # hist income
+    Iᵀ::Vector{Float64} = []                    # hist taxed income
+    s::Float64 = 0.0                            # savings rate
+    W::Vector{Float64} = [50]                   # wealth or cash on hand
 
     # Consumption variables
-    C :: Vector{Float64}        # budget
-    # N_goods :: Float64          # number of goods bought
-    bp :: Vector{Int}           # connected cp basic goods
-    lp :: Vector{Int}           # connected cp luxury goods
-    unsat_dem :: Vector         # unsatisfied demands
-    P̄ :: Float64                # weighted average price of bp
-    c_L :: Float64              # share of income used to buy luxury goods
-
+    C::Vector{Float64} = Vector{Float64}()     # budget
+    bp::Vector{Int} = Vector{Int}()            # connected cp basic goods
+    lp::Vector{Int} = Vector{Int}()            # connected cp luxury goods
+    unsat_dem::Vector = Vector()               # unsatisfied demands
+    P̄::Float64 = 1.0                           # weighted average price of bp
+    c_L::Float64 = 0.5                         # share of income used to buy luxury goods
 end
 
-function initialize_hh(
-    id::Int,
-    )::Household
+# function initialize_hh(
+#     id::Int,
+#     )::Household
 
-    hh = Household(
-        id,                     # global id
+#     hh = Household(
+#         id,                     # global id
 
-        false,                  # bool: employed
-        0,                      # id of employer
-        100,                    # L: labor units
-        ones(4),                # w: wage
-        1.0,                    # wˢ: satisfying wage
-        1.0,                    # wʳ: requested wage
-        0,                      # T_unemp: time periods unemployed
+#         false,                  # bool: employed
+#         0,                      # id of employer
+#         100,                    # L: labor units
+#         ones(4),                # w: wage
+#         1.0,                    # wˢ: satisfying wage
+#         1.0,                    # wʳ: requested wage
+#         0,                      # T_unemp: time periods unemployed
 
-        [100],                  # I: hist income
-        [],                     # Iᵀ: hist taxed income
-        # [10],                   # S: total savings
-        0,                      # s: savings rate
-        [50],                  # W: wealth or cash on hand
-        # [100],                  # Wʳ: real wealth or cash on hand
+#         [100],                  # I: hist income
+#         [],                     # Iᵀ: hist taxed income
+#         # [10],                   # S: total savings
+#         0,                      # s: savings rate
+#         [50],                  # W: wealth or cash on hand
+#         # [100],                  # Wʳ: real wealth or cash on hand
 
-        [],                     # C: budget
-        # 0.0,                    # N_goods: number of goods bought
-        Vector{Int}(),          # all_cp_B: connected cp basic goods
-        Vector{Int}(),          # all_cp_L: connected cp luxury goods
-        Vector(),
-        0,                      # P̄: weighted average price of bp
-        0.5,                    # c_L: share of budget used to buy luxury goods
-    )
-    return hh
-end
+#         [],                     # C: budget
+#         # 0.0,                    # N_goods: number of goods bought
+#         Vector{Int}(),          # all_cp_B: connected cp basic goods
+#         Vector{Int}(),          # all_cp_L: connected cp luxury goods
+#         Vector(),
+#         0,                      # P̄: weighted average price of bp
+#         0.5,                    # c_L: share of budget used to buy luxury goods
+#     )
+#     return hh
+# end
 
 
 """
@@ -85,18 +79,6 @@ function select_bp_lp_hh!(
 end
 
 
-# """
-# Updates current wealth level W, equal to the current cash on hand
-# """
-# function update_W_hh!(
-#     hh::Household
-#     )
-    
-#     W = hh.Iᵀ[end] + hh.S[end]
-#     push!(hh.W, W)
-# end
-
-
 """
 Sets consumption budget based on current wealth level
 """
@@ -109,10 +91,6 @@ function set_consumption_budget_hh!(
 
     # Update average price level of bp and lp
     update_average_price_hh!(hh, model)
-
-    # Update real wealth level
-    # update_real_wealth_hh!(hh)
-    # TODO: check if this is still needed
 
     # Update share of goods to bg and lg
     update_share_goodtypes_hh!(hh, global_param.c_L_max, global_param.a_σ, global_param.b_σ)
@@ -131,22 +109,10 @@ function update_average_price_hh!(
     model::ABM
     )
 
-    P̄_bp = mean(bp_id -> model[bp_id].p[end], hh.bp)
-    P̄_lp = mean(lp_id -> model[lp_id].p[end], hh.lp)
+    P̄_bp = mean(map(bp_id -> model[bp_id].p[end], hh.bp))
+    P̄_lp = mean(map(lp_id -> model[lp_id].p[end], hh.lp))
     hh.P̄ = hh.c_L * P̄_lp + (1 - hh.c_L) * P̄_bp
 end
-
-
-# """
-# Updates real wealth level based on price division of last period
-# """
-# function update_real_wealth_hh!(
-#     hh::Household
-#     )
-
-#     Wʳ = hh.W[end] / hh.P̄[end]
-#     push!(hh.Wʳ, Wʳ)
-# end
 
 
 """
@@ -213,22 +179,39 @@ function place_orders_hh!(
     cp_inventories,
     p_with_inventory::Vector{Int},
     global_param::GlobalParam,
-    model::ABM
+    model::ABM,
+    to
     )
 
     # If none of the known suppliers has products in stock, randomly select
     # other suppliers until demand can be met.
-    poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ intersect(Set(hh_p), Set(p_with_inventory)))
+    # Ugly selection to boost performance.
+    # poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ intersect(Set(hh_p), Set(p_with_inventory)))
+
+    poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ hh_p)
+    for p_id in hh_p
+        if p_id ∉ p_with_inventory
+            delete!(poss_p, p_id)
+        end
+    end
 
     add_p_id = 0
+    poss_p_ids = collect(keys(poss_p))
+    sum_poss_p = sum(map(p_id -> cp_inventories[p_id], poss_p_ids))
 
     # As long as the current producers do not have enough inventory and there are still
     # possible producers to sample, randomly sample producers and add to pool of possible cp
-    while (sum(map(p_id -> cp_inventories[p_id], collect(keys(poss_p)))) < C_i && 
-           length(poss_p) != length(p_with_inventory))
+    while sum_poss_p < C_i && length(poss_p) != length(p_with_inventory)
+        # add_p_id = sample(setdiff(p_with_inventory, keys(poss_p)))
 
-        add_p_id = sample(setdiff(p_with_inventory, keys(poss_p)))
-        poss_p[add_p_id] = 1 / model[add_p_id].p[end] 
+        add_p_id = sample(p_with_inventory)
+        while add_p_id ∈ poss_p_ids
+            add_p_id = sample(p_with_inventory)
+        end 
+
+        poss_p[add_p_id] = 1 / model[add_p_id].p[end]
+        sum_poss_p += cp_inventories[add_p_id]
+        push!(poss_p_ids, add_p_id) 
     end
 
     # Place orders based on the availability of goods
@@ -237,12 +220,13 @@ function place_orders_hh!(
     C_per_day = C_i / global_param.n_cons_market_days
 
     p_orders = Dict()
+    weights = collect(values(poss_p))
     
     while C_i > 0 && length(poss_p) > 0
-        chosen_p_id = sample(collect(keys(poss_p)), Weights(collect(values(poss_p))))
+        chosen_p_id = sample(poss_p_ids, Weights(weights))
         chosen_amount = min(min(C_i, C_per_day), cp_inventories[chosen_p_id])
 
-        if chosen_p_id ∉ keys(p_orders)
+        if !haskey(p_orders, chosen_p_id)
             p_orders[chosen_p_id] = chosen_amount
         else
             p_orders[chosen_p_id] += chosen_amount
@@ -252,6 +236,8 @@ function place_orders_hh!(
         cp_inventories[chosen_p_id] -= chosen_amount
 
         if cp_inventories[chosen_p_id] == 0
+            filter!(p_id -> p_id ≠ chosen_p_id, poss_p_ids)
+            filter!(w -> w ≠ poss_p[chosen_p_id], weights)
             delete!(poss_p, chosen_p_id)
             filter!(p_id -> p_id ≠ chosen_p_id, p_with_inventory)
         end
@@ -367,7 +353,6 @@ function set_employed_hh!(
     hh.employed = true
     hh.employer_id = employer_id
     hh.T_unemp = 0
-    # push!(hh.w, wᴼ)
     hh.w[1:3] = hh.w[2:4]
     hh.w[4] = wᴼ
 end
@@ -383,7 +368,6 @@ function change_employer_hh!(
     )
 
     hh.employer_id = employer_id
-    # push!(hh.w, wᴼ)
     hh.w[1:3] = hh.w[2:4]
     hh.w[4] = wᴼ
 end
@@ -462,7 +446,6 @@ function decide_switching_all_hh!(
             if p_id_candidate1 ∈ model[hh_id].bp
                 # TODO make this weighted (if needed)
                 # TODO see if you dont always want to sample from already known producers
-                # p_id_candidate2 = sample(setdiff(all_bp, model[hh_id].bp))
 
                 # Ugly sample to boost performance
                 p_id_candidate2 = sample(all_bp)
@@ -475,7 +458,6 @@ function decide_switching_all_hh!(
                     model[hh_id].bp[findfirst(x->x==p_id_candidate1, model[hh_id].bp)] = p_id_candidate2
                 end
             else
-                # p_id_candidate2 = sample(setdiff(all_lp, model[hh_id].lp))
                 p_id_candidate2 = sample(all_lp)
                 while p_id_candidate2 ∈ model[hh_id].lp
                     p_id_candidate2 = sample(all_lp)
