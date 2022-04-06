@@ -65,9 +65,8 @@ function levy_income_tax_gov!(
 
     total_τᴵ = 0
     for hh_id in all_hh
-        hh = model[hh_id]
-        total_τᴵ += hh.I[end] * gov_struct.τᴵ
-        push!(hh.Iᵀ, hh.I[end] * (1 - gov_struct.τᴵ))
+        total_τᴵ += model[hh_id].I[end] * gov_struct.τᴵ
+        push!(model[hh_id].Iᵀ, model[hh_id].I[end] * (1 - gov_struct.τᴵ))
     end
 
     # add total income tax to government current account

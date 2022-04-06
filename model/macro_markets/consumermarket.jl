@@ -31,15 +31,15 @@ function consumermarket_process!(
     # Let households set their budget and order their goods
     @inbounds for hh_id in all_hh
         # Set consumption budget and shares of good types and place orders
-        @timeit to "cons bud" set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
+        set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
 
         # Divide budget by chosen category
         C_b = model[hh_id].C[end] * (1 - model[hh_id].c_L)
         C_l = model[hh_id].C[end] - C_b
 
-        @timeit to "place ord bp" bp_orders, cp_inventories, bp_with_inventory = place_orders_hh!(model[hh_id].bp, C_b, cp_inventories, 
+        bp_orders, cp_inventories, bp_with_inventory = place_orders_hh!(model[hh_id].bp, C_b, cp_inventories, 
                                                          bp_with_inventory, global_param, model, to)
-        @timeit to "place ord lp" lp_orders, cp_inventories, lp_with_inventory = place_orders_hh!(model[hh_id].lp, C_l, cp_inventories, 
+        lp_orders, cp_inventories, lp_with_inventory = place_orders_hh!(model[hh_id].lp, C_l, cp_inventories, 
                                                          lp_with_inventory, global_param, model, to)
         # Send order to queues of bp and lp
         for (cp_id, qp) in merge(bp_orders, lp_orders)
@@ -50,7 +50,7 @@ function consumermarket_process!(
     # cp's handle order queue, send orders, households track which cp could not
     # supply the demand.
     for cp_id in all_cp
-        @timeit to "send ord" send_orders_cp!(model[cp_id], model)
+        send_orders_cp!(model[cp_id], model)
         reset_queue_cp!(model[cp_id])
     end
 end

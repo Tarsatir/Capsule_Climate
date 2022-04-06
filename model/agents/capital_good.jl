@@ -604,24 +604,17 @@ function replace_bankrupt_kp!(
     avg_NW = mean(map(kp_id -> model[kp_id].balance.NW, poss_kp))
     NW_coefficients = rand(Uniform(global_param.φ3, global_param.φ4),
                            length(bankrupt_kp))
-    all_req_NW = sum(avg_NW .* NW_coefficients)
-    frac_NW_if = max(0, min(indexfund_struct.Assets / all_req_NW, 1))
-    # TODO: now kp have an advantage, rewrite this?
 
-    # Let indexfund deduct funds that will be invested in new companies
-    make_investments_if!(indexfund_struct, frac_NW_if * all_req_NW)
+    # Compute share of investments that can be paid from the investment fund                       
+    all_req_NW = sum(avg_NW .* NW_coefficients)
+    frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW)
 
     # Re-use id of bankrupted company
     for (i, (kp_id, kp_i)) in enumerate(zip(bankrupt_kp, bankrupt_kp_i))
-
-        # coeff_NW = rand(Uniform(global_param.φ3, global_param.φ4))
-
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
-
-        a1 = -0.04
-        a2 = 0.02
-        tech_coeff = a1 + rand(Beta(global_param.α2, global_param.β2)) * (a2 - a1)
+        tech_coeff = (global_param.φ5 + rand(Beta(global_param.α2, global_param.β2)) 
+                                        * (global_param.φ6 - global_param.φ5))
         new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_0)
         new_B = max(B_max * (1 + tech_coeff), B_min, init_param.B_0)
 

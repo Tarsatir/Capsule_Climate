@@ -23,8 +23,11 @@ Base.@kwdef mutable struct GlobalParam
     φ4::Float64 = 0.9               # 2nd Uniform dist support, cp entrant liq
     α2::Float64 = 2.0               # 1st beta dist param for kp entrant
     β2::Float64 = 4.0               # 2nd beta dist param for kp entrant
+    φ5::Float64 = -0.04             # 1st Beta dist support for kp entrant tech
+    φ6::Float64 = 0.02              # 2nd Beta dist support for kp entrant tech
 
     cu::Float64 = 0.75              # capacity utilization for cp
+    max_NW_ratio::Float64 = 2.0     # maximum ratio p can have monthly expenses in NW
     ϵ::Float64 = 0.02               # minimum desired wage increase rate
     max_g_wᴼ::Float64 = 0.1         # max growth rate of offered wages
     Kg_max::Float64 = 0.5           # maximum capital growth rate

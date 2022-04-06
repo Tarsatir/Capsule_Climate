@@ -17,21 +17,38 @@ end
 """
 Takes dividends from producers
 """
-function receive_dividends(
-    all_p::Vector{Int},
+function receive_dividends_if!(
+    indexfund_struct::IndexFund,
+    total_dividends::Float64
     )
-
+    
+    indexfund_struct.Assets += total_dividends
 end
 
 
 """
 Deducts funds for investment in company
 """
-function make_investments_if!(
+function decide_investments_if!(
     indexfund_struct::IndexFund,
-    amount::Float64
+    all_req_NW::Float64
+    )::Float64
+
+    frac_NW_if = max(0, min(indexfund_struct.Assets / all_req_NW, 1))
+    indexfund_struct.Assets -= all_req_NW * frac_NW_if
+    println("Total investments yeet: ", all_req_NW * frac_NW_if)
+    return frac_NW_if
+end
+
+
+"""
+Deducts funds for net debts lost
+"""
+function deduct_unpaid_net_debts_if!(
+    indexfund_struct::IndexFund,
+    total_unpaid_net_debt::Float64
     )
-    indexfund_struct.Assets -= amount
+    indexfund_struct.Assets -= total_unpaid_net_debt
 end
 
 

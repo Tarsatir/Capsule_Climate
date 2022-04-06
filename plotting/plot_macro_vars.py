@@ -72,7 +72,7 @@ def plot_macro_vars(df):
                          alpha=0.4)
     ax[2,1].set_title('Real income of households')
 
-    ax[3,0].plot(range(len(df.M)), df.M, label='total', zorder=10, linestyle='dashed')
+    ax[3,0].plot(range(len(df.M)), df.M + df.M_if, label='total', zorder=10, linestyle='dashed')
     ax[3,0].plot(range(len(df.M)), df.M_hh, label='hh')
     ax[3,0].plot(range(len(df.M)), df.M_cp, label='cp')
     ax[3,0].plot(range(len(df.M)), df.M_kp, label='kp')

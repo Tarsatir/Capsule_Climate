@@ -132,7 +132,7 @@ Adds borrowed amount as an incoming cashflow to current account.
 function borrow_funds_p!(
     p::AbstractAgent,
     amount::Float64,
-    b=3::Int64
+    b::Int64
     )
 
     # Add debt as repayments for coming periods
@@ -234,11 +234,6 @@ function kill_all_bankrupt_p!(
     model::ABM
     )
 
-    all_money_outflow = 0
-
-    # all_unpaid_debt = sum(map(p_id -> model[p_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp, bankrupt_lp)))
-    # println("Unpaid debt: $(all_unpaid_debt)")
-
     # Remove bankrupt cp ids from households
     for hh_id in all_hh
         remove_bankrupt_producers_hh!(model[hh_id], bankrupt_bp, bankrupt_lp)
@@ -258,25 +253,25 @@ function kill_all_bankrupt_p!(
     update_firedworker_lm!(labormarket_struct, all_employees)
 
     # Fire all workers still remaining in the firm, remove firm
+    total_unpaid_net_debt = 0.0
     for p_id in vcat(bankrupt_bp, bankrupt_lp, bankrupt_kp)
 
         # Fire remaining workers
         for hh_id in model[p_id].employees
-            # remove_worker_p!(model[p_id], model[hh_id])
             set_unemployed_hh!(model[hh_id])
         end
 
         # TODO: TEMP SOLUTION, DESCRIBE IT WORKS
-        # indexfund_struct.Assets -= (model[p_id].balance.debt - model[p_id].balance.NW)
-        indexfund_struct.Assets += (model[p_id].balance.NW - model[p_id].balance.debt)
+        # indexfund_struct.Assets += (model[p_id].balance.NW - model[p_id].balance.debt)
 
-        all_money_outflow += model[p_id].balance.debt - model[p_id].balance.NW 
+        total_unpaid_net_debt += (model[p_id].balance.debt - model[p_id].balance.NW)
 
         # Remove firm agents from model
         kill_agent!(p_id, model)
     end
 
-    println("All money outflow: $(all_money_outflow)")
+    deduct_unpaid_net_debts_if!(indexfund_struct, total_unpaid_net_debt)
+    println("All outflow: $(total_unpaid_net_debt)")
 end
 
 

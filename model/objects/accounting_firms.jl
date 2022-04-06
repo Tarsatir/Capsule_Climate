@@ -17,62 +17,73 @@ end
 Closes balance by computing firm's equity.
 If firm is insolvent, liquidate firm.
 """
-function close_balance_p!(
-    p::AbstractAgent,
-    Λ::Float64,
-    r::Float64,
-    η::Int,
+function close_balance_all_p!(
+    all_p::Vector{Int},
+    global_param::GlobalParam,
     τᴾ::Float64,
-    indexfund_struct
+    indexfund_struct,
+    model::ABM
     )
 
-    p.balance.debt = max(0.0, p.balance.debt)
+    total_dividends = 0.0
 
-    # Compute interest payment
-    update_interest_payment_p!(p, r)
+    for p_id in all_p
 
-    # Repay debts of period
-    payback_debt_p!(p)
+        model[p_id].balance.debt = max(0.0, model[p_id].balance.debt)
 
-    # Update valuation of capital stock
-    writeoffs = update_K_p!(p, η)
+        # Compute interest payment
+        update_interest_payment_p!(model[p_id], global_param.r)
 
-    # Compute profits
-    compute_Π_p!(p, writeoffs)
+        # Repay debts of period
+        payback_debt_p!(model[p_id])
 
-    # Update liquid assets NW
-    update_NW_p!(p, τᴾ)
+        # Update valuation of capital stock
+        writeoffs = update_K_p!(model[p_id], global_param.η)
 
-    # Update valuation of inventory. kp do not have inventory.
-    if typeof(p) == ConsumerGoodProducer
-        p.balance.N = p.p[end] * p.N_goods
+        # Compute profits
+        compute_Π_p!(model[p_id], writeoffs)
+
+        # Update liquid assets NW
+        update_NW_p!(model[p_id], τᴾ)
+
+        # Update valuation of inventory. kp do not have inventory.
+        if typeof(model[p_id]) == ConsumerGoodProducer
+            model[p_id].balance.N = model[p_id].p[end] * model[p_id].N_goods
+        end
+
+        # Determine how much the firm can have as NW at most
+        max_NW = global_param.max_NW_ratio * (model[p_id].curracc.TCL + model[p_id].curracc.TCI + 
+                      model[p_id].curracc.int_debt + model[p_id].debt_installments[1])
+
+        # If not enough liquid assets available, borrow additional funds.
+        if model[p_id].balance.NW < 0
+            # max_add_debt = max(model[p_id].curracc.S * Λ - model[p_id].balance.debt, 0)
+            # add_debt = min(-model[p_id].balance.NW, max_add_debt)
+            # borrow_funds_p!(model[p_id], add_debt)
+            # model[p_id].balance.NW += add_debt
+            borrow_funds_p!(model[p_id], -model[p_id].balance.NW, global_param.b)
+            model[p_id].balance.NW = 0
+        elseif (!check_if_bankrupt_p!(model[p_id]) 
+                && model[p_id].balance.NW - model[p_id].balance.debt > max_NW)
+            # indexfund_struct.Assets += (model[p_id].balance.NW - max_NW)
+            total_dividends += model[p_id].balance.NW - model[p_id].balance.debt - max_NW
+            model[p_id].balance.NW = max_NW + model[p_id].balance.debt
+        end
+
+        # Compute Equity
+        tot_assets = model[p_id].balance.N + model[p_id].balance.K + model[p_id].balance.NW
+        model[p_id].balance.EQ = tot_assets - model[p_id].balance.debt
+
+        # If NW is negative, maximum debt is reached, and EQ is set to
+        # a negative value so the firm is declared bankrupt
+        if model[p_id].balance.NW < 0 || model[p_id].balance.debt > global_param.Λ * model[p_id].curracc.S
+            model[p_id].balance.EQ = -1.0
+            model[p_id].f[end] = 0.0
+        end
     end
 
-    # TRIAL OF INDEX FUND
-    d = 2
-    max_NW = d * (p.curracc.TCL + p.curracc.TCI + p.curracc.int_debt + p.debt_installments[1])
-
-    # If not enough liquid assets available, borrow additional funds.
-    if p.balance.NW < 0
-        max_add_debt = max(p.curracc.S * Λ - p.balance.debt, 0)
-        add_debt = min(-p.balance.NW, max_add_debt)
-        borrow_funds_p!(p, add_debt)
-        p.balance.NW += add_debt
-    elseif p.balance.NW > max_NW && !check_if_bankrupt_p!(p)
-        indexfund_struct.Assets += (p.balance.NW - max_NW)
-        p.balance.NW = max_NW 
-    end
-
-    # Compute Equity
-    tot_assets = p.balance.N + p.balance.K + p.balance.NW
-    p.balance.EQ = tot_assets - p.balance.debt
-
-    # If NW is negative, maximum debt is reached, and EQ is set to
-    # a negative value so the firm is declared bankrupt
-    if p.balance.NW < 0 || p.balance.debt > Λ * p.curracc.S
-        p.balance.EQ = -1.0
-        p.f[end] = 0.0
-    end
+    println("total dividends: ", total_dividends)
+    receive_dividends_if!(indexfund_struct, total_dividends)
 end
 
 

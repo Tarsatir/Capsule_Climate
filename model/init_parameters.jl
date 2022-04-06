@@ -31,7 +31,7 @@ function initialize_init_params()
         2.5,                                # B_0: initial productivity level B
 
         # Init params of cp
-        10,                                 # n_init_emp_cp: number of employees of cp at init
+        12,                                 # n_init_emp_cp: number of employees of cp at init
         50,                                 # n_machines_init: number of machines of cp at init
 
         # Init params of hh

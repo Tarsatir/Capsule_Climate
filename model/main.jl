@@ -53,15 +53,14 @@ Initializes model.
     * labormarket_struct: mutable struct containing variables concerning the labor market
 """
 function initialize_model(
-    T,
-    labormarket_is_fordist;
+    T::Int,
+    labormarket_is_fordist::Bool;
     changed_params
     )
 
     # Initialise model struct
     model = ABM(Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
-                scheduler = by_type(true,true),
-                warn=false)
+                scheduler = by_type(true,true), warn=false)
 
     # Initialize struct that holds global params and initial parameters
     global_param  = initialize_global_params(labormarket_is_fordist, changed_params)
@@ -82,7 +81,6 @@ function initialize_model(
     # Initialize households
     for _ in 1:init_param.n_hh
 
-        # hh = initialize_hh(id)
         hh = Household(id=id)
         add_agent!(hh, model)
 
@@ -136,7 +134,7 @@ function initialize_model(
     bank_struct = initialize_bank(all_p, model)
 
     # Initialize index fund struct
-    indexfund_struct = initialize_indexfund()
+    indexfund_struct = IndexFund()
 
     # Let all capital good producers select historical clients
     for kp_id in all_kp
@@ -160,16 +158,8 @@ function initialize_model(
         model
     )
 
-    for p_id in all_p
-        close_balance_p!(
-            model[p_id], 
-            global_param.Λ,
-            global_param.r,
-            global_param.η,
-            gov_struct.τᴾ,
-            indexfund_struct
-        )
-    end
+    close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
+        indexfund_struct, model)
 
     return model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct
 end
@@ -331,17 +321,11 @@ function model_step!(
             update_n_machines_cp!(model[p_id], global_param.freq_per_machine)
             increase_machine_age_cp!(model[p_id])
         end
-
-        # Close balances of firms, if insolvent, liquidate firms
-        @timeit to "close balance" close_balance_p!(
-            model[p_id], 
-            global_param.Λ,
-            global_param.r,
-            global_param.η,
-            gov_struct.τᴾ,
-            indexfund_struct
-        )
     end 
+
+    # Close balances of firms, if insolvent, liquidate firms
+    @timeit to "close balance" close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
+                                    indexfund_struct, model)
 
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(gov_struct, all_p, model)
@@ -427,7 +411,7 @@ end
 
 
 function run_simulation(;
-    T=100::Int,
+    T=400::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
