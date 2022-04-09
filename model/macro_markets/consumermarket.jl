@@ -6,6 +6,7 @@ function consumermarket_process!(
     all_W_hh::Vector{Float64},
     gov_struct::Government,
     global_param::GlobalParam,
+    t::Int,
     model::ABM,
     to
     )
@@ -50,7 +51,7 @@ function consumermarket_process!(
     # cp's handle order queue, send orders, households track which cp could not
     # supply the demand.
     for cp_id in all_cp
-        send_ordered_goods_cp!(model[cp_id], model)
+        send_ordered_goods_cp!(model[cp_id], t, model)
         reset_queue_cp!(model[cp_id])
     end
 end

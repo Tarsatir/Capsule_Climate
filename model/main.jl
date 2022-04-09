@@ -250,6 +250,12 @@ function model_step!(
         model
     )
 
+    # for cp_id in all_cp
+    #     if model[cp_id].age == 2
+    #         println(model[cp_id].L, " ",  model[cp_id].ΔLᵈ, " ", model[cp_id].N_goods, " ", model[cp_id].Qˢ, " ", model[cp_id].Dᵉ, " ", model[cp_id].D)
+    #     end
+    # end
+
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
     for p_id in all_p
@@ -295,6 +301,7 @@ function model_step!(
         all_W_hh,
         gov_struct,
         global_param,
+        t,
         model,
         to
     )
@@ -335,7 +342,7 @@ function model_step!(
     redistribute_surplus_gov!(gov_struct, all_hh, model)
 
     # Update market shares of cp
-    update_marketshare_cp!(all_bp, all_lp, t, model)
+    update_marketshare_cp!(all_bp, all_lp, model)
     update_marketshare_kp!(all_kp, model)
 
     # Select producers that will be declared bankrupt and removed

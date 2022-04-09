@@ -100,7 +100,6 @@ Updates market shares of cp firms
 function update_marketshare_cp!(
     all_bp::Vector{Int},
     all_lp::Vector{Int},
-    t::Int,
     model::ABM
     )
 
@@ -115,8 +114,6 @@ function update_marketshare_cp!(
         else
             f = model[bp_id].D[end] / bp_market
         end
-        # push!(model[bp_id].f, f)
-        # model[bp_id].f[end] = f
         shift_and_append!(model[bp_id].f, f)
     end
 
@@ -127,8 +124,6 @@ function update_marketshare_cp!(
         else
             f = model[lp_id].D[end] / lp_market
         end
-        # push!(model[lp_id].f, f)
-        # model[lp_id].f[end] = f
         shift_and_append!(model[lp_id].f, f)
     end
 end
@@ -260,6 +255,9 @@ function kill_all_bankrupt_p!(
     
     update_firedworker_lm!(labormarket_struct, all_employees)
 
+    ages = []
+    Qs = []
+
     # Fire all workers still remaining in the firm, remove firm
     total_unpaid_net_debt = 0.0
     for p_id in vcat(bankrupt_bp, bankrupt_lp, bankrupt_kp)
@@ -275,12 +273,19 @@ function kill_all_bankrupt_p!(
         total_unpaid_net_debt += (model[p_id].balance.debt - model[p_id].balance.NW)
         # total_unpaid_net_debt += model[p_id].balance.debt
 
+        if p_id ∈ bankrupt_bp || p_id ∈ bankrupt_lp
+            push!(ages, model[p_id].age)
+            push!(Qs, model[p_id].Q[end])
+        end
+
         # Remove firm agents from model
         kill_agent!(p_id, model)
     end
 
     deduct_unpaid_net_debts_if!(indexfund_struct, total_unpaid_net_debt)
     println("All outflow: $(total_unpaid_net_debt)")
+    println("Age bankrupt cp: $(length(ages) > 0 ? mean(ages) : "yeet")")
+    println("Prod bankrupt cp: $(length(Qs) > 0 ? mean(Qs) : "yeet")")
 end
 
 

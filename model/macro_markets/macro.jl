@@ -176,14 +176,14 @@ function update_macro_timeseries(
     macro_struct.avg_Q_kp[t] = mean(kp_id -> model[kp_id].Q[end], all_kp)
 
     compute_bankrupties(all_bp, all_lp, all_kp, bankrupt_bp, bankrupt_lp, 
-        bankrupt_kp, macro_struct, t)
+                        bankrupt_kp, macro_struct, t)
 
     compute_unsatisfied_demand(all_hh, macro_struct, t, model)
 
     macro_struct.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
 
     # Mean rate of capital utilization
-    macro_struct.cu[t] = mean(cp_id -> model[cp_id].cu, all_cp)
+    macro_struct.cu[t] = mean(cp_id -> model[cp_id].n_machines > 0 ? model[cp_id].cu : 0.5, all_cp)
 
     # Average number of machines
     macro_struct.avg_n_machines_bp[t] = mean(bp_id -> model[bp_id].n_machines, all_bp)

@@ -21,7 +21,7 @@ Defines struct for consumer good producer
     N_goods::Float64                          # inventory in good units
     Q::Vector{Float64}                        # hist production
     Qᵉ::Float64                               # exp production
-    Qˢ::Float64 = 0                           # desired short-term production
+    Qˢ::Float64 = 0.0                         # desired short-term production
 
     # Investments
     Iᵈ::Float64 = 0                           # desired total investments
@@ -38,7 +38,7 @@ Defines struct for consumer good producer
     cu::Float64 = 0                           # capital utilizataion
     employees::Vector{Int} = []               # employees list
     L::Float64                                # labor units
-    Lᵉ::Float64                               # exp labor force
+    # Lᵉ::Float64                               # exp labor force
     ΔLᵈ::Float64 = 0.0                        # desired change in labor force
     w̄::Vector{Float64}                        # wage level
     wᴼ::Float64 = 1.0                         # offered wage
@@ -61,12 +61,12 @@ function initialize_cp(
     machines::Vector{Machine},  
     type_good::String,
     n_init_emp_cp::Int,
-    μ1::Float64,
+    μ::Float64,
     ι::Float64;
     D=800.0::Float64,
     w=1.0::Float64,
     L=n_init_emp_cp * 100::Int,
-    Lᵉ=n_init_emp_cp * 100::Int,
+    # Lᵉ=n_init_emp_cp * 100::Int,
     N_goods=D*ι::Float64,
     n_consrgood=200::Int,
     f=2/n_consrgood,
@@ -78,7 +78,7 @@ function initialize_cp(
         id=id,
         type_good = type_good,
         # first_gen = first_gen,
-        μ = fill(μ1, 3),
+        μ = fill(μ, 3),
         D = fill(D, 3),  
         Nᵈ = ι * D,                
         N_goods = N_goods,          
@@ -86,7 +86,7 @@ function initialize_cp(
         Qᵉ = D * (1 + ι),          
         Ξ = machines,                 
         L = L,
-        Lᵉ = Lᵉ,
+        # Lᵉ = Lᵉ,
         w̄ = fill(w, 3),
         f = fill(f, 3)
     )
@@ -357,12 +357,15 @@ function produce_goods_cp!(
     end
 
     # Compute total production amount
+    # if cp.age < 5
+    #     println("$actual_π, $(cp.L), $(cp.n_machines), $(cp.Qˢ)")
+    # end
     Q = max(min(actual_π * cp.L, cp.n_machines, cp.Qˢ), 0)
     shift_and_append!(cp.Q, Q)
     
     # Update rate of capital utilization
     if cp.n_machines > 0
-        cp.cu = cp.Q[end] / cp.n_machines
+        cp.cu = Q / cp.n_machines
     else
         cp.cu = 0
     end
@@ -395,11 +398,14 @@ Decides if enough inventory to send orders hh,
 """
 function send_ordered_goods_cp!(
     cp::ConsumerGoodProducer,
+    t::Int,
     model::ABM
     )
 
     # Check if any orders received
-    if length(cp.order_queue) == 0
+    if cp.age == 1 && t != 1
+        return nothing
+    elseif length(cp.order_queue) == 0
         shift_and_append!(cp.D, 0.0)
         cp.Dᵁ = 0.0
         cp.curracc.S = 0.0
@@ -502,8 +508,6 @@ function receive_machines_cp!(
     end
 
     filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
-
-    # println("2: len exp: $(cp.n_mach_ordered_EI), len repl: $(length(cp.mach_tb_repl)), len new: $(length(new_machines)), len all: $(length(cp.Ξ))")
 end
 
 
@@ -539,13 +543,12 @@ function replace_bankrupt_cp!(
     weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
     weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
 
-    # Sample all NW coefficients and capital coefficients
-    capital_coefficients = rand(Uniform(global_param.φ1, global_param.φ2), 
-                                length(bankrupt_bp)+length(bankrupt_lp))
-    NW_coefficients = rand(Uniform(global_param.φ3, global_param.φ4), 
-                           length(bankrupt_bp)+length(bankrupt_lp))
-
     n_bankrupt_cp = length(bankrupt_bp) + length(bankrupt_lp)
+    # println("n bankrupt: $n_bankrupt_cp")
+
+    # Sample all NW coefficients and capital coefficients
+    capital_coefficients = rand(Uniform(global_param.φ1, global_param.φ2), n_bankrupt_cp)
+    NW_coefficients = rand(Uniform(global_param.φ3, global_param.φ4), n_bankrupt_cp)
 
     # New cp receive a advanced type of machine, first select kp proportional
     # to their market share. cp can also select kp ids that went bankrupt in this 
@@ -567,19 +570,15 @@ function replace_bankrupt_cp!(
     all_req_NW = sum(req_NW)
     frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
 
-    all_money_inflow = 0
-
     for (i,cp_id) in enumerate(vcat(bankrupt_bp, bankrupt_lp))
 
-        type_good="Basic"
-        if cp_id in bankrupt_lp
-            type_good="Luxury"
-        end
+        # type_good="Basic"
+        # if cp_id in bankrupt_lp
+        #     type_good="Luxury"
+        # end
+        type_good = cp_id ∈ bankrupt_bp ? "Basic" : "Luxury"
 
         # Sample what the size of the capital stock will be
-        # capital_coefficient = rand(Uniform(global_param.φ1, global_param.φ2))
-        # println("$(capital_coefficients[i]), $(avg_n_machines)")
-        # n_machines = floor(Int, capital_coefficients[i] * avg_n_machines / global_param.freq_per_machine)
         D = macro_struct.cu[t] * all_n_machines[i] * global_param.freq_per_machine
 
         # In the first period, the cp has no machines yet, these are delivered at the end
@@ -589,24 +588,20 @@ function replace_bankrupt_cp!(
                     Vector{Machine}(),
                     type_good,
                     0,
-                    global_param.μ1,
+                    cp_id ∈ bankrupt_bp ? macro_struct.μ_bp[t] : macro_struct.μ_lp[t],
                     global_param.ι;
                     D=D,
                     w=macro_struct.w̄_avg[t],
                     L=0,
-                    Lᵉ=0,
-                    N_goods=0.0
+                    # Lᵉ=0,
+                    N_goods=0.0,
+                    f=0.0
                 )
 
         # Order machines at kp of choice
         new_cp.chosen_kp_id = kp_choice_ids[i]
         new_cp.n_mach_ordered_EI = all_n_machines[i]
         order_machines_cp!(new_cp, model)
-
-        # Sample what the stock of liquid assets will be, add liquid assets needed to pay for 
-        # machines. (this can differ somewhat as the price is redetermined in the next period)
-        # NW_stock = NW_coefficients[i] * avg_NW + kp_choice_ps[i] * all_n_machines[i] * global_param.freq_per_machine
-        all_money_inflow += req_NW[i]
 
         # Augment the balance with acquired NW and K
         new_cp.balance.NW = req_NW[i]
@@ -620,22 +615,17 @@ function replace_bankrupt_cp!(
         # Add new cp to subset of households, inversely proportional to amount of suppliers
         # they already have
         n_init_hh = 100
-        if cp_id ∈ bankrupt_bp
-            customers = sample(all_hh, Weights(weights_hh_bp), n_init_hh)
-        else
-            customers = sample(all_hh, Weights(weights_hh_lp), n_init_hh)
-        end
+
+        customers = sample(all_hh, cp_id ∈ bankrupt_bp ? Weights(weights_hh_bp) : Weights(weights_hh_lp),
+                           n_init_hh)
     
         # Add cp to list of bp and lp, according to type
-        for hh_id in customers
-            if cp_id ∈ bankrupt_bp
-                push!(model[hh_id].bp, cp_id)
-            else
-                push!(model[hh_id].lp, cp_id)
-            end
+        for hh_id ∈ customers
+            push!(cp_id ∈ bankrupt_bp ? model[hh_id].bp : model[hh_id].lp, cp_id)
         end
+
     end
-    println("All inflow: $(all_money_inflow)")
+    println("All inflow: $(all_req_NW)")
 end
 
 
@@ -683,16 +673,16 @@ function update_Qᵉ_cp!(
 end
 
 
-"""
-Updates expected long-term labor supply Lᵉ
-"""
-function update_Lᵉ_cp!(
-    cp::ConsumerGoodProducer,
-    global_param
-    )
+# """
+# Updates expected long-term labor supply Lᵉ
+# """
+# function update_Lᵉ_cp!(
+#     cp::ConsumerGoodProducer,
+#     global_param
+#     )
 
-    cp.Lᵉ = global_param.ω * cp.L + (1 - global_param.ω) * cp.Lᵉ
-end
+#     cp.Lᵉ = global_param.ω * cp.L + (1 - global_param.ω) * cp.Lᵉ
+# end
 
 
 """
@@ -759,27 +749,12 @@ function update_μ_cp!(
         Δμ = (cp.μ[end] - mean_μ) / mean_μ
 
         mean_Π = mean(cp.Π)
-        # ΔΠ = (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1]
         ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
 
         # TODO: CHANGE TO TAXED PROFITS??
 
-        # println("$mean_μ, $mean_Π")
-        # println("Δμ: $Δμ, $(sign(Δμ)), ΔΠ: $ΔΠ, $(sign(ΔΠ))")
-
         shock = rand(Uniform(0.0, b))
-
         new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
-        # push!(cp.μ, new_μ)
-        # cp.μ[end] = new_μ
-
-        # if ΔΠ > 0
-        #     new_μ = cp.μ[end] * (1 + Δμ)
-        #     push!(cp.μ, new_μ)
-        # else
-        #     new_μ = max(cp.μ[end] * (1 - Δμ), 0)
-        #     push!(cp.μ, new_μ)
-        # end
 
     elseif cp.Π[end] == 0
         new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
@@ -840,7 +815,9 @@ function update_Nᵈ_cp!(
     ι::Float64
     )
 
-    cp.Nᵈ = ι * cp.D[end]
+    if cp.age > 1
+        cp.Nᵈ = ι * cp.D[end]
+    end
 end
 
 

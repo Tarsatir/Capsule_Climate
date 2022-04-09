@@ -162,7 +162,6 @@ function fire_workers_lm!(
     # Choose who gets fired
     for p_id in firing_producers
         fired_workers = fire_excess_workers_p!(model[p_id], model)
-        # println(fired_workers)
         append!(all_fired_workers, fired_workers)
     end
 

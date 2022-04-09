@@ -71,11 +71,8 @@ function select_bp_lp_hh!(
     n_lp::Int
     )
 
-    selected_bp = sample(all_bp, n_bp)
-    hh.bp = selected_bp
-
-    selected_lp = sample(all_lp, n_lp)
-    hh.lp = selected_lp
+    hh.bp = sample(all_bp, n_bp)
+    hh.lp = sample(all_lp, n_lp)
 end
 
 
@@ -109,8 +106,8 @@ function update_average_price_hh!(
     model::ABM
     )
 
-    P̄_bp = mean(map(bp_id -> model[bp_id].p[end], hh.bp))
-    P̄_lp = mean(map(lp_id -> model[lp_id].p[end], hh.lp))
+    P̄_bp = mean(bp_id -> model[bp_id].p[end], hh.bp)
+    P̄_lp = mean(lp_id -> model[lp_id].p[end], hh.lp)
     hh.P̄ = hh.c_L * P̄_lp + (1 - hh.c_L) * P̄_bp
 end
 
