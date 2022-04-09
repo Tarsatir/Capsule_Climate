@@ -40,7 +40,6 @@ function decide_investments_if!(
     frac_NW_if = max(0, min(indexfund_struct.Assets / all_req_NW, 1))
     indexfund_struct.funds_inv[t] = all_req_NW * frac_NW_if
     indexfund_struct.Assets -= indexfund_struct.funds_inv[t]
-    # println("Total investments yeet: ", all_req_NW * frac_NW_if)
     return frac_NW_if
 end
 
