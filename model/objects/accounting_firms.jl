@@ -1,15 +1,15 @@
 """
 BALANCE SHEET
 """
-mutable struct Balance
+@Base.kwdef mutable struct Balance
     # Assets
-    N :: Float64            # Inventories
-    K :: Float64            # Capital
-    NW :: Float64           # Liquid assets
+    N::Float64 = 0.0            # Inventories
+    K::Float64 = 0.0            # Capital
+    NW::Float64 = 0.0           # Liquid assets
 
     # Liabilities
-    debt :: Float64         # Debt
-    EQ :: Float64           # Equity
+    debt::Float64 = 0.0         # Debt
+    EQ::Float64 = 0.0           # Equity
 end
 
 
@@ -35,7 +35,7 @@ function close_balance_all_p!(
         update_interest_payment_p!(model[p_id], global_param.r)
 
         # Repay debts of period
-        payback_debt_p!(model[p_id])
+        payback_debt_p!(model[p_id], global_param.b)
 
         # Update valuation of capital stock
         writeoffs = update_K_p!(model[p_id], global_param.η)
@@ -53,7 +53,7 @@ function close_balance_all_p!(
 
         # Determine how much the firm can have as NW at most
         max_NW = global_param.max_NW_ratio * (model[p_id].curracc.TCL + model[p_id].curracc.TCI + 
-                      model[p_id].curracc.int_debt + model[p_id].debt_installments[1])
+                      model[p_id].curracc.int_debt + model[p_id].debt_installments[2])
 
         # If not enough liquid assets available, borrow additional funds.
         if model[p_id].balance.NW < 0
@@ -63,7 +63,7 @@ function close_balance_all_p!(
             # model[p_id].balance.NW += add_debt
             borrow_funds_p!(model[p_id], -model[p_id].balance.NW, global_param.b)
             model[p_id].balance.NW = 0
-        elseif (!check_if_bankrupt_p!(model[p_id]) 
+        elseif (!check_if_bankrupt_p!(model[p_id],  global_param.t_wait) 
                 && model[p_id].balance.NW - model[p_id].balance.debt > max_NW)
             # indexfund_struct.Assets += (model[p_id].balance.NW - max_NW)
             total_dividends += model[p_id].balance.NW - model[p_id].balance.debt - max_NW
@@ -76,7 +76,7 @@ function close_balance_all_p!(
 
         # If NW is negative, maximum debt is reached, and EQ is set to
         # a negative value so the firm is declared bankrupt
-        if model[p_id].balance.NW < 0 || model[p_id].balance.debt > global_param.Λ * model[p_id].curracc.S
+        if model[p_id].balance.debt > global_param.Λ * model[p_id].curracc.S
             model[p_id].balance.EQ = -1.0
             model[p_id].f[end] = 0.0
         end
@@ -176,24 +176,25 @@ function compute_Π_p!(
     # end
     # Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt - writeoffs
 
-    push!(p.Π, Π)
+    # push!(p.Π, Π)
+    shift_and_append!(p.Π, Π)
 end
 
 
 """
 CURRENT ACCOUNT
 """
-mutable struct FirmCurrentAccount
+@Base.kwdef mutable struct FirmCurrentAccount
     # Inflows
-    S :: Float64            # Sales
-    add_debt ::Float64       # Additional debts
-    rev_dep :: Float64      # Deposit revenues
+    S::Float64 = 0.0               # Sales
+    add_debt::Float64 = 0.0        # Additional debts
+    rev_dep::Float64 = 0.0         # Deposit revenues
 
     # Outflows
-    TCL::Float64            # Total cost of labor
-    TCI::Float64            # Total cost of investments
-    int_debt::Float64        # Interest paid over debt
-    rep_debt::Float64        # Debt repayments
+    TCL::Float64 = 0.0             # Total cost of labor
+    TCI::Float64 = 0.0             # Total cost of investments
+    int_debt::Float64 = 0.0        # Interest paid over debt
+    rep_debt::Float64 = 0.0        # Debt repayments
 end
 
 

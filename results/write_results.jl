@@ -48,6 +48,7 @@ function save_macro_data(macro_struct)
         debt_unpaid_cp = macro_struct.debt_unpaid_cp,
 
         UR=macro_struct.U,
+        switch_rate = macro_struct.switch_rate,
         Exp_UB=macro_struct.Exp_UB,
         s_avg=macro_struct.s̄_avg,
         s_std=macro_struct.s̄_std,

@@ -1,4 +1,4 @@
-Base.@kwdef mutable struct GlobalParam
+@with_kw mutable struct GlobalParam
     # Determine technical innovation process
     ν::Float64 = 0.04               # R&D inv propensity
     ξ::Float64 = 0.5                # R&D allocation to IN
@@ -49,6 +49,8 @@ Base.@kwdef mutable struct GlobalParam
     freq_per_machine::Int = 50      # capital units per machine
 
     n_cons_market_days::Int = 4     # number of days in the consumer market process
+
+    t_wait::Int = 4                 # number of time periods producers are not allowed to go bankrupt
 
     fordist_lm::Bool = false        # determines whether the labormarket is Fordist or competetive
 end

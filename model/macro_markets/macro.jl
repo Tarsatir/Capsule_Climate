@@ -48,6 +48,7 @@
     B̄_avg::Vector{Float64} = zeros(Float64, T)              # average of budget over time
     B̄_std::Vector{Float64} = zeros(Float64, T)              # std of budget over time
     U::Vector{Float64} = zeros(Float64, T)                  # unemployment over time
+    switch_rate::Vector{Float64} = zeros(Float64, T)        # rate of switching employers
     Exp_UB::Vector{Float64} = zeros(Float64, T)             # total spending on UB
     AB::Vector{Float64} = zeros(Float64, T)                 # average labor productivity over time
     l::Vector{Float64} = zeros(Float64, T)                  # unfilled demand over time
@@ -113,7 +114,7 @@ function update_macro_timeseries(
     bankrupt_bp::Vector{Int},
     bankrupt_lp::Vector{Int},
     bankrupt_kp::Vector{Int},
-    E::Float64, 
+    labormarket_struct, 
     gov_struct::Government,
     indexfund_struct::IndexFund,
     global_param::GlobalParam,
@@ -127,65 +128,66 @@ function update_macro_timeseries(
     compute_price_data!(all_cp, all_bp, all_lp, all_kp, t, macro_struct, model)
 
     # Update average labor demand
-    macro_struct.ΔL̄_avg[t] = mean(map(p_id -> model[p_id].ΔLᵈ, all_p))
-    macro_struct.ΔL̄_std[t] = std(map(p_id -> model[p_id].ΔLᵈ, all_p))
-    macro_struct.ΔL̄_cp_avg[t] = mean(map(cp_id -> model[cp_id].ΔLᵈ, all_cp))
-    macro_struct.ΔL̄_cp_std[t] = std(map(cp_id -> model[cp_id].ΔLᵈ, all_cp))
-    macro_struct.ΔL̄_kp_avg[t] = mean(map(kp_id -> model[kp_id].ΔLᵈ, all_kp))
+    macro_struct.ΔL̄_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
+    # macro_struct.ΔL̄_std[t] = std(p_id -> model[p_id].ΔLᵈ, all_p)
+    macro_struct.ΔL̄_cp_avg[t] = mean(cp_id -> model[cp_id].ΔLᵈ, all_cp)
+    # macro_struct.ΔL̄_cp_std[t] = std(cp_id -> model[cp_id].ΔLᵈ, all_cp)
+    macro_struct.ΔL̄_kp_avg[t] = mean(kp_id -> model[kp_id].ΔLᵈ, all_kp)
 
     # Consumption 
-    macro_struct.C[t] = sum(map(hh_id->model[hh_id].C[end], all_hh))
+    macro_struct.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)
 
     # Update unemployment rate and unemployment benefits expenditure
-    macro_struct.U[t] = E
+    macro_struct.U[t] = labormarket_struct.E
+    macro_struct.switch_rate[t] = labormarket_struct.switch_rate
     macro_struct.Exp_UB[t] = gov_struct.curracc.Exp_UB[t]
 
     # Compute total amount in system
     compute_M!(all_hh, all_cp, all_kp, gov_struct, indexfund_struct, 
                macro_struct, t, model)
 
-    # Compute average savings rate
-    macro_struct.s̄_avg[t] = mean(map(hh_id -> model[hh_id].s, all_hh))
-    macro_struct.s̄_std[t] = std(map(hh_id -> model[hh_id].s, all_hh))
+    # Compute average savings rates
+    macro_struct.s̄_avg[t] = mean(hh_id -> model[hh_id].s, all_hh)
+    # macro_struct.s̄_std[t] = std(hh_id -> model[hh_id].s, all_hh)
 
     # Wage and income statistics
     update_wage_stats!(all_hh, all_p, macro_struct, t, model)
 
-    macro_struct.Ī_avg[t] = mean(map(hh_id -> model[hh_id].I[end], all_hh))
-    macro_struct.Ī_std[t] = std(map(hh_id -> model[hh_id].I[end], all_hh))
+    macro_struct.Ī_avg[t] = mean(hh_id -> model[hh_id].I[end], all_hh)
+    # macro_struct.Ī_std[t] = std(hh_id -> model[hh_id].I[end], all_hh)
 
     update_debt!(all_cp, all_kp,bankrupt_bp, bankrupt_lp, bankrupt_kp,
                  global_param.Λ, macro_struct, t, model)
 
     # Investment
-    macro_struct.EI_avg[t] = mean(map(cp_id -> model[cp_id].EIᵈ, all_cp))
+    macro_struct.EI_avg[t] = mean(cp_id -> model[cp_id].EIᵈ, all_cp)
     macro_struct.n_mach_EI_avg[t] = mean(cp_id -> model[cp_id].n_mach_ordered_EI, all_cp)
-    macro_struct.RS_avg[t] = mean(map(cp_id -> model[cp_id].RSᵈ, all_cp))
+    macro_struct.RS_avg[t] = mean(cp_id -> model[cp_id].RSᵈ, all_cp)
     macro_struct.n_mach_RS_avg[t] = mean(cp_id -> model[cp_id].n_mach_ordered_RS, all_cp)
 
     # Productivity
-    macro_struct.avg_π[t] = mean(map(cp_id -> model[cp_id].π, all_cp))
-    macro_struct.avg_A[t] = mean(map(kp_id -> model[kp_id].A[end], all_kp))
-    macro_struct.avg_B[t] = mean(map(kp_id -> model[kp_id].B[end], all_kp))
+    macro_struct.avg_π[t] = mean(cp_id -> model[cp_id].π, all_cp)
+    macro_struct.avg_A[t] = mean(kp_id -> model[kp_id].A[end], all_kp)
+    macro_struct.avg_B[t] = mean(kp_id -> model[kp_id].B[end], all_kp)
 
     # Production quantity
-    macro_struct.avg_Q_bp[t] = mean(map(bp_id -> model[bp_id].Q[end], all_bp))
-    macro_struct.avg_Q_lp[t] = mean(map(lp_id -> model[lp_id].Q[end], all_lp))
-    macro_struct.avg_Q_kp[t] = mean(map(kp_id -> model[kp_id].Q[end], all_kp))
+    macro_struct.avg_Q_bp[t] = mean(bp_id -> model[bp_id].Q[end], all_bp)
+    macro_struct.avg_Q_lp[t] = mean(lp_id -> model[lp_id].Q[end], all_lp)
+    macro_struct.avg_Q_kp[t] = mean(kp_id -> model[kp_id].Q[end], all_kp)
 
     compute_bankrupties(all_bp, all_lp, all_kp, bankrupt_bp, bankrupt_lp, 
         bankrupt_kp, macro_struct, t)
 
     compute_unsatisfied_demand(all_hh, macro_struct, t, model)
 
-    macro_struct.avg_N_goods[t] = mean(map(cp_id -> model[cp_id].N_goods, all_cp))
+    macro_struct.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
 
     # Mean rate of capital utilization
-    macro_struct.cu[t] = mean(map(cp_id -> model[cp_id].cu, all_cp))
+    macro_struct.cu[t] = mean(cp_id -> model[cp_id].cu, all_cp)
 
     # Average number of machines
-    macro_struct.avg_n_machines_bp[t] = mean(map(bp_id -> model[bp_id].n_machines, all_bp))
-    macro_struct.avg_n_machines_lp[t] = mean(map(lp_id -> model[lp_id].n_machines, all_lp))
+    macro_struct.avg_n_machines_bp[t] = mean(bp_id -> model[bp_id].n_machines, all_bp)
+    macro_struct.avg_n_machines_lp[t] = mean(lp_id -> model[lp_id].n_machines, all_lp)
 
     # Compute GINI coefficients
     compute_GINI(all_hh, macro_struct, t, model)
@@ -206,15 +208,15 @@ function compute_GDP!(
     )
 
     # Household income
-    total_I = sum(map(hh_id -> model[hh_id].Iᵀ[end], all_hh))
+    total_I = sum(hh_id -> model[hh_id].Iᵀ[end], all_hh)
     macro_struct.GDP_I[t] = total_I
 
     # cp profits
-    total_Π_cp = sum(map(cp_id -> model[cp_id].Π[end], all_cp))
+    total_Π_cp = sum(cp_id -> model[cp_id].Π[end], all_cp)
     macro_struct.GDP_Π_cp[t] = total_Π_cp
     
     # kp profits
-    total_Π_kp = sum(map(kp_id -> model[kp_id].Π[end], all_kp))
+    total_Π_kp = sum(kp_id -> model[kp_id].Π[end], all_kp)
     macro_struct.GDP_Π_kp[t] = total_Π_kp
 
     # total GDP
@@ -270,13 +272,13 @@ function compute_M!(
     )
 
     # Wealth of households
-    macro_struct.M_hh[t] = sum(map(hh_id -> model[hh_id].W[end], all_hh))
+    macro_struct.M_hh[t] = sum(hh_id -> model[hh_id].W[end], all_hh)
 
     # Liquid assets of cp_id
-    macro_struct.M_cp[t] = sum(map(cp_id -> model[cp_id].balance.NW, all_cp))
+    macro_struct.M_cp[t] = sum(cp_id -> model[cp_id].balance.NW, all_cp)
 
     # Liquid assets of kp
-    macro_struct.M_kp[t] = sum(map(kp_id -> model[kp_id].balance.NW, all_kp))
+    macro_struct.M_kp[t] = sum(kp_id -> model[kp_id].balance.NW, all_kp)
 
     # Money owned by government
     macro_struct.M_gov[t] = gov_struct.MS
@@ -300,13 +302,13 @@ function update_wage_stats!(
     model::ABM
     )
 
-    macro_struct.w̄_avg[t] = mean(map(p_id -> model[p_id].w̄[end], all_p))
+    macro_struct.w̄_avg[t] = mean(p_id -> model[p_id].w̄[end], all_p)
 
-    macro_struct.wʳ_avg[t] = mean(map(hh_id -> model[hh_id].wʳ, all_hh))
+    macro_struct.wʳ_avg[t] = mean(hh_id -> model[hh_id].wʳ, all_hh)
 
-    macro_struct.wˢ_avg[t] = mean(map(hh_id -> model[hh_id].wˢ, all_hh))
+    macro_struct.wˢ_avg[t] = mean(hh_id -> model[hh_id].wˢ, all_hh)
 
-    macro_struct.wᴼ_max_mean[t] = mean(map(p_id -> model[p_id].wᴼ_max, all_p))
+    macro_struct.wᴼ_max_mean[t] = mean(p_id -> model[p_id].wᴼ_max, all_p)
 end
 
 
@@ -325,19 +327,23 @@ function update_debt!(
     model::ABM
     )
 
-    macro_struct.debt_cp[t] = sum(map(cp_id -> model[cp_id].balance.debt, all_cp))
+    macro_struct.debt_cp[t] = sum(cp_id -> model[cp_id].balance.debt, all_cp)
 
-    macro_struct.debt_kp[t] = sum(map(kp_id -> model[kp_id].balance.debt, all_kp))
+    macro_struct.debt_kp[t] = sum(kp_id -> model[kp_id].balance.debt, all_kp)
 
     macro_struct.debt_tot[t] = macro_struct.debt_cp[t] + macro_struct.debt_kp[t]
 
-    macro_struct.debt_cp_allowed[t] = Λ * sum(map(cp_id -> model[cp_id].curracc.S, all_cp))
+    macro_struct.debt_cp_allowed[t] = Λ * sum(cp_id -> model[cp_id].curracc.S, all_cp)
 
-    macro_struct.debt_kp_allowed[t] = Λ * sum(map(kp_id -> model[kp_id].curracc.S, all_kp))
+    macro_struct.debt_kp_allowed[t] = Λ * sum(kp_id -> model[kp_id].curracc.S, all_kp)
 
-    macro_struct.debt_unpaid_cp[t] = sum(map(cp_id -> model[cp_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp)))
+    if length(bankrupt_bp) + length(bankrupt_lp) > 0
+        macro_struct.debt_unpaid_cp[t] = sum(cp_id -> model[cp_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp))
+    end
 
-    macro_struct.debt_unpaid_kp[t] = sum(map(kp_id -> model[kp_id].balance.debt, bankrupt_kp))
+    if length(bankrupt_kp) > 0
+        macro_struct.debt_unpaid_kp[t] = sum(kp_id -> model[kp_id].balance.debt, bankrupt_kp)
+    end
 end
 
 
@@ -352,7 +358,7 @@ function compute_price_data!(
     )
 
     # Compute average price, weighted by market share
-    avg_p_t = sum(map(cp_id -> model[cp_id].p[end] * model[cp_id].f[end], all_cp))
+    avg_p_t = sum(cp_id -> model[cp_id].p[end] * model[cp_id].f[end], all_cp)
     macro_struct.p̄[t] = avg_p_t
 
     if t == 1
@@ -362,7 +368,7 @@ function compute_price_data!(
     end
 
     # Compute average price of capital goods
-    avg_p_kp_t = mean(map(kp_id -> model[kp_id].p[end], all_kp))
+    avg_p_kp_t = mean(kp_id -> model[kp_id].p[end], all_kp)
     macro_struct.p̄_kp[t] = avg_p_kp_t
     if t == 1
         macro_struct.p̄_kp[t] = 100
@@ -371,9 +377,9 @@ function compute_price_data!(
     end
 
     # Update markup rates
-    macro_struct.μ_bp[t] = mean(map(bp_id -> model[bp_id].μ[end], all_bp))
-    macro_struct.μ_lp[t] = mean(map(lp_id -> model[lp_id].μ[end], all_lp))
-    macro_struct.μ_kp[t] = mean(map(kp_id -> model[kp_id].μ[end], all_kp))
+    macro_struct.μ_bp[t] = mean(bp_id -> model[bp_id].μ[end], all_bp)
+    macro_struct.μ_lp[t] = mean(lp_id -> model[lp_id].μ[end], all_lp)
+    macro_struct.μ_kp[t] = mean(kp_id -> model[kp_id].μ[end], all_kp)
 end
 
 
@@ -391,7 +397,7 @@ function compute_unsatisfied_demand(
 
     for hh_id in all_hh
         if length(model[hh_id].unsat_dem) > 0 
-            mean_unsat_dem += mean(map(ud->ud[2], model[hh_id].unsat_dem))
+            mean_unsat_dem += mean(ud->ud[2], model[hh_id].unsat_dem)
         end
     end
 

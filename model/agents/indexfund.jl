@@ -1,5 +1,7 @@
-Base.@kwdef mutable struct IndexFund 
-    Assets::Float64 = 0.0           # Total amount of assets alocated in the fund
+Base.@kwdef mutable struct IndexFund
+    T::Int=T 
+    Assets::Float64 = 0.0                           # Total amount of assets alocated in the fund
+    funds_inv::Vector{Float64} = zeros(Float64, T)  # Amount of funds used for investment in last period
 end
 
 
@@ -31,12 +33,14 @@ Deducts funds for investment in company
 """
 function decide_investments_if!(
     indexfund_struct::IndexFund,
-    all_req_NW::Float64
+    all_req_NW::Float64,
+    t::Int
     )::Float64
 
     frac_NW_if = max(0, min(indexfund_struct.Assets / all_req_NW, 1))
-    indexfund_struct.Assets -= all_req_NW * frac_NW_if
-    println("Total investments yeet: ", all_req_NW * frac_NW_if)
+    indexfund_struct.funds_inv[t] = all_req_NW * frac_NW_if
+    indexfund_struct.Assets -= indexfund_struct.funds_inv[t]
+    # println("Total investments yeet: ", all_req_NW * frac_NW_if)
     return frac_NW_if
 end
 

@@ -27,8 +27,10 @@ def plot_macro_vars(df):
     ax[0,0].legend()
 
     # Plot unemployment rate
-    ax[0,1].plot(range(len(df.UR)), df.UR)
+    ax[0,1].plot(range(len(df.UR)), df.UR, label='unemployment rate')
+    ax[0,1].plot(range(len(df.switch_rate)), df.switch_rate, label='switching rate')
     ax[0,1].set_title("Unemployment rate")
+    ax[0,1].legend()
 
     # Plot savings rate of households
     ax[1,0].plot(range(len(df.s_avg)), df.s_avg, color='red')

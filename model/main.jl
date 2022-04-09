@@ -8,6 +8,7 @@ using BenchmarkTools
 using TimerOutputs
 using RecursiveArrayTools
 using DataStructures
+using Parameters
 # using PyCall
 
 using Dates
@@ -16,6 +17,7 @@ using Dates
 include("../results/write_results.jl")
 include("helpers/custom_schedulers.jl")
 include("helpers/dist_matrix.jl")
+include("helpers/update.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
 
@@ -70,10 +72,10 @@ function initialize_model(
     macro_struct = MacroEconomy(T=T)
 
     # Initialize labor market struct
-    labormarket_struct = initialize_labormarket()
+    labormarket_struct = LaborMarket()
 
     # Initialize government struct
-    gov_struct = initialize_government()
+    gov_struct = Government(T=T)
 
     # Global id
     id = 1
@@ -134,7 +136,7 @@ function initialize_model(
     bank_struct = initialize_bank(all_p, model)
 
     # Initialize index fund struct
-    indexfund_struct = IndexFund()
+    indexfund_struct = IndexFund(T=T)
 
     # Let all capital good producers select historical clients
     for kp_id in all_kp
@@ -227,7 +229,7 @@ function model_step!(
         cp = model[cp_id]
         
         # Plan production for this period
-        @timeit to "plan prod cp" plan_production_cp!(cp, global_param, model)
+        @timeit to "plan prod cp" plan_production_cp!(cp, global_param, t, model)
 
         # Plan investments for this period
         @timeit to "plan inv cp" plan_investment_cp!(cp, all_kp, global_param, model)
@@ -253,10 +255,10 @@ function model_step!(
     for p_id in all_p
         pay_workers_p!(model[p_id], model)
     end
-    pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed, model)
+    pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed, t, model)
 
     # Government receives income taxes
-    levy_income_tax_gov!(gov_struct, all_hh, model)
+    levy_income_tax_gov!(gov_struct, all_hh, t, model)
 
 
     # (5) Production takes place for cp and kp
@@ -328,16 +330,16 @@ function model_step!(
                                     indexfund_struct, model)
 
     # (7) government receives profit taxes and computes budget balance
-    levy_profit_tax_gov!(gov_struct, all_p, model)
-    compute_budget_balance(gov_struct)
+    levy_profit_tax_gov!(gov_struct, all_p, t, model)
+    compute_budget_balance(gov_struct, t)
     redistribute_surplus_gov!(gov_struct, all_hh, model)
 
     # Update market shares of cp
-    update_marketshare_cp!(all_bp, all_lp, model)
+    update_marketshare_cp!(all_bp, all_lp, t, model)
     update_marketshare_kp!(all_kp, model)
 
     # Select producers that will be declared bankrupt and removed
-    @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, model)
+    @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
 
     # (7) macro-economic indicators are updated.
     @timeit to "update macro ts" update_macro_timeseries(
@@ -352,7 +354,7 @@ function model_step!(
         bankrupt_bp,
         bankrupt_lp,
         bankrupt_kp,
-        labormarket_struct.E,
+        labormarket_struct,
         gov_struct,
         indexfund_struct,
         global_param,
@@ -382,6 +384,7 @@ function model_step!(
         global_param,
         indexfund_struct,
         init_param,
+        t,
         model
     )
 

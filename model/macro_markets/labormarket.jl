@@ -1,22 +1,23 @@
-mutable struct LaborMarket
-    employed :: Vector{Int}                     # array of employed households
-    unemployed :: Vector{Int}                   # array of unemployed households
-    E :: Float64                                # unemployment rate
-    n_rounds :: Int                             # number of rounds in matching process
-    avg_T_unemp :: Float64                      # average time periods of unemployment
+@Base.kwdef mutable struct LaborMarket
+    employed::Vector{Int} = []                # array of employed households
+    unemployed::Vector{Int} = []              # array of unemployed households
+    E::Float64 = 0.1                          # unemployment rate
+    switch_rate::Float64 = 0.0                # rate by which employed employees switch employer
+    n_rounds::Int = 3                         # number of rounds in matching process
+    avg_T_unemp::Float64 = 0                  # average time periods of unemployment
 end
 
 
-function initialize_labormarket()
-    labormarket_struct = LaborMarket(
-        [],
-        [],
-        0.1,
-        3,
-        0
-    )
-    return labormarket_struct
-end
+# function initialize_labormarket()
+#     labormarket_struct = LaborMarket(
+#         [],
+#         [],
+#         0.1,
+#         3,
+#         0
+#     )
+#     return labormarket_struct
+# end
 
 
 """
@@ -96,8 +97,6 @@ function labormarket_process!(
     # get sets of firing and hiring producers
     firing_producers = Vector{Int}()
     hiring_producers = Vector{Int}()
-
-    # update_unemploymentrate_lm!(labormarket_struct)
 
     for p_id in all_p
         if model[p_id].ΔLᵈ > 0
@@ -192,6 +191,10 @@ function matching_lm(
     jobseeking_hh = vcat(employed_jobseekers, labormarket_struct.unemployed)
     hiring_producers_dict = Dict(p_id => model[p_id].ΔLᵈ for p_id in hiring_producers)
 
+    # Track employed jobseekers that actually switch jobs
+    n_jobswitchers = 0
+    n_employed = length(labormarket_struct.employed)
+
     for _ in 1:labormarket_struct.n_rounds
 
         # Loop over hiring producers producers
@@ -241,6 +244,7 @@ function matching_lm(
                     if model[hh_id].employed
                         remove_worker_p!(model[model[hh_id].employer_id], model[hh_id])
                         change_employer_hh!(model[hh_id], model[p_id].wᴼ, p_id)
+                        n_jobswitchers += 1
                     else
                         set_employed_hh!(model[hh_id], model[p_id].wᴼ, p_id)
                     end
@@ -257,6 +261,9 @@ function matching_lm(
             end
         end
     end
+
+    # Updates the labor market's switching rate (use n employed from before matching)
+    labormarket_struct.switch_rate = n_jobswitchers / n_employed
 end
 
 

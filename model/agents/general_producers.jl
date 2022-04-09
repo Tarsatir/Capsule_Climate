@@ -59,6 +59,7 @@ Loop over workers and pay out wage.
 """
 function pay_workers_p!(
     p::AbstractAgent,
+    # t::Int,
     model::ABM
     )
 
@@ -79,14 +80,16 @@ Updates wage level for producer.
 """
 function update_w̄_p!(
     p::AbstractAgent,
+    # t::Int,
     model::ABM
     )
 
     if length(p.employees) > 0
-        w̄ = mean(map(hh_id -> model[hh_id].w[end], p.employees))
-        push!(p.w̄, w̄)
+        # p.w̄[end] = mean(hh_id -> model[hh_id].w[end], p.employees)
+        shift_and_append!(p.w̄, mean(hh_id -> model[hh_id].w[end], p.employees))
     else
-        push!(p.w̄, p.w̄[end])
+        # p.w̄[end] = p.w̄[t-1]
+        shift_and_append!(p.w̄, p.w̄[end])
     end
 end
 
@@ -97,6 +100,7 @@ Updates market shares of cp firms
 function update_marketshare_cp!(
     all_bp::Vector{Int},
     all_lp::Vector{Int},
+    t::Int,
     model::ABM
     )
 
@@ -111,7 +115,9 @@ function update_marketshare_cp!(
         else
             f = model[bp_id].D[end] / bp_market
         end
-        push!(model[bp_id].f, f)
+        # push!(model[bp_id].f, f)
+        # model[bp_id].f[end] = f
+        shift_and_append!(model[bp_id].f, f)
     end
 
     # Update market share f for all lp
@@ -121,7 +127,9 @@ function update_marketshare_cp!(
         else
             f = model[lp_id].D[end] / lp_market
         end
-        push!(model[lp_id].f, f)
+        # push!(model[lp_id].f, f)
+        # model[lp_id].f[end] = f
+        shift_and_append!(model[lp_id].f, f)
     end
 end
 
@@ -136,8 +144,8 @@ function borrow_funds_p!(
     )
 
     # Add debt as repayments for coming periods
-    for t in 2:b+1
-        p.debt_installments[t] += amount / b
+    for i in 2:b+1
+        p.debt_installments[i] += amount / b
     end
 
     # Add received funds as incoming cashflow
@@ -151,21 +159,20 @@ Adds to-be-repaid amount as an outgoing cashflow to current account.
 """
 function payback_debt_p!(
     p::AbstractAgent,
-    b=3::Int64
+    b::Int64
     )
 
     # println("debt: $(p.balance.debt), debt installments: $(p.debt_installments)")
 
     # Add repaid debt as outgoing cashflow
-    p.curracc.rep_debt = p.debt_installments[1]
+    p.curracc.rep_debt += p.debt_installments[1]
 
     # Shift remaining debt amounts.
-    for t in 1:b
-        p.debt_installments[t] = p.debt_installments[t + 1]
+    for i in 1:b
+        p.debt_installments[i] = p.debt_installments[i + 1]
     end
     p.debt_installments[b+1] = 0.0
 
-    # p.balance.debt -= p.curracc.rep_debt
     p.balance.debt = sum(p.debt_installments)
 end
 
@@ -176,7 +183,8 @@ Checks whether producers are bankrupt and should be replaced, returns vectors
 """
 function check_bankrupty_all_p!(
     all_p::Vector{Int},
-    all_kp::Vector{Int}, 
+    all_kp::Vector{Int},
+    global_param::GlobalParam, 
     model::ABM
     )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}, Vector{Int}}
 
@@ -192,7 +200,7 @@ function check_bankrupty_all_p!(
     kp_counter = 0
 
     for p_id in all_p
-        if check_if_bankrupt_p!(model[p_id])
+        if check_if_bankrupt_p!(model[p_id], global_param.t_wait)
             if typeof(model[p_id]) == ConsumerGoodProducer
                 if model[p_id].type_good == "Basic"
                     bp_counter += 1
@@ -265,6 +273,7 @@ function kill_all_bankrupt_p!(
         # indexfund_struct.Assets += (model[p_id].balance.NW - model[p_id].balance.debt)
 
         total_unpaid_net_debt += (model[p_id].balance.debt - model[p_id].balance.NW)
+        # total_unpaid_net_debt += model[p_id].balance.debt
 
         # Remove firm agents from model
         kill_agent!(p_id, model)
@@ -279,11 +288,11 @@ end
 Checks if producers must be declared bankrupt
 """
 function check_if_bankrupt_p!(
-    p::AbstractAgent;
-    t_wait=4::Int
+    p::AbstractAgent,
+    t_wait::Int
     )::Bool
 
-    if (length(p.D) > t_wait || p.first_gen) && (mean(p.f[end])<= 0.0001 || p.balance.EQ < 0)
+    if p.age > t_wait && (p.f[end] <= 0.0001 || p.balance.EQ < 0)
         return true
     end
     return false

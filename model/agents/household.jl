@@ -1,4 +1,4 @@
-@Base.kwdef mutable struct Household <: AbstractAgent
+@with_kw mutable struct Household <: AbstractAgent
 
     id :: Int                                   # global id
 
@@ -6,7 +6,7 @@
     employed::Bool = false                      # is employed
     employer_id::Union{Int} = 0                 # id of employer
     L::Float64 = 100.0                          # labor units in household
-    w::Vector{Float64} = ones(4)                # wage
+    w::Vector{Float64} = ones(Float64, 4)       # wage
     wˢ::Float64 = 1.0                           # satisfying wage
     wʳ::Float64 = 1.0                           # requested wage
     T_unemp::Int = 0                            # time periods unemployed
@@ -197,7 +197,11 @@ function place_orders_hh!(
 
     add_p_id = 0
     poss_p_ids = collect(keys(poss_p))
-    sum_poss_p = sum(map(p_id -> cp_inventories[p_id], poss_p_ids))
+    
+    sum_poss_p = 0
+    if length(poss_p_ids) > 0
+        sum_poss_p = sum(p_id -> cp_inventories[p_id], poss_p_ids)
+    end
 
     # As long as the current producers do not have enough inventory and there are still
     # possible producers to sample, randomly sample producers and add to pool of possible cp
@@ -237,7 +241,7 @@ function place_orders_hh!(
 
         if cp_inventories[chosen_p_id] == 0
             filter!(p_id -> p_id ≠ chosen_p_id, poss_p_ids)
-            filter!(w -> w ≠ poss_p[chosen_p_id], weights)
+            filter!(weight -> weight ≠ poss_p[chosen_p_id], weights)
             delete!(poss_p, chosen_p_id)
             filter!(p_id -> p_id ≠ chosen_p_id, p_with_inventory)
         end
@@ -309,7 +313,8 @@ function get_income_hh!(
     # println(amount)
     push!(hh.I, amount)
     if hh.employed
-        hh.w[1:3] = hh.w[2:4]
+        # hh.w[1:3] = hh.w[2:4]
+        shift_and_append!(hh.w, hh.w[end])
     end
     # println("1 ", amount, " ", hh.W[end])
     # push!(hh.W, amount + hh.W[end])
@@ -353,8 +358,9 @@ function set_employed_hh!(
     hh.employed = true
     hh.employer_id = employer_id
     hh.T_unemp = 0
-    hh.w[1:3] = hh.w[2:4]
-    hh.w[4] = wᴼ
+    shift_and_append!(hh.w, wᴼ)
+    # hh.w[1:3] = hh.w[2:4]
+    # hh.w[4] = wᴼ
 end
 
 
@@ -368,8 +374,9 @@ function change_employer_hh!(
     )
 
     hh.employer_id = employer_id
-    hh.w[1:3] = hh.w[2:4]
-    hh.w[4] = wᴼ
+    shift_and_append!(hh.w, wᴼ)
+    # hh.w[1:3] = hh.w[2:4]
+    # hh.w[4] = wᴼ
 end
 
 
