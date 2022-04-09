@@ -14,7 +14,7 @@
     ι::Float64 = 0.1                # desired inventories
     b::Int = 3                      # payback period
     η::Int = 20                     # physical scrapping age
-    Λ::Float64 = 2.0                # max debt/sales ratio, regular debt
+    Λ::Float64 = 2.0                # max debt/sales ratio
 
     # Determine entrant composition
     φ1::Float64 = 0.1               # 1st Uniform dist support, cp entrant cap

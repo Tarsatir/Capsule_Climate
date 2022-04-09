@@ -3,7 +3,6 @@
     id::Int                               # global id
     kp_i::Int                             # kp id, used for distance matrix
     age::Int = 0                          # firm age
-    first_gen::Bool                       # shows if producer is in first generation
     
     # Technology and innovation
     A::Float64 = 1.0                      # labor prod sold product
@@ -59,91 +58,17 @@ function initialize_kp(
     Q=100,
     D=100,
     f=1/n_captlgood,
-    first_gen=true
     )
-
-    # balance = Balance(               
-    #     0.0,                    # - N: inventory
-    #     0.0,                    # - K: capital
-    #     NW,                     # - NW: liquid assets
-    #     0.0,                    # - debt: debt
-    #     NW                      # - EQ: equity
-    # )
-    
-    # curracc = FirmCurrentAccount(0,0,0,0,0,0,0)
-
-    # kp = CapitalGoodProducer(   
-    #         id = id,                     # global id
-    #         kp_i,                   # kp_i, used for distance matrix
-    #         # 0,                      # firm age
-    #         first_gen,              # shows if producer is in first generation
-    #         [A],                    # A: labor prod sold product
-    #         [B],                    # B: labor prod own production
-    #         [p],                    # p: hist price data
-    #         [],                     # c: hist cost data
-    #         [μ],                    # μ: hist markup rate
-    #         [],                     # employees: employees in company
-    #         0,                      # L: labor units in company
-    #         0,                      # ΔLᵈ: desired change in labor force
-    #         [w̄],                    # w̄: wage level
-    #         wᴼ,                     # wᴼ: offered wage
-    #         0.0,                    # wᴼ_max: expected offered wage
-    #         0,                      # O: total amount of machines ordered
-    #         [],                     # production queue
-    #         [],                     # Q: production quantity
-    #         [],                     # RD: hist R&D expenditure
-    #         [],                     # IM: hist immitation expenditure
-    #         [],                     # IN: hist innovation expenditure
-    #         [],                     # D: hist demand
-    #         [],                     # HC: hist clients
-    #         [0.0],                  # Π: hist profits
-    #         zeros(4),               # debt installments
-    #         [f],                    # f: market share
-    #         [],                     # brochure
-    #         [],                     # orders
-    #         balance,                # balance
-    #         curracc                 # current account   
-    #     )
-
         kp = CapitalGoodProducer(
             id = id,                        
-            kp_i = kp_i,                   
-            # 0,                      
-            first_gen = first_gen,          
-
+            kp_i = kp_i,                               
             A = A,                        
             B = B,                       
-            # RD = zeros(Float64, T),
-            # IM = zeros(Float64, T),
-            # IN = zeros(Float64, T),
-
             μ = fill(μ, 3),
-            # p = fill(p, T),                 
-            # c = ones(Float64, T),
-
-            # [],                     # employees: employees in company
-            # 0,                      # L: labor units in company
-            # 0,                      # ΔLᵈ: desired change in labor force
             w̄ = fill(w̄, 3), 
-            wᴼ = w̄,                     # wᴼ: offered wage
-            # 0.0,                    # wᴼ_max: expected offered wage
-
-            # 0,                      # O: total amount of machines ordered
-            # [],                     # production queue
-            # Q = zeros(Float64, T),   
-            # [],                     # RD: hist R&D expenditure
-            # [],                     # IM: hist immitation expenditure
-            # [],                     # IN: hist innovation expenditure
-            # D = zeros(Float64, T),  
-            # [],                     # HC: hist clients
-            # Π = zeros(Float64, T),    # Π: hist profits
-            # Πᵀ = zeros(Float64, T),
-            # zeros(4),               # debt installments
-            f = fill(f, 3),           # f: market share
-            # [],                     # brochure
-            # [],                     # orders
-            balance = Balance(NW=NW, EQ=NW),                # balance
-            # curracc                 # current account   
+            wᴼ = w̄,
+            f = fill(f, 3),
+            balance = Balance(NW=NW, EQ=NW)
         )
     return kp
 end
@@ -208,15 +133,8 @@ function choose_technology_kp!(
     # Make choice between possible technologies
     if length(tech_choices) == 1
         # If no new technologies, keep current technologies
-        # push!(kp.A, kp.A[end])
-        # kp.A[t] = kp.A[t-1]
-        # push!(kp.B, kp.B[end])
-        # kp.B[t] = kp.B[t-1]
-
         c_h = kp.w̄[end]/kp.B
         p_h = (1 + kp.μ[end]) * c_h
-        # push!(kp.c, c_h)
-        # push!(kp.p, p_h)
         shift_and_append!(kp.c, c_h)
         shift_and_append!(kp.p, p_h)
     else
@@ -231,10 +149,6 @@ function choose_technology_kp!(
         kp.A = tech_choices[idx][1]
         kp.B = tech_choices[idx][2]
 
-        # push!(kp.A, tech_choices[idx][1])
-        # push!(kp.B, tech_choices[idx][2])
-        # push!(kp.c, c_h_kp[idx])
-        # push!(kp.p, p_h[idx])
         shift_and_append!(kp.c, c_h_kp[idx])
         shift_and_append!(kp.p, p_h[idx])
     end
@@ -337,10 +251,7 @@ function set_price_kp!(
     )
 
     c_t = kp.w̄[end] / kp.B
-    # p_t = (1 + μ1) * c_t
     p_t = (1 + kp.μ[end]) * c_t
-    # push!(kp.c, c_t)
-    # push!(kp.p, p_t)
     shift_and_append!(kp.c, c_t)
     shift_and_append!(kp.p, p_t)
 end
@@ -359,28 +270,21 @@ function set_RD_kp!(
     # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
     # TODO: describe change of added NW
     
-    if length(kp.Q) > 0
+    if kp.age > 1
         prev_S = kp.p[end] * kp.Q[end]
-        RD_new = ν * prev_S
-        if prev_S == 0
-            RD_new = 0.3 * max(kp.balance.NW, 0)
-        end
+        kp.RD = prev_S > 0 ? ν * prev_S : ν * max(kp.balance.NW, 0)
     else
-        RD_new = 0.3 * max(kp.balance.NW, 0)
+        kp.RD = ν * max(kp.balance.NW, 0)
     end
 
     # TODO: now based on prev profit to avoid large losses. If kept, describe!
 
-    # push!(kp.RD, RD_new)
-    kp.RD = RD_new
-    kp.curracc.TCI += RD_new
+    kp.curracc.TCI += kp.RD
 
     # Decide fractions innovation (IN) and immitation (IM), 
     # (Dosi et al, 2010; eq. 3.5)
-    kp.IN = ξ * RD_new
-    kp.IM = (1 - ξ) * RD_new
-    # push!(kp.IN, IN_t_new)
-    # push!(kp.IM, IM_t_new)
+    kp.IN = ξ * kp.RD
+    kp.IM = (1 - ξ) * kp.RD
 end
 
 
@@ -456,8 +360,6 @@ function produce_goods_kp!(
     Q = length(kp.prod_queue) * global_param.freq_per_machine
     push!(kp.Q, Q)
 
-    # println("len orders: $(length(kp.orders)), len prod queue: $(length(kp.prod_queue))")
-
     # Empty order queue
     kp.orders = []
 end
@@ -477,9 +379,7 @@ function send_orders_kp!(
     end
 
     # Count how many machines each individual cp ordered
-    # println(kp.prod_queue)
     machines_per_cp = counter(kp.prod_queue)
-    # println(machines_per_cp)
 
     for (cp_id, n_machines) in machines_per_cp
 
@@ -498,6 +398,9 @@ function send_orders_kp!(
 end
 
 
+"""
+Resets order queue
+"""
 function reset_order_queue_kp!(
     kp::CapitalGoodProducer
     )
@@ -506,6 +409,9 @@ function reset_order_queue_kp!(
 end
 
 
+"""
+Lets kp select cp as historical clients
+"""
 function select_HC_kp!(
     kp::CapitalGoodProducer, 
     all_cp::Vector{Int};
@@ -516,6 +422,9 @@ function select_HC_kp!(
 end
 
 
+"""
+Lets kp update maximum offered wage
+"""
 function update_wᴼ_max_kp!(
     kp::CapitalGoodProducer
     )
@@ -565,6 +474,9 @@ end
 
 
 # TRIAL: DESCRIBE
+"""
+Updates the markup rate μ
+"""
 function update_μ_kp!(
     kp::CapitalGoodProducer
     )
@@ -693,8 +605,7 @@ function replace_bankrupt_kp!(
             B=new_B,
             μ=model[A_max_id].μ[end],
             w̄=model[A_max_id].w̄[end],
-            f=0.0,
-            first_gen=false
+            f=0.0
         )
 
         # Borrow the remaining funds

@@ -66,7 +66,7 @@ function initialize_model(
 
     # Initialize struct that holds global params and initial parameters
     global_param  = initialize_global_params(labormarket_is_fordist, changed_params)
-    init_param = initialize_init_params()
+    init_param = InitParam()
 
     # Initialize struct that holds macro variables
     macro_struct = MacroEconomy(T=T)
