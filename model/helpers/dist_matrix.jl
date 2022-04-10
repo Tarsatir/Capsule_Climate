@@ -14,12 +14,19 @@ function get_capgood_euclidian(
         for j in i:n_captlgood
 
             # get current values for A and B of both producers
-            A1 = model[all_kp[i]].A[end]
-            A2 = model[all_kp[j]].A[end]
-            B1 = model[all_kp[i]].B[end]
-            B2 = model[all_kp[j]].B[end]
+            A1_LP = model[all_kp[i]].A_LP
+            A2_LP = model[all_kp[j]].A_LP
+
+            A1_EE = model[all_kp[i]].A_EE
+            A2_EE = model[all_kp[j]].A_EE
+
+            A1_EF = model[all_kp[i]].A_EF
+            A2_EF = model[all_kp[j]].A_EF
+
+            B1 = model[all_kp[i]].B
+            B2 = model[all_kp[j]].B
             
-            distance = sqrt((A1-A2)^2 + (B1-B2)^2)
+            distance = sqrt((A1_LP-A2_LP)^2 + (A1_EE-A2_EE)^2 + (A1_EF-A2_EF)^2 + (B1-B2)^2)
             if (i==j)
                 distance = Inf
             end

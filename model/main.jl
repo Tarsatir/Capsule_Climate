@@ -40,9 +40,6 @@ include("agents/bank.jl")
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
 
-# TEMP
-# include("../plotting/plot_D_p.jl")
-
 
 """
 Initializes model.
@@ -79,6 +76,9 @@ function initialize_model(
     # Initialize government struct
     gov_struct = Government(T=T)
 
+    # Initialize energy producer
+    energy_producer = EnergyProducer(T=T)
+
     # Global id
     id = 1
 
@@ -105,7 +105,11 @@ function initialize_model(
         # n_machines_init = 50  #TODO: put this in parameters
         
         machines = initialize_machine_stock(global_param.freq_per_machine, 
-                                            init_param.n_machines_init; A=init_param.A_0)
+                        init_param.n_machines_init; 
+                        A_LP = init_param.A_LP_0,
+                        A_EE = init_param.A_EE_0,
+                        A_EF = init_param.A_EF_0
+                   )
 
         cp = initialize_cp(
                 id,
@@ -125,7 +129,15 @@ function initialize_model(
     # Initialize capital good producers
     for kp_i in 1:init_param.n_kp
 
-        kp = initialize_kp(id, kp_i, init_param.n_kp; A=init_param.A_0, B=init_param.B_0)
+        kp = initialize_kp(
+                id, 
+                kp_i, 
+                init_param.n_kp; 
+                A_LP=init_param.A_LP_0,
+                A_EE=init_param.A_EE_0,
+                A_EF=init_param.A_EF_0, 
+                B=init_param.B_0
+             )
         add_agent!(kp, model)
 
         id += 1

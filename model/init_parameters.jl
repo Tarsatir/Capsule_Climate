@@ -6,8 +6,10 @@
 
     # Init params of kp
     n_init_emp_kp::Int = 4                # number of employees of kp at init
-    A_0::Float64 = 2.5                    # initial productivity level A
-    B_0::Float64 = 2.5                    # initial productivity level B
+    A_LP_0::Float64 = 1.0                 # initial productivity level A_LP
+    A_EE_0::Float64 = 1.0                 # initial productivity level A_EE
+    A_EF_0::Float64 = 1.0                 # initial productivity level A_EF
+    B_0::Float64 = 1.0                    # initial productivity level B
 
     # Init params of cp
     n_init_emp_cp::Int = 12               # number of employees of cp at init

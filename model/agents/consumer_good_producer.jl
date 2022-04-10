@@ -300,7 +300,7 @@ function plan_replacement_cp!(
     # Loop over machine stock, select which machines to replace
     cp.mach_tb_repl = []
     for machine in cp.Ξ
-        c_A = cp.w̄[end] / machine.A
+        c_A = cp.w̄[end] / machine.A_LP
         if ((c_A != c_star && p_star/(c_A - c_star) <= global_param.b) 
             || machine.age >= global_param.η)
             push!(cp.mach_tb_repl, machine)
@@ -308,7 +308,7 @@ function plan_replacement_cp!(
     end
 
     # Sort to-be-replaces machines from least to most productive
-    sort!(cp.mach_tb_repl, by=machine->machine.A)
+    sort!(cp.mach_tb_repl, by=machine->machine.A_LP)
 
     # Update total amount of to-be-replaces machines
     cp.n_mach_ordered_RS = length(cp.mach_tb_repl)
@@ -351,7 +351,7 @@ function produce_goods_cp!(
         # Compute number of machines needed (machines already ordered on productivity, 
         # least to most productive)
         req_machines = cp.Ξ[end-n_machines_req:end]
-        actual_π = mean(machine -> machine.A, req_machines)
+        actual_π = mean(machine -> machine.A_LP, req_machines)
     else
         actual_π = cp.π[end]
     end
@@ -706,7 +706,7 @@ function update_π_cp!(
 
     # Check if machines were already received
     if length(cp.Ξ) > 0
-        cp.π = sum(map(machine -> (machine.freq * machine.A) / cp.n_machines, cp.Ξ))
+        cp.π = sum(map(machine -> (machine.freq * machine.A_LP) / cp.n_machines, cp.Ξ))
     else
         cp.π = 1.0
     end

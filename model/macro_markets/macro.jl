@@ -167,7 +167,7 @@ function update_macro_timeseries(
 
     # Productivity
     macro_struct.avg_π[t] = mean(cp_id -> model[cp_id].π, all_cp)
-    macro_struct.avg_A[t] = mean(kp_id -> model[kp_id].A[end], all_kp)
+    macro_struct.avg_A[t] = mean(kp_id -> model[kp_id].A_LP[end], all_kp)
     macro_struct.avg_B[t] = mean(kp_id -> model[kp_id].B[end], all_kp)
 
     # Production quantity

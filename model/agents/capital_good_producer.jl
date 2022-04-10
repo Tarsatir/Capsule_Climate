@@ -5,8 +5,12 @@
     age::Int = 0                          # firm age
     
     # Technology and innovation
-    A::Float64 = 1.0                      # labor prod sold product
-    B::Float64 = 1.0                      # labor prod own production
+    A_LP::Float64 = 1.0                   # labor prod sold machines
+    A_EE::Float64 = 1.0                   # energy efficiency of sold machines
+    A_EF::Float64 = 1.0                   # environmental friendlines of sold machines
+    B_LP::Float64 = 1.0                   # labor prod own production
+    B_EE::Float64 = 1.0                   # energy efficiency of own production
+    B_EF::Float64 = 1.0                   # environmental friendlines of own production
     RD::Float64 = 0.0                     # R&D expenditure
     IM::Float64 = 0.0                     # hist immitation expenditure
     IN::Float64 = 0.0                     # hist innovation expenditure
@@ -49,8 +53,12 @@ function initialize_kp(
     kp_i::Int,
     n_captlgood::Int;
     NW=1000,
-    A=1.0,
-    B=1.0,
+    A_LP=1.0,
+    A_EE=1.0,
+    A_EF=1.0,
+    B_LP=1.0,
+    B_EE=1.0,
+    B_EF=1.0,
     p=1.0,
     μ=0.2,
     w̄=1.0,
@@ -62,8 +70,12 @@ function initialize_kp(
         kp = CapitalGoodProducer(
             id = id,                        
             kp_i = kp_i,                               
-            A = A,                        
-            B = B,                       
+            A_LP = A_LP,
+            A_EE = A_EE,
+            A_EF = A_EF,                        
+            B_LP = B_LP,
+            B_EE = B_EE,
+            B_EF = B_EF,                       
             μ = fill(μ, 3),
             w̄ = fill(w̄, 3), 
             wᴼ = w̄,
@@ -90,14 +102,14 @@ function innovate_kp!(
 
     # Determine levels of R&D, and how to divide under IN and IM
     set_RD_kp!(kp, global_param.ξ, global_param.ν)
-    tech_choices = [(kp.A, kp.B)]
+    tech_choices = [(kp.A_LP, kp.B)]
 
     # Determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN)
     if rand(Bernoulli(θ_IN))
-        A_t_in = update_At_kp(kp.A, global_param)
+        A_t_in = update_At_kp(kp.A_LP, global_param)
         B_t_in = update_Bt_kp(kp.B, global_param)
-        if A_t_in > kp.A || B_t_in > kp.B
+        if A_t_in > kp.A_LP || B_t_in > kp.B
             push!(tech_choices, (A_t_in, B_t_in))
         end
     end
@@ -108,7 +120,7 @@ function innovate_kp!(
     θ_IM = 1 - exp(-global_param.ζ * kp.IM)
     if rand(Bernoulli(θ_IM))
         A_t_im, B_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
-        if A_t_im > kp.A || B_t_im > kp.B
+        if A_t_im > kp.A_LP || B_t_im > kp.B
             push!(tech_choices, (A_t_im, B_t_im))
         end
     end
@@ -146,7 +158,7 @@ function choose_technology_kp!(
         r_h = p_h + global_param.b * c_h_cp 
         idx = argmin(r_h)
 
-        kp.A = tech_choices[idx][1]
+        kp.A_LP = tech_choices[idx][1]
         kp.B = tech_choices[idx][2]
 
         shift_and_append!(kp.c, c_h_kp[idx])
@@ -167,7 +179,7 @@ function send_brochures_kp!(
     )
 
     # Set up brochure
-    brochure = (kp.id, kp.p[end], kp.c[end], kp.A)
+    brochure = (kp.id, kp.p[end], kp.c[end], kp.A_LP)
     kp.brochure = brochure
 
     # Send brochure to historical clients
@@ -206,7 +218,7 @@ function imitate_technology_kp(
     weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
     idx = sample(all_kp, Weights(weights))
 
-    A_t_im = model[idx].A
+    A_t_im = model[idx].A_LP
     B_t_im = model[idx].B
     
     return A_t_im, B_t_im
@@ -385,7 +397,7 @@ function send_orders_kp!(
 
         # Produce machines in production queue, send to cp
         machines = initialize_machine_stock(global_param.freq_per_machine, n_machines;
-                                            p=kp.p[end], A=kp.A)
+                                            p=kp.p[end], A_LP=kp.A_LP)
         Iₜ = n_machines * global_param.freq_per_machine * kp.p[end]
         receive_machines_cp!(model[cp_id], machines, Iₜ)
     end
@@ -548,7 +560,7 @@ function replace_bankrupt_kp!(
     # Determine all possible kp and set weights for sampling proportional to the 
     # quality of their technology
     poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
-    # weights = map(kp_id -> min(model[kp_id].A, model[kp_id].B), poss_kp)
+    # weights = map(kp_id -> min(model[kp_id].A_LP, model[kp_id].B), poss_kp)
 
     # Get the technology frontier
     A_max = 0
@@ -559,12 +571,12 @@ function replace_bankrupt_kp!(
     B_min = 0
 
     for kp_id in poss_kp
-        # Check if A is max or min in population
-        if model[kp_id].A > A_max
-            A_max = model[kp_id].A
+        # Check if A_LP is max or min in population
+        if model[kp_id].A_LP > A_max
+            A_max = model[kp_id].A_LP
             A_max_id = kp_id
-        elseif model[kp_id].A < A_min
-            A_min = model[kp_id].A
+        elseif model[kp_id].A_LP < A_min
+            A_min = model[kp_id].A_LP
         end
 
         # Check if B is max or min in population
@@ -590,7 +602,7 @@ function replace_bankrupt_kp!(
         # quality of the technology
         tech_coeff = (global_param.φ5 + rand(Beta(global_param.α2, global_param.β2)) 
                                         * (global_param.φ6 - global_param.φ5))
-        new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_0)
+        new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_LP_0)
         new_B = max(B_max * (1 + tech_coeff), B_min, init_param.B_0)
 
         NW_stock = NW_coefficients[i] * avg_NW
@@ -601,7 +613,7 @@ function replace_bankrupt_kp!(
             kp_i, 
             length(all_kp);
             NW=NW_stock,
-            A=new_A,
+            A_LP=new_A,
             B=new_B,
             μ=model[A_max_id].μ[end],
             w̄=model[A_max_id].w̄[end],
