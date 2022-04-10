@@ -182,9 +182,8 @@ function place_orders_hh!(
 
     # If none of the known suppliers has products in stock, randomly select
     # other suppliers until demand can be met.
-    # Ugly selection to boost performance.
-    # poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ intersect(Set(hh_p), Set(p_with_inventory)))
 
+    # Ugly selection to boost performance.
     poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ hh_p)
     for p_id in hh_p
         if p_id ∉ p_with_inventory
@@ -194,16 +193,11 @@ function place_orders_hh!(
 
     add_p_id = 0
     poss_p_ids = collect(keys(poss_p))
-    
-    sum_poss_p = 0
-    if length(poss_p_ids) > 0
-        sum_poss_p = sum(p_id -> cp_inventories[p_id], poss_p_ids)
-    end
+    sum_poss_p = length(poss_p_ids) > 0 ? sum(p_id -> cp_inventories[p_id], poss_p_ids) : 0
 
     # As long as the current producers do not have enough inventory and there are still
     # possible producers to sample, randomly sample producers and add to pool of possible cp
     while sum_poss_p < C_i && length(poss_p) != length(p_with_inventory)
-        # add_p_id = sample(setdiff(p_with_inventory, keys(poss_p)))
 
         add_p_id = sample(p_with_inventory)
         while add_p_id ∈ poss_p_ids
@@ -220,18 +214,19 @@ function place_orders_hh!(
     chosen_p_id = 0
     C_per_day = C_i / global_param.n_cons_market_days
 
-    p_orders = Dict()
+    p_orders = Dict(cp_id => 0.0 for cp_id in poss_p_ids)
     weights = collect(values(poss_p))
     
     while C_i > 0 && length(poss_p) > 0
         chosen_p_id = sample(poss_p_ids, Weights(weights))
         chosen_amount = min(min(C_i, C_per_day), cp_inventories[chosen_p_id])
+        p_orders[chosen_p_id] += chosen_amount
 
-        if !haskey(p_orders, chosen_p_id)
-            p_orders[chosen_p_id] = chosen_amount
-        else
-            p_orders[chosen_p_id] += chosen_amount
-        end
+        # if !haskey(p_orders, chosen_p_id)
+        #     p_orders[chosen_p_id] = chosen_amount
+        # else
+        #     p_orders[chosen_p_id] += chosen_amount
+        # end
 
         C_i -= chosen_amount
         cp_inventories[chosen_p_id] -= chosen_amount

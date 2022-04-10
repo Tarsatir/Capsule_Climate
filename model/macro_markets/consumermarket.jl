@@ -38,9 +38,9 @@ function consumermarket_process!(
         C_b = model[hh_id].C[end] * (1 - model[hh_id].c_L)
         C_l = model[hh_id].C[end] - C_b
 
-        bp_orders, cp_inventories, bp_with_inventory = place_orders_hh!(model[hh_id].bp, C_b, cp_inventories, 
+        @timeit to "bp orders" bp_orders, cp_inventories, bp_with_inventory = place_orders_hh!(model[hh_id].bp, C_b, cp_inventories, 
                                                          bp_with_inventory, global_param, model, to)
-        lp_orders, cp_inventories, lp_with_inventory = place_orders_hh!(model[hh_id].lp, C_l, cp_inventories, 
+        @timeit to "lp orders" lp_orders, cp_inventories, lp_with_inventory = place_orders_hh!(model[hh_id].lp, C_l, cp_inventories, 
                                                          lp_with_inventory, global_param, model, to)
         # Send order to queues of bp and lp
         for (cp_id, qp) in merge(bp_orders, lp_orders)
@@ -51,7 +51,7 @@ function consumermarket_process!(
     # cp's handle order queue, send orders, households track which cp could not
     # supply the demand.
     for cp_id in all_cp
-        send_ordered_goods_cp!(model[cp_id], t, model)
+        @timeit to "send orders" send_ordered_goods_cp!(model[cp_id], t, model)
         reset_queue_cp!(model[cp_id])
     end
 end
