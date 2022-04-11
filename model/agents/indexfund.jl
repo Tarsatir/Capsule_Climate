@@ -65,7 +65,7 @@ function distribute_dividends_if!(
     )
 
     # Distribute proportional to wealth
-    total_wealth = sum(map(hh_id -> model[hh_id].W[end], all_hh))
+    total_wealth = sum(hh_id -> model[hh_id].W[end], all_hh)
 
     for hh_id in all_hh
 

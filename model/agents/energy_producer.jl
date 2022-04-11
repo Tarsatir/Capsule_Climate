@@ -23,11 +23,63 @@
     c_d::Vector{Float64} = zeros(Float64, T)    # Discounted production cost of the cheapest dirty plant 
 
     # Owned power plants
-    green_portfolio::Dict{Int, PowerPlant} = Dict() # Portfolio of all green powerplants
+    green_portfolio::Vector{PowerPlant}         # Portfolio of all green powerplants
     green_capacity::Float64 = 0.0               # capacity of set of green powerplants
-    dirty_portfolio::SortedDict{Int, PowerPlant} = SortedDict() # Portfolio of all dirty powerplants
-    dirty_capacity::Float64 = 0.0               # capacity of set of dirty powerplants
-    infra_marg::Vector{Int} = []                # Set of ids of infra-marginal plants
+    dirty_portfolio::Vector{PowerPlant}         # Portfolio of all dirty powerplants
+    dirty_capacity::Float64 = 0.0               # Capacity of set of dirty powerplants
+    infra_marg::Vector{PowerPlant} = []         # Infra-marginal plants
+    pp_tb_repl::Vector{PowerPlant} = []         # Power plants to be replaced
+end
+
+
+function initialize_energy_producer(
+    T::Int,
+    init_param::InitParam,
+    global_param::GlobalParam
+    )::EnergyProducer
+
+    # Initialize power plants
+    n_pp::Int = init_param.n_powerplants_init / global_param.freq_per_powerplant
+    n_pp_green::Int = init_param.frac_green * n_pp
+
+    # Initialize green power plants
+    green_portfolio = []
+    for _ in 1:n_pp_green
+        green_pp = PowerPlant(
+                    type = "Green",
+                    c = 0.0,
+                    freq = global_param.freq_per_powerplant,
+                    capacity = global_param.freq_per_powerplant,
+                    Aᵀ = 0.0,
+                    em = 0.0
+                   )
+        push!(green_portfolio, green_pp)
+    end
+
+    # Initialize dirty power plants
+    dirty_portfolio = []
+    for _ in n_pp_green+1:n_pp
+        dirty_pp = PowerPlant(
+                    type = "Dirty",
+                    c = 0.0,
+                    freq = global_param.freq_per_powerplant,
+                    capacity = global_param.freq_per_machine * init_param.Aᵀ_0,
+                    Aᵀ = init_param.Aᵀ_0,
+                    em = init_param.emᵀ_0
+                   )
+        update_c_pp!(dirty_pp, init_param.p_f)
+        push!(dirty_portfolio, dirty_pp)
+    end
+
+    # Initialize ep struct
+    energy_producer = EnergyProducer(
+                        T = T,
+                        green_portfolio = green_portfolio,
+                        dirty_portfolio = dirty_portfolio,
+                        Aᵀ_d = fill(init_param.Aᵀ_0, T),
+                        emᵀ_d = fill(init_param.emᵀ_0, T)
+                      )
+    return energy_producer
 end
 
 
@@ -35,7 +87,6 @@ end
 """
 PRODUCTION
 """
-
 
 """
 Production process of ep
@@ -49,8 +100,16 @@ function produce_energy_ep!(
     )
 
     # Determine demand for energy
-    ep.Dₑ[t] = sum(cp_id -> model[cp_id].EU, all_cp) + sum(kp_id -> model[kp_id].EU, all_kp)
+    compute_Dₑ_ep!(ep, all_cp, all_kp, t, model)
 
+    # Check if production capacity needs to be expanded
+    if ep.Dₑ[t] > ep.green_capacity + ep.dirty_capacity
+
+    end
+
+    choose_powerplants_ep!(ep, t)
+
+    compute_Πₑ_ep!(ep, t)
 end
 
 
@@ -65,22 +124,23 @@ function choose_powerplants_ep!(
     # Check if all production can be done using green tech, if not, compute cost
     # of production using dirty tech
     if ep.Dₑ[t] < ep.green_capacity
-        ep.infra_marg = collect(keys(ep.green_portfolio))
+        ep.infra_marg = ep.green_portfolio
     else
 
-        ep.infra_marg = collect(keys(ep.green_portfolio))
+        ep.infra_marg = ep.green_portfolio
         total_capacity = ep.green_capacity
 
         # Sort dirty portfolio as to take low cost power plants first
         sort!(ep.dirty_portfolio, by = pp -> pp.c)
 
-        for (i, powerplant) in ep.dirty_portfolio
-            push!(ep.infra_marg, i)
-            total_capacity += powerplant.capacity
-            if total_capacity >= ep.Dₑ
+        for dirty_pp in ep.dirty_portfolio
+            push!(ep.infra_marg, dirty_pp)
+            total_capacity += dirty_pp.capacity
+            if total_capacity >= ep.Dₑ[t]
                 break
             end
         end
+
     end
 end
 
@@ -161,12 +221,12 @@ Innocation process
 """
 function innovate_ep!(
     ep::EnergyProducer,
-    global_params::GlobalParam,
+    global_param::GlobalParam,
     t::Int
     )
 
     # Compute R&D spending (Lamperti et al (2018), eq 18)
-    ep.RDₑ[t] = t > 1 ? global_params.νₑ * ep.pₑ[t-1] * ep.Dₑ[t-1] : 0.0
+    ep.RDₑ[t] = t > 1 ? global_param.νₑ * ep.pₑ[t-1] * ep.Dₑ[t-1] : 0.0
 
     # Compute portions of R&D spending going to innovation in green and dirty tech
     #   (Lamperti et al (2018), eq 18.5)
@@ -174,8 +234,8 @@ function innovate_ep!(
     ep.IN_d[t] = (1 - global_param.ξₑ) * ep.RDₑ[t]
 
     # Define success probabilities of tech search (Lamperti et al (2018), eq 19)
-    θ_g = 1 - exp(global_params.η_ge * ep.IN_g[t])
-    θ_d = 1 - exp(global_params.η_de * ep.IN_d[t])
+    θ_g = 1 - exp(global_param.ζ_ge * ep.IN_g[t])
+    θ_d = 1 - exp(global_param.ζ_de * ep.IN_d[t])
 
     # Candidate innovation for green tech
     if rand(Bernoulli(θ_g))
@@ -243,9 +303,9 @@ function compute_PCₑ_ep!(
 
     dirty_cost = 0.0
 
-    for pp_id in ep.infra_marg
-        if haskey(ep.dirty_portfolio, pp_id)
-            dirty_cost += ep.dirty_portfolio[pp].freq * ep.dirty_portfolio[pp].c * ep.dirty_portfolio[pp].Aᵗ
+    for pp in ep.infra_marg
+        if pp ∈ ep.dirty_portfolio
+            dirty_cost += pp.freq * pp.c * pp.Aᵗ
         end
     end
 
@@ -261,7 +321,7 @@ function compute_pₑ_ep!(
     t::Int
     )
 
-    c̄ = ep.dirty_portfolio[ep.infra_marg[end]].c
+    c̄ = ep.dirty_portfolio[end].c
     ep.pₑ[t] = ep.Dₑ[t] <= ep.green_capacity ? ep.μₑ : c̄ + ep.μₑ
 end
 
@@ -274,8 +334,8 @@ function update_capacities_ep!(
     ep::EnergyProducer
     )
 
-    ep.green_capacity = sum(pp -> pp.freq, values(ep.green_portfolio))
-    ep.dirty_capacity = sum(pp -> pp.freq, values(ep.dirty_portfolio))
+    ep.green_capacity = sum(pp -> pp.freq, ep.green_portfolio)
+    ep.dirty_capacity = sum(pp -> pp.freq, ep.dirty_portfolio)
 end
 
 
@@ -288,7 +348,7 @@ function compute_Q̄_ep!(
     t::Int
     )
 
-    ep.Q̄ₑ[t] = ep.green_capacity + sum(pp -> pp.freq, values(ep.green_portfolio))
+    ep.Q̄ₑ[t] = ep.green_capacity + sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio)
 end
 
 
@@ -303,4 +363,32 @@ function compute_EIᵈ_ep!(
 
     # TODO: I dont know yet what Kᵈ is, likely has to be changed
     ep.EIᵈ[t] = ep.Q̄ₑ[t] < ep.Dₑ[t] ? cp.Dₑ[t] - (cp.green_capacity + cp.dirty_capacity) : 0
+end
+
+
+"""
+Computes total energy demand in period
+"""
+function compute_Dₑ_ep!(
+    ep::EnergyProducer,
+    all_cp::Vector{Int},
+    all_kp::Vector{Int},
+    t::Int,
+    model::ABM
+    )
+
+    ep.Dₑ[t] = sum(cp_id -> model[cp_id].EU, all_cp) + sum(kp_id -> model[kp_id].EU, all_kp)
+end
+
+
+"""
+Updates age of power plants
+"""
+function update_age_pp_ep!(
+    ep::EnergyProducer
+    )
+
+    for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
+        pp.age += 1
+    end
 end

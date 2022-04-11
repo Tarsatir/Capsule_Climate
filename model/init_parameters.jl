@@ -20,4 +20,11 @@
     # Init params of hh
     n_bp_hh::Int = 7                      # number of bp of hh (also min amount)
     n_lp_hh::Int = 7                      # number of lp of hh (also min amount)
+
+    # Init params of ep
+    n_powerplants_init::Int = 300_000     # number of unit of power plants in ep
+    frac_green::Float64 = 0.1             # fraction of initial power plants that are green
+    Aᵀ_0::Float64 = 1.0                   # initial thermal efficiency
+    emᵀ_0::Float64 = 1.0                  # initial emission level
+    p_f::Float64 = 1.0                    # initial price of fossil fuels
 end

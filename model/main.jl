@@ -77,7 +77,8 @@ function initialize_model(
     gov_struct = Government(T=T)
 
     # Initialize energy producer
-    energy_producer = EnergyProducer(T=T)
+    # energy_producer = EnergyProducer(T=T)
+    energy_producer = initialize_energy_producer(T, init_param, global_param)
 
     # Global id
     id = 1
@@ -177,7 +178,7 @@ function initialize_model(
     )
 
     close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
-        indexfund_struct, model)
+                         indexfund_struct, model)
 
     return model, global_param, init_param, macro_struct, gov_struct, energy_producer, labormarket_struct, indexfund_struct
 end
@@ -220,9 +221,9 @@ function model_step!(
         reset_brochures_cp!(model[cp_id])
     end
 
-    # (1) capital good producers innovate and send brochures
+    # (1) kp and ep innovate, and kp send brochures
 
-    # Determine distance matrix between capital good producers
+    # Determine distance matrix between kp
     @timeit to "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
     for kp_id in all_kp
@@ -235,10 +236,15 @@ function model_step!(
             all_kp, 
             kp_distance_matrix,
             macro_struct.w̄_avg[max(t-1,1)],
+            t,
+            energy_producer,
             model
         )
         send_brochures_kp!(model[kp_id], all_cp, global_param, model)
     end
+
+    # ep innovate
+    innovate_ep!(energy_producer, global_param, t)
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K

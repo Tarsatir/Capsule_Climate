@@ -1,9 +1,10 @@
 @with_kw mutable struct PowerPlant
     type::String                                # Type of the power plant ("Green" or "Dirty")
+    age::Int                                    # Age of power plant
     c::Float64                                  # Marginal cost of production
     freq::Float64                               # Absolute frequency of machine
     capacity::Float64                           # Capacity to produce energy
-    Aᵗ::Float64                                 # Thermal efficiency
+    Aᵀ::Float64                                 # Thermal efficiency
     em::Float64                                 # emissions per unit of energy
 end
 
@@ -18,5 +19,5 @@ function update_c_pp!(
     p_f::Float64
     )
 
-    pp.c = pp.type == "Dirty" ? p_f / pp.Aᵗ : 0.0
+    pp.c = pp.type == "Dirty" ? p_f / pp.Aᵀ : 0.0
 end

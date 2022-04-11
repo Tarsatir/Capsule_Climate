@@ -249,7 +249,7 @@ function kill_all_bankrupt_p!(
 
     # All employees are declared unemployed
     all_employees = Vector{Int}()
-    for p_id in vcat(bankrupt_bp, bankrupt_lp, bankrupt_kp)
+    for p_id in Iterators.flatten((bankrupt_bp, bankrupt_lp, bankrupt_kp))
         append!(all_employees, model[p_id].employees)
     end
     
@@ -260,7 +260,7 @@ function kill_all_bankrupt_p!(
 
     # Fire all workers still remaining in the firm, remove firm
     total_unpaid_net_debt = 0.0
-    for p_id in vcat(bankrupt_bp, bankrupt_lp, bankrupt_kp)
+    for p_id in Iterators.flatten((bankrupt_bp, bankrupt_lp, bankrupt_kp))
 
         # Fire remaining workers
         for hh_id in model[p_id].employees

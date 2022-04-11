@@ -65,7 +65,7 @@ function update_marketshares_cm!(
     model::ABM
     )
 
-    total_D = sum(map(cp_id -> model[cp_id].D[end], all_cp))
+    total_D = sum(cp_id -> model[cp_id].D[end], all_cp)
 
     for cp_id in all_cp
         cp = model[cp_id]

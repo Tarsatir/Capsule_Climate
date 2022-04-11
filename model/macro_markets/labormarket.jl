@@ -48,7 +48,7 @@ function spread_employees_lm!(
         end
 
         cp.employees = employees
-        cp.L = sum(map(hh_id -> model[hh_id].L, employees))
+        cp.L = sum(hh_id -> model[hh_id].L, employees)
         i += n_init_emp_cp
 
     end
@@ -64,7 +64,7 @@ function spread_employees_lm!(
             push!(labormarket_struct.employed, hh.id)
         end
         kp.employees = employees
-        kp.L = sum(map(hh_id -> model[hh_id].L, employees))
+        kp.L = sum(hh_id -> model[hh_id].L, employees)
         i += n_init_emp_kp
     end
 

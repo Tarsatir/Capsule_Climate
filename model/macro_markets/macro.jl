@@ -349,7 +349,7 @@ function update_debt!(
     macro_struct.debt_kp_allowed[t] = Λ * sum(kp_id -> model[kp_id].curracc.S, all_kp)
 
     if length(bankrupt_bp) + length(bankrupt_lp) > 0
-        macro_struct.debt_unpaid_cp[t] = sum(cp_id -> model[cp_id].balance.debt, vcat(bankrupt_bp, bankrupt_lp))
+        macro_struct.debt_unpaid_cp[t] = sum(cp_id -> model[cp_id].balance.debt, Iterators.flatten((bankrupt_bp, bankrupt_lp)))
     end
 
     if length(bankrupt_kp) > 0

@@ -535,8 +535,8 @@ function replace_bankrupt_cp!(
     nonbankrupt_lp = setdiff(all_lp, bankrupt_lp)
     nonbankrupt_kp = setdiff(all_kp, bankrupt_kp)
 
-    avg_n_machines = mean(cp_id -> model[cp_id].n_machines, vcat(nonbankrupt_bp, nonbankrupt_lp))
-    avg_NW = mean(cp_id -> model[cp_id].balance.NW, vcat(nonbankrupt_bp, nonbankrupt_lp))
+    avg_n_machines = mean(cp_id -> model[cp_id].n_machines, Iterators.flatten((nonbankrupt_bp, nonbankrupt_lp)))
+    avg_NW = mean(cp_id -> model[cp_id].balance.NW, Iterators.flatten((nonbankrupt_bp, nonbankrupt_lp)))
 
     # Make weights for allocating cp to hh
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
@@ -571,7 +571,7 @@ function replace_bankrupt_cp!(
     all_req_NW = sum(req_NW)
     frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
 
-    for (i,cp_id) in enumerate(vcat(bankrupt_bp, bankrupt_lp))
+    for (i,cp_id) in enumerate(Iterators.flatten((bankrupt_bp, bankrupt_lp)))
 
         # type_good="Basic"
         # if cp_id in bankrupt_lp
@@ -707,7 +707,7 @@ function update_π_cp!(
 
     # Check if machines were already received
     if length(cp.Ξ) > 0
-        cp.π = sum(map(machine -> (machine.freq * machine.A_LP) / cp.n_machines, cp.Ξ))
+        cp.π = sum(machine -> (machine.freq * machine.A_LP) / cp.n_machines, cp.Ξ)
     else
         cp.π = 1.0
     end

@@ -69,21 +69,22 @@ function initialize_kp(
     D=100,
     f=1/n_captlgood,
     )
-        kp = CapitalGoodProducer(
-            id = id,                        
-            kp_i = kp_i,                               
-            A_LP = A_LP,
-            A_EE = A_EE,
-            A_EF = A_EF,                        
-            B_LP = B_LP,
-            B_EE = B_EE,
-            B_EF = B_EF,                       
-            μ = fill(μ, 3),
-            w̄ = fill(w̄, 3), 
-            wᴼ = w̄,
-            f = fill(f, 3),
-            balance = Balance(NW=NW, EQ=NW)
-        )
+
+    kp = CapitalGoodProducer(
+        id = id,                        
+        kp_i = kp_i,                               
+        A_LP = A_LP,
+        A_EE = A_EE,
+        A_EF = A_EF,                        
+        B_LP = B_LP,
+        B_EE = B_EE,
+        B_EF = B_EF,                       
+        μ = fill(μ, 3),
+        w̄ = fill(w̄, 3), 
+        wᴼ = w̄,
+        f = fill(f, 3),
+        balance = Balance(NW=NW, EQ=NW)
+    )
     return kp
 end
 
@@ -97,6 +98,8 @@ function innovate_kp!(
     all_kp::Vector{Int}, 
     kp_distance_matrix::Array{Float64},
     w̄::Float64,
+    t::Int,
+    ep,
     model::ABM,
     )
     
@@ -132,7 +135,7 @@ function innovate_kp!(
         push!(tech_choices, imitated_tech)
     end
 
-    choose_technology_kp!(kp, w̄, global_param, tech_choices)
+    choose_technology_kp!(kp, w̄, global_param, tech_choices, t, ep)
 end
 
 
@@ -145,7 +148,7 @@ function choose_technology_kp!(
     global_param::GlobalParam,
     tech_choices,
     t::Int,
-    ep::EnergyProducer
+    ep
     )
 
     # TODO: DESCRIBE
@@ -168,6 +171,7 @@ function choose_technology_kp!(
         r_h = p_h + global_param.b * c_h_cp 
         idx = argmin(r_h)
 
+        # Update tech parameters
         kp.A_LP = tech_choices[idx][1]
         kp.A_EE = tech_choices[idx][2]
         kp.A_EF = tech_choices[idx][3]

@@ -1,8 +1,12 @@
 @with_kw mutable struct GlobalParam
     # Determine technical innovation process
     ν::Float64 = 0.04               # R&D inv propensity
+    νₑ::Float64 = 0.01              # R&D inv propensity energy producer
     ξ::Float64 = 0.5                # R&D allocation to IN
+    ξₑ::Float64 = 0.4               # R&D allocation to green tech for energy producer
     ζ::Float64 = 0.3                # firm search capabilities
+    ζ_ge::Float64 = 0.3             # ep search capabilities for green tech
+    ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
     κ_lower::Float64 = -0.02        # 1st beta dist support
@@ -13,7 +17,9 @@
     r::Float64 = 0.0                # interest rate
     ι::Float64 = 0.1                # desired inventories
     b::Int = 3                      # payback period
+    bₑ::Int = 10                    # payback period energy producer
     η::Int = 20                     # physical scrapping age
+    ηₑ::Int = 80                    # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
 
     # Determine entrant composition
@@ -47,6 +53,7 @@
     ψ_P::Float64 = 0.75             # chance of household switching to cp with better price
 
     freq_per_machine::Int = 50      # capital units per machine
+    freq_per_powerplant::Int = 10_000 # capital units per instance
 
     n_cons_market_days::Int = 4     # number of days in the consumer market process
 
@@ -62,58 +69,10 @@ function initialize_global_params(
     )
 
     global_param = GlobalParam()
-    # global_param = GlobalParam(
-    #     0.04,                       # ν: R&D inv propensity
-    #     0.5,                        # ξ: R&D allocation to IN
-    #     0.3,                        # ζ: firm search capabilities
-    #     3.0,                        # α1: 1st beta dist param for IN
-    #     3.0,                        # β1: 2nd beta dist param for IN
-    #     -0.02,                      # κ_lower: 1st beta dist support
-    #     0.02,                       # κ_upper: 2nd beta dist support
-
-    #     0.5,                        # γ: new custommer sample parameter
-    #     0.2,                        # μ1: kp markup rule
-    #     0.0,                        # r: (annual) interest rate
-    #     0.1,                        # ι: desired inventories
-    #     3,                          # b: payback period
-    #     20,                         # η: physical scrapping age
-    #     2.0,                        # Λ: max debt/sales ratio regular debt
-
-    #     0.1,                        # φ1: 1st Uniform dist support, cp entrant cap
-    #     0.9,                        # φ2: 2nd Uniform dist support, cp entrant cap
-    #     0.1,                        # φ3: 1st Uniform dist support, cp entrant liq
-    #     0.9,                        # φ4: 2nd Uniform dist support, cp entrant liq
-    #     2.0,                        # α2: 1st beta dist param for kp entrant
-    #     4.0,                        # β2: 2nd beta dist param for kp entrant
-
-    #     0.75, # From rer98          # cu: capacity utilization for cp
-
-    #     0.02,                       # ϵ: minimum desired wage increase rate
-    #     0.1,                        # max_g_wᴼ: max growth rate of offered wages
-    #     0.5,                        # Kg_max: maximum capital growth rate
-
-    #     0.5,                        # ω: memory parameter adaptive updating rules
-
-    #     0.9,                       # α_cp: parameter controlling MPC of consumers
-    #     0.7,                        # c_L_max
-    #     1000,                       # a_σ
-    #     30,                         # b_σ
-
-    #     0.15,                       # ψ_E: chance of employed worker looking for a better paying job
-    #     0.75,                       # ψ_Q: chance of household switching away from cp when demand constrained
-    #     0.75,                       # ψ_P: chance of household switching to cp with better price
-
-    #     50,                         # capital units per machine
-
-    #     4,                           # number of days in consumer market proces
-    #     labormarket_is_fordist
-    # )
 
     # Change parameters if needed before returning.
     if changed_params !== nothing
-
         for (key, new_param) in changed_params
-            # println("$key, $new_param")
             setproperty!(global_param, Symbol(key), new_param)
         end
     end
