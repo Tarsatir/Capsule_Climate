@@ -77,8 +77,13 @@
 
     # Productivity
     avg_π::Vector{Float64} = zeros(Float64, T)              # average productivity cp
-    avg_A::Vector{Float64} = zeros(Float64, T)              # average A at kp
-    avg_B::Vector{Float64} = zeros(Float64, T)              # average B at kp
+    avg_A_LP::Vector{Float64} = zeros(Float64, T)           # average A_LP at kp
+    avg_A_EE::Vector{Float64} = zeros(Float64, T)           # average A_EE at kp
+    avg_A_EF::Vector{Float64} = zeros(Float64, T)           # average A_EF at kp
+
+    avg_B_LP::Vector{Float64} = zeros(Float64, T)           # average B_LP at kp
+    avg_B_EE::Vector{Float64} = zeros(Float64, T)           # average B_EE at kp
+    avg_B_EF::Vector{Float64} = zeros(Float64, T)           # average B_EF at kp
 
     # Production
     avg_Q_bp::Vector{Float64} = zeros(Float64, T)           # average production of bp
@@ -167,8 +172,14 @@ function update_macro_timeseries(
 
     # Productivity
     macro_struct.avg_π[t] = mean(cp_id -> model[cp_id].π, all_cp)
-    macro_struct.avg_A[t] = mean(kp_id -> model[kp_id].A_LP[end], all_kp)
-    macro_struct.avg_B[t] = mean(kp_id -> model[kp_id].B[end], all_kp)
+
+    macro_struct.avg_A_LP[t] = mean(kp_id -> model[kp_id].A_LP[end], all_kp)
+    macro_struct.avg_A_EE[t] = mean(kp_id -> model[kp_id].A_EE[end], all_kp)
+    macro_struct.avg_A_EF[t] = mean(kp_id -> model[kp_id].A_EF[end], all_kp)
+
+    macro_struct.avg_B_LP[t] = mean(kp_id -> model[kp_id].B_LP[end], all_kp)
+    macro_struct.avg_B_EE[t] = mean(kp_id -> model[kp_id].B_EE[end], all_kp)
+    macro_struct.avg_B_EF[t] = mean(kp_id -> model[kp_id].B_EF[end], all_kp)
 
     # Production quantity
     macro_struct.avg_Q_bp[t] = mean(bp_id -> model[bp_id].Q[end], all_bp)

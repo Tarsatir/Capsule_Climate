@@ -9,6 +9,8 @@ def plot_macro_vars(df):
     
     fig, ax = plt.subplots(8,2, figsize=(10,19), sharex=True)
 
+    T = range(len(df.GDP))
+
     # ax[0,0].plot(range(len(df.GDP)), df.GDP, label='total GDP')
     # ax[0,0].plot(range(len(df.GDP_I)), df.GDP_I, label='income share')
     # ax[0,0].plot(range(len(df.GDP_cp)), df.GDP_cp, label='cp share')
@@ -18,11 +20,11 @@ def plot_macro_vars(df):
     # ax[0,0].legend()
 
     # Plot real GDP
-    ax[0,0].plot(range(len(df.GDP)), 100 * df.GDP / df.CPI, label='total GDP')
-    ax[0,0].plot(range(len(df.GDP_I)), 100 * df.GDP_I / df.CPI, label='income share')
-    ax[0,0].plot(range(len(df.GDP_cp)), 100 * df.GDP_cp / df.CPI, label='cp share')
-    ax[0,0].plot(range(len(df.GDP_kp)), 100 * df.GDP_kp / df.CPI, label='kp share')
-    ax[0,0].plot(range(len(df.GDP)), 100 * df.Exp_UB / df.CPI, label='UB exp')
+    ax[0,0].plot(T, 100 * df.GDP / df.CPI, label='total GDP')
+    ax[0,0].plot(T, 100 * df.GDP_I / df.CPI, label='income share')
+    ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI, label='cp share')
+    ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI, label='kp share')
+    ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI, label='UB exp')
     ax[0,0].set_title("GDP")
     ax[0,0].legend()
 
@@ -104,8 +106,12 @@ def plot_macro_vars(df):
     ax[4,0].legend()
 
     ax[4,1].plot(range(len(df.avg_pi)), df.avg_pi, label='$\\bar{\pi}$')
-    ax[4,1].plot(range(len(df.avg_A)), df.avg_A, label='$\\bar{A}$')
-    ax[4,1].plot(range(len(df.avg_B)), df.avg_B, label='$\\bar{B}$')
+    ax[4,1].plot(range(len(df.avg_A_LP)), df.avg_A_LP, label='$\\bar{A}_{LP}$')
+    ax[4,1].plot(range(len(df.avg_A_EE)), df.avg_A_EE, label='$\\bar{A}_{EE}$')
+    ax[4,1].plot(range(len(df.avg_A_EF)), df.avg_A_EF, label='$\\bar{A}_{EF}$')
+    ax[4,1].plot(range(len(df.avg_B_LP)), df.avg_B_LP, label='$\\bar{B}_{LP}}$')
+    ax[4,1].plot(range(len(df.avg_B_EE)), df.avg_B_EE, label='$\\bar{B}_{EE}}$')
+    ax[4,1].plot(range(len(df.avg_B_EF)), df.avg_B_EF, label='$\\bar{B}_{EF}}$')
     ax[4,1].set_title('Productivity')
     ax[4,1].legend()
 
@@ -300,6 +306,29 @@ def plot_inequality(df_macro):
 
     plt.tight_layout()
     plt.savefig('plots/inequality.png')
+
+
+def plot_climate(df_macro):
+
+    df_climate = pd.read_csv('../results/result_data/climate_and_energy.csv')
+
+    fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+    ax[0].plot(range(len(df_climate.energy_demand)), df_climate.energy_demand, label='energy demand')
+    ax[0].set_title('Energy demand')
+    ax[0].set_xlabel('Time')
+    ax[0].set_ylabel('Units of energy')
+    # ax[0].legend()
+
+    ax[1].plot(range(len(df_climate.energy_demand)), df_climate.energy_demand / df_macro.GDP)
+    ax[1].set_title('Energy intensity per unit of GDP')
+    ax[1].set_xlabel('Time')
+    ax[1].set_ylabel('Energy intensity')
+    # ax[1].legend()
+
+    plt.tight_layout()
+    plt.savefig('plots/climate_and_energy.png')
+
     
 if __name__=="__main__":
 
@@ -311,3 +340,5 @@ if __name__=="__main__":
     plot_income_dist()
     plot_inequality(df_macro)
     plot_sales_dist()
+
+    plot_climate(df_macro)

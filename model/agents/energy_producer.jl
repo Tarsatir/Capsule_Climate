@@ -42,9 +42,14 @@ Production process of ep
 """
 function produce_energy_ep!(
     ep::EnergyProducer,
-    t::Int
+    all_cp::Vector{Int},
+    all_kp::Vector{Int},
+    t::Int,
+    model::ABM
     )
 
+    # Determine demand for energy
+    ep.Dₑ[t] = sum(cp_id -> model[cp_id].EU, all_cp) + sum(kp_id -> model[kp_id].EU, all_kp)
 
 end
 

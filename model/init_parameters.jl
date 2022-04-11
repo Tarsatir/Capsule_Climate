@@ -9,7 +9,9 @@
     A_LP_0::Float64 = 1.0                 # initial productivity level A_LP
     A_EE_0::Float64 = 1.0                 # initial productivity level A_EE
     A_EF_0::Float64 = 1.0                 # initial productivity level A_EF
-    B_0::Float64 = 1.0                    # initial productivity level B
+    B_LP_0::Float64 = 1.0                 # initial productivity level B_LP
+    B_EE_0::Float64 = 1.0                 # initial productivity level B_EE
+    B_EF_0::Float64 = 1.0                 # initial productivity level B_EF
 
     # Init params of cp
     n_init_emp_cp::Int = 12               # number of employees of cp at init

@@ -22,6 +22,7 @@ Defines struct for consumer good producer
     Q::Vector{Float64}                        # hist production
     Qᵉ::Float64                               # exp production
     Qˢ::Float64 = 0.0                         # desired short-term production
+    EU::Float64 = 0.0                         # energy use in the last period
 
     # Investments
     Iᵈ::Float64 = 0                           # desired total investments
@@ -357,11 +358,11 @@ function produce_goods_cp!(
     end
 
     # Compute total production amount
-    # if cp.age < 5
-    #     println("$actual_π, $(cp.L), $(cp.n_machines), $(cp.Qˢ)")
-    # end
     Q = max(min(actual_π * cp.L, cp.n_machines, cp.Qˢ), 0)
     shift_and_append!(cp.Q, Q)
+
+    # Update energy use from production
+    update_EU_cp!(cp)
     
     # Update rate of capital utilization
     if cp.n_machines > 0
@@ -835,4 +836,18 @@ function update_wᴼ_max_cp!(
     # else
     #     cp.wᴼ_max = 0
     # end
+end
+
+
+"""
+Updates energy use for production
+"""
+function update_EU_cp!(
+    cp::ConsumerGoodProducer
+    )
+
+    # TODO: do this for actually used machines, not whole stock
+    if length(cp.Ξ) > 0
+        cp.EU = cp.Q[end] / (sum(machine -> machine.A_EE * machine.freq, cp.Ξ) / cp.n_machines) 
+    end
 end

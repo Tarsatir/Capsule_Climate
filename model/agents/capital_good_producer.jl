@@ -32,6 +32,8 @@
     prod_queue::Array = []                # production queue of machines
     Q::Vector{Float64} = zeros(Float64, 3)# production quantities
     D::Vector{Float64} = zeros(Float64, 3)# hist demand
+    EU::Float64 = 0.0                     # energy use in the last period
+
     HC::Vector{Int} = []                  # hist clients
     Π::Vector{Float64} = zeros(Float64, 3)# hist profits
     Πᵀ::Vector{Float64} = zeros(Float64, 3)# hist profits after tax
@@ -102,16 +104,21 @@ function innovate_kp!(
 
     # Determine levels of R&D, and how to divide under IN and IM
     set_RD_kp!(kp, global_param.ξ, global_param.ν)
-    tech_choices = [(kp.A_LP, kp.B)]
+    tech_choices = [(kp.A_LP, kp.A_EE, kp.A_EF, kp.B_LP, kp.B_EE, kp.B_EF)]
 
     # Determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-global_param.ζ * kp.IN)
     if rand(Bernoulli(θ_IN))
-        A_t_in = update_At_kp(kp.A_LP, global_param)
-        B_t_in = update_Bt_kp(kp.B, global_param)
-        if A_t_in > kp.A_LP || B_t_in > kp.B
-            push!(tech_choices, (A_t_in, B_t_in))
-        end
+        # A_t_in = update_At_kp(kp.A_LP, global_param)
+        A_LP_t_in = update_techparam_p(kp.A_LP, global_param)
+        A_EE_t_in = update_techparam_p(kp.A_EE, global_param)
+        A_EF_t_in = update_techparam_p(kp.A_EF, global_param)
+
+        B_LP_t_in = update_techparam_p(kp.B_LP, global_param)
+        B_EE_t_in = update_techparam_p(kp.B_EE, global_param)
+        B_EF_t_in = update_techparam_p(kp.B_EF, global_param)
+
+        push!(tech_choices, (A_LP_t_in, A_EE_t_in, A_EF_t_in, B_LP_t_in, B_EE_t_in, B_EF_t_in))
     end
 
     # TODO compute real value innovation like rer98
@@ -119,10 +126,10 @@ function innovate_kp!(
     # Determine immitation of competitors
     θ_IM = 1 - exp(-global_param.ζ * kp.IM)
     if rand(Bernoulli(θ_IM))
-        A_t_im, B_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
-        if A_t_im > kp.A_LP || B_t_im > kp.B
-            push!(tech_choices, (A_t_im, B_t_im))
-        end
+        # A_LP_t_im, A_EE_t_im, A_EF_t_im, B_LP_t_im, B_EE_t_im, B_EF_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
+        # push!(tech_choices, (A_LP_t_im, A_EE_t_im, A_EF_t_im, B_LP_t_im, B_EE_t_im, B_EF_t_im))
+        imitated_tech = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
+        push!(tech_choices, imitated_tech)
     end
 
     choose_technology_kp!(kp, w̄, global_param, tech_choices)
@@ -136,7 +143,9 @@ function choose_technology_kp!(
     kp::CapitalGoodProducer,
     w̄::Float64,
     global_param::GlobalParam,
-    tech_choices
+    tech_choices,
+    t::Int,
+    ep::EnergyProducer
     )
 
     # TODO: DESCRIBE
@@ -145,21 +154,26 @@ function choose_technology_kp!(
     # Make choice between possible technologies
     if length(tech_choices) == 1
         # If no new technologies, keep current technologies
-        c_h = kp.w̄[end]/kp.B
+        c_h = kp.w̄[end]/kp.B_LP
         p_h = (1 + kp.μ[end]) * c_h
         shift_and_append!(kp.c, c_h)
         shift_and_append!(kp.p, p_h)
     else
         # If new technologies, update price data
-        c_h_cp = map(tech -> w̄/tech[1], tech_choices)
-        c_h_kp = map(tech -> kp.w̄[end]/tech[2], tech_choices)
+        #   Lamperti et al (2018), eq 1 and 2
+        c_h_cp = map(tech -> (w̄/tech[1] + ep.pₑ[t]/tech[2]), tech_choices)
+        c_h_kp = map(tech -> (kp.w̄[end]/tech[4] + ep.pₑ[t]/tech[5]), tech_choices)
  
         p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
         r_h = p_h + global_param.b * c_h_cp 
         idx = argmin(r_h)
 
         kp.A_LP = tech_choices[idx][1]
-        kp.B = tech_choices[idx][2]
+        kp.A_EE = tech_choices[idx][2]
+        kp.A_EF = tech_choices[idx][3]
+        kp.B_LP = tech_choices[idx][4]
+        kp.B_EE = tech_choices[idx][5]
+        kp.B_EF = tech_choices[idx][6]
 
         shift_and_append!(kp.c, c_h_kp[idx])
         shift_and_append!(kp.p, p_h[idx])
@@ -213,48 +227,45 @@ function imitate_technology_kp(
     all_kp::Vector{Int}, 
     kp_distance_matrix, 
     model::ABM
-    )::Tuple{Float64, Float64}
+    )::Tuple{Float64, Float64, Float64, Float64, Float64, Float64}
 
     weights = map(x -> 1/x, kp_distance_matrix[kp.kp_i,:])
     idx = sample(all_kp, Weights(weights))
-
-    A_t_im = model[idx].A_LP
-    B_t_im = model[idx].B
     
-    return A_t_im, B_t_im
+    return model[idx].A_LP, model[idx].A_EE, model[idx].A_EF, model[idx].B_LP, model[idx].B_EE, model[idx].B_EF
 end
 
 
-"""
-Determines new labor productivity of machine produced for cp
-"""
-function update_At_kp(
-    A_last::Float64, 
-    global_param::GlobalParam
-    )::Float64
+# """
+# Determines new labor productivity of machine produced for cp
+# """
+# function update_At_kp(
+#     A_last::Float64, 
+#     global_param::GlobalParam
+#     )::Float64
     
-    κ_A = rand(Beta(global_param.α1, global_param.β1))
-    κ_A = global_param.κ_lower + κ_A * (global_param.κ_upper - global_param.κ_lower)
+#     κ_A = rand(Beta(global_param.α1, global_param.β1))
+#     κ_A = global_param.κ_lower + κ_A * (global_param.κ_upper - global_param.κ_lower)
 
-    A_t_in = A_last * (1 + κ_A)
-    return A_t_in
-end
+#     A_t_in = A_last * (1 + κ_A)
+#     return A_t_in
+# end
 
 
-"""
-Determines new labor productivity of own production method.
-"""
-function update_Bt_kp(
-    B_last::Float64, 
-    global_param::GlobalParam
-    )::Float64
+# """
+# Determines new labor productivity of own production method.
+# """
+# function update_Bt_kp(
+#     B_last::Float64, 
+#     global_param::GlobalParam
+#     )::Float64
 
-    κ_B = rand(Beta(global_param.α1, global_param.β1))
-    κ_B = global_param.κ_lower + κ_B * (global_param.κ_upper - global_param.κ_lower)
+#     κ_B = rand(Beta(global_param.α1, global_param.β1))
+#     κ_B = global_param.κ_lower + κ_B * (global_param.κ_upper - global_param.κ_lower)
 
-    B_t_in = B_last*(1 + κ_B)
-    return B_t_in
-end
+#     B_t_in = B_last*(1 + κ_B)
+#     return B_t_in
+# end
 
 
 function set_price_kp!(
@@ -262,7 +273,7 @@ function set_price_kp!(
     μ1::Float64, 
     )
 
-    c_t = kp.w̄[end] / kp.B
+    c_t = kp.w̄[end] / kp.B_LP
     p_t = (1 + kp.μ[end]) * c_t
     shift_and_append!(kp.c, c_t)
     shift_and_append!(kp.p, p_t)
@@ -294,7 +305,7 @@ function set_RD_kp!(
     kp.curracc.TCI += kp.RD
 
     # Decide fractions innovation (IN) and immitation (IM), 
-    # (Dosi et al, 2010; eq. 3.5)
+    #   (Dosi et al, 2010; eq. 3.5)
     kp.IN = ξ * kp.RD
     kp.IM = (1 - ξ) * kp.RD
 end
@@ -332,7 +343,7 @@ function plan_production_kp!(
     kp.O = length(kp.orders) * global_param.freq_per_machine
 
     # Determine amount of labor to hire
-    kp.ΔLᵈ = kp.O / kp.B + kp.RD / kp.w̄[end] - kp.L
+    kp.ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
 
     update_wᴼ_max_kp!(kp)
 end
@@ -347,11 +358,11 @@ function produce_goods_kp!(
     )
 
     # Determine what the total demand is, regardless if it can be satisfied
-    D = length(kp.orders) * global_param.freq_per_machine
-    push!(kp.D, D)
+    D::Float64 = length(kp.orders) * global_param.freq_per_machine
+    shift_and_append!(kp.D, D)
 
     # Determine how much labor is needed to produce a full machine
-    req_L = global_param.freq_per_machine / kp.B
+    req_L = global_param.freq_per_machine / kp.B_LP
 
     # Check if production is constrained
     if kp.L >= req_L * length(kp.orders)
@@ -369,8 +380,11 @@ function produce_goods_kp!(
     end
 
     # Append total production amount of capital units
-    Q = length(kp.prod_queue) * global_param.freq_per_machine
-    push!(kp.Q, Q)
+    Q::Float64 = length(kp.prod_queue) * global_param.freq_per_machine
+    shift_and_append!(kp.Q, Q)
+
+    # Update energy use from production
+    kp.EU = Q / kp.B_EE
 
     # Empty order queue
     kp.orders = []
@@ -441,7 +455,7 @@ function update_wᴼ_max_kp!(
     kp::CapitalGoodProducer
     )
     # TODO: DESCRIBE IN MODEL
-    kp.wᴼ_max = kp.B * kp.p[end] 
+    kp.wᴼ_max = kp.B_LP * kp.p[end] 
     # if kp.ΔLᵈ > 0
     #     kp.wᴼ_max = (kp.O * kp.p[end] - kp.w̄[end] * kp.L) / kp.ΔLᵈ
     # else
@@ -480,7 +494,8 @@ function update_marketshare_kp!(
         else
             f = model[kp_id].D[end] / kp_market
         end
-        push!(model[kp_id].f, f)
+        # push!(model[kp_id].f, f)
+        shift_and_append!(model[kp_id].f, f)
     end
 end
 
@@ -523,7 +538,8 @@ function update_μ_kp!(
     #     push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
     # end
 
-    push!(kp.μ, kp.μ[end])
+    # push!(kp.μ, kp.μ[end])
+    shift_and_append!(kp.μ, kp.μ[end])
 
 end
 
@@ -560,7 +576,7 @@ function replace_bankrupt_kp!(
     # Determine all possible kp and set weights for sampling proportional to the 
     # quality of their technology
     poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
-    # weights = map(kp_id -> min(model[kp_id].A_LP, model[kp_id].B), poss_kp)
+    # weights = map(kp_id -> min(model[kp_id].A_LP, model[kp_id].B_LP), poss_kp)
 
     # Get the technology frontier
     A_max = 0
@@ -579,10 +595,10 @@ function replace_bankrupt_kp!(
             A_min = model[kp_id].A_LP
         end
 
-        # Check if B is max or min in population
-        if model[kp_id].B > B_max
-            B_max = model[kp_id].B
-        elseif model[kp_id].B < B_min
+        # Check if B_LP is max or min in population
+        if model[kp_id].B_LP > B_max
+            B_max = model[kp_id].B_LP
+        elseif model[kp_id].B_LP < B_min
             B_min = model[kp_id].B_min
         end 
     end
@@ -603,7 +619,7 @@ function replace_bankrupt_kp!(
         tech_coeff = (global_param.φ5 + rand(Beta(global_param.α2, global_param.β2)) 
                                         * (global_param.φ6 - global_param.φ5))
         new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_LP_0)
-        new_B = max(B_max * (1 + tech_coeff), B_min, init_param.B_0)
+        new_B = max(B_max * (1 + tech_coeff), B_min, init_param.B_LP_0)
 
         NW_stock = NW_coefficients[i] * avg_NW
 
@@ -614,7 +630,7 @@ function replace_bankrupt_kp!(
             length(all_kp);
             NW=NW_stock,
             A_LP=new_A,
-            B=new_B,
+            B_LP=new_B,
             μ=model[A_max_id].μ[end],
             w̄=model[A_max_id].w̄[end],
             f=0.0

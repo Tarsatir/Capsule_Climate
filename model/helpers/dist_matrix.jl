@@ -23,10 +23,17 @@ function get_capgood_euclidian(
             A1_EF = model[all_kp[i]].A_EF
             A2_EF = model[all_kp[j]].A_EF
 
-            B1 = model[all_kp[i]].B
-            B2 = model[all_kp[j]].B
+            B1_LP = model[all_kp[i]].B_LP
+            B2_LP = model[all_kp[j]].B_LP
+
+            B1_EE = model[all_kp[i]].B_EE
+            B2_EE = model[all_kp[j]].B_EE
+
+            B1_EF = model[all_kp[i]].B_EF
+            B2_EF = model[all_kp[j]].B_EF
             
-            distance = sqrt((A1_LP-A2_LP)^2 + (A1_EE-A2_EE)^2 + (A1_EF-A2_EF)^2 + (B1-B2)^2)
+            distance = sqrt((A1_LP-A2_LP)^2 + (A1_EE-A2_EE)^2 + (A1_EF-A2_EF)^2 + 
+                            (B1_LP-B2_LP)^2 + (B1_EE-B2_EE)^2 + (B1_EF-B2_EF)^2)
             if (i==j)
                 distance = Inf
             end

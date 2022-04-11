@@ -302,3 +302,18 @@ function check_if_bankrupt_p!(
     end
     return false
 end 
+
+
+"""
+Determines new productivity level, resulting from innovation process for both kp and ep.
+"""
+function update_techparam_p(
+    TP_last::Float64, 
+    global_param::GlobalParam
+    )::Float64
+
+    κ_i = rand(Beta(global_param.α1, global_param.β1))
+    κ_i = global_param.κ_lower + κ_i * (global_param.κ_upper - global_param.κ_lower)
+
+    return TP_last*(1 + κ_i)
+end

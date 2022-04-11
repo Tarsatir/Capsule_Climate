@@ -136,7 +136,9 @@ function initialize_model(
                 A_LP=init_param.A_LP_0,
                 A_EE=init_param.A_EE_0,
                 A_EF=init_param.A_EF_0, 
-                B=init_param.B_0
+                B_LP=init_param.B_LP_0,
+                B_EE=init_param.B_EE_0,
+                B_EF=init_param.B_EF_0
              )
         add_agent!(kp, model)
 
@@ -147,7 +149,7 @@ function initialize_model(
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
     # Initialize bank struct
-    bank_struct = initialize_bank(all_p, model)
+    # bank_struct = initialize_bank(all_p, model)
 
     # Initialize index fund struct
     indexfund_struct = IndexFund(T=T)
@@ -177,7 +179,7 @@ function initialize_model(
     close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
         indexfund_struct, model)
 
-    return model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct
+    return model, global_param, init_param, macro_struct, gov_struct, energy_producer, labormarket_struct, indexfund_struct
 end
 
 
@@ -188,9 +190,10 @@ function model_step!(
     global_param::GlobalParam, 
     init_param::InitParam,
     macro_struct::MacroEconomy, 
-    gov_struct::Government, 
+    gov_struct::Government,
+    energy_producer::EnergyProducer, 
     labormarket_struct::LaborMarket,
-    bank_struct::Bank,
+    # bank_struct::Bank,
     indexfund_struct::IndexFund,
     model::ABM
     )
@@ -290,6 +293,9 @@ function model_step!(
         produce_goods_kp!(model[kp_id], global_param)
     end
 
+    # Let energy producer meet energy demand
+    produce_energy_ep!(energy_producer, all_cp, all_kp, t, model)
+
     
     # (6) Transactions take place on consumer market
 
@@ -361,6 +367,7 @@ function model_step!(
 
     # Select producers that will be declared bankrupt and removed
     @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
+
 
     # (7) macro-economic indicators are updated.
     @timeit to "update macro ts" update_macro_timeseries(
@@ -443,10 +450,9 @@ function run_simulation(;
 
     to = TimerOutput()
 
-    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, labormarket_struct, bank_struct, indexfund_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
+    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, energy_producer, labormarket_struct, indexfund_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
-        # println("Step $t")
         if t % 100 == 0
             println("Step $t")
         end
@@ -458,9 +464,10 @@ function run_simulation(;
                                 global_param, 
                                 init_param,
                                 macro_struct, 
-                                gov_struct, 
+                                gov_struct,
+                                energy_producer, 
                                 labormarket_struct, 
-                                bank_struct, 
+                                # bank_struct, 
                                 indexfund_struct,
                                 model
                             )
@@ -471,6 +478,8 @@ function run_simulation(;
     all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
 
     @timeit to "save findist" save_final_dist(all_hh, all_bp, all_lp, all_kp, model)
+
+    @timeit to "save climate" save_climate_data(energy_producer, model)
 
     if full_output
         show(to)

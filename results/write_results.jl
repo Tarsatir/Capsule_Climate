@@ -73,9 +73,15 @@ function save_macro_data(macro_struct)
         RS_avg=macro_struct.RS_avg,
         n_mach_RS=macro_struct.n_mach_RS_avg,
 
-        avg_pi=macro_struct.avg_π,
-        avg_A=macro_struct.avg_A,
-        avg_B=macro_struct.avg_B,
+        avg_pi = macro_struct.avg_π,
+
+        avg_A_LP = macro_struct.avg_A_LP,
+        avg_A_EE = macro_struct.avg_A_EE,
+        avg_A_EF = macro_struct.avg_A_EF,
+
+        avg_B_LP = macro_struct.avg_B_LP,
+        avg_B_EE = macro_struct.avg_B_EE,
+        avg_B_EF = macro_struct.avg_B_EF,
 
         avg_Q_bp=macro_struct.avg_Q_bp,
         avg_Q_lp=macro_struct.avg_Q_lp,
@@ -94,6 +100,7 @@ function save_macro_data(macro_struct)
     )
     CSV.write("results/result_data/first.csv", df)
 end
+
 
 function save_final_dist(
     all_hh::Vector{Int},
@@ -127,4 +134,16 @@ function save_final_dist(
     )
     CSV.write("results/result_data/final_profit_dists_kp.csv", df)
 
+end
+
+
+function save_climate_data(
+    energy_producer,
+    model::ABM
+    )
+
+    df = DataFrame(
+        energy_demand = energy_producer.Dₑ
+    )
+    CSV.write("results/result_data/climate_and_energy.csv", df)
 end
