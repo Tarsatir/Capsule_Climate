@@ -1,6 +1,8 @@
+from matplotlib import gridspec
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import gridspec
 
 def plot_macro_vars(df):
     """
@@ -312,33 +314,50 @@ def plot_climate(df_macro):
 
     df_climate = pd.read_csv('../results/result_data/climate_and_energy.csv')
 
-    fig, ax = plt.subplots(1, 2, figsize=(8,4))
+    fig, ax = plt.subplots(2, 2, figsize=(8,6))
 
-    ax[0].plot(range(len(df_climate.energy_demand)), df_climate.energy_demand, label='energy demand')
-    ax[0].set_title('Energy demand')
-    ax[0].set_xlabel('Time')
-    ax[0].set_ylabel('Units of energy')
-    # ax[0].legend()
+    T = range(len(df_climate.energy_demand))
 
-    ax[1].plot(range(len(df_climate.energy_demand)), df_climate.energy_demand / df_macro.GDP)
-    ax[1].set_title('Energy intensity per unit of GDP')
-    ax[1].set_xlabel('Time')
-    ax[1].set_ylabel('Energy intensity')
-    # ax[1].legend()
+    # Plot energy use and capacities
+    ax[0,0].plot(T, df_climate.energy_demand, label='$D_{e}(t)$', color='red')
+    ax[0,0].plot(T, df_climate.total_capacity, label='$\\bar{Q}_e$', 
+               color='blue', linestyle='dashed')
+    ax[0,0].plot(T, df_climate.green_capacity, label='green capacity', 
+               color='green')
+    ax[0,0].plot(T, df_climate.total_capacity - df_climate.green_capacity, 
+               label='dirty capacity', color='brown')
+    ax[0,0].set_title('Energy demand and consumption')
+    ax[0,0].set_xlabel('Time')
+    ax[0,0].set_ylabel('Units of energy')
+    ax[0,0].legend()
+
+    # Plot energy intensity
+    ax[0,1].plot(T, df_climate.energy_demand / df_macro.GDP)
+    ax[0,1].set_title('Energy intensity per unit of GDP')
+    ax[0,1].set_xlabel('Time')
+    ax[0,1].set_ylabel('Energy intensity')
+    
+    # Plot innovation spending
+    ax[1,0].plot(T, df_climate.RD, label='total R&D spending')
+    ax[1,0].plot(T, df_climate.IN_g, label='green R&D spending')
+    ax[1,0].plot(T, df_climate.IN_d, label='dirty R&D spending')
+    ax[1,0].legend()
+
+    
 
     plt.tight_layout()
-    plt.savefig('plots/climate_and_energy.png')
+    plt.savefig('plots/energy.png')
 
     
 if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    plot_macro_vars(df_macro)
-    plot_cons_vars(df_macro)
+    # plot_macro_vars(df_macro)
+    # plot_cons_vars(df_macro)
 
-    plot_income_dist()
-    plot_inequality(df_macro)
-    plot_sales_dist()
+    # plot_income_dist()
+    # plot_inequality(df_macro)
+    # plot_sales_dist()
 
     plot_climate(df_macro)

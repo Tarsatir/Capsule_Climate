@@ -51,7 +51,7 @@ function consumermarket_process!(
     # cp's handle order queue, send orders, households track which cp could not
     # supply the demand.
     for cp_id in all_cp
-        @timeit to "send orders" send_ordered_goods_cp!(model[cp_id], t, model)
+        @timeit to "send orders" send_ordered_goods_cp!(model[cp_id], t, model, to)
         reset_queue_cp!(model[cp_id])
     end
 end

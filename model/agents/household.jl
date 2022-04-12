@@ -13,7 +13,7 @@
 
     # Income and wealth variables
     I::Vector{Float64} = [100]                  # hist income
-    Iᵀ::Vector{Float64} = []                    # hist taxed income
+    Iᵀ::Vector{Float64} = [100] # change according to tax rate      # hist taxed income
     s::Float64 = 0.0                            # savings rate
     W::Vector{Float64} = [50]                   # wealth or cash on hand
 
@@ -217,16 +217,13 @@ function place_orders_hh!(
     p_orders = Dict(cp_id => 0.0 for cp_id in poss_p_ids)
     weights = collect(values(poss_p))
     
-    while C_i > 0 && length(poss_p) > 0
+    n_round = 1
+    n_round_stop::Int = global_param.n_cons_market_days * 1.5
+
+    while C_i > 0 && length(poss_p) > 0 && n_round < n_round_stop
         chosen_p_id = sample(poss_p_ids, Weights(weights))
         chosen_amount = min(min(C_i, C_per_day), cp_inventories[chosen_p_id])
         p_orders[chosen_p_id] += chosen_amount
-
-        # if !haskey(p_orders, chosen_p_id)
-        #     p_orders[chosen_p_id] = chosen_amount
-        # else
-        #     p_orders[chosen_p_id] += chosen_amount
-        # end
 
         C_i -= chosen_amount
         cp_inventories[chosen_p_id] -= chosen_amount
@@ -237,6 +234,7 @@ function place_orders_hh!(
             delete!(poss_p, chosen_p_id)
             filter!(p_id -> p_id ≠ chosen_p_id, p_with_inventory)
         end
+        n_round += 1
     end
 
     return p_orders, cp_inventories, p_with_inventory
@@ -246,7 +244,7 @@ end
 """
 Household receives ordered cg and mutates balance
 """
-function receive_order_hh!(
+function receive_ordered_goods_hh!(
     hh::Household,
     cp_id::Int,
     tot_price::Float64,
@@ -281,7 +279,7 @@ function update_sat_req_wage_hh!(
 
     # Try to use adaptive wˢ
     ωwˢ = 0.8
-    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.I[end] / hh.L
+    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ[end] / hh.L
     # hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.w[end]
 
     if hh.employed

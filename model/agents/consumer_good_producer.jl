@@ -400,7 +400,8 @@ Decides if enough inventory to send orders hh,
 function send_ordered_goods_cp!(
     cp::ConsumerGoodProducer,
     t::Int,
-    model::ABM
+    model::ABM,
+    to
     )
 
     # Check if any orders received
@@ -414,15 +415,16 @@ function send_ordered_goods_cp!(
     end
 
     # Keep track of total demand, sales and unsatisfied demand
-    total_D = 0
-    actual_S = 0
-    total_unsat_demand = 0
+    total_D = 0.0
+    actual_S = 0.0
+    total_unsat_demand = 0.0
+    share_fulfilled = 0.0
     
     # Loop over orders in queue, add realized sales S
-    for order in cp.order_queue
+    for (hh_id, q) in cp.order_queue
 
-        hh_id = order[1]
-        q = order[2]
+        # hh_id = order[1]
+        # q = order[2]
 
         total_D += q
 
@@ -441,7 +443,7 @@ function send_ordered_goods_cp!(
 
         tot_price = q * share_fulfilled * cp.p[end]
         actual_S += tot_price
-        receive_order_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
+        @timeit to "receive order" receive_ordered_goods_hh!(model[hh_id], cp.id, tot_price, share_fulfilled)
     end
 
     shift_and_append!(cp.D, total_D)

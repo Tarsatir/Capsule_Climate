@@ -143,7 +143,19 @@ function save_climate_data(
     )
 
     df = DataFrame(
-        energy_demand = energy_producer.Dₑ
+        energy_demand = energy_producer.Dₑ,
+        total_capacity = energy_producer.Q̄ₑ,
+        green_capacity = energy_producer.green_capacity,
+        dirty_capacity = energy_producer.dirty_capacity,
+
+        RD = energy_producer.RDₑ,
+        IN_g = energy_producer.IN_g,
+        IN_d = energy_producer.IN_d,
+
+        IC_g = energy_producer.IC_g,
+        A_d = energy_producer.Aᵀ_d,
+        em_d = energy_producer.emᵀ_d,
+        c_d = energy_producer.c_d
     )
     CSV.write("results/result_data/climate_and_energy.csv", df)
 end

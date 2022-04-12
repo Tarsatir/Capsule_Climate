@@ -300,7 +300,7 @@ function model_step!(
     end
 
     # Let energy producer meet energy demand
-    produce_energy_ep!(energy_producer, all_cp, all_kp, t, model)
+    produce_energy_ep!(energy_producer, all_cp, all_kp, global_param, t, model)
 
     
     # (6) Transactions take place on consumer market

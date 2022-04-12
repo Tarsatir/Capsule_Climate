@@ -13,7 +13,8 @@
     RDₑ::Vector{Float64} = zeros(Float64, T)    # R&D expenditure over time
     IN_g::Vector{Float64} = zeros(Float64, T)   # R&D spending allocated to innovation in green tech
     IN_d::Vector{Float64} = zeros(Float64, T)   # R&D spending allocated to innovation in dirty tech
-    EIᵈ::Vector{Float64} = zeros(Float64, T)    # Desired type and amount of units of expansionary investments
+    EIᵈ::Vector{Float64} = zeros(Float64, T)    # Desired amount of units of expansionary investments
+    RSᵈ::Vector{Float64} = zeros(Float64, T)    # Desired amount of units of replacement investments
     ECₑ::Vector{Float64} = zeros(Float64, T)    # Cost of spansionary investment
 
     # Technological parameters
@@ -24,9 +25,10 @@
 
     # Owned power plants
     green_portfolio::Vector{PowerPlant}         # Portfolio of all green powerplants
-    green_capacity::Float64 = 0.0               # capacity of set of green powerplants
+    green_capacity::Vector{Float64} = zeros(Float64, T) # capacity of set of green powerplants
     dirty_portfolio::Vector{PowerPlant}         # Portfolio of all dirty powerplants
-    dirty_capacity::Float64 = 0.0               # Capacity of set of dirty powerplants
+    dirty_capacity::Vector{Float64} = zeros(Float64, T) # Capacity of set of dirty powerplants,
+    green_frac_prod::Vector{Float64} = zeros(Float64, T) # Green fraction of total production
     infra_marg::Vector{PowerPlant} = []         # Infra-marginal plants
     pp_tb_repl::Vector{PowerPlant} = []         # Power plants to be replaced
 end
@@ -47,6 +49,7 @@ function initialize_energy_producer(
     for _ in 1:n_pp_green
         green_pp = PowerPlant(
                     type = "Green",
+                    age = sample(0:global_param.ηₑ),
                     c = 0.0,
                     freq = global_param.freq_per_powerplant,
                     capacity = global_param.freq_per_powerplant,
@@ -61,6 +64,7 @@ function initialize_energy_producer(
     for _ in n_pp_green+1:n_pp
         dirty_pp = PowerPlant(
                     type = "Dirty",
+                    age = sample(0:global_param.ηₑ),
                     c = 0.0,
                     freq = global_param.freq_per_powerplant,
                     capacity = global_param.freq_per_machine * init_param.Aᵀ_0,
@@ -95,6 +99,7 @@ function produce_energy_ep!(
     ep::EnergyProducer,
     all_cp::Vector{Int},
     all_kp::Vector{Int},
+    global_param::GlobalParam,
     t::Int,
     model::ABM
     )
@@ -102,10 +107,12 @@ function produce_energy_ep!(
     # Determine demand for energy
     compute_Dₑ_ep!(ep, all_cp, all_kp, t, model)
 
-    # Check if production capacity needs to be expanded
-    if ep.Dₑ[t] > ep.green_capacity + ep.dirty_capacity
+    # Update production capacities
+    update_capacities_ep!(ep, t)
+    compute_Q̄_ep!(ep, t)
 
-    end
+    # Check if production capacity needs to be expanded and old pp replaced
+    plan_investments_ep!(ep, global_param, t)
 
     choose_powerplants_ep!(ep, t)
 
@@ -123,24 +130,26 @@ function choose_powerplants_ep!(
 
     # Check if all production can be done using green tech, if not, compute cost
     # of production using dirty tech
-    if ep.Dₑ[t] < ep.green_capacity
-        ep.infra_marg = ep.green_portfolio
+    if ep.Dₑ[t] < ep.green_capacity[t]
+        ep.infra_marg = deepcopy(ep.green_portfolio)
+        ep.green_frac_prod[t] = 1.0
     else
 
-        ep.infra_marg = ep.green_portfolio
-        total_capacity = ep.green_capacity
+        ep.infra_marg = deepcopy(ep.green_portfolio)
+        total_capacity = ep.green_capacity[t]
 
         # Sort dirty portfolio as to take low cost power plants first
         sort!(ep.dirty_portfolio, by = pp -> pp.c)
 
         for dirty_pp in ep.dirty_portfolio
             push!(ep.infra_marg, dirty_pp)
-            total_capacity += dirty_pp.capacity
+            total_capacity += dirty_pp.capacity * dirty_pp.Aᵀ
             if total_capacity >= ep.Dₑ[t]
                 break
             end
         end
 
+        ep.green_frac_prod[t] = length(ep.green_portfolio) / length(ep.infra_marg)
     end
 end
 
@@ -154,61 +163,69 @@ INVESTMENT
 Investment process of ep
 """
 function plan_investments_ep!(
-    ep::EnergyProducer, 
+    ep::EnergyProducer,
+    global_param, 
     t::Int
     )
 
-    compute_Q̄_ep!(ep, t)
+    compute_RSᵈ_ep!(ep, global_param.ηₑ, t)
 
     compute_EIᵈ_ep!(ep, t)
-    
+
+    expand_and_replace_pp_ep!(ep, global_param, t)
 end
 
 
 """
 
 """
-function pick_expansion_investment_ep!(
+function expand_and_replace_pp_ep!(
     ep::EnergyProducer,
-    bₑ::Float64,
+    global_param::GlobalParam,
     t::Int
     )
 
-    if ep.IC_g[t] <= bₑ * ep.c_d[t]
+    n_add_pp = ceil(Int, (ep.EIᵈ[t] + ep.RSᵈ[t]) / global_param.freq_per_powerplant)
+
+    if ep.IC_g[t] <= global_param.bₑ * ep.c_d[t]
+        
         # Invest green
         ep.ECₑ[t] = ep.IC_g[t] * ep.EIᵈ[t]
-        increase_n_powerplants_ep!(ep, type="Green")
+        
+        # Build new green pp
+        for _ in 1:n_add_pp
+            green_pp = PowerPlant(
+                type = "Green",
+                age = 0,
+                c = 0.0,
+                freq = global_param.freq_per_powerplant,
+                capacity = global_param.freq_per_powerplant,
+                Aᵀ = 0.0,
+                em = 0.0
+               )
+            push!(ep.green_portfolio, green_pp)
+        end
+
     else
+
         # Invest dirty
-        increase_n_powerplants_ep!(ep, type="Dirty")
+        for _ in 1:n_add_pp
+            dirty_pp = PowerPlant(
+                type = "Dirty",
+                age = 0,
+                c = ep.c_d[t],
+                freq = global_param.freq_per_powerplant,
+                capacity = global_param.freq_per_machine * ep.Aᵀ_d[t],
+                Aᵀ = ep.Aᵀ_d[t],
+                em = ep.emᵀ_d[t]
+               )
+            push!(ep.dirty_portfolio, dirty_pp)
+        end
     end
 
-end
-
-
-"""
-Expands the amount of power plants based on decided expansion
-"""
-function increase_n_powerplants_ep!(
-    ep::EnergyProducer;
-    type::String
-    )
-
-    if type == "Green"
-        # Check if current stock already has best type
-
-            # Increase freq of best type
-
-            # Create a new instance of best power plant
-
-    else
-        # Check if current stock already has best type
-
-            # Increase freq of best type
-
-            # Create a new instance of best power plant
-
-    end
+    # Discard old machines
+    filter!(pp -> pp ∉ ep.pp_tb_repl, ep.green_portfolio)
+    filter!(pp -> pp ∉ ep.pp_tb_repl, ep.dirty_portfolio)
 end
 
 
@@ -322,7 +339,7 @@ function compute_pₑ_ep!(
     )
 
     c̄ = ep.dirty_portfolio[end].c
-    ep.pₑ[t] = ep.Dₑ[t] <= ep.green_capacity ? ep.μₑ : c̄ + ep.μₑ
+    ep.pₑ[t] = ep.Dₑ[t] <= ep.green_capacity[t] ? ep.μₑ : c̄ + ep.μₑ
 end
 
 
@@ -331,11 +348,12 @@ Updates capacity figures for green and dirty technologies
     Lamperti et al (2018) eq 14.
 """
 function update_capacities_ep!(
-    ep::EnergyProducer
+    ep::EnergyProducer,
+    t::Int
     )
 
-    ep.green_capacity = sum(pp -> pp.freq, ep.green_portfolio)
-    ep.dirty_capacity = sum(pp -> pp.freq, ep.dirty_portfolio)
+    ep.green_capacity[t:end] .= sum(pp -> pp.freq, ep.green_portfolio)
+    ep.dirty_capacity[t:end] .= sum(pp -> pp.freq, ep.dirty_portfolio)
 end
 
 
@@ -348,7 +366,7 @@ function compute_Q̄_ep!(
     t::Int
     )
 
-    ep.Q̄ₑ[t] = ep.green_capacity + sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio)
+    ep.Q̄ₑ[t] = ep.green_capacity[t] + sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio)
 end
 
 
@@ -362,7 +380,28 @@ function compute_EIᵈ_ep!(
     )
 
     # TODO: I dont know yet what Kᵈ is, likely has to be changed
-    ep.EIᵈ[t] = ep.Q̄ₑ[t] < ep.Dₑ[t] ? cp.Dₑ[t] - (cp.green_capacity + cp.dirty_capacity) : 0
+    ep.EIᵈ[t] = ep.Q̄ₑ[t] < ep.Dₑ[t] ? ep.Dₑ[t] - (ep.green_capacity[t] + ep.dirty_capacity[t]) : 0.0
+end
+
+
+"""
+Computes the desired replacement investment
+
+"""
+function compute_RSᵈ_ep!(
+    ep::EnergyProducer,
+    ηₑ::Int,
+    t::Int
+    )
+
+    # Select powerplants to be replaced
+    ep.pp_tb_repl = []
+    for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
+        if pp.age >= ηₑ
+            push!(ep.pp_tb_repl, pp)
+        end
+    end
+    ep.RSᵈ[t] = length(ep.pp_tb_repl) > 0 ? sum(pp -> pp.freq, ep.pp_tb_repl) : 0.0
 end
 
 

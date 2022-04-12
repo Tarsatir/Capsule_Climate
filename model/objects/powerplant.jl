@@ -1,6 +1,6 @@
 @with_kw mutable struct PowerPlant
     type::String                                # Type of the power plant ("Green" or "Dirty")
-    age::Int                                    # Age of power plant
+    age::Int = 0                                # Age of power plant
     c::Float64                                  # Marginal cost of production
     freq::Float64                               # Absolute frequency of machine
     capacity::Float64                           # Capacity to produce energy
@@ -11,7 +11,7 @@ end
 
 """
 Updates the marginal production cost of the power plant based on the type and 
-    price of fossil fuels
+    price of fossil fuels.
     Lamperti (2018), eq 11.
 """
 function update_c_pp!(
