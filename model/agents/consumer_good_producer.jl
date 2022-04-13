@@ -5,7 +5,6 @@ Defines struct for consumer good producer
     id::Int                                   # id
     type_good::String                         # type of good produced by producer
     age::Int = 0                              # firm age
-    # first_gen::Bool = false                   # shows if producer is in first generation 
     
     # Price and cost data
     μ::Vector{Float64}                        # markup rate
@@ -39,21 +38,21 @@ Defines struct for consumer good producer
     cu::Float64 = 0                           # capital utilizataion
     employees::Vector{Int} = []               # employees list
     L::Float64                                # labor units
-    # Lᵉ::Float64                               # exp labor force
     ΔLᵈ::Float64 = 0.0                        # desired change in labor force
     w̄::Vector{Float64}                        # wage level
     wᴼ::Float64 = 1.0                         # offered wage
     wᴼ_max::Float64 = 1.0                     # maximum offered wage
     brochures::Vector = []                    # brochures from kp
 
-    π::Float64 = 1.0                          # hist productivity of total capital stock
+    π_LP::Float64 = 1.0                       # labor productivity of total capital stock
+    π_EE::Float64 = 1.0                       # productivity per energy unit of total capital stock
     f::Vector{Float64}                        # hist market share
     Π::Vector{Float64} = zeros(Float64, 3)    # hist profits
     Πᵀ::Vector{Float64} = zeros(Float64, 3)   # Historical profits after tax
     NW_growth::Float64 = 0.0                  # growth rate of liquid assets
     cI::Float64 = 0.0                         # internal funds for investments
     balance::Balance = Balance()              # balance sheet
-    curracc::FirmCurrentAccount = FirmCurrentAccount()   # current account
+    curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
 end
 
 
@@ -67,18 +66,15 @@ function initialize_cp(
     D=800.0::Float64,
     w=1.0::Float64,
     L=n_init_emp_cp * 100::Int,
-    # Lᵉ=n_init_emp_cp * 100::Int,
     N_goods=D*ι::Float64,
     n_consrgood=200::Int,
     f=2/n_consrgood,
-    # first_gen=true::Bool
     )
 
 
     cp = ConsumerGoodProducer(
         id=id,
         type_good = type_good,
-        # first_gen = first_gen,
         μ = fill(μ, 3),
         D = fill(D, 3),  
         Nᵈ = ι * D,                
@@ -87,7 +83,6 @@ function initialize_cp(
         Qᵉ = D * (1 + ι),          
         Ξ = machines,                 
         L = L,
-        # Lᵉ = Lᵉ,
         w̄ = fill(w, 3),
         f = fill(f, 3)
     )
@@ -149,6 +144,8 @@ function plan_investment_cp!(
     cp::ConsumerGoodProducer, 
     all_kp::Vector{Int},
     global_param::GlobalParam,
+    ep,
+    t::Int,
     model::ABM
     )
 
@@ -157,13 +154,13 @@ function plan_investment_cp!(
     cp.n_mach_ordered_RS = 0
 
     # Choose kp
-    brochure = choose_producer_cp!(cp, global_param.b, all_kp, model)
+    brochure = choose_producer_cp!(cp, global_param.b, all_kp, ep, t, model)
 
     # Update LT production
     update_Qᵉ_cp!(cp, global_param.ω)
 
     # Plan replacement investments
-    plan_replacement_cp!(cp, global_param, brochure)
+    plan_replacement_cp!(cp, global_param, ep, brochure, t)
 
     # Plan expansion investments
     plan_expansion_cp!(cp, global_param, brochure)
@@ -173,7 +170,7 @@ function plan_investment_cp!(
 
     # See if enough funds available for investments and production, otherwise
     # change investments and production to match funding availability.
-    check_funding_restrictions_cp!(cp, global_param)
+    check_funding_restrictions_cp!(cp, global_param, ep.pₑ[t])
 
     # Send orders to kp
     order_machines_cp!(cp, model)
@@ -186,14 +183,13 @@ Checks funding restructions based on expected revenue and expenses. If not enoug
 """
 function check_funding_restrictions_cp!(
     cp::ConsumerGoodProducer,
-    global_param::GlobalParam
+    global_param::GlobalParam,
+    pₑ::Float64
     )
 
-    # Determine expected TCL
-    TCLᵉ = (cp.L + cp.ΔLᵈ) * cp.w̄[end]
-    if cp.ΔLᵈ > 0
-        TCLᵉ = cp.w̄[end] * cp.L + cp.ΔLᵈ * cp.wᴼ
-    end
+    # Determine expected TCL and TCE
+    TCLᵉ = cp.ΔLᵈ > 0 ? cp.w̄[end] * cp.L + cp.ΔLᵈ * cp.wᴼ : (cp.L + cp.ΔLᵈ) * cp.w̄[end]
+    TCE = pₑ * cp.Qˢ / cp.π_EE
 
     # Determine how much additional debt can be made
     max_add_debt = max(global_param.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
@@ -202,15 +198,15 @@ function check_funding_restrictions_cp!(
     NW_no_prod = (cp.balance.NW + cp.Dᵉ * cp.p[end] + cp.curracc.rev_dep 
                   - cp.debt_installments[1] - cp.balance.debt * global_param.r)
     
-    if NW_no_prod > TCLᵉ + cp.Iᵈ
+    if NW_no_prod > TCLᵉ + TCE + cp.Iᵈ
         # All cost of costs can be paid from liquid assets. No additional debt needed.
         cp.cI = cp.Iᵈ
 
-    elseif NW_no_prod > TCLᵉ && NW_no_prod - TCLᵉ < cp.Iᵈ
+    elseif NW_no_prod > TCLᵉ + TCE && NW_no_prod - TCLᵉ - TCE < cp.Iᵈ
         # Cost of labor can be paid from liquid assets, investment has to be partially 
         # funded from debt.
-        cp.cI = NW_no_prod - TCLᵉ
-        req_debt = cp.Iᵈ - (NW_no_prod - TCLᵉ)
+        cp.cI = NW_no_prod - TCLᵉ - TCE
+        req_debt = cp.Iᵈ - (NW_no_prod - TCLᵉ - TCE)
 
         # Check if investment can be financed from additional debt, otherwise decrease investments
         if req_debt > max_add_debt
@@ -245,11 +241,12 @@ function check_funding_restrictions_cp!(
         cp.n_mach_ordered_RS = 0
         cp.mach_tb_repl = Vector{Machine}()
 
-        if NW_no_prod + max_add_debt < TCLᵉ
+        if NW_no_prod + max_add_debt < TCLᵉ + TCE
             # Cost of labor exceeds expected liquid assets plus max additional debt. 
             # Decrease production quantity.
-            poss_TCL = NW_no_prod + max_add_debt
-            poss_L = poss_TCL / cp.w̄[end]
+
+            poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + pₑ / cp.π_EE)
+            poss_L = poss_prod / cp.π_LP
             cp.ΔLᵈ = poss_L - cp.L
         end
     end
@@ -266,6 +263,8 @@ function choose_producer_cp!(
     cp::ConsumerGoodProducer, 
     b::Int, 
     all_kp::Vector{Int},
+    ep,
+    t::Int,
     model::ABM
     )
 
@@ -277,7 +276,7 @@ function choose_producer_cp!(
     end
 
     # If multiple brochures, find brochure with lowest cost of production
-    all_cop = map(broch -> broch[2] + b * cp.w̄[end] / broch[4], cp.brochures)
+    all_cop = map(broch -> broch[2] + b * (cp.w̄[end] / broch[4] + ep.pₑ[t] / broch[5]), cp.brochures)
     brochure = cp.brochures[argmin(all_cop)]
     cp.chosen_kp_id = brochure[1]
 
@@ -291,17 +290,21 @@ Plans replacement investment based on age machines and available new machines
 function plan_replacement_cp!(
     cp::ConsumerGoodProducer,
     global_param::GlobalParam,
+    ep,
     brochure,
+    t::Int
     )
 
-    Aᵈ = brochure[4]
+    # Aᵈ_LP = brochure[4]
     p_star = brochure[2]
-    c_star = cp.w̄[end] / Aᵈ
+    c_star = cp.w̄[end] / brochure[4] + ep.pₑ[t] / brochure[5]
 
-    # Loop over machine stock, select which machines to replace
+    # Loop over machine stock, select which machines to replaceF
     cp.mach_tb_repl = []
     for machine in cp.Ξ
-        c_A = cp.w̄[end] / machine.A_LP
+
+        c_A = cp.w̄[end] / machine.A_LP + ep.pₑ[t] / brochure[5]
+
         if ((c_A != c_star && p_star/(c_A - c_star) <= global_param.b) 
             || machine.age >= global_param.η)
             push!(cp.mach_tb_repl, machine)
@@ -342,7 +345,9 @@ Produces goods based on planned production and actual amount of hired workers
 """
 function produce_goods_cp!(
     cp::ConsumerGoodProducer,
-    global_param::GlobalParam
+    ep,
+    global_param::GlobalParam,
+    t::Int
     )
 
     # If the cp does not need to use its complete capital stock, only use most productive 
@@ -352,17 +357,19 @@ function produce_goods_cp!(
         # Compute number of machines needed (machines already ordered on productivity, 
         # least to most productive)
         req_machines = cp.Ξ[end-n_machines_req:end]
-        actual_π = mean(machine -> machine.A_LP, req_machines)
+        actual_π_LP = mean(machine -> machine.A_LP, req_machines)
+        actual_π_EE = mean(machine -> machine.A_EE, req_machines)
     else
-        actual_π = cp.π[end]
+        actual_π_LP = cp.π_LP[end]
+        actual_π_EE = cp.π_EE[end]
     end
 
     # Compute total production amount
-    Q = max(min(actual_π * cp.L, cp.n_machines, cp.Qˢ), 0)
+    Q = max(min(actual_π_LP * cp.L, cp.n_machines, cp.Qˢ), 0)
     shift_and_append!(cp.Q, Q)
 
     # Update energy use from production
-    update_EU_cp!(cp)
+    update_EU_TCE_cp!(cp, actual_π_EE, ep.pₑ[t])
     
     # Update rate of capital utilization
     if cp.n_machines > 0
@@ -422,9 +429,6 @@ function send_ordered_goods_cp!(
     
     # Loop over orders in queue, add realized sales S
     for (hh_id, q) in cp.order_queue
-
-        # hh_id = order[1]
-        # q = order[2]
 
         total_D += q
 
@@ -628,7 +632,7 @@ function replace_bankrupt_cp!(
         end
 
     end
-    println("All inflow: $(all_req_NW)")
+    # println("All inflow: $(all_req_NW)")
 end
 
 
@@ -701,18 +705,14 @@ end
 
 
 """
-Updates weighted producivity of machine stock π
+Updates weighted producivity of machine stock π_LP
 """
 function update_π_cp!(
     cp::ConsumerGoodProducer
     )
 
-    # Check if machines were already received
-    if length(cp.Ξ) > 0
-        cp.π = sum(machine -> (machine.freq * machine.A_LP) / cp.n_machines, cp.Ξ)
-    else
-        cp.π = 1.0
-    end
+    cp.π_LP = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_LP) / cp.n_machines, cp.Ξ) : 1.0
+    cp.π_EE = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_EE) / cp.n_machines, cp.Ξ) : 1.0
 end
 
 
@@ -777,7 +777,7 @@ function compute_c_cp!(
     )
 
     if cp.L + cp.ΔLᵈ > 0
-        c = cp.w̄[end] / cp.π
+        c = cp.w̄[end] / cp.π_LP
         shift_and_append!(cp.c, c)
     else
         shift_and_append!(cp.c, cp.c[end])
@@ -805,7 +805,7 @@ function update_ΔLᵈ_cp!(
     cp::ConsumerGoodProducer
     )
 
-    Lᵈ = min(cp.Qˢ / cp.π - cp.L, cp.n_machines / cp.π - cp.L)
+    Lᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
     cp.ΔLᵈ = max(Lᵈ, -cp.L)
 end
 
@@ -831,7 +831,7 @@ function update_wᴼ_max_cp!(
     cp::ConsumerGoodProducer
     )
     # TODO: DESCRIBE IN MODEL
-    cp.wᴼ_max = cp.π * cp.p[end]
+    cp.wᴼ_max = cp.π_LP * cp.p[end]
     # if cp.ΔLᵈ > 0
     #     # cp.wᴼ_max = (cp.Dᵉ * cp.p[end] - cp.w̄[end] * cp.L) / cp.ΔLᵈ
     #     cp.wᴼ_max = cp.p[end]
@@ -844,12 +844,12 @@ end
 """
 Updates energy use for production
 """
-function update_EU_cp!(
-    cp::ConsumerGoodProducer
+function update_EU_TCE_cp!(
+    cp::ConsumerGoodProducer,
+    actual_π_EE::Float64,
+    pₑ::Float64
     )
 
-    # TODO: do this for actually used machines, not whole stock
-    if length(cp.Ξ) > 0
-        cp.EU = cp.Q[end] / (sum(machine -> machine.A_EE * machine.freq, cp.Ξ) / cp.n_machines) 
-    end
+    cp.EU = length(cp.Ξ) > 0 ? cp.Q[end] / actual_π_EE : 0.0
+    cp.curracc.TCE = pₑ * cp.EU
 end

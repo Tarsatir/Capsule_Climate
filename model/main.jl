@@ -77,8 +77,8 @@ function initialize_model(
     gov_struct = Government(T=T)
 
     # Initialize energy producer
-    # energy_producer = EnergyProducer(T=T)
-    energy_producer = initialize_energy_producer(T, init_param, global_param)
+    # ep = EnergyProducer(T=T)
+    ep = initialize_energy_producer(T, init_param, global_param)
 
     # Global id
     id = 1
@@ -180,7 +180,7 @@ function initialize_model(
     close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
                          indexfund_struct, model)
 
-    return model, global_param, init_param, macro_struct, gov_struct, energy_producer, labormarket_struct, indexfund_struct
+    return model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct
 end
 
 
@@ -192,7 +192,7 @@ function model_step!(
     init_param::InitParam,
     macro_struct::MacroEconomy, 
     gov_struct::Government,
-    energy_producer::EnergyProducer, 
+    ep::EnergyProducer, 
     labormarket_struct::LaborMarket,
     # bank_struct::Bank,
     indexfund_struct::IndexFund,
@@ -237,14 +237,14 @@ function model_step!(
             kp_distance_matrix,
             macro_struct.w̄_avg[max(t-1,1)],
             t,
-            energy_producer,
+            ep,
             model
         )
         send_brochures_kp!(model[kp_id], all_cp, global_param, model)
     end
 
     # ep innovate
-    innovate_ep!(energy_producer, global_param, t)
+    innovate_ep!(ep, global_param, t)
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
@@ -255,7 +255,7 @@ function model_step!(
         @timeit to "plan prod cp" plan_production_cp!(cp, global_param, t, model)
 
         # Plan investments for this period
-        @timeit to "plan inv cp" plan_investment_cp!(cp, all_kp, global_param, model)
+        @timeit to "plan inv cp" plan_investment_cp!(cp, all_kp, global_param, ep, t, model)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
@@ -291,16 +291,20 @@ function model_step!(
 
 
     # (5) Production takes place for cp and kp
+
+    # Update energy prices
+    compute_pₑ_ep!(ep, t)
+
     @timeit to "consumer prod" for cp_id in all_cp
-        produce_goods_cp!(model[cp_id], global_param)
+        produce_goods_cp!(model[cp_id], ep, global_param, t)
     end
 
     @timeit to "capital prod" for kp_id in all_kp
-        produce_goods_kp!(model[kp_id], global_param)
+        produce_goods_kp!(model[kp_id], ep, global_param, t)
     end
 
     # Let energy producer meet energy demand
-    produce_energy_ep!(energy_producer, all_cp, all_kp, global_param, t, model)
+    produce_energy_ep!(ep, all_cp, all_kp, global_param, indexfund_struct, t, model)
 
     
     # (6) Transactions take place on consumer market
@@ -418,6 +422,7 @@ function model_step!(
         global_param,
         indexfund_struct,
         init_param,
+        macro_struct,
         t,
         model
     )
@@ -439,11 +444,11 @@ function model_step!(
     )
 
     # Redistrubute remaining stock of dividents to households
-    # distribute_dividends_if!(
-    #     indexfund_struct,
-    #     all_hh,
-    #     model
-    # )
+    distribute_dividends_if!(
+        indexfund_struct,
+        all_hh,
+        model
+    )
 end
 
 
@@ -456,7 +461,7 @@ function run_simulation(;
 
     to = TimerOutput()
 
-    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, energy_producer, labormarket_struct, indexfund_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
+    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
         if t % 100 == 0
@@ -471,7 +476,7 @@ function run_simulation(;
                                 init_param,
                                 macro_struct, 
                                 gov_struct,
-                                energy_producer, 
+                                ep, 
                                 labormarket_struct, 
                                 # bank_struct, 
                                 indexfund_struct,
@@ -485,7 +490,7 @@ function run_simulation(;
 
     @timeit to "save findist" save_final_dist(all_hh, all_bp, all_lp, all_kp, model)
 
-    @timeit to "save climate" save_climate_data(energy_producer, model)
+    @timeit to "save climate" save_climate_data(ep, model)
 
     if full_output
         show(to)

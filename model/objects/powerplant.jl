@@ -21,3 +21,10 @@ function update_c_pp!(
 
     pp.c = pp.type == "Dirty" ? p_f / pp.Aᵀ : 0.0
 end
+
+function update_age_pp!(
+    pp::PowerPlant
+    )
+
+    pp.age += 1
+end

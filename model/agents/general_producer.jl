@@ -283,9 +283,9 @@ function kill_all_bankrupt_p!(
     end
 
     deduct_unpaid_net_debts_if!(indexfund_struct, total_unpaid_net_debt)
-    println("All outflow: $(total_unpaid_net_debt)")
-    println("Age bankrupt cp: $(length(ages) > 0 ? mean(ages) : "yeet")")
-    println("Prod bankrupt cp: $(length(Qs) > 0 ? mean(Qs) : "yeet")")
+    # println("All outflow: $(total_unpaid_net_debt)")
+    # println("Age bankrupt cp: $(length(ages) > 0 ? mean(ages) : "yeet")")
+    # println("Prod bankrupt cp: $(length(Qs) > 0 ? mean(Qs) : "yeet")")
 end
 
 

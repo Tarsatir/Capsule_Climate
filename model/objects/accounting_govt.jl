@@ -1,4 +1,4 @@
-@Base.kwdef mutable struct GovCurrentAccount
+@with_kw mutable struct GovCurrentAccount
 
     T::Int=T
 

@@ -21,10 +21,10 @@ Takes dividends from producers
 """
 function receive_dividends_if!(
     indexfund_struct::IndexFund,
-    total_dividends::Float64
+    dividends::Float64
     )
     
-    indexfund_struct.Assets += total_dividends
+    indexfund_struct.Assets += dividends
 end
 
 

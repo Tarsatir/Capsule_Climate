@@ -9,7 +9,7 @@ def plot_macro_vars(df):
     Plots macro statistics
     """
     
-    fig, ax = plt.subplots(8,2, figsize=(10,19), sharex=True)
+    fig, ax = plt.subplots(8,2, figsize=(10,25), sharex=True)
 
     T = range(len(df.GDP))
 
@@ -107,7 +107,8 @@ def plot_macro_vars(df):
     ax[4,0].plot(range(len(df.n_mach_RS)), df.n_mach_RS, label='n RS')
     ax[4,0].legend()
 
-    ax[4,1].plot(range(len(df.avg_pi)), df.avg_pi, label='$\\bar{\pi}$')
+    ax[4,1].plot(range(len(df.avg_pi_LP)), df.avg_pi_LP, label='$\\bar{\pi}_{LP}$')
+    ax[4,1].plot(range(len(df.avg_pi_EE)), df.avg_pi_EE, label='$\\bar{\pi}_{EE}$')
     ax[4,1].plot(range(len(df.avg_A_LP)), df.avg_A_LP, label='$\\bar{A}_{LP}$')
     ax[4,1].plot(range(len(df.avg_A_EE)), df.avg_A_EE, label='$\\bar{A}_{EE}$')
     ax[4,1].plot(range(len(df.avg_A_EF)), df.avg_A_EF, label='$\\bar{A}_{EF}$')
@@ -332,18 +333,20 @@ def plot_climate(df_macro):
     ax[0,0].legend()
 
     # Plot energy intensity
-    ax[0,1].plot(T, df_climate.energy_demand / df_macro.GDP)
-    ax[0,1].set_title('Energy intensity per unit of GDP')
+    ax[0,1].plot(T, df_climate.energy_demand / (df_macro.GDP / df_macro.CPI))
+    ax[0,1].set_title('Energy intensity per unit of real GDP')
     ax[0,1].set_xlabel('Time')
     ax[0,1].set_ylabel('Energy intensity')
     
     # Plot innovation spending
-    ax[1,0].plot(T, df_climate.RD, label='total R&D spending')
-    ax[1,0].plot(T, df_climate.IN_g, label='green R&D spending')
-    ax[1,0].plot(T, df_climate.IN_d, label='dirty R&D spending')
+    ax[1,0].plot(T, df_climate.RD, label='total R&D spending', color='blue', linestyle='dashed')
+    ax[1,0].plot(T, df_climate.IN_g, label='green R&D spending', color='green')
+    ax[1,0].plot(T, df_climate.IN_d, label='dirty R&D spending', color='brown')
     ax[1,0].legend()
 
-    
+    ax[1,1].plot(T, df_climate.p_e, label='energy prices')
+    ax[1,1].set_title('Energy prices')
+    ax[1,1].legend()
 
     plt.tight_layout()
     plt.savefig('plots/energy.png')
@@ -353,11 +356,11 @@ if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    # plot_macro_vars(df_macro)
-    # plot_cons_vars(df_macro)
+    plot_macro_vars(df_macro)
+    plot_cons_vars(df_macro)
 
-    # plot_income_dist()
-    # plot_inequality(df_macro)
-    # plot_sales_dist()
+    plot_income_dist()
+    plot_inequality(df_macro)
+    plot_sales_dist()
 
     plot_climate(df_macro)

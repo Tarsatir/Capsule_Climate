@@ -1,7 +1,7 @@
 """
 BALANCE SHEET
 """
-@Base.kwdef mutable struct Balance
+@with_kw mutable struct Balance
     # Assets
     N::Float64 = 0.0            # Inventories
     K::Float64 = 0.0            # Capital
@@ -82,7 +82,7 @@ function close_balance_all_p!(
         end
     end
 
-    println("total dividends: ", total_dividends)
+    # println("total dividends: ", total_dividends)
     receive_dividends_if!(indexfund_struct, total_dividends)
 end
 
@@ -129,6 +129,7 @@ function update_NW_p!(
     S = p.curracc.S
     TCL = p.curracc.TCL
     TCI = p.curracc.TCI
+    TCE = p.curracc.TCE
     rep_debt = p.curracc.rep_debt
     add_debt = p.curracc.add_debt
     int_debt = p.curracc.int_debt
@@ -139,7 +140,7 @@ function update_NW_p!(
     #     println("NW: $NW, S: $S, TCL: $TCL, TCI: $TCI, rd: $rep_debt, ad: $add_debt, id: $int_debt, pt: $profit_tax")
     # end
 
-    new_NW = NW + S + add_debt + rev_dep - TCL - TCI - rep_debt - int_debt - profit_tax
+    new_NW = NW + S + add_debt + rev_dep - TCL - TCI - TCE - rep_debt - int_debt - profit_tax
 
     if typeof(p) == ConsumerGoodProducer
         p.NW_growth = (new_NW - p.balance.NW) / p.balance.NW
@@ -169,7 +170,7 @@ function compute_Π_p!(
     writeoffs=0.0::Float64
     )
  
-    Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt
+    Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.TCE - p.curracc.int_debt - writeoffs
     # if typeof(p) == CapitalGoodProducer
     #     println("profit ", Π, " S ", p.curracc.S, "  TCL ", p.curracc.TCL, " TCI ", p.curracc.TCI, " int ", p.curracc.int_debt, " p ", p.p[end])
     #     println("labor ", p.ΔLᵈ, " O ", p.O, " O/B ", p.O/p.B[end], " RD ", p.RD[end] / p.w̄[end], " L ", p.L, " w ", p.w̄[end])
@@ -184,7 +185,7 @@ end
 """
 CURRENT ACCOUNT
 """
-@Base.kwdef mutable struct FirmCurrentAccount
+@with_kw mutable struct FirmCurrentAccount
     # Inflows
     S::Float64 = 0.0               # Sales
     add_debt::Float64 = 0.0        # Additional debts
@@ -193,6 +194,7 @@ CURRENT ACCOUNT
     # Outflows
     TCL::Float64 = 0.0             # Total cost of labor
     TCI::Float64 = 0.0             # Total cost of investments
+    TCE::Float64 = 0.0             # Total cost of energy
     int_debt::Float64 = 0.0        # Interest paid over debt
     rep_debt::Float64 = 0.0        # Debt repayments
 end
@@ -205,13 +207,15 @@ function clear_firm_currentaccount_p!(
     ca::FirmCurrentAccount
     )::FirmCurrentAccount
 
-    ca.S = 0
-    ca.add_debt = 0
-    ca.rev_dep = 0
-    ca.TCL = 0
-    ca.TCI = 0
-    ca.int_debt = 0
-    ca.rep_debt = 0
+    ca.S = 0.0
+    ca.add_debt = 0.0             
+    ca.rev_dep = 0.0
+
+    ca.TCL = 0.0
+    ca.TCI = 0.0
+    ca.TCE = 0.0
+    ca.int_debt = 0.0
+    ca.rep_debt = 0.0
 
     return ca
 end

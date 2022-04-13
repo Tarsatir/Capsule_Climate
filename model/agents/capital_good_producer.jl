@@ -157,7 +157,7 @@ function choose_technology_kp!(
     # Make choice between possible technologies
     if length(tech_choices) == 1
         # If no new technologies, keep current technologies
-        c_h = kp.w̄[end]/kp.B_LP
+        c_h = kp.w̄[end] / kp.B_LP + ep.pₑ[t] / kp.B_EE
         p_h = (1 + kp.μ[end]) * c_h
         shift_and_append!(kp.c, c_h)
         shift_and_append!(kp.p, p_h)
@@ -197,7 +197,7 @@ function send_brochures_kp!(
     )
 
     # Set up brochure
-    brochure = (kp.id, kp.p[end], kp.c[end], kp.A_LP)
+    brochure = (kp.id, kp.p[end], kp.c[end], kp.A_LP, kp.A_EE, kp.A_EF)
     kp.brochure = brochure
 
     # Send brochure to historical clients
@@ -240,38 +240,9 @@ function imitate_technology_kp(
 end
 
 
-# """
-# Determines new labor productivity of machine produced for cp
-# """
-# function update_At_kp(
-#     A_last::Float64, 
-#     global_param::GlobalParam
-#     )::Float64
-    
-#     κ_A = rand(Beta(global_param.α1, global_param.β1))
-#     κ_A = global_param.κ_lower + κ_A * (global_param.κ_upper - global_param.κ_lower)
-
-#     A_t_in = A_last * (1 + κ_A)
-#     return A_t_in
-# end
-
-
-# """
-# Determines new labor productivity of own production method.
-# """
-# function update_Bt_kp(
-#     B_last::Float64, 
-#     global_param::GlobalParam
-#     )::Float64
-
-#     κ_B = rand(Beta(global_param.α1, global_param.β1))
-#     κ_B = global_param.κ_lower + κ_B * (global_param.κ_upper - global_param.κ_lower)
-
-#     B_t_in = B_last*(1 + κ_B)
-#     return B_t_in
-# end
-
-
+"""
+Lets kp set price
+"""
 function set_price_kp!(
     kp::CapitalGoodProducer, 
     μ1::Float64, 
@@ -358,7 +329,9 @@ Lets kp add goods to the production queue, based on available labor supply
 """
 function produce_goods_kp!(
     kp::CapitalGoodProducer,
+    ep,
     global_param::GlobalParam,
+    t::Int
     )
 
     # Determine what the total demand is, regardless if it can be satisfied
@@ -388,10 +361,20 @@ function produce_goods_kp!(
     shift_and_append!(kp.Q, Q)
 
     # Update energy use from production
-    kp.EU = Q / kp.B_EE
+    update_EU_TCE_kp!(kp, ep.pₑ[t])
 
     # Empty order queue
     kp.orders = []
+end
+
+
+function update_EU_TCE_kp!(
+    kp::CapitalGoodProducer, 
+    pₑ::Float64
+    )
+
+    kp.EU = kp.Q[end] / kp.B_EE
+    kp.curracc.TCE = pₑ * kp.EU
 end
 
 
@@ -414,8 +397,14 @@ function send_orders_kp!(
     for (cp_id, n_machines) in machines_per_cp
 
         # Produce machines in production queue, send to cp
-        machines = initialize_machine_stock(global_param.freq_per_machine, n_machines;
-                                            p=kp.p[end], A_LP=kp.A_LP)
+        machines = initialize_machine_stock(
+                        global_param.freq_per_machine, 
+                        n_machines;
+                        p = kp.p[end], 
+                        A_LP = kp.A_LP,
+                        A_EE = kp.A_EE,
+                        A_EF = kp.A_EF
+                    )
         Iₜ = n_machines * global_param.freq_per_machine * kp.p[end]
         receive_machines_cp!(model[cp_id], machines, Iₜ)
     end
@@ -559,6 +548,7 @@ function replace_bankrupt_kp!(
     global_param::GlobalParam,
     indexfund_struct::IndexFund,
     init_param::InitParam,
+    macro_struct::MacroEconomy,
     t::Int,
     model::ABM
     )
@@ -577,38 +567,20 @@ function replace_bankrupt_kp!(
         bankrupt_kp = bankrupt_kp[!kp_id_max_NW]
     end
 
-    # Determine all possible kp and set weights for sampling proportional to the 
-    # quality of their technology
-    poss_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
-    # weights = map(kp_id -> min(model[kp_id].A_LP, model[kp_id].B_LP), poss_kp)
+    # Get all nonbankrupt kp
+    nonbankrupt_kp = filter(kp_id -> kp_id ∉ bankrupt_kp, all_kp)
 
     # Get the technology frontier
-    A_max = 0
-    A_min = 0
-    A_max_id = 0
+    A_LP_max = maximum(kp_id -> model[kp_id].A_LP, nonbankrupt_kp)
+    A_EE_max = maximum(kp_id -> model[kp_id].A_EE, nonbankrupt_kp)
+    A_EF_max = maximum(kp_id -> model[kp_id].A_EF, nonbankrupt_kp)
 
-    B_max = 0
-    B_min = 0
-
-    for kp_id in poss_kp
-        # Check if A_LP is max or min in population
-        if model[kp_id].A_LP > A_max
-            A_max = model[kp_id].A_LP
-            A_max_id = kp_id
-        elseif model[kp_id].A_LP < A_min
-            A_min = model[kp_id].A_LP
-        end
-
-        # Check if B_LP is max or min in population
-        if model[kp_id].B_LP > B_max
-            B_max = model[kp_id].B_LP
-        elseif model[kp_id].B_LP < B_min
-            B_min = model[kp_id].B_min
-        end 
-    end
+    B_LP_max = maximum(kp_id -> model[kp_id].B_LP, nonbankrupt_kp)
+    B_EE_max = maximum(kp_id -> model[kp_id].B_EE, nonbankrupt_kp)
+    B_EF_max = maximum(kp_id -> model[kp_id].B_EF, nonbankrupt_kp)
 
     # Compute the average stock of liquid assets of non-bankrupt kp
-    avg_NW = mean(kp_id -> model[kp_id].balance.NW, poss_kp)
+    avg_NW = mean(kp_id -> model[kp_id].balance.NW, nonbankrupt_kp)
     NW_coefficients = rand(Uniform(global_param.φ3, global_param.φ4),
                            length(bankrupt_kp))
 
@@ -622,8 +594,14 @@ function replace_bankrupt_kp!(
         # quality of the technology
         tech_coeff = (global_param.φ5 + rand(Beta(global_param.α2, global_param.β2)) 
                                         * (global_param.φ6 - global_param.φ5))
-        new_A = max(A_max * (1 + tech_coeff), A_min, init_param.A_LP_0)
-        new_B = max(B_max * (1 + tech_coeff), B_min, init_param.B_LP_0)
+
+        new_A_LP = max(A_LP_max * (1 + tech_coeff), init_param.A_LP_0)
+        new_A_EE = max(A_EE_max * (1 + tech_coeff), init_param.A_LP_0)
+        new_A_EF = max(A_EF_max * (1 + tech_coeff), init_param.A_LP_0)
+
+        new_B_LP = max(B_LP_max * (1 + tech_coeff), init_param.B_LP_0)
+        new_B_EE = max(B_EE_max * (1 + tech_coeff), init_param.B_LP_0)
+        new_B_EF = max(B_EF_max * (1 + tech_coeff), init_param.B_LP_0)
 
         NW_stock = NW_coefficients[i] * avg_NW
 
@@ -632,12 +610,16 @@ function replace_bankrupt_kp!(
             kp_id, 
             kp_i, 
             length(all_kp);
-            NW=NW_stock,
-            A_LP=new_A,
-            B_LP=new_B,
-            μ=model[A_max_id].μ[end],
-            w̄=model[A_max_id].w̄[end],
-            f=0.0
+            NW = NW_stock,
+            A_LP = new_A_LP,
+            A_EE = new_A_EE,
+            A_EF = new_A_EF,
+            B_LP = new_B_LP,
+            B_EE = new_B_EE,
+            B_EF = new_B_EF,
+            μ = macro_struct.μ_kp[t],
+            w̄ = macro_struct.w̄_avg[t],
+            f = 0.0
         )
 
         # Borrow the remaining funds

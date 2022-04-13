@@ -76,7 +76,9 @@
     n_mach_RS_avg::Vector{Float64} = zeros(Float64, T)      # average amounf of ordered machines for RS
 
     # Productivity
-    avg_π::Vector{Float64} = zeros(Float64, T)              # average productivity cp
+    avg_π_LP::Vector{Float64} = zeros(Float64, T)           # average labor productivity cp
+    avg_π_EE::Vector{Float64} = zeros(Float64, T)           # average productivity per energy unit cp
+
     avg_A_LP::Vector{Float64} = zeros(Float64, T)           # average A_LP at kp
     avg_A_EE::Vector{Float64} = zeros(Float64, T)           # average A_EE at kp
     avg_A_EF::Vector{Float64} = zeros(Float64, T)           # average A_EF at kp
@@ -171,7 +173,8 @@ function update_macro_timeseries(
     macro_struct.n_mach_RS_avg[t] = mean(cp_id -> model[cp_id].n_mach_ordered_RS, all_cp)
 
     # Productivity
-    macro_struct.avg_π[t] = mean(cp_id -> model[cp_id].π, all_cp)
+    macro_struct.avg_π_LP[t] = mean(cp_id -> model[cp_id].π_LP, all_cp)
+    macro_struct.avg_π_EE[t] = mean(cp_id -> model[cp_id].π_EE, all_cp)
 
     macro_struct.avg_A_LP[t] = mean(kp_id -> model[kp_id].A_LP[end], all_kp)
     macro_struct.avg_A_EE[t] = mean(kp_id -> model[kp_id].A_EE[end], all_kp)
@@ -379,10 +382,10 @@ function compute_price_data!(
     end
 
     # Compute average price of capital goods
-    avg_p_kp_t = mean(kp_id -> model[kp_id].p[end], all_kp)
+    avg_p_kp_t = sum(kp_id -> model[kp_id].p[end] * model[kp_id].f[end], all_kp)
     macro_struct.p̄_kp[t] = avg_p_kp_t
     if t == 1
-        macro_struct.p̄_kp[t] = 100
+        macro_struct.CPI_kp[t] = 100
     else
         macro_struct.CPI_kp[t] = 100 / macro_struct.p̄_kp[1] * avg_p_kp_t
     end

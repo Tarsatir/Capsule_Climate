@@ -26,5 +26,4 @@
     frac_green::Float64 = 0.1             # fraction of initial power plants that are green
     Aᵀ_0::Float64 = 1.0                   # initial thermal efficiency
     emᵀ_0::Float64 = 1.0                  # initial emission level
-    p_f::Float64 = 1.0                    # initial price of fossil fuels
 end

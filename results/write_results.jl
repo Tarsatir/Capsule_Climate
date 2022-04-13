@@ -73,7 +73,8 @@ function save_macro_data(macro_struct)
         RS_avg=macro_struct.RS_avg,
         n_mach_RS=macro_struct.n_mach_RS_avg,
 
-        avg_pi = macro_struct.avg_π,
+        avg_pi_LP = macro_struct.avg_π_LP,
+        avg_pi_EE = macro_struct.avg_π_EE,
 
         avg_A_LP = macro_struct.avg_A_LP,
         avg_A_EE = macro_struct.avg_A_EE,
@@ -147,6 +148,8 @@ function save_climate_data(
         total_capacity = energy_producer.Q̄ₑ,
         green_capacity = energy_producer.green_capacity,
         dirty_capacity = energy_producer.dirty_capacity,
+
+        p_e = energy_producer.pₑ,
 
         RD = energy_producer.RDₑ,
         IN_g = energy_producer.IN_g,
