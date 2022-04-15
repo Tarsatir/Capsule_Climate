@@ -53,6 +53,8 @@ Defines struct for consumer good producer
     cI::Float64 = 0.0                         # internal funds for investments
     balance::Balance = Balance()              # balance sheet
     curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
+
+    emissions::Float64 = 0.0                  # carbon emissions in last period
 end
 
 
@@ -359,17 +361,20 @@ function produce_goods_cp!(
         req_machines = cp.Ξ[end-n_machines_req:end]
         actual_π_LP = mean(machine -> machine.A_LP, req_machines)
         actual_π_EE = mean(machine -> machine.A_EE, req_machines)
+        actual_em = mean(machine -> machine.A_EF, req_machines)
     else
         actual_π_LP = cp.π_LP[end]
         actual_π_EE = cp.π_EE[end]
+        actual_em = length(cp.Ξ) > 0 ? mean(machine -> machine.A_EF, cp.Ξ) : 0.0
     end
 
     # Compute total production amount
     Q = max(min(actual_π_LP * cp.L, cp.n_machines, cp.Qˢ), 0)
     shift_and_append!(cp.Q, Q)
 
-    # Update energy use from production
+    # Update energy use and carbon emissions from production
     update_EU_TCE_cp!(cp, actual_π_EE, ep.pₑ[t])
+    update_emissions_cp!(cp, actual_em)
     
     # Update rate of capital utilization
     if cp.n_machines > 0
@@ -852,4 +857,16 @@ function update_EU_TCE_cp!(
 
     cp.EU = length(cp.Ξ) > 0 ? cp.Q[end] / actual_π_EE : 0.0
     cp.curracc.TCE = pₑ * cp.EU
+end
+
+
+"""
+Updates carbon emissions during production
+"""
+function update_emissions_cp!(
+    cp::ConsumerGoodProducer, 
+    actual_em::Float64
+    )
+
+    cp.emissions = actual_em * cp.Q[end]
 end

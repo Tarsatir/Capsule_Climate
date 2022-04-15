@@ -32,6 +32,8 @@
     green_frac_prod::Vector{Float64} = zeros(Float64, T) # Green fraction of total production
     infra_marg::Vector{PowerPlant} = []         # Infra-marginal plants
     pp_tb_repl::Vector{PowerPlant} = []         # Power plants to be replaced
+
+    emissions::Vector{Float64} = zeros(Float64, T)
 end
 
 
@@ -131,6 +133,7 @@ function produce_energy_ep!(
 
     # Choose pp to use in production
     choose_powerplants_ep!(ep, t)
+    compute_emissions_ep!(ep, t)
 
     # Compute profits
     compute_Πₑ_NWₑ_ep!(ep, t)
@@ -486,5 +489,30 @@ function update_age_pp_ep!(
 
     for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
         pp.age += 1
+    end
+end
+
+"""
+Computes emissions following from energy production
+"""
+function compute_emissions_ep!(
+    ep::EnergyProducer, 
+    t::Int
+    )
+
+    # Emissions remain at default value of zero if only green pp used,
+    # Otherwise compute emissions of dirty pp in infra-marginal stock
+    if ep.Dₑ[t] > ep.green_capacity[t]
+
+        req_capacity = ep.Dₑ[t]
+        total_emissions = 0.0
+
+        # Only use fraction of machines required, in order as sorted for costs
+        for pp in ep.infra_marg
+            total_emissions += min(req_capacity / pp.capacity, 1.0) * pp.em * pp.capacity
+            req_capacity -= pp.capacity
+        end
+
+        ep.emissions[t] = total_emissions
     end
 end

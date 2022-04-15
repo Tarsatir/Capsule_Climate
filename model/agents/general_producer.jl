@@ -309,11 +309,12 @@ Determines new productivity level, resulting from innovation process for both kp
 """
 function update_techparam_p(
     TP_last::Float64, 
-    global_param::GlobalParam
+    global_param::GlobalParam;
+    is_EF::Bool = false
     )::Float64
 
     κ_i = rand(Beta(global_param.α1, global_param.β1))
     κ_i = global_param.κ_lower + κ_i * (global_param.κ_upper - global_param.κ_lower)
 
-    return TP_last*(1 + κ_i)
+    return is_EF ? TP_last*(1 - κ_i) : TP_last*(1 + κ_i)
 end

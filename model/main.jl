@@ -21,11 +21,11 @@ include("helpers/update.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
 
-
 include("objects/accounting_firms.jl")
 include("objects/accounting_govt.jl")
 include("objects/machine.jl")
 include("objects/powerplant.jl")
+include("objects/climate.jl")
 
 include("agents/government.jl")
 include("agents/indexfund.jl")
@@ -77,8 +77,10 @@ function initialize_model(
     gov_struct = Government(T=T)
 
     # Initialize energy producer
-    # ep = EnergyProducer(T=T)
     ep = initialize_energy_producer(T, init_param, global_param)
+
+    # Initialize climate struct
+    climate_struct = Climate(T=T)
 
     # Global id
     id = 1
@@ -180,7 +182,7 @@ function initialize_model(
     close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
                          indexfund_struct, model)
 
-    return model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct
+    return model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct
 end
 
 
@@ -196,6 +198,7 @@ function model_step!(
     labormarket_struct::LaborMarket,
     # bank_struct::Bank,
     indexfund_struct::IndexFund,
+    climate_struct::Climate,
     model::ABM
     )
 
@@ -399,6 +402,9 @@ function model_step!(
         model
     )
 
+    # Update climate parameters
+    collect_emissions_cl!(climate_struct, all_cp, all_kp, ep, t, model)
+
     # Remove bankrupt companies.
     @timeit to "kill bankr p" kill_all_bankrupt_p!(
         bankrupt_bp, 
@@ -461,7 +467,7 @@ function run_simulation(;
 
     to = TimerOutput()
 
-    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
+    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
         if t % 100 == 0
@@ -476,10 +482,11 @@ function run_simulation(;
                                 init_param,
                                 macro_struct, 
                                 gov_struct,
-                                ep, 
+                                ep,
                                 labormarket_struct, 
                                 # bank_struct, 
                                 indexfund_struct,
+                                climate_struct, 
                                 model
                             )
     end
@@ -490,7 +497,7 @@ function run_simulation(;
 
     @timeit to "save findist" save_final_dist(all_hh, all_bp, all_lp, all_kp, model)
 
-    @timeit to "save climate" save_climate_data(ep, model)
+    @timeit to "save climate" save_climate_data(ep, climate_struct, model)
 
     if full_output
         show(to)

@@ -43,6 +43,8 @@
     orders::Array = []                    # orders
     balance::Balance                      # balance sheet
     curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
+
+    emissions::Float64 = 0.0              # carbon emissions in last period                    
 end
 
 
@@ -115,11 +117,11 @@ function innovate_kp!(
         # A_t_in = update_At_kp(kp.A_LP, global_param)
         A_LP_t_in = update_techparam_p(kp.A_LP, global_param)
         A_EE_t_in = update_techparam_p(kp.A_EE, global_param)
-        A_EF_t_in = update_techparam_p(kp.A_EF, global_param)
+        A_EF_t_in = update_techparam_p(kp.A_EF, global_param; is_EF=true)
 
         B_LP_t_in = update_techparam_p(kp.B_LP, global_param)
         B_EE_t_in = update_techparam_p(kp.B_EE, global_param)
-        B_EF_t_in = update_techparam_p(kp.B_EF, global_param)
+        B_EF_t_in = update_techparam_p(kp.B_EF, global_param; is_EF=true)
 
         push!(tech_choices, (A_LP_t_in, A_EE_t_in, A_EF_t_in, B_LP_t_in, B_EE_t_in, B_EF_t_in))
     end
@@ -363,6 +365,8 @@ function produce_goods_kp!(
     # Update energy use from production
     update_EU_TCE_kp!(kp, ep.pₑ[t])
 
+    update_emissions_kp!(kp)
+
     # Empty order queue
     kp.orders = []
 end
@@ -375,6 +379,14 @@ function update_EU_TCE_kp!(
 
     kp.EU = kp.Q[end] / kp.B_EE
     kp.curracc.TCE = pₑ * kp.EU
+end
+
+
+function update_emissions_kp!(
+    kp::CapitalGoodProducer
+    )
+
+    kp.emissions = kp.Q[end] * kp.B_EF
 end
 
 
@@ -573,11 +585,11 @@ function replace_bankrupt_kp!(
     # Get the technology frontier
     A_LP_max = maximum(kp_id -> model[kp_id].A_LP, nonbankrupt_kp)
     A_EE_max = maximum(kp_id -> model[kp_id].A_EE, nonbankrupt_kp)
-    A_EF_max = maximum(kp_id -> model[kp_id].A_EF, nonbankrupt_kp)
+    A_EF_min = minimum(kp_id -> model[kp_id].A_EF, nonbankrupt_kp)
 
     B_LP_max = maximum(kp_id -> model[kp_id].B_LP, nonbankrupt_kp)
     B_EE_max = maximum(kp_id -> model[kp_id].B_EE, nonbankrupt_kp)
-    B_EF_max = maximum(kp_id -> model[kp_id].B_EF, nonbankrupt_kp)
+    B_EF_min = minimum(kp_id -> model[kp_id].B_EF, nonbankrupt_kp)
 
     # Compute the average stock of liquid assets of non-bankrupt kp
     avg_NW = mean(kp_id -> model[kp_id].balance.NW, nonbankrupt_kp)
@@ -597,11 +609,11 @@ function replace_bankrupt_kp!(
 
         new_A_LP = max(A_LP_max * (1 + tech_coeff), init_param.A_LP_0)
         new_A_EE = max(A_EE_max * (1 + tech_coeff), init_param.A_LP_0)
-        new_A_EF = max(A_EF_max * (1 + tech_coeff), init_param.A_LP_0)
+        new_A_EF = min(A_EF_min * (1 - tech_coeff), init_param.A_LP_0)
 
         new_B_LP = max(B_LP_max * (1 + tech_coeff), init_param.B_LP_0)
         new_B_EE = max(B_EE_max * (1 + tech_coeff), init_param.B_LP_0)
-        new_B_EF = max(B_EF_max * (1 + tech_coeff), init_param.B_LP_0)
+        new_B_EF = min(B_EF_min * (1 - tech_coeff), init_param.B_LP_0)
 
         NW_stock = NW_coefficients[i] * avg_NW
 

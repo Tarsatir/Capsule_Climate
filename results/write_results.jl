@@ -140,6 +140,7 @@ end
 
 function save_climate_data(
     energy_producer,
+    climate_struct,
     model::ABM
     )
 
@@ -158,7 +159,12 @@ function save_climate_data(
         IC_g = energy_producer.IC_g,
         A_d = energy_producer.Aᵀ_d,
         em_d = energy_producer.emᵀ_d,
-        c_d = energy_producer.c_d
+        c_d = energy_producer.c_d,
+
+        emissions_total = climate_struct.carbon_emissions,
+        emissions_kp = climate_struct.carbon_emissions_kp,
+        emissions_cp = climate_struct.carbon_emissions_cp,
+        emissions_ep = energy_producer.emissions
     )
     CSV.write("results/result_data/climate_and_energy.csv", df)
 end
