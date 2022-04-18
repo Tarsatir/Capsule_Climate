@@ -868,5 +868,5 @@ function update_emissions_cp!(
     actual_em::Float64
     )
 
-    cp.emissions = actual_em * cp.Q[end]
+    cp.emissions = actual_em * cp.EU
 end

@@ -402,8 +402,9 @@ function model_step!(
         model
     )
 
-    # Update climate parameters
+    # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate_struct, all_cp, all_kp, ep, t, model)
+    carbon_equilibrium_tempchange_cl!(climate_struct, t)
 
     # Remove bankrupt companies.
     @timeit to "kill bankr p" kill_all_bankrupt_p!(
@@ -459,7 +460,7 @@ end
 
 
 function run_simulation(;
-    T=400::Int,
+    T=1::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,

@@ -10,6 +10,7 @@
     NWₑ::Vector{Float64} = zeros(Float64, T)    # Stock of liquid assets over time
     pₑ::Vector{Float64} = zeros(Float64, T)     # Price of energy over time
     PCₑ::Vector{Float64} = zeros(Float64, T)    # Cost of generating Dₑ(t) units of energy over time
+    FU::Vector{Float64} = zeros(Float64, T)     # Number of fuel units used for production
     ICₑ::Vector{Float64} = zeros(Float64, T)    # Expansion and replacement investments over time
     RDₑ::Vector{Float64} = zeros(Float64, T)    # R&D expenditure over time
     IN_g::Vector{Float64} = zeros(Float64, T)   # R&D spending allocated to innovation in green tech
@@ -133,6 +134,7 @@ function produce_energy_ep!(
 
     # Choose pp to use in production
     choose_powerplants_ep!(ep, t)
+    compute_FU_ICₑ_ep!(ep, global_param.p_f, t)
     compute_emissions_ep!(ep, t)
 
     # Compute profits
@@ -170,6 +172,7 @@ function choose_powerplants_ep!(
             end
         end
 
+        ep.FU[t] = 
         ep.green_frac_prod[t] = length(ep.green_portfolio) / length(ep.infra_marg)
     end
 end
@@ -509,10 +512,20 @@ function compute_emissions_ep!(
 
         # Only use fraction of machines required, in order as sorted for costs
         for pp in ep.infra_marg
-            total_emissions += min(req_capacity / pp.capacity, 1.0) * pp.em * pp.capacity
+            total_emissions += min(req_capacity / pp.capacity, 1.0) * pp.em * pp.capacity / pp.Aᵀ
             req_capacity -= pp.capacity
         end
 
         ep.emissions[t] = total_emissions
     end
+end
+
+function compute_FU_ICₑ_ep!(
+    ep::EnergyProducer, 
+    t::Int,
+    p_f::Float64
+    )
+
+    p.FU[t] = sum(pp-> pp ∈ ep.dirty_portfolio ? pp.capacity / pp.Aᵀ : 0.0, ep.infra_marg)
+    p.ICₑ[t] = p_f * p.FU[t]
 end

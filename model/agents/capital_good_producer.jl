@@ -386,7 +386,7 @@ function update_emissions_kp!(
     kp::CapitalGoodProducer
     )
 
-    kp.emissions = kp.Q[end] * kp.B_EF
+    kp.emissions = kp.EU * kp.B_EF
 end
 
 
