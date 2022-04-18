@@ -17,6 +17,7 @@ using Dates
 include("../results/write_results.jl")
 include("helpers/custom_schedulers.jl")
 include("helpers/dist_matrix.jl")
+include("helpers/tmp_data_storage.jl")
 include("helpers/update.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
@@ -460,7 +461,7 @@ end
 
 
 function run_simulation(;
-    T=1::Int,
+    T=100::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,

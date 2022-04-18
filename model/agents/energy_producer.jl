@@ -512,8 +512,10 @@ function compute_emissions_ep!(
 
         # Only use fraction of machines required, in order as sorted for costs
         for pp in ep.infra_marg
-            total_emissions += min(req_capacity / pp.capacity, 1.0) * pp.em * pp.capacity / pp.Aᵀ
-            req_capacity -= pp.capacity
+            if pp ∈ ep.dirty_portfolio
+                total_emissions += min(req_capacity / pp.capacity, 1.0) * pp.em * pp.capacity / pp.Aᵀ
+                req_capacity -= pp.capacity
+            end
         end
 
         ep.emissions[t] = total_emissions
@@ -521,11 +523,11 @@ function compute_emissions_ep!(
 end
 
 function compute_FU_ICₑ_ep!(
-    ep::EnergyProducer, 
-    t::Int,
-    p_f::Float64
+    ep::EnergyProducer,
+    p_f::Float64, 
+    t::Int
     )
 
-    p.FU[t] = sum(pp-> pp ∈ ep.dirty_portfolio ? pp.capacity / pp.Aᵀ : 0.0, ep.infra_marg)
-    p.ICₑ[t] = p_f * p.FU[t]
+    ep.FU[t] = sum(pp-> pp ∈ ep.dirty_portfolio ? pp.capacity / pp.Aᵀ : 0.0, ep.infra_marg)
+    ep.ICₑ[t] = p_f * ep.FU[t]
 end

@@ -164,7 +164,16 @@ function save_climate_data(
         emissions_total = climate_struct.carbon_emissions,
         emissions_kp = climate_struct.carbon_emissions_kp,
         emissions_cp = climate_struct.carbon_emissions_cp,
-        emissions_ep = energy_producer.emissions
+        emissions_ep = energy_producer.emissions,
+
+        C_a = climate_struct.C_a,
+        C_m = climate_struct.C_m,
+        C_d = climate_struct.C_d,
+
+        NPP = climate_struct.NPP,
+
+        dT_m = climate_struct.δT_m,
+        dT_d = climate_struct.δT_d
     )
     CSV.write("results/result_data/climate_and_energy.csv", df)
 end

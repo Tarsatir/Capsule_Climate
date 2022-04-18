@@ -28,21 +28,25 @@ Parameters and parameter values all follow from table 9 in Lamperti et al. (2018
 
     # Temperature
     F_CO2::Vector{Float64} = zeros(Float64, T)                 # Radiative forcing over time
-    T_a::Vector{Float64} = fill(14.8, T)                       # Temperature in atmosphere
-    T_m::Vector{Float64} = zeros(Float64, T)                   # Temperature in mixed ocean layer
-    T_d::Vector{Float64} = zeros(Float64, T)                   # Temperature in deep ocean layer
-
-    # Initial levels
-    T_a_init::Float64 = 14.8         # Initial global mean surface temp
-    T_m_init::Float64 = 14.8         # Initial global mean surface temp
-    T_d_init::Float64 = 4.0          # Initial deep ocean layer temp
+    δT_a::Vector{Float64} = fill(14.8, T)                       # Temperature anomaly in atmosphere wrt pre-industrial
+    δT_m::Vector{Float64} = zeros(Float64, T)                   # Temperature anomaly in mixed ocean layer wrt pre-industrial
+    δT_d::Vector{Float64} = zeros(Float64, T)                   # Temperature anomaly in deep ocean layer wrt pre-industrial
 
     # Pre-industrial reference levels
-    T_0::Int = 14                    # Pre-industrial global mean surface temp
-    C_md_0::Int = 10_237             # Pre-industrial carbon in ocean
-    C_a_0::Int = 590                 # Pre-industrial carbon level
-    NPP_0::Int = 85_177              # Pre-industrial NPP
+    T_m_0::Int = 14                  # Pre-industrial global mean surface temp
+    T_d_0::Int = 4                   # Pre-industrial deep ocean temp                 
+    C_md_0::Int = 10_237e9           # Pre-industrial carbon in ocean
+    C_a_0::Int = 590e9               # Pre-industrial carbon level
+    NPP_0::Float64 = 85.177e9 / 4    # Pre-industrial NPP
     ξ_0::Float64 = 9.7               # Reference Revelle/buffer factor
+
+    # Initial levels
+    δT_a_init::Float64 = 14.8 - T_m_0 # Initial global mean surface temp anaomly wrt pre-industrial
+    δT_m_init::Float64 = 14.8 - T_m_0 # Initial global mean surface temp anaomly wrt pre-industrial
+    δT_d_init::Float64 = 4.8 - T_d_0  # Initial deep ocean layer temp anaomly wrt pre-industrial
+    C_a_init::Float64 = 830e9         # Initial carbon concentration in atmosphere
+    C_m_init::Float64 = 830e9         # Initial carbon concentration in mixed layer
+    C_d_init::Float64 = 10_010e9      # Initial carbon concentration in deep layer     
 
     # Parameters
     β_C::Float64 = 1                 # Response of primary production to carbon concentration
@@ -52,7 +56,7 @@ Parameters and parameter values all follow from table 9 in Lamperti et al. (2018
     δ::Float64 = 3.92                # Index response of buffer factor to carbon concentration
     σ::Float64 = 1.0                 # transfer rate of water from upper to lower ocean layer
 
-    d_eddy::Int = 1                  # Eddy diffusion coefficient
+    k_eddy::Int = 1                  # Eddy diffusion coefficient
     d_mixed::Int = 100               # Mixed ocean depth
     d_deep::Int = 3500               # Deep ocean depth
 
@@ -72,7 +76,7 @@ function collect_emissions_cl!(
     cl::Climate,
     all_cp::Vector{Int},
     all_kp::Vector{Int},
-    ep::EnergyProducer,
+    ep,
     t::Int,
     model::ABM
     )
@@ -94,9 +98,11 @@ function carbon_equilibrium_tempchange_cl!(
     t::Int
     )
 
+    g = 1e5
+
     # (1) Determine the atmospheric carbon amount without interactions with the
     # biospehere or oceans
-    C_a_t = t > 1 ? cl.C_a[t-1] + cl.emissions_total[t] : cl.C_a[1] + cl.emissions_total[t]
+    C_a_t = t > 1 ? cl.C_a[t-1] + cl.carbon_emissions[t] * g : cl.C_a_init + cl.carbon_emissions[t] * g
 
     # (2) Determine new capacity of oceans to update CO2
 
@@ -118,7 +124,7 @@ function carbon_equilibrium_tempchange_cl!(
     compute_C_m_cl!(cl, C_a_t, t)
 
     # (4) Compute the new carbon equilibria
-    compute_carbon_equilibria_cl!(cl, t)
+    compute_carbon_equilibria_cl!(cl, C_a_t, t)
 
     # (5)-(6) Compute new radiative forcing and new temperature
     compute_F_CO2_cl!(cl, t)
@@ -136,7 +142,15 @@ function compute_NPP_cl!(
     t::Int
     )
 
-    cl.NPP[t] = cl.NPP_0 * (1 + cl.β_C * log(C_a_t / cl.C_a_0)) * (1 - β_TC * cl.T_m[t-1])
+    # println(C_a_t)
+    # println(cl.C_a_init)
+    # println(log(C_a_t / cl.C_a_init))
+
+    if t > 1
+        cl.NPP[t] = cl.NPP_0 * (1 + cl.β_C * log(C_a_t / cl.C_a_init)) * (1 - cl.β_TC * cl.δT_m[t-1])
+    else
+        cl.NPP[t] = cl.NPP_0 * (1 + cl.β_C * log(C_a_t / cl.C_a_init)) * (1 - cl.β_TC * cl.δT_m_init)
+    end
 end
 
 
@@ -149,7 +163,7 @@ function compute_Revelle_cl!(
     t::Int
     )
 
-    cl.ξ[t] = t > 1 ? cl.ξ_0 + cl.δ * log(cl.C_a[t-1] / cl.C_a[1]) : cl.ξ_0
+    cl.ξ[t] = t > 1 ? cl.ξ_0 + cl.δ * log(cl.C_a[t-1] / cl.C_a_init) : cl.ξ_0
 end
 
 
@@ -162,7 +176,7 @@ function compute_C_m_star_cl!(
     t::Int
     )
 
-    cl.C_m_star[t] = t > 1 ? cl.C_m[1] * (1 - cl.β_T * cl.T_m[t-1]) : cl.C_m[1]
+    cl.C_m_star[t] = t > 1 ? cl.C_m_init * (1 - cl.β_T * cl.δT_m[t-1]) : cl.C_m_init
 end
 
 
@@ -176,8 +190,8 @@ function compute_C_m_cl!(
     t::Int
     )
 
-    cl.C_m[t] = cl.C_m_star[t] * (C_a_t / cl.C_a[1]) ^ (1 / cl.ξ[t])
-    cl.ΔC_am[t] = t > 1 ? cl.C_m[t-1] - cl.C_m[t] : 0.0
+    cl.C_m[t] = cl.C_m_star[t] * (C_a_t / cl.C_a_init) ^ (1 / cl.ξ[t])
+    cl.ΔC_am[t] = t > 1 ? cl.C_m[t] - cl.C_m[t-1] : cl.C_m[t] - cl.C_m_init
 end
 
 
@@ -190,7 +204,11 @@ function compute_ΔC_md_cl!(
     t::Int
     )
 
-    cl.ΔC_md[t] = cl.k_eddy * ((cl.C_m[t-1] / cl.d_m) - (cl.C_d[t-1] / cl.d_d)) / mean(cl.d_d, cl.d_m)
+    if t > 1
+        cl.ΔC_md[t] = cl.k_eddy * (cl.C_m[t-1] / cl.d_mixed - cl.C_d[t-1] / cl.d_deep) / mean((cl.d_deep, cl.d_mixed))
+    else
+        cl.ΔC_md[t] = cl.k_eddy * (cl.C_m_init / cl.d_mixed - cl.C_d_init / cl.d_deep) / mean((cl.d_deep, cl.d_mixed))
+    end
 end
 
 
@@ -199,16 +217,18 @@ Computes the new carbon dioxide equilibria in the atmosphere, mixed layer and de
 """
 function compute_carbon_equilibria_cl!(
     cl::Climate, 
+    C_a_t::Float64,
     t::Int
     )
 
     # Compute how much was taken up by biospehere and oceans
     carbon_uptaken = cl.NPP[t] + cl.ΔC_am[t]
-    cl.C_a[t] = t > 1 ? cl.C_a[t-1] + carbon_uptaken : cl.C_a[1] + carbon_uptaken
+    # carbon_uptaken = 0
+    cl.C_a[t] = t > 1 ? C_a_t - carbon_uptaken : C_a_t - carbon_uptaken
 
     # Exchange carbon between mixed and deep layers
     cl.C_m[t] -= cl.ΔC_md[t]
-    cl.C_d[t] += cl.ΔC_md[t]
+    cl.C_d[t] = t > 1 ? cl.C_d[t-1] + cl.ΔC_md[t] : cl.C_d_init + cl.ΔC_md[t]
 end
 
 
@@ -221,7 +241,7 @@ function compute_F_CO2_cl!(
     t::Int
     )
 
-    cl.F_CO2[t] = cl.γ * log(cl.C_a[t] / cl.C_a_0)
+    cl.F_CO2[t] = cl.γ * log(cl.C_a[t] / cl.C_a_init)
 end
 
 
@@ -234,13 +254,13 @@ function compute_new_temp_cl!(
     t::Int
     )
 
-    if t > 0
-        cl.T_m[t] = cl.T_m[t-1] + cl.c1 * (cl.F_CO2[t] - cl.λ * cl.T_m[t-1] - 
-                    cl.c3 * (cl.T_m[t-1] - cl.T_d[t-1]))
-        cl.T_d[t] = cl.T_d[t-1] + cl.c4 * (cl.σ * (cl.T_m[t-1] - cl.T_d[t-1]))
+    if t > 1
+        cl.δT_m[t] = cl.δT_m[t-1] + cl.c1 * (cl.F_CO2[t] - cl.λ * cl.δT_m[t-1] - 
+                    cl.c3 * (cl.δT_m[t-1] - cl.δT_d[t-1]))
+        cl.δT_d[t] = cl.δT_d[t-1] + cl.c4 * (cl.σ * (cl.δT_m[t-1] - cl.δT_d[t-1]))
     else
-        cl.T_m[t] = cl.T_m_init + cl.c1 * (cl.F_CO2[t] - cl.λ * cl.T_m_init - 
-                    cl.c3 * (cl.T_m_init - cl.T_d_init))
-        cl.T_d[t] = cl.T_d_init + cl.c4 * (cl.σ * (cl.T_m_init - cl.T_d_init))
+        cl.δT_m[t] = cl.δT_m_init + cl.c1 * (cl.F_CO2[t] - cl.λ * cl.δT_m_init - 
+                    cl.c3 * (cl.δT_m_init - cl.δT_d_init))
+        cl.δT_d[t] = cl.δT_d_init + cl.c4 * (cl.σ * (cl.δT_m_init - cl.δT_d_init))
     end
 end
