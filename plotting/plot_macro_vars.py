@@ -43,6 +43,7 @@ def plot_macro_vars(df):
 
     # Plot wage levels
     real_w_avg = 100 * df.w_avg / df.CPI
+    real_w_avg = 100 * df.w_avg
     ax[1,1].plot(range(len(real_w_avg)), real_w_avg, color='green', label='$\\bar{w}$')
     # ax[1,1].fill_between(range(len(df.w_avg)), df.w_avg + df.w_std, df.w_avg - df.w_std, 
     #                  color='green', alpha=0.4)
@@ -67,7 +68,8 @@ def plot_macro_vars(df):
     ax[2,0].set_title('$\Delta L^d$')
     ax[2,0].legend()
 
-    real_I_avg = 100 * df.I_avg / df.CPI
+    # real_I_avg = 100 * df.I_avg / df.CPI
+    real_I_avg = 100 * df.I_avg
     real_I_std = 100 * df.I_std / df.I_std
 
     ax[2,1].plot(range(len(real_I_avg)), real_I_avg, color='purple')
@@ -78,7 +80,8 @@ def plot_macro_vars(df):
                          alpha=0.4)
     ax[2,1].set_title('Real income of households')
 
-    ax[3,0].plot(range(len(df.M)), df.M + df.M_if, label='total', zorder=10, linestyle='dashed')
+    ax[3,0].plot(range(len(df.M)), df.M + df.M_if - df.debt_tot, 
+                 label='total', zorder=5, linestyle='dashed')
     ax[3,0].plot(range(len(df.M)), df.M_hh, label='hh')
     ax[3,0].plot(range(len(df.M)), df.M_cp, label='cp')
     ax[3,0].plot(range(len(df.M)), df.M_kp, label='kp')
@@ -401,12 +404,12 @@ if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    # plot_macro_vars(df_macro)
-    # plot_cons_vars(df_macro)
+    plot_macro_vars(df_macro)
+    plot_cons_vars(df_macro)
 
-    # plot_income_dist()
-    # plot_inequality(df_macro)
-    # plot_sales_dist()
+    plot_income_dist()
+    plot_inequality(df_macro)
+    plot_sales_dist()
 
     df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
     # plot_energy(df_climate_energy, df_macro)

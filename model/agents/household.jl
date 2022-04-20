@@ -15,49 +15,16 @@
     I::Vector{Float64} = [100]                  # hist income
     Iᵀ::Vector{Float64} = [100] # change according to tax rate      # hist taxed income
     s::Float64 = 0.0                            # savings rate
-    W::Vector{Float64} = [50]                   # wealth or cash on hand
+    W::Float64 = 50                   # wealth or cash on hand
 
     # Consumption variables
-    C::Vector{Float64} = Vector{Float64}()     # budget
+    C::Float64 = 0.0                           # budget
     bp::Vector{Int} = Vector{Int}()            # connected cp basic goods
     lp::Vector{Int} = Vector{Int}()            # connected cp luxury goods
     unsat_dem::Vector = Vector()               # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
     c_L::Float64 = 0.5                         # share of income used to buy luxury goods
 end
-
-# function initialize_hh(
-#     id::Int,
-#     )::Household
-
-#     hh = Household(
-#         id,                     # global id
-
-#         false,                  # bool: employed
-#         0,                      # id of employer
-#         100,                    # L: labor units
-#         ones(4),                # w: wage
-#         1.0,                    # wˢ: satisfying wage
-#         1.0,                    # wʳ: requested wage
-#         0,                      # T_unemp: time periods unemployed
-
-#         [100],                  # I: hist income
-#         [],                     # Iᵀ: hist taxed income
-#         # [10],                   # S: total savings
-#         0,                      # s: savings rate
-#         [50],                  # W: wealth or cash on hand
-#         # [100],                  # Wʳ: real wealth or cash on hand
-
-#         [],                     # C: budget
-#         # 0.0,                    # N_goods: number of goods bought
-#         Vector{Int}(),          # all_cp_B: connected cp basic goods
-#         Vector{Int}(),          # all_cp_L: connected cp luxury goods
-#         Vector(),
-#         0,                      # P̄: weighted average price of bp
-#         0.5,                    # c_L: share of budget used to buy luxury goods
-#     )
-#     return hh
-# end
 
 
 """
@@ -137,18 +104,18 @@ function compute_consumption_budget_hh!(
     all_W_hh::Vector{Float64}
     )
 
-    if hh.W[end] > 0 && hh.Iᵀ[end] > 0
-        # percentile = stats.percentileofscore(all_W_hh, hh.W[end])
+    if hh.W > 0 && hh.Iᵀ[end] > 0
+        # percentile = stats.percentileofscore(all_W_hh, hh.W)
         # percentile = 50
         # frac_cons = percentile^α_cp / percentile
         # println("$frac_cons, $percentile")
-        C = min(hh.P̄[end] * (hh.W[end] / hh.P̄[end])^α_cp, hh.W[end])
+        hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
         # C = hh.Iᵀ[end]
-        # C = frac_cons * hh.W[end] / 100
-        s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
+        # C = frac_cons * hh.W / 100
+        hh.s = (hh.Iᵀ[end] - hh.C) / hh.Iᵀ[end]
     else
-        C = 0
-        s = 0
+        hh.C = 0.0
+        hh.s = 0.0
     end
 
     # a = 50
@@ -159,11 +126,10 @@ function compute_consumption_budget_hh!(
 
     # s = 1 / (1 + exp((hh.Iᵀ[end] / hh.P̄[end]) / a - b))
     # cons_frac = ymin_total + s * (ymax_total - ymin_total)
-    # C = max(min(hh.W[end], cons_frac * hh.Iᵀ[end]), 0)
+    # C = max(min(hh.W, cons_frac * hh.Iᵀ[end]), 0)
     # s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
 
-    push!(hh.C, C)
-    hh.s = s
+    # push!(hh.C, C)
 end
 
 
@@ -252,10 +218,12 @@ function receive_ordered_goods_hh!(
     )
 
     # Decrease wealth with total price paid
-    hh.W[end] -= tot_price
+    hh.W -= tot_price
 
     # If full demand not fulfilled, add cp to unsatisfied demand
-    if share_fulfilled < 1.0
+    # println(ceil(share_fulfilled; digits=3))
+    if ceil(share_fulfilled; digits=3) < 1.0
+        println(share_fulfilled)
         push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
     end
 end
@@ -280,7 +248,6 @@ function update_sat_req_wage_hh!(
     # Try to use adaptive wˢ
     ωwˢ = 0.8
     hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ[end] / hh.L
-    # hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.w[end]
 
     if hh.employed
         hh.wʳ = hh.w[end] * (1 + ϵ)
@@ -297,18 +264,10 @@ function get_income_hh!(
     hh::Household, 
     amount::Float64
     )
-    # if isnan(amount)
-    #     println("yeet ", hh.employer_id)
-    # end
-    # println(amount)
     push!(hh.I, amount)
     if hh.employed
-        # hh.w[1:3] = hh.w[2:4]
         shift_and_append!(hh.w, hh.w[end])
     end
-    # println("1 ", amount, " ", hh.W[end])
-    # push!(hh.W, amount + hh.W[end])
-    # println("2 ", amount, " ", hh.W[end])
 end
 
 
@@ -319,8 +278,7 @@ function update_wealth_hh!(
     hh::Household
     )
 
-    W = hh.W[end] + hh.Iᵀ[end]
-    push!(hh.W, W)
+    hh.W += hh.Iᵀ[end]
 end
 
 
@@ -349,8 +307,6 @@ function set_employed_hh!(
     hh.employer_id = employer_id
     hh.T_unemp = 0
     shift_and_append!(hh.w, wᴼ)
-    # hh.w[1:3] = hh.w[2:4]
-    # hh.w[4] = wᴼ
 end
 
 
@@ -365,8 +321,6 @@ function change_employer_hh!(
 
     hh.employer_id = employer_id
     shift_and_append!(hh.w, wᴼ)
-    # hh.w[1:3] = hh.w[2:4]
-    # hh.w[4] = wᴼ
 end
 
 

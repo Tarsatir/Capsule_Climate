@@ -194,7 +194,7 @@ function pay_dividends_ep!(
     dividends = ep.NWₑ[t] - req_NW
 
     # If excess dividends, pay out to index fund
-    if dividends > 0
+    if dividends > 0 && t > 4
         ep.NWₑ[t] = req_NW
         receive_dividends_if!(indexfund_struct, dividends)
     end

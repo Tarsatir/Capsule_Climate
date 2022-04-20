@@ -109,7 +109,8 @@ function initialize_model(
         # n_machines_init = 50  #TODO: put this in parameters
         
         machines = initialize_machine_stock(global_param.freq_per_machine, 
-                        init_param.n_machines_init; 
+                        init_param.n_machines_init,
+                        η=global_param.η; 
                         A_LP = init_param.A_LP_0,
                         A_EE = init_param.A_EE_0,
                         A_EF = init_param.A_EF_0
@@ -181,7 +182,7 @@ function initialize_model(
     )
 
     close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
-                         indexfund_struct, model)
+                         indexfund_struct, 0, model)
 
     return model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct
 end
@@ -328,17 +329,17 @@ function model_step!(
 
     # Consumer market process
     @timeit to "consumermarket" consumermarket_process!(
-        all_hh,
-        all_cp,
-        all_bp,
-        all_lp,
-        all_W_hh,
-        gov_struct,
-        global_param,
-        t,
-        model,
-        to
-    )
+                                    all_hh,
+                                    all_cp,
+                                    all_bp,
+                                    all_lp,
+                                    all_W_hh,
+                                    gov_struct,
+                                    global_param,
+                                    t,
+                                    model,
+                                    to
+                                )
 
     # Households decide to switch suppliers based on satisfied demand and prices
     # for hh_id in all_hh
@@ -367,8 +368,9 @@ function model_step!(
     end 
 
     # Close balances of firms, if insolvent, liquidate firms
+    println("YEET")
     @timeit to "close balance" close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
-                                    indexfund_struct, model)
+                                    indexfund_struct, t, model)
 
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(gov_struct, all_p, t, model)
@@ -461,7 +463,7 @@ end
 
 
 function run_simulation(;
-    T=100::Int,
+    T=400::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
@@ -469,12 +471,13 @@ function run_simulation(;
 
     to = TimerOutput()
 
+    println("Init Model:")
     @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
-        if t % 100 == 0
-            println("Step $t")
-        end
+        # if t % 100 == 0
+        println("Step $t")
+        # end
 
         @timeit to "step" model_step!(
                                 t,

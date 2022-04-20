@@ -88,6 +88,9 @@ function initialize_cp(
         w̄ = fill(w, 3),
         f = fill(f, 3)
     )
+
+    cp.balance.NW = 500
+    cp.balance.EQ = 500
     return cp
 end
 
@@ -578,9 +581,10 @@ function replace_bankrupt_cp!(
     end
 
     # Compute share of investments that can be paid from the investment fund
-    req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps * global_param.freq_per_machine))
+    req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps .* global_param.freq_per_machine))
     all_req_NW = sum(req_NW)
     frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
+    println("frac cp: ", frac_NW_if)
 
     for (i,cp_id) in enumerate(Iterators.flatten((bankrupt_bp, bankrupt_lp)))
 

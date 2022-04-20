@@ -22,10 +22,14 @@ function close_balance_all_p!(
     global_param::GlobalParam,
     τᴾ::Float64,
     indexfund_struct,
+    t::Int,
     model::ABM
     )
 
     total_dividends = 0.0
+
+    all_max_NW = 0
+    all_NW = 0
 
     for p_id in all_p
 
@@ -55,6 +59,10 @@ function close_balance_all_p!(
         max_NW = global_param.max_NW_ratio * (model[p_id].curracc.TCL + model[p_id].curracc.TCI + 
                       model[p_id].curracc.int_debt + model[p_id].debt_installments[2])
 
+        if typeof(model[p_id]) == ConsumerGoodProducer
+            all_max_NW += max_NW
+        end
+
         # If not enough liquid assets available, borrow additional funds.
         if model[p_id].balance.NW < 0
             # max_add_debt = max(model[p_id].curracc.S * Λ - model[p_id].balance.debt, 0)
@@ -64,10 +72,11 @@ function close_balance_all_p!(
             borrow_funds_p!(model[p_id], -model[p_id].balance.NW, global_param.b)
             model[p_id].balance.NW = 0
         elseif (!check_if_bankrupt_p!(model[p_id],  global_param.t_wait) 
-                && model[p_id].balance.NW - model[p_id].balance.debt > max_NW)
+                && (model[p_id].balance.NW > max_NW) && (t > global_param.t_wait))
+        # elseif (model[p_id].balance.NW > max_NW && t > 1)
             # indexfund_struct.Assets += (model[p_id].balance.NW - max_NW)
-            total_dividends += model[p_id].balance.NW - model[p_id].balance.debt - max_NW
-            model[p_id].balance.NW = max_NW + model[p_id].balance.debt
+            total_dividends += model[p_id].balance.NW - max_NW
+            model[p_id].balance.NW = max_NW
         end
 
         # Compute Equity
@@ -76,13 +85,20 @@ function close_balance_all_p!(
 
         # If NW is negative, maximum debt is reached, and EQ is set to
         # a negative value so the firm is declared bankrupt
-        if model[p_id].balance.debt > global_param.Λ * model[p_id].curracc.S
-            model[p_id].balance.EQ = -1.0
-            model[p_id].f[end] = 0.0
+        # if model[p_id].balance.debt > global_param.Λ * model[p_id].curracc.S
+        #     model[p_id].balance.EQ = -1.0
+        #     model[p_id].f[end] = 0.0
+        # end
+
+        if typeof(model[p_id]) == ConsumerGoodProducer
+            all_NW += model[p_id].balance.NW
         end
     end
 
-    # println("total dividends: ", total_dividends)
+    println("avg max NW: ", all_max_NW / 200, ", all max NW: ", all_max_NW)
+    println("avg NW stock: ", all_NW / 200, ", all NW: ", all_NW)
+
+    println("total dividends: ", total_dividends)
     receive_dividends_if!(indexfund_struct, total_dividends)
 end
 

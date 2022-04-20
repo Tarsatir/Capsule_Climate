@@ -286,7 +286,7 @@ function compute_M!(
     )
 
     # Wealth of households
-    macro_struct.M_hh[t] = sum(hh_id -> model[hh_id].W[end], all_hh)
+    macro_struct.M_hh[t] = sum(hh_id -> model[hh_id].W, all_hh)
 
     # Liquid assets of cp_id
     macro_struct.M_cp[t] = sum(cp_id -> model[cp_id].balance.NW, all_cp)
@@ -299,6 +299,7 @@ function compute_M!(
 
     # Money in investment fund
     macro_struct.M_if[t] = indexfund_struct.Assets
+    println("if assets: ", indexfund_struct.Assets)
 
     # Total amount of money stocks
     macro_struct.M[t] = macro_struct.M_hh[t] + macro_struct.M_cp[t] + macro_struct.M_kp[t] + macro_struct.M_gov[t]
@@ -441,7 +442,7 @@ function compute_GINI(
     macro_struct.GINI_I[t] = sum(all_I_absdiff) / (2 * length(all_hh)^2 * macro_struct.Ī_avg[t])
 
     # Compute GINI for wealth
-    all_W = map(hh_id -> model[hh_id].W[end], all_hh)
+    all_W = map(hh_id -> model[hh_id].W, all_hh)
     all_W_absdiff = zeros(length(all_W))
 
     for (i, W1) in enumerate(all_W)

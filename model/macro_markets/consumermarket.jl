@@ -11,6 +11,10 @@ function consumermarket_process!(
     to
     )
 
+    # Fill in weights of prices
+    # fill_in_weights_cm!(cm_dat, all_cp, model)
+
+
     # Make a dictionary with all cp and the inventory they own
     cp_inventories = Dict(cp_id => model[cp_id].p[end] * model[cp_id].N_goods for cp_id in all_cp)
 
@@ -35,8 +39,8 @@ function consumermarket_process!(
         set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
 
         # Divide budget by chosen category
-        C_b = model[hh_id].C[end] * (1 - model[hh_id].c_L)
-        C_l = model[hh_id].C[end] - C_b
+        C_b = model[hh_id].C * (1 - model[hh_id].c_L)
+        C_l = model[hh_id].C - C_b
 
         @timeit to "bp orders" bp_orders, cp_inventories, bp_with_inventory = place_orders_hh!(model[hh_id].bp, C_b, cp_inventories, 
                                                          bp_with_inventory, global_param, model, to)
@@ -123,4 +127,15 @@ function update_marketshares_cm!(
         f = cp.D[end] / total_D
         push!(model[cp_id].f, f)
     end
+end
+
+
+function fill_in_weights_cm!(
+    cm_dat::CMData, 
+    all_cp::Vector{Int}, 
+    all_hh::Vector{Int},
+    model::ABM
+    )
+
+    # First fill in a
 end

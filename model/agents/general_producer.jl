@@ -164,7 +164,7 @@ function payback_debt_p!(
 
     # Shift remaining debt amounts.
     for i in 1:b
-        p.debt_installments[i] = p.debt_installments[i + 1]
+        p.debt_installments[i] = p.debt_installments[i+1]
     end
     p.debt_installments[b+1] = 0.0
 
@@ -297,7 +297,8 @@ function check_if_bankrupt_p!(
     t_wait::Int
     )::Bool
 
-    if p.age > t_wait && (p.f[end] <= 0.0001 || p.balance.EQ < 0)
+    # if p.age > t_wait && (p.f[end] <= 0.0001 || p.balance.EQ < 0)
+    if p.age > t_wait && p.f[end] <= 0.0001
         return true
     end
     return false

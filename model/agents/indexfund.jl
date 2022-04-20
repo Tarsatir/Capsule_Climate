@@ -23,7 +23,7 @@ function receive_dividends_if!(
     indexfund_struct::IndexFund,
     dividends::Float64
     )
-    
+    println("dividends yeet: ", dividends)
     indexfund_struct.Assets += dividends
 end
 
@@ -37,7 +37,7 @@ function decide_investments_if!(
     t::Int
     )::Float64
 
-    frac_NW_if = max(0, min(indexfund_struct.Assets / all_req_NW, 1))
+    frac_NW_if = indexfund_struct.Assets > 0 ? min(indexfund_struct.Assets / all_req_NW, 1.0) : 0.0
     indexfund_struct.funds_inv[t] = all_req_NW * frac_NW_if
     indexfund_struct.Assets -= indexfund_struct.funds_inv[t]
     return frac_NW_if
@@ -65,14 +65,14 @@ function distribute_dividends_if!(
     )
 
     # Distribute proportional to wealth
-    total_wealth = sum(hh_id -> model[hh_id].W[end], all_hh)
+    total_wealth = sum(hh_id -> model[hh_id].W, all_hh)
 
     for hh_id in all_hh
 
-        dividend_share = (model[hh_id].W[end] / total_wealth) * indexfund_struct.Assets
+        dividend_share = (model[hh_id].W / total_wealth) * indexfund_struct.Assets
 
         # TODO: make separate function in hh for this
-        model[hh_id].W[end] += dividend_share
+        model[hh_id].W += dividend_share
     end
 
     # Reset assets back to zero
