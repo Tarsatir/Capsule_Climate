@@ -45,7 +45,7 @@ function close_balance_all_p!(
         writeoffs = update_K_p!(model[p_id], global_param.η)
 
         # Compute profits
-        compute_Π_p!(model[p_id], writeoffs)
+        compute_Π_p!(model[p_id]; writeoffs)
 
         # Update liquid assets NW
         update_NW_p!(model[p_id], τᴾ)
@@ -114,14 +114,15 @@ function update_K_p!(
     # Only cp have capital stock
     if typeof(p) == ConsumerGoodProducer
         # Loop over machines, add current value of machines
-        K = 0
-        writeoffs = 0
+        K = 0.0
+        writeoffs = 0.0
         for machine in p.Ξ
             newval = machine.p * machine.freq
-            K += max((η - machine.age) / η, 0) * newval
-            if machine.age <= η
-                writeoffs += (1 / η) * newval
-            end
+            K += newval
+            # K += max((η - machine.age) / η, 0) * newval
+            # if machine.age <= η
+            #     writeoffs += (1 / η) * newval
+            # end
         end
 
         p.balance.K = K
@@ -182,7 +183,7 @@ end
 Computes profit of cp in previous time period
 """
 function compute_Π_p!(
-    p::AbstractAgent,
+    p::AbstractAgent;
     writeoffs=0.0::Float64
     )
  

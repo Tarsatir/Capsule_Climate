@@ -36,6 +36,7 @@ function save_macro_data(macro_struct)
         M_hh=macro_struct.M_hh,
         M_cp=macro_struct.M_cp,
         M_kp=macro_struct.M_kp,
+        M_ep=macro_struct.M_ep,
         M_gov=macro_struct.M_gov,
         M_if=macro_struct.M_if,
 
@@ -112,7 +113,7 @@ function save_final_dist(
     )
 
     df = DataFrame(
-            all_I = map(hh_id -> model[hh_id].I[end], all_hh),
+            all_I = map(hh_id -> model[hh_id].I, all_hh),
             all_w = map(hh_id -> model[hh_id].w[end], all_hh),
             all_W = map(hh_id -> model[hh_id].W[end], all_hh),
     )

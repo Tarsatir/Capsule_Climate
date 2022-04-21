@@ -80,13 +80,15 @@ def plot_macro_vars(df):
                          alpha=0.4)
     ax[2,1].set_title('Real income of households')
 
-    ax[3,0].plot(range(len(df.M)), df.M + df.M_if - df.debt_tot, 
+    ax[3,0].plot(range(len(df.M)), df.M - df.debt_tot, 
                  label='total', zorder=5, linestyle='dashed')
     ax[3,0].plot(range(len(df.M)), df.M_hh, label='hh')
     ax[3,0].plot(range(len(df.M)), df.M_cp, label='cp')
     ax[3,0].plot(range(len(df.M)), df.M_kp, label='kp')
+    ax[3,0].plot(range(len(df.M)), df.M_ep, label='ep')
     ax[3,0].plot(range(len(df.M)), df.M_gov, label='gov')
     ax[3,0].plot(range(len(df.M)), df.debt_tot, label='total debts')
+    ax[3,0].hlines(df.M[0], 0, len(df.M), linestyle='dotted', alpha=0.5, color='black')
     # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_cp.to_numpy()), label='unpaid cp debt')
     # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_kp.to_numpy()), label='unpaid kp debt')
     ax[3,0].plot(range(len(df.M)), df.M_if, label='if')
@@ -412,5 +414,5 @@ if __name__=="__main__":
     plot_sales_dist()
 
     df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
-    # plot_energy(df_climate_energy, df_macro)
+    plot_energy(df_climate_energy, df_macro)
     plot_climate(df_climate_energy, df_macro)

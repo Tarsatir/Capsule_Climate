@@ -59,19 +59,17 @@ Loop over workers and pay out wage.
 """
 function pay_workers_p!(
     p::AbstractAgent,
-    # t::Int,
     model::ABM
     )
 
-    total_wage = 0
+    total_wage = 0.0
     for hh_id in p.employees
-        hh = model[hh_id]
-        wage = hh.w[end] * hh.L
+        wage = model[hh_id].w[end] * model[hh_id].L
         total_wage += wage
-        get_income_hh!(hh, wage)
+        get_income_hh!(model[hh_id], wage)
     end
     
-    p.curracc.TCL = total_wage
+    p.curracc.TCL += total_wage
 end
 
 
@@ -139,9 +137,10 @@ function borrow_funds_p!(
     )
 
     # Add debt as repayments for coming periods
-    for i in 2:b+1
-        p.debt_installments[i] += amount / b
-    end
+    # for i in 2:b+1
+    #     p.debt_installments[i] += amount / b
+    # end
+    p.debt_installments[2:b+1] .+= amount / b
 
     # Add received funds as incoming cashflow
     p.curracc.add_debt += amount
@@ -157,15 +156,11 @@ function payback_debt_p!(
     b::Int64
     )
 
-    # println("debt: $(p.balance.debt), debt installments: $(p.debt_installments)")
-
     # Add repaid debt as outgoing cashflow
-    p.curracc.rep_debt += p.debt_installments[1]
+    p.curracc.rep_debt = p.debt_installments[1]
 
-    # Shift remaining debt amounts.
-    for i in 1:b
-        p.debt_installments[i] = p.debt_installments[i+1]
-    end
+    # Shift remaining debt amounts
+    p.debt_installments[1:b] .= p.debt_installments[2:b+1]
     p.debt_installments[b+1] = 0.0
 
     p.balance.debt = sum(p.debt_installments)
@@ -283,9 +278,6 @@ function kill_all_bankrupt_p!(
     end
 
     deduct_unpaid_net_debts_if!(indexfund_struct, total_unpaid_net_debt)
-    # println("All outflow: $(total_unpaid_net_debt)")
-    # println("Age bankrupt cp: $(length(ages) > 0 ? mean(ages) : "yeet")")
-    # println("Prod bankrupt cp: $(length(Qs) > 0 ? mean(Qs) : "yeet")")
 end
 
 

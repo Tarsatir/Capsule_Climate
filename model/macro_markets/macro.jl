@@ -25,6 +25,7 @@
     M_hh::Vector{Float64} = zeros(Float64, T)               # total amount of money at hh
     M_cp::Vector{Float64} = zeros(Float64, T)               # total amount of money at cp
     M_kp::Vector{Float64} = zeros(Float64, T)               # total amount of money at kp
+    M_ep::Vector{Float64} = zeros(Float64, T)               # total amount of money at ep
     M_gov::Vector{Float64} = zeros(Float64, T)              # total amount of money at gov
     M_if::Vector{Float64}  = zeros(Float64, T)              # total amount of money at if
 
@@ -118,6 +119,7 @@ function update_macro_timeseries(
     all_bp::Vector{Int},
     all_lp::Vector{Int},
     all_p::Vector{Int},
+    ep,
     bankrupt_bp::Vector{Int},
     bankrupt_lp::Vector{Int},
     bankrupt_kp::Vector{Int},
@@ -150,7 +152,7 @@ function update_macro_timeseries(
     macro_struct.Exp_UB[t] = gov_struct.curracc.Exp_UB[t]
 
     # Compute total amount in system
-    compute_M!(all_hh, all_cp, all_kp, gov_struct, indexfund_struct, 
+    compute_M!(all_hh, all_cp, all_kp, ep, gov_struct, indexfund_struct, 
                macro_struct, t, model)
 
     # Compute average savings rates
@@ -278,6 +280,7 @@ function compute_M!(
     all_hh::Vector{Int},
     all_cp::Vector{Int},
     all_kp::Vector{Int},
+    ep,
     gov_struct::Government,
     indexfund_struct::IndexFund,
     macro_struct::MacroEconomy,
@@ -294,15 +297,18 @@ function compute_M!(
     # Liquid assets of kp
     macro_struct.M_kp[t] = sum(kp_id -> model[kp_id].balance.NW, all_kp)
 
+    # Liquid assets of ep
+    macro_struct.M_ep[t] = ep.NWₑ[t]
+
     # Money owned by government
     macro_struct.M_gov[t] = gov_struct.MS
 
     # Money in investment fund
     macro_struct.M_if[t] = indexfund_struct.Assets
-    println("if assets: ", indexfund_struct.Assets)
 
     # Total amount of money stocks
-    macro_struct.M[t] = macro_struct.M_hh[t] + macro_struct.M_cp[t] + macro_struct.M_kp[t] + macro_struct.M_gov[t]
+    macro_struct.M[t] = (macro_struct.M_hh[t] + macro_struct.M_cp[t] + macro_struct.M_kp[t] +
+                         macro_struct.M_ep[t] + macro_struct.M_gov[t] + macro_struct.M_if[t])
 end
 
 

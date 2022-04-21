@@ -279,7 +279,7 @@ function set_RD_kp!(
 
     # TODO: now based on prev profit to avoid large losses. If kept, describe!
 
-    kp.curracc.TCI += kp.RD
+    # kp.curracc.TCI += kp.RD
 
     # Decide fractions innovation (IN) and immitation (IM), 
     #   (Dosi et al, 2010; eq. 3.5)
@@ -372,6 +372,9 @@ function produce_goods_kp!(
 end
 
 
+"""
+Updates the energy use (EU) and total cost of energy (TCE) of kp
+"""
 function update_EU_TCE_kp!(
     kp::CapitalGoodProducer, 
     pₑ::Float64
@@ -393,7 +396,7 @@ end
 """
 Sends orders from production queue to cp.
 """
-function send_orders_kp!(
+function send_ordered_machines_kp!(
     kp::CapitalGoodProducer,
     global_param::GlobalParam,
     model::ABM

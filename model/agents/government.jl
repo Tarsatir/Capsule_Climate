@@ -11,29 +11,6 @@
 end
 
 
-# function initialize_government()
-#     gov_struct = Government(
-#         70,                          # UB: unemployment benefits
-#         0.35,                           # τᴵ: income tax
-#         0.0,                            # τˢ: sales tax
-#         0.35,                           # τᴾ: profit tax
-#         0.0,                            # τᴱ: energy tax
-#         0.0,                            # τᶜ: emission tax
-#         0.0,                            # MS: money stock owned by government
-#         GovCurrentAccount(              # curr_account: current account of government spending
-#             [],
-#             [],
-#             [],
-#             [],
-#             [],
-#             [],
-#             []
-#         )  
-#     )
-#     return gov_struct
-# end
-
-
 """
 Loops over all unemployed households and pays UB
 """
@@ -69,12 +46,11 @@ function levy_income_tax_gov!(
 
     total_τᴵ = 0
     for hh_id in all_hh
-        total_τᴵ += model[hh_id].I[end] * gov_struct.τᴵ
-        push!(model[hh_id].Iᵀ, model[hh_id].I[end] * (1 - gov_struct.τᴵ))
+        total_τᴵ += model[hh_id].I * gov_struct.τᴵ
+        model[hh_id].Iᵀ = model[hh_id].I * (1 - gov_struct.τᴵ)
     end
 
     # add total income tax to government current account
-    # push!(gov_struct.curracc.Rev_τᴵ, total_τᴵ)
     gov_struct.curracc.Rev_τᴵ[t] = total_τᴵ
 end
 
@@ -95,11 +71,13 @@ function levy_profit_tax_gov!(
         # Only levy tax when profit is positive
         if p.Π[end] > 0
             total_τᴾ += p.Π[end] * gov_struct.τᴾ
-            p.Π[end] = p.Π[end] * (1 - gov_struct.τᴾ)
+            # p.Π[end] = p.Π[end] * (1 - gov_struct.τᴾ)
+            shift_and_append!(p.Πᵀ, (1 - gov_struct.τᴾ))
+        else
+            shift_and_append!(p.Πᵀ, 0.0)
         end
     end
 
-    # push!(gov_struct.curracc.Rev_τᴾ, total_τᴾ)
     gov_struct.curracc.Rev_τᴾ[t] = total_τᴾ
 end
 
@@ -109,27 +87,17 @@ function compute_budget_balance(
     t::Int
     )
 
-    # TODO add sales, energy and emission tax
-    # Tot_rev = ca.Rev_τᴵ[end] + ca.Rev_τˢ[end] + ca.Rev_τᴾ[end]
-    Tot_rev = gov_struct.curracc.Rev_τᴵ[t] + gov_struct.curracc.Rev_τᴾ[t]
+    # Compute total tax revenues
+    Tot_rev = (gov_struct.curracc.Rev_τᴵ[t] + gov_struct.curracc.Rev_τᴾ[t] + gov_struct.curracc.Rev_τˢ[t]
+               + gov_struct.curracc.Rev_τᴱ[t] + gov_struct.curracc.Rev_τᶜ[t])
 
-    # TODO add subsidies
-    Tot_exp = gov_struct.curracc.Exp_UB[t]
-
-    gov_balance = Tot_rev - Tot_exp
-    # println("Gov deficit: ", gov_balance)
+    # Compute total expediture
+    Tot_exp = gov_struct.curracc.Exp_UB[t] + gov_struct.curracc.Exp_Sub[t]
 
     # Pay off part of debt in case of positive balance
-    gov_struct.MS += gov_balance
+    gov_struct.MS += (Tot_rev - Tot_exp)
 end
 
-
-# function set_salestax_zero_gov!(
-#     gov_struct::Government
-#     )
-
-#     push!(gov_struct.curracc.Rev_τˢ, 0)
-# end
 
 function add_salestax_transaction_gov!(
     gov_struct::Government,
@@ -155,9 +123,9 @@ function redistribute_surplus_gov!(
 
     if gov_struct.MS > 0.0
 
-        total_I = sum(map(hh_id -> model[hh_id].I[end], all_hh))
+        total_I = sum(map(hh_id -> model[hh_id].I, all_hh))
         for hh_id in all_hh
-            # model[hh_id].W[end] += (model[hh_id].I[end] / total_I) * gov_struct.MS
+            # model[hh_id].W[end] += (model[hh_id].I / total_I) * gov_struct.MS
             model[hh_id].W[end] += gov_struct.MS / length(all_hh)
         end
         gov_struct.MS = 0.0

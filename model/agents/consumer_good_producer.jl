@@ -433,7 +433,7 @@ function send_ordered_goods_cp!(
     total_D = 0.0
     actual_S = 0.0
     total_unsat_demand = 0.0
-    share_fulfilled = 0.0
+    share_fulfilled::Float64 = 0.0
     
     # Loop over orders in queue, add realized sales S
     for (hh_id, q) in cp.order_queue
@@ -445,12 +445,16 @@ function send_ordered_goods_cp!(
             share_fulfilled = 1.0
             cp.N_goods -= q
         elseif cp.N_goods > 0 && cp.N_goods < q
-            share_fulfilled = cp.N_goods / q
+            share_fulfilled = ceil(cp.N_goods / q, digits=2)
             total_unsat_demand += q - cp.N_goods
             cp.N_goods = 0
         else
             share_fulfilled = 0.0
             total_unsat_demand += q
+        end
+
+        if share_fulfilled != 1.0
+            println(share_fulfilled)
         end
 
         tot_price = q * share_fulfilled * cp.p[end]
@@ -503,7 +507,7 @@ function receive_machines_cp!(
 
     # Add new machines to capital stock, add investment expenditure
     cp.Ξ = vcat(cp.Ξ, new_machines)
-    cp.curracc.TCI = Iₜ
+    cp.curracc.TCI += Iₜ
 
     # Check if complete order was received, otherwise partial replacement
     if cp.n_mach_ordered_EI == 0 && cp.n_mach_ordered_RS > length(new_machines)

@@ -12,10 +12,10 @@
     T_unemp::Int = 0                            # time periods unemployed
 
     # Income and wealth variables
-    I::Vector{Float64} = [100]                  # hist income
-    Iᵀ::Vector{Float64} = [100] # change according to tax rate      # hist taxed income
+    I::Float64 = 100                            # hist income
+    Iᵀ::Float64 = 100    # change according to tax rate      # hist taxed income
     s::Float64 = 0.0                            # savings rate
-    W::Float64 = 50                   # wealth or cash on hand
+    W::Float64 = 50                             # wealth or cash on hand
 
     # Consumption variables
     C::Float64 = 0.0                           # budget
@@ -104,32 +104,14 @@ function compute_consumption_budget_hh!(
     all_W_hh::Vector{Float64}
     )
 
-    if hh.W > 0 && hh.Iᵀ[end] > 0
-        # percentile = stats.percentileofscore(all_W_hh, hh.W)
-        # percentile = 50
-        # frac_cons = percentile^α_cp / percentile
-        # println("$frac_cons, $percentile")
+    if hh.W > 0
         hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
-        # C = hh.Iᵀ[end]
-        # C = frac_cons * hh.W / 100
-        hh.s = (hh.Iᵀ[end] - hh.C) / hh.Iᵀ[end]
+        # hh.C = hh.W
+        hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : -1.0
     else
         hh.C = 0.0
         hh.s = 0.0
     end
-
-    # a = 50
-    # b = 2.5
-
-    # ymax_total = 1.2
-    # ymin_total = 0.8
-
-    # s = 1 / (1 + exp((hh.Iᵀ[end] / hh.P̄[end]) / a - b))
-    # cons_frac = ymin_total + s * (ymax_total - ymin_total)
-    # C = max(min(hh.W, cons_frac * hh.Iᵀ[end]), 0)
-    # s = (hh.Iᵀ[end] - C) / hh.Iᵀ[end]
-
-    # push!(hh.C, C)
 end
 
 
@@ -188,7 +170,7 @@ function place_orders_hh!(
 
     while C_i > 0 && length(poss_p) > 0 && n_round < n_round_stop
         chosen_p_id = sample(poss_p_ids, Weights(weights))
-        chosen_amount = min(min(C_i, C_per_day), cp_inventories[chosen_p_id])
+        chosen_amount = min(C_i, C_per_day, cp_inventories[chosen_p_id])
         p_orders[chosen_p_id] += chosen_amount
 
         C_i -= chosen_amount
@@ -221,7 +203,6 @@ function receive_ordered_goods_hh!(
     hh.W -= tot_price
 
     # If full demand not fulfilled, add cp to unsatisfied demand
-    # println(ceil(share_fulfilled; digits=3))
     if ceil(share_fulfilled; digits=3) < 1.0
         println(share_fulfilled)
         push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
@@ -247,7 +228,7 @@ function update_sat_req_wage_hh!(
 
     # Try to use adaptive wˢ
     ωwˢ = 0.8
-    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ[end] / hh.L
+    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ / hh.L
 
     if hh.employed
         hh.wʳ = hh.w[end] * (1 + ϵ)
@@ -264,7 +245,8 @@ function get_income_hh!(
     hh::Household, 
     amount::Float64
     )
-    push!(hh.I, amount)
+
+    hh.I = amount
     if hh.employed
         shift_and_append!(hh.w, hh.w[end])
     end
@@ -278,7 +260,7 @@ function update_wealth_hh!(
     hh::Household
     )
 
-    hh.W += hh.Iᵀ[end]
+    hh.W += hh.Iᵀ
 end
 
 

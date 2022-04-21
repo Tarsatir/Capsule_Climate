@@ -21,6 +21,7 @@
 
     # Technological parameters
     IC_g::Vector{Float64} = fill(0.012, T)       # Fixed investment cost of the cheapest new green power plant
+    # IC_g::Vector{Float64} = fill(0.0, T)        # Fixed investment cost of the cheapest new green power plant
     Aᵀ_d::Vector{Float64} = zeros(Float64, T)   # Thermal efficiency of new power plants
     emᵀ_d::Vector{Float64} = zeros(Float64, T)  # Emissions of new power plants
     c_d::Vector{Float64} = zeros(Float64, T)    # Discounted production cost of the cheapest dirty plant 
@@ -172,7 +173,6 @@ function choose_powerplants_ep!(
             end
         end
 
-        ep.FU[t] = 
         ep.green_frac_prod[t] = length(ep.green_portfolio) / length(ep.infra_marg)
     end
 end
@@ -191,14 +191,13 @@ function pay_dividends_ep!(
     # ep should have at least enough NW to pay cost of production for b months plus an
     # investment in a green plant
     req_NW = b * ep.PCₑ[t] + ep.IC_g[t]
-    dividends = ep.NWₑ[t] - req_NW
 
-    # If excess dividends, pay out to index fund
-    if dividends > 0 && t > 4
-        ep.NWₑ[t] = req_NW
-        receive_dividends_if!(indexfund_struct, dividends)
-    end
+    # Pay expenses to if, as 'indeterminate' producer receives these expenses,
+    # plus all excess liquid assets
+    dividends = ep.PCₑ[t] + ep.ICₑ[t] + ep.RDₑ[t] + max(ep.NWₑ[t] - req_NW, 0)
+    ep.NWₑ[t] = min(ep.NWₑ[t], req_NW)
 
+    receive_dividends_if!(indexfund_struct, dividends)
 end
 
 
@@ -235,7 +234,8 @@ function expand_and_replace_pp_ep!(
 
     n_add_pp = ceil(Int, (ep.EIᵈ[t] + ep.RSᵈ[t]) / global_param.freq_per_powerplant)
 
-    # println("$(ep.IC_g[t]), $(global_param.bₑ * ep.c_d[t])")
+    # TODO: if expanding green, invested sum should go somewhere!
+
     if ep.IC_g[t] <= global_param.bₑ * ep.c_d[t]
         
         # Invest green
@@ -388,7 +388,7 @@ function compute_pₑ_ep!(
     t::Int
     )
 
-    c̄ = ep.dirty_portfolio[end].c
+    c̄ = length(ep.dirty_portfolio) > 0 ? ep.dirty_portfolio[end].c : 0.0
     ep.pₑ[t] = t > 1 && ep.Dₑ[t-1] <= ep.green_capacity[t] ? ep.μₑ : c̄ + ep.μₑ
 end
 
@@ -416,7 +416,11 @@ function compute_Q̄_ep!(
     t::Int
     )
 
-    ep.Q̄ₑ[t] = ep.green_capacity[t] + sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio)
+    ep.Q̄ₑ[t] = ep.green_capacity[t] 
+
+    if length(ep.dirty_portfolio) > 0
+        ep.Q̄ₑ[t] += sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio)
+    end
 end
 
 
@@ -528,6 +532,6 @@ function compute_FU_ICₑ_ep!(
     t::Int
     )
 
-    ep.FU[t] = sum(pp-> pp ∈ ep.dirty_portfolio ? pp.capacity / pp.Aᵀ : 0.0, ep.infra_marg)
+    ep.FU[t] = length(ep.infra_marg) > 0 ? sum(pp-> pp ∈ ep.dirty_portfolio ? pp.capacity / pp.Aᵀ : 0.0, ep.infra_marg) : 0.0
     ep.ICₑ[t] = p_f * ep.FU[t]
 end

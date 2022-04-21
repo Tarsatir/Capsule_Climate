@@ -355,7 +355,7 @@ function model_step!(
 
     # (6) kp deliver goods to cp, kp make up profits
     for kp_id in all_kp
-        send_orders_kp!(model[kp_id], global_param, model)
+        send_ordered_machines_kp!(model[kp_id], global_param, model)
     end
 
     # Close balances of all firms
@@ -368,7 +368,6 @@ function model_step!(
     end 
 
     # Close balances of firms, if insolvent, liquidate firms
-    println("YEET")
     @timeit to "close balance" close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
                                     indexfund_struct, t, model)
 
@@ -395,6 +394,7 @@ function model_step!(
         all_bp,
         all_lp,
         all_p,
+        ep,
         bankrupt_bp,
         bankrupt_lp,
         bankrupt_kp,
