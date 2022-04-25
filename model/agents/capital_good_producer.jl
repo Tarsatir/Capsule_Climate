@@ -477,12 +477,13 @@ Filters out historical clients if they went bankrupt
 """
 function remove_bankrupt_HC_kp!(
     kp::CapitalGoodProducer,
-    bankrupt_lp::Vector{Int},
-    bankrupt_bp::Vector{Int}
+    bankrupt_cp::Vector{Int}
+    # bankrupt_lp::Vector{Int},
+    # bankrupt_bp::Vector{Int}
     )
 
-    filter!(bp_id -> bp_id ∉ bankrupt_bp, kp.HC)
-    filter!(lp_id -> lp_id ∉ bankrupt_lp, kp.HC)
+    # filter!(bp_id -> bp_id ∉ bankrupt_bp, kp.HC)
+    filter!(cp_id -> cp_id ∉ bankrupt_cp, kp.HC)
 end
 
 

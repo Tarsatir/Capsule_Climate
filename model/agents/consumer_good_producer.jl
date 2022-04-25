@@ -3,7 +3,7 @@ Defines struct for consumer good producer
 """
 @with_kw mutable struct ConsumerGoodProducer <: AbstractAgent
     id::Int                                   # id
-    type_good::String                         # type of good produced by producer
+    # type_good::String                         # type of good produced by producer
     age::Int = 0                              # firm age
     
     # Price and cost data
@@ -61,7 +61,7 @@ end
 function initialize_cp(
     id::Int, 
     machines::Vector{Machine},  
-    type_good::String,
+    # type_good::String,
     n_init_emp_cp::Int,
     μ::Float64,
     ι::Float64;
@@ -76,7 +76,7 @@ function initialize_cp(
 
     cp = ConsumerGoodProducer(
         id=id,
-        type_good = type_good,
+        # type_good = type_good,
         μ = fill(μ, 3),
         D = fill(D, 3),  
         Nᵈ = ι * D,                
@@ -534,12 +534,14 @@ end
 Replaces cp, places cp in firm list of hh.
 """
 function replace_bankrupt_cp!(
-    bankrupt_bp::Vector{Int}, 
-    bankrupt_lp::Vector{Int},
+    # bankrupt_bp::Vector{Int}, 
+    # bankrupt_lp::Vector{Int},
+    bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     all_hh::Vector{Int},
-    all_bp::Vector{Int},
-    all_lp::Vector{Int},
+    # all_bp::Vector{Int},
+    # all_lp::Vector{Int},
+    all_cp::Vector{Int},
     all_kp::Vector{Int},
     global_param::GlobalParam,
     indexfund_struct::IndexFund,
@@ -549,20 +551,22 @@ function replace_bankrupt_cp!(
     )
 
     # Create vectors containing ids of non-bankrupt bp, lp and kp
-    nonbankrupt_bp = setdiff(all_bp, bankrupt_bp)
-    nonbankrupt_lp = setdiff(all_lp, bankrupt_lp)
+    # nonbankrupt_bp = setdiff(all_bp, bankrupt_bp)
+    # nonbankrupt_lp = setdiff(all_lp, bankrupt_lp)
+    nonbankrupt_cp = setdiff(all_cp, bankrupt_cp)
     nonbankrupt_kp = setdiff(all_kp, bankrupt_kp)
 
-    avg_n_machines = mean(cp_id -> model[cp_id].n_machines, Iterators.flatten((nonbankrupt_bp, nonbankrupt_lp)))
-    avg_NW = mean(cp_id -> model[cp_id].balance.NW, Iterators.flatten((nonbankrupt_bp, nonbankrupt_lp)))
+    avg_n_machines = mean(cp_id -> model[cp_id].n_machines, nonbankrupt_cp)
+    avg_NW = mean(cp_id -> model[cp_id].balance.NW, nonbankrupt_cp)
 
     # Make weights for allocating cp to hh
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
-    weights_hh_bp = map(hh_id -> min(1, 1 / length(model[hh_id].bp)), all_hh)
-    weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
+    # weights_hh_bp = map(hh_id -> min(1, 1 / length(model[hh_id].bp)), all_hh)
+    # weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
+    weights_hh_cp = map(hh_id -> min(1, 1 / length(model[hh_id].cp)), all_hh)
     weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
 
-    n_bankrupt_cp = length(bankrupt_bp) + length(bankrupt_lp)
+    n_bankrupt_cp = length(bankrupt_cp)
     # println("n bankrupt: $n_bankrupt_cp")
 
     # Sample all NW coefficients and capital coefficients
@@ -588,15 +592,15 @@ function replace_bankrupt_cp!(
     req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps .* global_param.freq_per_machine))
     all_req_NW = sum(req_NW)
     frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
-    println("frac cp: ", frac_NW_if)
+    # println("frac cp: ", frac_NW_if)
 
-    for (i,cp_id) in enumerate(Iterators.flatten((bankrupt_bp, bankrupt_lp)))
+    for (i,cp_id) in enumerate(bankrupt_cp)
 
         # type_good="Basic"
         # if cp_id in bankrupt_lp
         #     type_good="Luxury"
         # end
-        type_good = cp_id ∈ bankrupt_bp ? "Basic" : "Luxury"
+        # type_good = cp_id ∈ bankrupt_bp ? "Basic" : "Luxury"
 
         # Sample what the size of the capital stock will be
         D = macro_struct.cu[t] * all_n_machines[i] * global_param.freq_per_machine
@@ -606,9 +610,10 @@ function replace_bankrupt_cp!(
         new_cp = initialize_cp(
                     cp_id,
                     Vector{Machine}(),
-                    type_good,
+                    # type_good,
                     0,
-                    cp_id ∈ bankrupt_bp ? macro_struct.μ_bp[t] : macro_struct.μ_lp[t],
+                    # cp_id ∈ bankrupt_bp ? macro_struct.μ_bp[t] : macro_struct.μ_lp[t],
+                    macro_struct.μ_cp[t],     
                     global_param.ι;
                     D=D,
                     w=macro_struct.w̄_avg[t],
@@ -636,12 +641,11 @@ function replace_bankrupt_cp!(
         # they already have
         n_init_hh = 100
 
-        customers = sample(all_hh, cp_id ∈ bankrupt_bp ? Weights(weights_hh_bp) : Weights(weights_hh_lp),
-                           n_init_hh)
+        customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
     
         # Add cp to list of bp and lp, according to type
         for hh_id ∈ customers
-            push!(cp_id ∈ bankrupt_bp ? model[hh_id].bp : model[hh_id].lp, cp_id)
+            push!(model[hh_id].cp, cp_id)
         end
 
     end

@@ -10,9 +10,10 @@
 
     p̄::Vector{Float64} = zeros(Float64, T)                  # average price of cp goods over time
     p̄_kp::Vector{Float64} = zeros(Float64, T)               # average price of kp goods over time
-    μ_bp::Vector{Float64} = zeros(Float64, T)
-    μ_lp::Vector{Float64} = zeros(Float64, T)
-    μ_kp::Vector{Float64} = zeros(Float64, T)
+    # μ_bp::Vector{Float64} = zeros(Float64, T)
+    # μ_lp::Vector{Float64} = zeros(Float64, T)
+    μ_cp::Vector{Float64} = zeros(Float64, T)               # average μ for cp
+    μ_kp::Vector{Float64} = zeros(Float64, T)               # average μ for kp
     CPI :: Vector{Float64} = zeros(Float64, T)              # price index consumer goods over time
     CPI_kp :: Vector{Float64} = zeros(Float64, T)           # price index capital goods over time
 
@@ -59,8 +60,8 @@
     Ld::Vector{Float64} = zeros(Float64, T)                 # labor demand over time
 
     # Changes in savings rate
-    s̄_avg::Vector{Float64} = zeros(Float64, T)              # average savings rate over time
-    s̄_std::Vector{Float64} = zeros(Float64, T)              # std of savings over time
+    s̄_emp::Vector{Float64} = zeros(Float64, T)              # average savings rate of employed households over time
+    s̄_unemp::Vector{Float64} = zeros(Float64, T)            # average savings rate of unemployed households over time
 
     # Changes in labor demand
     ΔL̄_avg::Vector{Float64} = zeros(Float64, T)             # average desired labor change
@@ -89,18 +90,21 @@
     avg_B_EF::Vector{Float64} = zeros(Float64, T)           # average B_EF at kp
 
     # Production
-    avg_Q_bp::Vector{Float64} = zeros(Float64, T)           # average production of bp
-    avg_Q_lp::Vector{Float64} = zeros(Float64, T)           # average production of lp
+    # avg_Q_bp::Vector{Float64} = zeros(Float64, T)           # average production of bp
+    # avg_Q_lp::Vector{Float64} = zeros(Float64, T)           # average production of lp
+    avg_Q_cp::Vector{Float64} = zeros(Float64, T)           # average production of cp
     avg_Q_kp::Vector{Float64} = zeros(Float64, T)           # average production of kp
 
     # Bankrupties
-    bankrupt_bp::Vector{Float64} = zeros(Float64, T)        # fraction of bp that went bankrupt
-    bankrupt_lp::Vector{Float64} = zeros(Float64, T)        # fraction of lp that went bankrupt
+    # bankrupt_bp::Vector{Float64} = zeros(Float64, T)        # fraction of bp that went bankrupt
+    # bankrupt_lp::Vector{Float64} = zeros(Float64, T)        # fraction of lp that went bankrupt
+    bankrupt_cp::Vector{Float64} = zeros(Float64, T)        # fraction of cp that went bankrupt
     bankrupt_kp::Vector{Float64} = zeros(Float64, T)        # fraction of kp that went bankrupt
 
     cu::Vector{Float64} = zeros(Float64, T)                 # average rate of capital utilization
-    avg_n_machines_bp::Vector{Float64} = zeros(Float64, T)  # average number of machines bp
-    avg_n_machines_lp::Vector{Float64} = zeros(Float64, T)  # average number of machines lp
+    avg_n_machines_cp::Vector{Float64} = zeros(Float64, T)  # average number of machines cp
+    # avg_n_machines_bp::Vector{Float64} = zeros(Float64, T)  # average number of machines bp
+    # avg_n_machines_lp::Vector{Float64} = zeros(Float64, T)  # average number of machines lp
 
     GINI_I::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for income
     GINI_W::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for wealth
@@ -116,12 +120,13 @@ function update_macro_timeseries(
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
     all_kp::Vector{Int},
-    all_bp::Vector{Int},
-    all_lp::Vector{Int},
+    # all_bp::Vector{Int},
+    # all_lp::Vector{Int},
     all_p::Vector{Int},
     ep,
-    bankrupt_bp::Vector{Int},
-    bankrupt_lp::Vector{Int},
+    # bankrupt_bp::Vector{Int},
+    # bankrupt_lp::Vector{Int},
+    bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     labormarket_struct, 
     gov_struct::Government,
@@ -134,7 +139,7 @@ function update_macro_timeseries(
     compute_GDP!(all_hh, all_cp, all_kp, macro_struct, t, model)
 
     # Update CPI
-    compute_price_data!(all_cp, all_bp, all_lp, all_kp, t, macro_struct, model)
+    compute_price_data!(all_cp, all_kp, t, macro_struct, model)
 
     # Update average labor demand
     macro_struct.ΔL̄_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
@@ -156,8 +161,7 @@ function update_macro_timeseries(
                macro_struct, t, model)
 
     # Compute average savings rates
-    macro_struct.s̄_avg[t] = mean(hh_id -> model[hh_id].s, all_hh)
-    # macro_struct.s̄_std[t] = std(hh_id -> model[hh_id].s, all_hh)
+    compute_savings_macro!(all_hh, macro_struct, t, model)
 
     # Wage and income statistics
     update_wage_stats!(all_hh, all_p, macro_struct, t, model)
@@ -165,8 +169,7 @@ function update_macro_timeseries(
     macro_struct.Ī_avg[t] = mean(hh_id -> model[hh_id].I[end], all_hh)
     # macro_struct.Ī_std[t] = std(hh_id -> model[hh_id].I[end], all_hh)
 
-    update_debt!(all_cp, all_kp,bankrupt_bp, bankrupt_lp, bankrupt_kp,
-                 global_param.Λ, macro_struct, t, model)
+    update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, global_param.Λ, macro_struct, t, model)
 
     # Investment
     macro_struct.EI_avg[t] = mean(cp_id -> model[cp_id].EIᵈ, all_cp)
@@ -187,14 +190,14 @@ function update_macro_timeseries(
     macro_struct.avg_B_EF[t] = mean(kp_id -> model[kp_id].B_EF[end], all_kp)
 
     # Production quantity
-    macro_struct.avg_Q_bp[t] = mean(bp_id -> model[bp_id].Q[end], all_bp)
-    macro_struct.avg_Q_lp[t] = mean(lp_id -> model[lp_id].Q[end], all_lp)
+    # macro_struct.avg_Q_bp[t] = mean(bp_id -> model[bp_id].Q[end], all_bp)
+    # macro_struct.avg_Q_lp[t] = mean(lp_id -> model[lp_id].Q[end], all_lp)
+    macro_struct.avg_Q_cp[t] = mean(cp_id -> model[cp_id].Q[end], all_cp)
     macro_struct.avg_Q_kp[t] = mean(kp_id -> model[kp_id].Q[end], all_kp)
 
-    compute_bankrupties(all_bp, all_lp, all_kp, bankrupt_bp, bankrupt_lp, 
-                        bankrupt_kp, macro_struct, t)
+    compute_bankrupties(all_cp, all_kp, bankrupt_cp, bankrupt_kp, macro_struct, t)
 
-    compute_unsatisfied_demand(all_hh, macro_struct, t, model)
+    compute_unsatisfied_demand(all_cp, all_hh, macro_struct, t, model)
 
     macro_struct.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
 
@@ -202,8 +205,9 @@ function update_macro_timeseries(
     macro_struct.cu[t] = mean(cp_id -> model[cp_id].n_machines > 0 ? model[cp_id].cu : 0.5, all_cp)
 
     # Average number of machines
-    macro_struct.avg_n_machines_bp[t] = mean(bp_id -> model[bp_id].n_machines, all_bp)
-    macro_struct.avg_n_machines_lp[t] = mean(lp_id -> model[lp_id].n_machines, all_lp)
+    # macro_struct.avg_n_machines_bp[t] = mean(bp_id -> model[bp_id].n_machines, all_bp)
+    # macro_struct.avg_n_machines_lp[t] = mean(lp_id -> model[lp_id].n_machines, all_lp)
+    macro_struct.avg_n_machines_cp[t] = mean(cp_id -> model[cp_id].n_machines, all_cp)
 
     # Compute GINI coefficients
     compute_GINI(all_hh, macro_struct, t, model)
@@ -244,28 +248,32 @@ function compute_GDP!(
     end
 end
 
-function update_labor_stats(macro_struct, labormarket_struct)
+# function update_labor_stats(macro_struct, labormarket_struct)
 
-end
+# end
 
 
 """
 Computes the ratios of bankrupt bp, lp and kp.
 """
 function compute_bankrupties(
-    all_bp::Vector{Int},
-    all_lp::Vector{Int},
+    # all_bp::Vector{Int},
+    # all_lp::Vector{Int},
+    all_cp::Vector{Int},
     all_kp::Vector{Int},
-    bankrupt_bp::Vector{Int},
-    bankrupt_lp::Vector{Int},
+    # bankrupt_bp::Vector{Int},
+    # bankrupt_lp::Vector{Int},
+    bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     macro_struct::MacroEconomy,
     t::Int
     )
 
-    macro_struct.bankrupt_bp[t] = length(bankrupt_bp) / length(all_bp)
+    # macro_struct.bankrupt_bp[t] = length(bankrupt_bp) / length(all_bp)
 
-    macro_struct.bankrupt_lp[t] = length(bankrupt_lp) / length(all_lp)
+    # macro_struct.bankrupt_lp[t] = length(bankrupt_lp) / length(all_lp)
+
+    macro_struct.bankrupt_cp[t] = length(bankrupt_cp) / length(all_cp)
 
     macro_struct.bankrupt_kp[t] = length(bankrupt_kp) / length(all_kp)
 
@@ -339,8 +347,9 @@ Updates metrics on aggregate debt levels
 function update_debt!(
     all_cp::Vector{Int},
     all_kp::Vector{Int},
-    bankrupt_bp::Vector{Int},
-    bankrupt_lp::Vector{Int},
+    # bankrupt_bp::Vector{Int},
+    # bankrupt_lp::Vector{Int},
+    bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     Λ::Float64,
     macro_struct::MacroEconomy,
@@ -358,8 +367,8 @@ function update_debt!(
 
     macro_struct.debt_kp_allowed[t] = Λ * sum(kp_id -> model[kp_id].curracc.S, all_kp)
 
-    if length(bankrupt_bp) + length(bankrupt_lp) > 0
-        macro_struct.debt_unpaid_cp[t] = sum(cp_id -> model[cp_id].balance.debt, Iterators.flatten((bankrupt_bp, bankrupt_lp)))
+    if length(bankrupt_cp) > 0
+        macro_struct.debt_unpaid_cp[t] = sum(cp_id -> model[cp_id].balance.debt, bankrupt_cp)
     end
 
     if length(bankrupt_kp) > 0
@@ -370,8 +379,6 @@ end
 
 function compute_price_data!(
     all_cp::Vector{Int},
-    all_bp::Vector{Int},
-    all_lp::Vector{Int},
     all_kp::Vector{Int},
     t::Int,
     macro_struct::MacroEconomy,
@@ -398,8 +405,8 @@ function compute_price_data!(
     end
 
     # Update markup rates
-    macro_struct.μ_bp[t] = mean(bp_id -> model[bp_id].μ[end], all_bp)
-    macro_struct.μ_lp[t] = mean(lp_id -> model[lp_id].μ[end], all_lp)
+    # macro_struct.μ_bp[t] = mean(bp_id -> model[bp_id].μ[end], all_bp)
+    macro_struct.μ_cp[t] = mean(cp_id -> model[cp_id].μ[end], all_cp)
     macro_struct.μ_kp[t] = mean(kp_id -> model[kp_id].μ[end], all_kp)
 end
 
@@ -408,21 +415,23 @@ end
 Computes fraction of household that was not satisfied
 """
 function compute_unsatisfied_demand(
+    all_cp::Vector{Int},
     all_hh::Vector{Int},
     macro_struct::MacroEconomy,
     t::Int,
     model::ABM
     )
 
-    mean_unsat_dem = 0.0
+    # mean_unsat_dem = 0.0
 
-    for hh_id in all_hh
-        if length(model[hh_id].unsat_dem) > 0 
-            mean_unsat_dem += mean(ud->ud[2], model[hh_id].unsat_dem)
-        end
-    end
+    # for hh_id in all_hh
+    #     if length(model[hh_id].unsat_dem) > 0 
+    #         mean_unsat_dem += mean(ud->ud[2], model[hh_id].unsat_dem)
+    #     end
+    # end
 
-    macro_struct.unsat_demand[t] = mean_unsat_dem / length(all_hh)
+    # macro_struct.unsat_demand[t] = mean_unsat_dem / length(all_hh)
+    macro_struct.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ, all_cp) / sum(cp_id -> model[cp_id].D[end], all_cp)
 end
 
 
@@ -457,4 +466,27 @@ function compute_GINI(
         end
     end
     macro_struct.GINI_W[t] = sum(all_W_absdiff) / (2 * length(all_hh)^2 * macro_struct.M_hh[t] / length(all_hh))
+end
+
+
+function compute_savings_macro!(
+    all_hh::Vector{Int}, 
+    macro_struct::MacroEconomy, 
+    t::Int,
+    model::ABM
+    )
+
+    all_s_emp = []
+    all_s_unemp = []
+
+    for hh_id in all_hh
+        if model[hh_id].employed
+            push!(all_s_emp, model[hh_id].s)
+        else
+            push!(all_s_unemp, model[hh_id].s)
+        end
+    end
+
+    macro_struct.s̄_emp[t] = length(all_s_emp) > 1 ? mean(all_s_emp) : NaN
+    macro_struct.s̄_unemp[t] = length(all_s_unemp) > 1 ? mean(all_s_unemp) : NaN
 end

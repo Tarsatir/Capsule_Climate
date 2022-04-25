@@ -37,9 +37,10 @@ def plot_macro_vars(df):
     ax[0,1].legend()
 
     # Plot savings rate of households
-    ax[1,0].plot(range(len(df.s_avg)), df.s_avg, color='red')
-    ax[1,0].fill_between(range(len(df.s_avg)), df.s_avg + df.s_std, df.s_avg - df.s_std, color='red', alpha=0.4)
+    ax[1,0].plot(T, df.s_emp, color='red', label='employed')
+    ax[1,0].plot(T, df.s_unemp, color='blue', label='unemployed')
     ax[1,0].set_title("Savings rate")
+    ax[1,0].legend()
 
     # Plot wage levels
     real_w_avg = 100 * df.w_avg / df.CPI
@@ -123,13 +124,13 @@ def plot_macro_vars(df):
     ax[4,1].set_title('Productivity')
     ax[4,1].legend()
 
-    ax[5,0].plot(range(len(df.avg_Q_bp)), df.avg_Q_bp, label='bp', color='blue')
-    ax[5,0].plot(range(len(df.avg_Q_bp)), df.avg_n_machines_bp, 
-                 label='bp n machines', color='blue', linestyle='dashed')
-    ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_Q_lp, label='lp', color='red')
-    ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_n_machines_lp, 
-                 label='lp n machines', color='red', linestyle='dashed')
-    ax[5,0].plot(range(len(df.avg_Q_kp)), df.avg_Q_kp, label='kp')
+    ax[5,0].plot(range(len(df.avg_Q_cp)), df.avg_Q_cp, label='cp Q', color='blue')
+    ax[5,0].plot(range(len(df.avg_Q_cp)), df.avg_n_machines_cp, 
+                 label='cp n machines', color='blue', linestyle='dashed')
+    # ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_Q_lp, label='lp', color='red')
+    # ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_n_machines_lp, 
+    #              label='lp n machines', color='red', linestyle='dashed')
+    ax[5,0].plot(range(len(df.avg_Q_kp)), df.avg_Q_kp, label='kp Q')
     ax[5,0].plot(range(len(df.avg_N_goods)), df.avg_N_goods, label='avg $N$', color='orange')
     ax[5,0].set_title('Average production quantity')
     ax[5,0].legend()
@@ -139,14 +140,14 @@ def plot_macro_vars(df):
     ax[5,1].set_title('CPI')
     ax[5,1].legend()
 
-    ax[6,0].plot((range(len(df.bankrupt_bp))), df.bankrupt_bp, label='bp')
-    ax[6,0].plot((range(len(df.bankrupt_lp))), df.bankrupt_lp, label='lp')
-    ax[6,0].plot((range(len(df.bankrupt_kp))), df.bankrupt_kp, label='kp')
+    ax[6,0].plot(T, df.bankrupt_cp, label='cp')
+    # ax[6,0].plot((range(len(df.bankrupt_lp))), df.bankrupt_lp, label='lp')
+    ax[6,0].plot(T, df.bankrupt_kp, label='kp')
     ax[6,0].legend()
     ax[6,0].set_title('Bankrupty rate')
 
-    ax[6,1].plot(range(len(df.mu_bp)), df.mu_bp, label='bp')
-    ax[6,1].plot(range(len(df.mu_lp)), df.mu_lp, label='lp')
+    ax[6,1].plot(range(len(df.mu_cp)), df.mu_cp, label='cp')
+    # ax[6,1].plot(range(len(df.mu_lp)), df.mu_lp, label='lp')
     ax[6,1].plot(range(len(df.mu_kp)), df.mu_kp, label='kp')
     ax[6,1].legend()
     ax[6,1].set_title('Markup rates $\mu$')
@@ -257,35 +258,37 @@ def plot_sales_dist():
 
     fig, ax = plt.subplots(5, 2, figsize=(8,12))
 
-    ax[0,0].hist(df_cp.all_S_bp, bins=30)
-    ax[0,0].set_title('$S$ of bp')
+    ax[0,0].hist(df_cp.all_S_cp, bins=30)
+    ax[0,0].set_title('$S$ of cp')
     
-    ax[0,1].hist(df_cp.all_profit_bp, bins=30)
-    ax[0,1].set_title('$\Pi$ of bp')
+    ax[1,0].hist(df_cp.all_profit_cp, bins=30)
+    ax[1,0].set_title('$\Pi$ of cp')
 
-    ax[1,0].hist(df_cp.all_S_lp, bins=30)
-    ax[1,0].set_title('$S$ of lp')
+    ax[3,0].hist(df_cp.all_f_cp, bins=30)
+    ax[3,0].set_title('$f$ of cp')
+    ax[3,0].set_xlim(0, max(df_cp.all_f_cp))
+
+    # ax[1,0].hist(df_cp.all_S_lp, bins=30)
+    # ax[1,0].set_title('$S$ of lp')
     
-    ax[1,1].hist(df_cp.all_profit_lp, bins=30)
-    ax[1,1].set_title('$\Pi$ of lp')
+    # ax[1,1].hist(df_cp.all_profit_lp, bins=30)
+    # ax[1,1].set_title('$\Pi$ of lp')
 
-    ax[2,0].hist(df_kp.all_S_kp, bins=30)
-    ax[2,0].set_title('$S$ of kp')
+    ax[0,1].hist(df_kp.all_S_kp, bins=30)
+    ax[0,1].set_title('$S$ of kp')
     
-    ax[2,1].hist(df_kp.all_profit_kp, bins=30)
-    ax[2,1].set_title('$\Pi$ of kp')
+    ax[1,1].hist(df_kp.all_profit_kp, bins=30)
+    ax[1,1].set_title('$\Pi$ of kp')
 
-    ax[3,0].hist(df_cp.all_f_bp, bins=30)
-    ax[3,0].set_title('$f$ of bp')
-    ax[3,0].set_xlim(0, max(df_cp.all_f_bp))
 
-    ax[3,1].hist(df_cp.all_f_lp, bins=30)
-    ax[3,1].set_title('$f$ of lp')
-    ax[3,1].set_xlim(0, max(df_cp.all_f_lp))
 
-    ax[4,0].hist(df_kp.all_f_kp, bins=30)
-    ax[4,0].set_title('$f$ of kp')
-    ax[4,0].set_xlim(0, max(df_kp.all_f_kp))
+    # ax[3,1].hist(df_cp.all_f_lp, bins=30)
+    # ax[3,1].set_title('$f$ of lp')
+    # ax[3,1].set_xlim(0, max(df_cp.all_f_lp))
+
+    ax[2,1].hist(df_kp.all_f_kp, bins=30)
+    ax[2,1].set_title('$f$ of kp')
+    ax[2,1].set_xlim(0, max(df_kp.all_f_kp))
 
     plt.tight_layout()
     plt.savefig('plots/final_dist_profit.png')

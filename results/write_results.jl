@@ -28,8 +28,9 @@ function save_macro_data(macro_struct)
         CPI=macro_struct.CPI,
         CPI_kp = macro_struct.CPI_kp,
 
-        mu_bp = macro_struct.μ_bp,
-        mu_lp = macro_struct.μ_lp,
+        # mu_bp = macro_struct.μ_bp,
+        # mu_lp = macro_struct.μ_lp,
+        mu_cp = macro_struct.μ_cp,
         mu_kp = macro_struct.μ_kp,
 
         M=macro_struct.M,
@@ -51,8 +52,10 @@ function save_macro_data(macro_struct)
         UR=macro_struct.U,
         switch_rate = macro_struct.switch_rate,
         Exp_UB=macro_struct.Exp_UB,
-        s_avg=macro_struct.s̄_avg,
-        s_std=macro_struct.s̄_std,
+
+        s_emp=macro_struct.s̄_emp,
+        s_unemp=macro_struct.s̄_unemp,
+
         w_avg=macro_struct.w̄_avg,
         # w_std=macro_struct.w̄_std,
         wr_avg=macro_struct.wʳ_avg,
@@ -85,17 +88,20 @@ function save_macro_data(macro_struct)
         avg_B_EE = macro_struct.avg_B_EE,
         avg_B_EF = macro_struct.avg_B_EF,
 
-        avg_Q_bp=macro_struct.avg_Q_bp,
-        avg_Q_lp=macro_struct.avg_Q_lp,
-        avg_Q_kp=macro_struct.avg_Q_kp,
+        # avg_Q_bp=macro_struct.avg_Q_bp,
+        avg_Q_cp = macro_struct.avg_Q_cp,
+        # avg_Q_lp=macro_struct.avg_Q_lp,
+        avg_Q_kp = macro_struct.avg_Q_kp,
 
-        bankrupt_bp = macro_struct.bankrupt_bp,
-        bankrupt_lp = macro_struct.bankrupt_lp,
+        # bankrupt_bp = macro_struct.bankrupt_bp,
+        # bankrupt_lp = macro_struct.bankrupt_lp,
+        bankrupt_cp = macro_struct.bankrupt_cp,
         bankrupt_kp = macro_struct.bankrupt_kp,
 
         cu = macro_struct.cu,
-        avg_n_machines_bp = macro_struct.avg_n_machines_bp,
-        avg_n_machines_lp = macro_struct.avg_n_machines_lp,
+        # avg_n_machines_bp = macro_struct.avg_n_machines_bp,
+        # avg_n_machines_lp = macro_struct.avg_n_machines_lp,
+        avg_n_machines_cp = macro_struct.avg_n_machines_cp,
 
         gini_I = macro_struct.GINI_I,
         gini_W = macro_struct.GINI_W
@@ -106,29 +112,28 @@ end
 
 function save_final_dist(
     all_hh::Vector{Int},
-    all_bp::Vector{Int},
-    all_lp::Vector{Int},
+    all_cp::Vector{Int},
     all_kp::Vector{Int}, 
     model::ABM
     )
 
+    # Save income data of households 
     df = DataFrame(
-            all_I = map(hh_id -> model[hh_id].I, all_hh),
-            all_w = map(hh_id -> model[hh_id].w[end], all_hh),
-            all_W = map(hh_id -> model[hh_id].W[end], all_hh),
+        all_I = map(hh_id -> model[hh_id].I, all_hh),
+        all_w = map(hh_id -> model[hh_id].w[end], all_hh),
+        all_W = map(hh_id -> model[hh_id].W[end], all_hh),
     )
     CSV.write("results/result_data/final_income_dists.csv", df)
 
+    # Save sales, profits and market share of cp
     df = DataFrame(
-        all_S_bp = map(bp_id -> model[bp_id].curracc.S, all_bp),
-        all_profit_bp = map(bp_id -> model[bp_id].Π[end], all_bp),
-        all_S_lp = map(lp_id -> model[lp_id].curracc.S, all_lp),
-        all_profit_lp = map(lp_id -> model[lp_id].Π[end], all_lp),
-        all_f_bp = map(bp_id -> model[bp_id].f[end], all_bp),
-        all_f_lp = map(lp_id -> model[lp_id].f[end], all_lp),
+        all_S_cp = map(cp_id -> model[cp_id].curracc.S, all_cp),
+        all_profit_cp = map(cp_id -> model[cp_id].Π[end], all_cp),
+        all_f_cp = map(cp_id -> model[cp_id].f[end], all_cp),
     )
     CSV.write("results/result_data/final_profit_dists_cp.csv", df)
 
+    # Save sales, profits and market share of kp
     df = DataFrame(
         all_S_kp = map(kp_id -> model[kp_id].curracc.S, all_kp),
         all_profit_kp = map(kp_id -> model[kp_id].Π[end], all_kp),

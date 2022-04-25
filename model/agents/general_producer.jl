@@ -95,34 +95,45 @@ end
 """
 Updates market shares of cp firms
 """
-function update_marketshare_cp!(
-    all_bp::Vector{Int},
-    all_lp::Vector{Int},
+function update_marketshare_p!(
+    # all_bp::Vector{Int},
+    # all_lp::Vector{Int},
+    all_p::Vector{Int},
     model::ABM
     )
 
     # Compute total market size of bp and lp markets
-    bp_market = sum(bp_id -> model[bp_id].D[end], all_bp)
-    lp_market = sum(lp_id -> model[lp_id].D[end], all_lp)
+    # bp_market = sum(bp_id -> model[bp_id].D[end], all_bp)
+    # lp_market = sum(lp_id -> model[lp_id].D[end], all_lp)
+    market = sum(p_id -> model[p_id].D[end], all_p)
 
     # Update market share f for all bp
-    for bp_id in all_bp
-        if bp_market == 0
-            f = 1 / length(all_bp)
-        else
-            f = model[bp_id].D[end] / bp_market
-        end
-        shift_and_append!(model[bp_id].f, f)
-    end
+    # for bp_id in all_bp
+    #     if bp_market == 0
+    #         f = 1 / length(all_bp)
+    #     else
+    #         f = model[bp_id].D[end] / bp_market
+    #     end
+    #     shift_and_append!(model[bp_id].f, f)
+    # end
 
-    # Update market share f for all lp
-    for lp_id in all_lp
-        if lp_market == 0
-            f = 1/length(all_lp)
+    # # Update market share f for all lp
+    # for lp_id in all_lp
+    #     if lp_market == 0
+    #         f = 1/length(all_lp)
+    #     else
+    #         f = model[lp_id].D[end] / lp_market
+    #     end
+    #     shift_and_append!(model[lp_id].f, f)
+    # end
+
+    for p_id in all_p
+        if market == 0
+            f = 1 / length(all_p)
         else
-            f = model[lp_id].D[end] / lp_market
+            f = model[p_id].D[end] / market
         end
-        shift_and_append!(model[lp_id].f, f)
+        shift_and_append!(model[p_id].f, f)
     end
 end
 
@@ -176,29 +187,33 @@ function check_bankrupty_all_p!(
     all_kp::Vector{Int},
     global_param::GlobalParam, 
     model::ABM
-    )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}, Vector{Int}}
+    )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}}
 
-    bankrupt_bp = Vector{Int}()
-    bankrupt_lp = Vector{Int}()
+    # bankrupt_bp = Vector{Int}()
+    # bankrupt_lp = Vector{Int}()
+    bankrupt_cp = Vector{Int}()
     bankrupt_kp = Vector{Int}()
     bankrupt_kp_i = Vector{Int}()
 
     # return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
 
-    bp_counter = 0
-    lp_counter = 0
+    # bp_counter = 0
+    # lp_counter = 0
+    cp_counter = 0
     kp_counter = 0
 
     for p_id in all_p
         if check_if_bankrupt_p!(model[p_id], global_param.t_wait)
             if typeof(model[p_id]) == ConsumerGoodProducer
-                if model[p_id].type_good == "Basic"
-                    bp_counter += 1
-                    push!(bankrupt_bp, p_id)
-                else
-                    lp_counter += 1
-                    push!(bankrupt_lp, p_id)
-                end
+                # if model[p_id].type_good == "Basic"
+                #     bp_counter += 1
+                #     push!(bankrupt_bp, p_id)
+                # else
+                #     lp_counter += 1
+                #     push!(bankrupt_lp, p_id)
+                # end
+                cp_counter += 1
+                push!(bankrupt_cp, p_id)
             else
                 kp_counter += 1
                 if kp_counter != length(all_kp)
@@ -211,7 +226,8 @@ function check_bankrupty_all_p!(
 
     # println("Bankrupties, kp: $kp_counter, bp: $bp_counter, lp: $lp_counter")
 
-    return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
+    # return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
+    return bankrupt_cp, bankrupt_kp, bankrupt_kp_i
 end
 
 
@@ -222,8 +238,9 @@ Kills all bankrupt producers.
     - for all, removes firm agent from model.
 """
 function kill_all_bankrupt_p!(
-    bankrupt_bp::Vector{Int},
-    bankrupt_lp::Vector{Int},
+    # bankrupt_bp::Vector{Int},
+    # bankrupt_lp::Vector{Int},
+    bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     all_hh::Vector{Int},
     all_kp::Vector{Int},
@@ -234,28 +251,28 @@ function kill_all_bankrupt_p!(
 
     # Remove bankrupt cp ids from households
     for hh_id in all_hh
-        remove_bankrupt_producers_hh!(model[hh_id], bankrupt_bp, bankrupt_lp)
+        remove_bankrupt_producers_hh!(model[hh_id], bankrupt_cp)
     end
 
     # Remove bankrupt cp ids from kp historical clients
     for kp_id in all_kp
-        remove_bankrupt_HC_kp!(model[kp_id], bankrupt_bp, bankrupt_lp)
+        remove_bankrupt_HC_kp!(model[kp_id], bankrupt_cp)
     end
 
     # All employees are declared unemployed
     all_employees = Vector{Int}()
-    for p_id in Iterators.flatten((bankrupt_bp, bankrupt_lp, bankrupt_kp))
+    for p_id in Iterators.flatten((bankrupt_cp, bankrupt_kp))
         append!(all_employees, model[p_id].employees)
     end
     
     update_firedworker_lm!(labormarket_struct, all_employees)
 
-    ages = []
-    Qs = []
+    # ages = []
+    # Qs = []
 
     # Fire all workers still remaining in the firm, remove firm
     total_unpaid_net_debt = 0.0
-    for p_id in Iterators.flatten((bankrupt_bp, bankrupt_lp, bankrupt_kp))
+    for p_id in Iterators.flatten((bankrupt_cp, bankrupt_kp))
 
         # Fire remaining workers
         for hh_id in model[p_id].employees
@@ -268,10 +285,10 @@ function kill_all_bankrupt_p!(
         total_unpaid_net_debt += (model[p_id].balance.debt - model[p_id].balance.NW)
         # total_unpaid_net_debt += model[p_id].balance.debt
 
-        if p_id ∈ bankrupt_bp || p_id ∈ bankrupt_lp
-            push!(ages, model[p_id].age)
-            push!(Qs, model[p_id].Q[end])
-        end
+        # if p_id ∈ bankrupt_cp
+        #     push!(ages, model[p_id].age)
+        #     push!(Qs, model[p_id].Q[end])
+        # end
 
         # Remove firm agents from model
         kill_agent!(p_id, model)

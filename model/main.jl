@@ -96,18 +96,9 @@ function initialize_model(
     end
 
     # Initialize consumer good producers
-    for cp_i in 1:init_param.n_cp
-
-        # Decide if producer makes basic or luxury goods
-        # In init, half of producers are allocated basic and half luxury
-        type_good = "Basic"
-        if cp_i > init_param.n_cp / 2
-            type_good = "Luxury"
-        end
+    for _ in 1:init_param.n_cp
 
         # Initialize capital good stock
-        # n_machines_init = 50  #TODO: put this in parameters
-        
         machines = initialize_machine_stock(global_param.freq_per_machine, 
                         init_param.n_machines_init,
                         η=global_param.η; 
@@ -119,7 +110,6 @@ function initialize_model(
         cp = initialize_cp(
                 id,
                 machines,  
-                type_good, 
                 init_param.n_init_emp_cp, 
                 global_param.μ1,
                 global_param.ι;
@@ -151,10 +141,7 @@ function initialize_model(
     end
 
     # Initialize schedulers
-    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
-
-    # Initialize bank struct
-    # bank_struct = initialize_bank(all_p, model)
+    all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
     # Initialize index fund struct
     indexfund_struct = IndexFund(T=T)
@@ -166,8 +153,7 @@ function initialize_model(
 
     # Let all households select cp of both types for trading network
     for hh_id in all_hh
-        select_bp_lp_hh!(model[hh_id], all_bp, all_lp, 
-                         init_param.n_bp_hh, init_param.n_lp_hh)
+        select_cp_hh!(model[hh_id], all_cp, init_param.n_cp_hh)
     end
 
     # Spread employed households over producerss
@@ -190,7 +176,6 @@ end
 
 function model_step!(
     t::Int,
-    T::Int,
     to,
     global_param::GlobalParam, 
     init_param::InitParam,
@@ -198,14 +183,13 @@ function model_step!(
     gov_struct::Government,
     ep::EnergyProducer, 
     labormarket_struct::LaborMarket,
-    # bank_struct::Bank,
     indexfund_struct::IndexFund,
     climate_struct::Climate,
     model::ABM
     )
 
     # Update schedulers
-    @timeit to "schedule" all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
+    @timeit to "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
     # Update firm age
     for p_id in all_p
@@ -215,8 +199,8 @@ function model_step!(
     # Check if households still have enough bp and lp, otherwise sample more
     refill_suppliers_all_hh!(
         all_hh,
-        all_bp, 
-        all_lp,
+        all_cp,
+        init_param.n_cp_hh,
         model
     )
 
@@ -278,12 +262,6 @@ function model_step!(
         model
     )
 
-    # for cp_id in all_cp
-    #     if model[cp_id].age == 2
-    #         println(model[cp_id].L, " ",  model[cp_id].ΔLᵈ, " ", model[cp_id].N_goods, " ", model[cp_id].Qˢ, " ", model[cp_id].Dᵉ, " ", model[cp_id].D)
-    #     end
-    # end
-
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
     for p_id in all_p
@@ -331,8 +309,6 @@ function model_step!(
     @timeit to "consumermarket" consumermarket_process!(
                                     all_hh,
                                     all_cp,
-                                    all_bp,
-                                    all_lp,
                                     all_W_hh,
                                     gov_struct,
                                     global_param,
@@ -342,16 +318,14 @@ function model_step!(
                                 )
 
     # Households decide to switch suppliers based on satisfied demand and prices
-    # for hh_id in all_hh
     @timeit to "decide switching hh" decide_switching_all_hh!(
         global_param,
         all_hh,
+        all_cp,
         all_p,
-        all_bp,
-        all_lp,
+        init_param.n_cp_hh,
         model
     )
-    # end
 
     # (6) kp deliver goods to cp, kp make up profits
     for kp_id in all_kp
@@ -359,12 +333,10 @@ function model_step!(
     end
 
     # Close balances of all firms
-    for p_id in all_p
+    for cp_id in all_cp
         # Update amount of owned capital, increase machine age
-        if typeof(model[p_id]) == ConsumerGoodProducer
-            update_n_machines_cp!(model[p_id], global_param.freq_per_machine)
-            increase_machine_age_cp!(model[p_id])
-        end
+        update_n_machines_cp!(model[cp_id], global_param.freq_per_machine)
+        increase_machine_age_cp!(model[cp_id])
     end 
 
     # Close balances of firms, if insolvent, liquidate firms
@@ -377,11 +349,12 @@ function model_step!(
     redistribute_surplus_gov!(gov_struct, all_hh, model)
 
     # Update market shares of cp
-    update_marketshare_cp!(all_bp, all_lp, model)
-    update_marketshare_kp!(all_kp, model)
+    update_marketshare_p!(all_cp, model)
+    update_marketshare_p!(all_kp, model)
 
     # Select producers that will be declared bankrupt and removed
-    @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
+    # @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
+    @timeit to "check bankr" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
 
 
     # (7) macro-economic indicators are updated.
@@ -391,12 +364,9 @@ function model_step!(
         all_hh, 
         all_cp, 
         all_kp,
-        all_bp,
-        all_lp,
         all_p,
         ep,
-        bankrupt_bp,
-        bankrupt_lp,
+        bankrupt_cp,
         bankrupt_kp,
         labormarket_struct,
         gov_struct,
@@ -411,8 +381,7 @@ function model_step!(
 
     # Remove bankrupt companies.
     @timeit to "kill bankr p" kill_all_bankrupt_p!(
-        bankrupt_bp, 
-        bankrupt_lp, 
+        bankrupt_cp,
         bankrupt_kp, 
         all_hh,
         all_kp,
@@ -439,12 +408,10 @@ function model_step!(
 
     # Replace bankrupt companies with new companies
     @timeit to "replace cp" replace_bankrupt_cp!(
-        bankrupt_bp, 
-        bankrupt_lp,
+        bankrupt_cp, 
         bankrupt_kp, 
         all_hh,
-        all_bp,
-        all_lp,
+        all_cp,
         all_kp,
         global_param,
         indexfund_struct,
@@ -481,7 +448,6 @@ function run_simulation(;
 
         @timeit to "step" model_step!(
                                 t,
-                                T,
                                 to, 
                                 global_param, 
                                 init_param,
@@ -489,7 +455,6 @@ function run_simulation(;
                                 gov_struct,
                                 ep,
                                 labormarket_struct, 
-                                # bank_struct, 
                                 indexfund_struct,
                                 climate_struct, 
                                 model
@@ -498,9 +463,9 @@ function run_simulation(;
 
     @timeit to "save macro" save_macro_data(macro_struct)
 
-    all_hh, all_cp, all_kp, all_bp, all_lp, all_p = schedule_per_type(true, model)
+    all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
-    @timeit to "save findist" save_final_dist(all_hh, all_bp, all_lp, all_kp, model)
+    @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
 
     @timeit to "save climate" save_climate_data(ep, climate_struct, model)
 
