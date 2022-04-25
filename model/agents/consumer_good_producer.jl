@@ -3,7 +3,6 @@ Defines struct for consumer good producer
 """
 @with_kw mutable struct ConsumerGoodProducer <: AbstractAgent
     id::Int                                   # id
-    # type_good::String                         # type of good produced by producer
     age::Int = 0                              # firm age
     
     # Price and cost data
@@ -76,7 +75,6 @@ function initialize_cp(
 
     cp = ConsumerGoodProducer(
         id=id,
-        # type_good = type_good,
         μ = fill(μ, 3),
         D = fill(D, 3),  
         Nᵈ = ι * D,                
@@ -503,8 +501,6 @@ function receive_machines_cp!(
     Iₜ::Float64,
     )
 
-    # println("1: len exp: $(cp.n_mach_ordered_EI), len repl: $(length(cp.mach_tb_repl)), len new: $(length(new_machines)), len all: $(length(cp.Ξ))")
-
     # Add new machines to capital stock, add investment expenditure
     cp.Ξ = vcat(cp.Ξ, new_machines)
     cp.curracc.TCI += Iₜ
@@ -534,13 +530,9 @@ end
 Replaces cp, places cp in firm list of hh.
 """
 function replace_bankrupt_cp!(
-    # bankrupt_bp::Vector{Int}, 
-    # bankrupt_lp::Vector{Int},
     bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     all_hh::Vector{Int},
-    # all_bp::Vector{Int},
-    # all_lp::Vector{Int},
     all_cp::Vector{Int},
     all_kp::Vector{Int},
     global_param::GlobalParam,
@@ -551,8 +543,6 @@ function replace_bankrupt_cp!(
     )
 
     # Create vectors containing ids of non-bankrupt bp, lp and kp
-    # nonbankrupt_bp = setdiff(all_bp, bankrupt_bp)
-    # nonbankrupt_lp = setdiff(all_lp, bankrupt_lp)
     nonbankrupt_cp = setdiff(all_cp, bankrupt_cp)
     nonbankrupt_kp = setdiff(all_kp, bankrupt_kp)
 
@@ -561,13 +551,10 @@ function replace_bankrupt_cp!(
 
     # Make weights for allocating cp to hh
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
-    # weights_hh_bp = map(hh_id -> min(1, 1 / length(model[hh_id].bp)), all_hh)
-    # weights_hh_lp = map(hh_id -> min(1, 1 / length(model[hh_id].lp)), all_hh)
     weights_hh_cp = map(hh_id -> min(1, 1 / length(model[hh_id].cp)), all_hh)
     weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
 
     n_bankrupt_cp = length(bankrupt_cp)
-    # println("n bankrupt: $n_bankrupt_cp")
 
     # Sample all NW coefficients and capital coefficients
     capital_coefficients = rand(Uniform(global_param.φ1, global_param.φ2), n_bankrupt_cp)
@@ -592,15 +579,8 @@ function replace_bankrupt_cp!(
     req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps .* global_param.freq_per_machine))
     all_req_NW = sum(req_NW)
     frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
-    # println("frac cp: ", frac_NW_if)
 
     for (i,cp_id) in enumerate(bankrupt_cp)
-
-        # type_good="Basic"
-        # if cp_id in bankrupt_lp
-        #     type_good="Luxury"
-        # end
-        # type_good = cp_id ∈ bankrupt_bp ? "Basic" : "Luxury"
 
         # Sample what the size of the capital stock will be
         D = macro_struct.cu[t] * all_n_machines[i] * global_param.freq_per_machine
@@ -610,9 +590,7 @@ function replace_bankrupt_cp!(
         new_cp = initialize_cp(
                     cp_id,
                     Vector{Machine}(),
-                    # type_good,
                     0,
-                    # cp_id ∈ bankrupt_bp ? macro_struct.μ_bp[t] : macro_struct.μ_lp[t],
                     macro_struct.μ_cp[t],     
                     global_param.ι;
                     D=D,
@@ -649,7 +627,6 @@ function replace_bankrupt_cp!(
         end
 
     end
-    # println("All inflow: $(all_req_NW)")
 end
 
 
@@ -697,18 +674,6 @@ function update_Qᵉ_cp!(
 end
 
 
-# """
-# Updates expected long-term labor supply Lᵉ
-# """
-# function update_Lᵉ_cp!(
-#     cp::ConsumerGoodProducer,
-#     global_param
-#     )
-
-#     cp.Lᵉ = global_param.ω * cp.L + (1 - global_param.ω) * cp.Lᵉ
-# end
-
-
 """
 Updates capital stock n_machines
 """
@@ -741,23 +706,6 @@ function update_μ_cp!(
     t::Int, 
     μ1::Float64
     )
-
-    # First check if market share is nonzero, else liquidate firm
-    # if cp.f[end] <= 0.001
-    #     # TODO: liquidate firm
-    #     cp.f[end] = 0.001
-    # end
-
-    # # Compute market share
-    # if length(cp.f) > 2
-    #     cp.μ = cp.μ * (1 + υ * (cp.f[end] - cp.f[end-1])/cp.f[end-1])
-    # else
-    #     cp.μ = μ1
-    # end
-    # println(cp.μ)
-
-    # println(cp.μ)
-    # println(cp.Π)
 
     b = 0.1
     l = 2

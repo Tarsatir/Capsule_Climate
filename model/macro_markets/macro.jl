@@ -10,8 +10,6 @@
 
     p̄::Vector{Float64} = zeros(Float64, T)                  # average price of cp goods over time
     p̄_kp::Vector{Float64} = zeros(Float64, T)               # average price of kp goods over time
-    # μ_bp::Vector{Float64} = zeros(Float64, T)
-    # μ_lp::Vector{Float64} = zeros(Float64, T)
     μ_cp::Vector{Float64} = zeros(Float64, T)               # average μ for cp
     μ_kp::Vector{Float64} = zeros(Float64, T)               # average μ for kp
     CPI :: Vector{Float64} = zeros(Float64, T)              # price index consumer goods over time
@@ -90,21 +88,15 @@
     avg_B_EF::Vector{Float64} = zeros(Float64, T)           # average B_EF at kp
 
     # Production
-    # avg_Q_bp::Vector{Float64} = zeros(Float64, T)           # average production of bp
-    # avg_Q_lp::Vector{Float64} = zeros(Float64, T)           # average production of lp
     avg_Q_cp::Vector{Float64} = zeros(Float64, T)           # average production of cp
     avg_Q_kp::Vector{Float64} = zeros(Float64, T)           # average production of kp
 
     # Bankrupties
-    # bankrupt_bp::Vector{Float64} = zeros(Float64, T)        # fraction of bp that went bankrupt
-    # bankrupt_lp::Vector{Float64} = zeros(Float64, T)        # fraction of lp that went bankrupt
     bankrupt_cp::Vector{Float64} = zeros(Float64, T)        # fraction of cp that went bankrupt
     bankrupt_kp::Vector{Float64} = zeros(Float64, T)        # fraction of kp that went bankrupt
 
     cu::Vector{Float64} = zeros(Float64, T)                 # average rate of capital utilization
     avg_n_machines_cp::Vector{Float64} = zeros(Float64, T)  # average number of machines cp
-    # avg_n_machines_bp::Vector{Float64} = zeros(Float64, T)  # average number of machines bp
-    # avg_n_machines_lp::Vector{Float64} = zeros(Float64, T)  # average number of machines lp
 
     GINI_I::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for income
     GINI_W::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for wealth
@@ -120,12 +112,8 @@ function update_macro_timeseries(
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
     all_kp::Vector{Int},
-    # all_bp::Vector{Int},
-    # all_lp::Vector{Int},
     all_p::Vector{Int},
     ep,
-    # bankrupt_bp::Vector{Int},
-    # bankrupt_lp::Vector{Int},
     bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     labormarket_struct, 
@@ -190,8 +178,6 @@ function update_macro_timeseries(
     macro_struct.avg_B_EF[t] = mean(kp_id -> model[kp_id].B_EF[end], all_kp)
 
     # Production quantity
-    # macro_struct.avg_Q_bp[t] = mean(bp_id -> model[bp_id].Q[end], all_bp)
-    # macro_struct.avg_Q_lp[t] = mean(lp_id -> model[lp_id].Q[end], all_lp)
     macro_struct.avg_Q_cp[t] = mean(cp_id -> model[cp_id].Q[end], all_cp)
     macro_struct.avg_Q_kp[t] = mean(kp_id -> model[kp_id].Q[end], all_kp)
 
@@ -205,8 +191,6 @@ function update_macro_timeseries(
     macro_struct.cu[t] = mean(cp_id -> model[cp_id].n_machines > 0 ? model[cp_id].cu : 0.5, all_cp)
 
     # Average number of machines
-    # macro_struct.avg_n_machines_bp[t] = mean(bp_id -> model[bp_id].n_machines, all_bp)
-    # macro_struct.avg_n_machines_lp[t] = mean(lp_id -> model[lp_id].n_machines, all_lp)
     macro_struct.avg_n_machines_cp[t] = mean(cp_id -> model[cp_id].n_machines, all_cp)
 
     # Compute GINI coefficients
@@ -248,30 +232,18 @@ function compute_GDP!(
     end
 end
 
-# function update_labor_stats(macro_struct, labormarket_struct)
-
-# end
-
 
 """
 Computes the ratios of bankrupt bp, lp and kp.
 """
 function compute_bankrupties(
-    # all_bp::Vector{Int},
-    # all_lp::Vector{Int},
     all_cp::Vector{Int},
     all_kp::Vector{Int},
-    # bankrupt_bp::Vector{Int},
-    # bankrupt_lp::Vector{Int},
     bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     macro_struct::MacroEconomy,
     t::Int
     )
-
-    # macro_struct.bankrupt_bp[t] = length(bankrupt_bp) / length(all_bp)
-
-    # macro_struct.bankrupt_lp[t] = length(bankrupt_lp) / length(all_lp)
 
     macro_struct.bankrupt_cp[t] = length(bankrupt_cp) / length(all_cp)
 
@@ -347,8 +319,6 @@ Updates metrics on aggregate debt levels
 function update_debt!(
     all_cp::Vector{Int},
     all_kp::Vector{Int},
-    # bankrupt_bp::Vector{Int},
-    # bankrupt_lp::Vector{Int},
     bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
     Λ::Float64,
@@ -405,7 +375,6 @@ function compute_price_data!(
     end
 
     # Update markup rates
-    # macro_struct.μ_bp[t] = mean(bp_id -> model[bp_id].μ[end], all_bp)
     macro_struct.μ_cp[t] = mean(cp_id -> model[cp_id].μ[end], all_cp)
     macro_struct.μ_kp[t] = mean(kp_id -> model[kp_id].μ[end], all_kp)
 end

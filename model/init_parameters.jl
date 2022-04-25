@@ -19,8 +19,6 @@
 
     # Init params of hh
     n_cp_hh::Int = 14                     # number of cp of hh (also min amount)
-    # n_bp_hh::Int = 7                      # number of bp of hh (also min amount)
-    # n_lp_hh::Int = 7                      # number of lp of hh (also min amount)
 
     # Init params of ep
     n_powerplants_init::Int = 300_000     # number of unit of power plants in ep

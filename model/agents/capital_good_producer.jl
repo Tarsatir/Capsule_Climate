@@ -503,7 +503,6 @@ function update_marketshare_kp!(
         else
             f = model[kp_id].D[end] / kp_market
         end
-        # push!(model[kp_id].f, f)
         shift_and_append!(model[kp_id].f, f)
     end
 end

@@ -20,28 +20,10 @@
     # Consumption variables
     C::Float64 = 0.0                           # budget
     cp::Vector{Int} = Vector{Int}()            # connected cp
-    # bp::Vector{Int} = Vector{Int}()            # connected cp basic goods
-    # lp::Vector{Int} = Vector{Int}()            # connected cp luxury goods
     unsat_dem::Vector = Vector()               # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
     c_L::Float64 = 0.5                         # share of income used to buy luxury goods
 end
-
-
-# """
-# Uniformly samples basic and luxury good producers to be in trading network.
-# """
-# function select_bp_lp_hh!(
-#     hh::Household,
-#     all_bp::Vector{Int},
-#     all_lp::Vector{Int},
-#     n_bp::Int,
-#     n_lp::Int
-#     )
-
-#     hh.bp = sample(all_bp, n_bp)
-#     hh.lp = sample(all_lp, n_lp)
-# end
 
 
 """
@@ -70,9 +52,6 @@ function set_consumption_budget_hh!(
     # Update average price level of bp and lp
     update_average_price_hh!(hh, model)
 
-    # Update share of goods to bg and lg
-    # update_share_goodtypes_hh!(hh, global_param.c_L_max, global_param.a_σ, global_param.b_σ)
-
     # Compute consumption budget
     compute_consumption_budget_hh!(hh, global_param.α_cp, all_W_hh)
 end
@@ -87,28 +66,8 @@ function update_average_price_hh!(
     model::ABM
     )
 
-    # P̄_bp = mean(bp_id -> model[bp_id].p[end], hh.bp)
-    # P̄_lp = mean(lp_id -> model[lp_id].p[end], hh.lp)
-    # hh.P̄ = hh.c_L * P̄_lp + (1 - hh.c_L) * P̄_bp
-
     hh.P̄ = mean(cp_id -> model[cp_id].p[end], hh.cp)
 end
-
-
-# """
-# Defines logistic function that determines share of each good type
-# """
-# function update_share_goodtypes_hh!(
-#     hh::Household,
-#     c_L_max::Float64,
-#     a_σ::Float64,
-#     b_σ::Float64
-#     )
-
-#     # TODO: change this back once switching is implemented
-#     # hh.c_L = c_L_max / (1 + exp(-(hh.Wʳ[end]/a_σ - b_σ)))
-#     hh.c_L = 0.5
-# end
 
 
 """
@@ -199,11 +158,6 @@ function place_orders_hh!(
         end
         n_round += 1
     end
-
-    # 
-    # if C > 0.0
-    #     println(C)
-    # end
 
     return p_orders, cp_inventories, p_with_inventory
 end
@@ -331,14 +285,10 @@ Removes bankrupt producers from set of producers.
 """
 function remove_bankrupt_producers_hh!(
     hh::Household,
-    # bankrupt_bp::Vector{Int},
-    # bankrupt_lp::Vector{Int}
     bankrupt_cp::Vector{Int}
     )
 
     filter!(cp_id -> cp_id ∉ bankrupt_cp, hh.cp)
-    # filter!(bp_id -> bp_id ∉ bankrupt_bp, hh.bp)
-    # filter!(lp_id -> lp_id ∉ bankrupt_lp, hh.lp)
 end
 
 
@@ -350,13 +300,9 @@ function decide_switching_all_hh!(
     all_hh::Vector{Int},
     all_cp::Vector{Int},
     all_p::Vector{Int},
-    # all_bp::Vector{Int},
-    # all_lp::Vector{Int},
     n_cp_hh::Int,
     model::ABM
     )
-
-    # all_P_weights = Dict(p_id => 1/max(model[p_id].p[end], 0.001) for p_id in all_p)
 
     for hh_id in all_hh
         # Check if demand was constrained and for chance of changing cp
@@ -369,29 +315,6 @@ function decide_switching_all_hh!(
             # Sample producer to replace
             p_id_replaced = sample(model[hh_id].unsat_dem, Weights(weights))[1]
 
-            # Check if replaced supplier is bp or lp, sample new supplier in correct
-            # category and replace in set of hh suppliers.
-            # if p_id_replaced ∈ model[hh_id].bp
-            #     filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].bp)
-
-            #     # Add new bp if list not already too long
-            #     if length(model[hh_id].bp) < 10
-            #         # p_id_new = sample(setdiff(all_bp, model[hh_id].bp))
-            #         p_id_new = sample(all_bp)
-            #         push!(model[hh_id].bp, p_id_new)
-            #     end
-            # else
-            #     filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].lp)
-
-            #     # Add new bp if list not already too long
-            #     if length(model[hh_id].lp) < 10
-            #         # p_id_new = sample(setdiff(all_lp, model[hh_id].lp))
-            #         p_id_new = sample(all_lp)
-            #         push!(model[hh_id].lp, p_id_new)
-            #     end
-            # end
-
-            # if p_id_replaced ∈ model[hh_id].cp
             filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
 
             # Add new cp if list not already too long
@@ -399,7 +322,6 @@ function decide_switching_all_hh!(
                 p_id_new = sample(setdiff(all_cp, model[hh_id].cp))
                 push!(model[hh_id].cp, p_id_new)
             end
-            # end
 
         end
 
@@ -407,12 +329,9 @@ function decide_switching_all_hh!(
         if rand() < global_param.ψ_P
 
             # Randomly select a supplier that may be replaced
-            # p_id_candidate1 = sort(vcat(model[hh_id].bp, model[hh_id].lp), by=p_id -> model[p_id].p[end])[end]
-            # p_id_candidate1 = sample(vcat(model[hh_id].bp, model[hh_id].lp))
             p_id_candidate1 = sample(model[hh_id].cp)
 
             # Randomly pick another candidate from same type and see if price is lower
-            # if p_id_candidate1 ∈ model[hh_id].cp
             # Ugly sample to boost performance
             p_id_candidate2 = sample(all_cp)
             while p_id_candidate2 ∈ model[hh_id].cp
@@ -423,33 +342,6 @@ function decide_switching_all_hh!(
             if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
                 model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
             end
-            # end
-
-            # if p_id_candidate1 ∈ model[hh_id].bp
-            #     # TODO make this weighted (if needed)
-            #     # TODO see if you dont always want to sample from already known producers
-
-            #     # Ugly sample to boost performance
-            #     p_id_candidate2 = sample(all_bp)
-            #     while p_id_candidate2 ∈ model[hh_id].bp
-            #         p_id_candidate2 = sample(all_bp)
-            #     end
-                
-            #     # Replace supplier if price of other supplier is lower 
-            #     if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-            #         model[hh_id].bp[findfirst(x->x==p_id_candidate1, model[hh_id].bp)] = p_id_candidate2
-            #     end
-            # else
-            #     p_id_candidate2 = sample(all_lp)
-            #     while p_id_candidate2 ∈ model[hh_id].lp
-            #         p_id_candidate2 = sample(all_lp)
-            #     end
-            
-            #     # Replace supplier if price of other supplier is lower
-            #     if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-            #         model[hh_id].lp[findfirst(x->x==p_id_candidate1, model[hh_id].lp)] = p_id_candidate2
-            #     end
-            # end
         end
     end
 end
@@ -461,20 +353,15 @@ Refills amount of bp and lp in amount is below minimum. Randomly draws suppliers
 """
 function refill_suppliers_all_hh!(
     all_hh::Vector{Int},
-    # all_bp::Vector{Int},
-    # all_lp::Vector{Int},
     all_cp::Vector{Int},
     n_cp_hh::Int,
     model::ABM
-    # n_bp_hh=7::Int,
-    # n_lp_hh=7::Int
     )
 
-    # Check amount of bp and lp of all hh, if insufficient replenish by randomly
+    # Check amount of cp of all hh, if insufficient replenish by randomly
     # drawing other suppliers based on weights
     for hh_id in all_hh
 
-        # Check bp, sample if insufficient
         if length(model[hh_id].cp) < n_cp_hh
 
             # Determine which bp are available
@@ -486,18 +373,5 @@ function refill_suppliers_all_hh!(
             add_cp = sample(poss_cp, Weights(weights), n_add_cp)
             model[hh_id].cp = vcat(model[hh_id].cp, add_cp)
         end
-
-        # # Check lp, sample if insufficient
-        # if length(model[hh_id].lp) < n_lp_hh
-
-        #     # Determine which lp are available
-        #     n_add_lp = n_lp_hh - length(model[hh_id].lp)
-        #     poss_lp = filter(p_id -> p_id ∉ model[hh_id].lp, all_lp)
-
-        #     # Determine weights based on prices, sample and add
-        #     weights_lp = map(lp_id -> 1 / model[lp_id].p[end], poss_lp)
-        #     add_lp = sample(poss_lp, Weights(weights_lp), n_add_lp)
-        #     model[hh_id].lp = vcat(model[hh_id].lp, add_lp)
-        # end
     end
 end
