@@ -163,24 +163,54 @@ function place_orders_hh!(
 end
 
 
+# """
+# Household receives ordered cg and mutates balance
+# """
+# function receive_ordered_goods_hh!(
+#     hh::Household,
+#     cp_id::Int,
+#     tot_price::Float64,
+#     share_fulfilled::Float64
+#     )
+
+#     # Decrease wealth with total price paid
+#     hh.W -= tot_price
+
+#     # If full demand not fulfilled, add cp to unsatisfied demand
+#     if ceil(share_fulfilled; digits=3) < 1.0
+#         println(share_fulfilled)
+#         push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
+#     end
+# end
+
 """
 Household receives ordered cg and mutates balance
 """
 function receive_ordered_goods_hh!(
     hh::Household,
-    cp_id::Int,
-    tot_price::Float64,
-    share_fulfilled::Float64
+    tot_sales::Float64,
+    unsat_demand::Vector{Float64},
+    hh_D::Vector{Float64},
+    all_cp::Vector{Int}
+    # cp_id::Int,
+    # tot_price::Float64,
+    # share_fulfilled::Float64
     )
 
-    # Decrease wealth with total price paid
-    hh.W -= tot_price
+    # Decrease wealth with total sold goods
+    hh.W -= tot_sales
 
-    # If full demand not fulfilled, add cp to unsatisfied demand
-    if ceil(share_fulfilled; digits=3) < 1.0
-        println(share_fulfilled)
-        push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
+    for i in findall(cp_id -> cp_id ∈ hh.cp, all_cp)
+        if unsat_demand[i] > 0.0
+            push!(hh.unsat_dem, (all_cp[i], unsat_demand[i] / hh_D[i]))
+        end
     end
+
+    # # If full demand not fulfilled, add cp to unsatisfied demand
+    # if ceil(share_fulfilled; digits=3) < 1.0
+    #     println(share_fulfilled)
+    #     push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
+    # end
 end
 
 

@@ -23,7 +23,7 @@ function receive_dividends_if!(
     indexfund_struct::IndexFund,
     dividends::Float64
     )
-    println("dividends yeet: ", dividends)
+    
     indexfund_struct.Assets += dividends
 end
 

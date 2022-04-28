@@ -17,7 +17,7 @@ using Dates
 include("../results/write_results.jl")
 include("helpers/custom_schedulers.jl")
 include("helpers/dist_matrix.jl")
-include("helpers/tmp_data_storage.jl")
+include("helpers/intermediate_data_storage.jl")
 include("helpers/update.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
@@ -170,7 +170,9 @@ function initialize_model(
     close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
                          indexfund_struct, 0, model)
 
-    return model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct
+    cm_dat = CMData(n_hh=init_param.n_hh, n_cp=init_param.n_cp)
+
+    return model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat
 end
 
 
@@ -185,6 +187,7 @@ function model_step!(
     labormarket_struct::LaborMarket,
     indexfund_struct::IndexFund,
     climate_struct::Climate,
+    cm_dat::CMData,
     model::ABM
     )
 
@@ -312,6 +315,7 @@ function model_step!(
                                     all_W_hh,
                                     gov_struct,
                                     global_param,
+                                    cm_dat,
                                     t,
                                     model,
                                     to
@@ -430,7 +434,7 @@ end
 
 
 function run_simulation(;
-    T=400::Int,
+    T=100::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
@@ -439,7 +443,7 @@ function run_simulation(;
     to = TimerOutput()
 
     println("Init Model:")
-    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
+    @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
         # if t % 100 == 0
@@ -456,7 +460,8 @@ function run_simulation(;
                                 ep,
                                 labormarket_struct, 
                                 indexfund_struct,
-                                climate_struct, 
+                                climate_struct,
+                                cm_dat, 
                                 model
                             )
     end

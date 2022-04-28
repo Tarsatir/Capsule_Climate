@@ -95,10 +95,10 @@ function close_balance_all_p!(
         end
     end
 
-    println("avg max NW: ", all_max_NW / 200, ", all max NW: ", all_max_NW)
-    println("avg NW stock: ", all_NW / 200, ", all NW: ", all_NW)
+    # println("avg max NW: ", all_max_NW / 200, ", all max NW: ", all_max_NW)
+    # println("avg NW stock: ", all_NW / 200, ", all NW: ", all_NW)
 
-    println("total dividends: ", total_dividends)
+    # println("total dividends: ", total_dividends)
     receive_dividends_if!(indexfund_struct, total_dividends)
 end
 
