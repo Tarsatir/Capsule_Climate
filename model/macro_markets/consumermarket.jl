@@ -70,41 +70,45 @@ function process_transactions_cm!(
     )
 
     unsat_demand = zeros(length(all_cp))
-    hh_transac = zeros(length(all_cp))
+    # hh_transac = zeros(length(all_cp))
     hh_D = zeros(length(all_cp))
 
     # Process transactions for hh
     for (i, hh_id) in enumerate(all_hh)
 
-        # println(max.(cm_dat.true_D[i,:], 0.01))
-
-        @timeit to "c1" copy!(hh_transac, cm_dat.transactions[i,:])
-        @timeit to "c2" hh_D .= cm_dat.true_D[i,:]
+        # hh_transac .= cm_dat.transactions[i,:]
+        hh_D .= cm_dat.true_D[i,:]
 
         # Compute unsatisfied demand
-        unsat_demand .= hh_D
-        unsat_demand .-= hh_transac
+        @timeit to "c1" unsat_demand = hh_D
+        @timeit to "c2" unsat_demand .-= @view cm_dat.transactions[i,:]
         unsat_demand .= max.(unsat_demand, 0.0)
 
-        @timeit to "receive goods" receive_ordered_goods_hh!(model[hh_id], sum(hh_transac), unsat_demand, hh_D, all_cp)
+        @timeit to "receive goods" receive_ordered_goods_hh!(
+                                        model[hh_id], 
+                                        sum(@view cm_dat.transactions[i,:]), 
+                                        unsat_demand, 
+                                        hh_D, 
+                                        all_cp
+                                    )
     end
 
     unsat_demand = zeros(length(all_hh))
-    cp_transac = zeros(length(all_hh))
-    cp_D = zeros(length(all_hh))
+    # cp_transac = zeros(length(all_hh))
+    # cp_D = zeros(length(all_hh))
 
     # Process transations for cp
     for (i, cp_id) in enumerate(all_cp)
 
-        @timeit to "c3" cp_transac[:] = cm_dat.transactions[:,i]
-        @timeit to "c4" cp_D .= cm_dat.true_D[:,i]
+        # @timeit to "c3" cp_transac = cm_dat.transactions[:,i]
+        # @timeit to "c4" cp_D .= cm_dat.true_D[:,i]
 
         # Compute unsat_demand
-        unsat_demand .= cp_D
-        unsat_demand .-= cp_transac
+        @timeit to "c3" unsat_demand = @view cm_dat.true_D[:,i]
+        @timeit to "c4" unsat_demand .-= @view cm_dat.transactions[:,i]
         unsat_demand .= max.(unsat_demand, 0.0)
 
-        model[cp_id].curracc.S = sum(cp_transac)
+        @timeit to "c5" model[cp_id].curracc.S = sum(@view cm_dat.transactions[:,i])
         N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
         shift_and_append!(model[cp_id].D, N_goods_sold)
 
@@ -165,16 +169,16 @@ function cpmarket_matching_cp!(
 
         # Update how much was sold per hh and cp
         sum!(cm_dat.sold_per_hh_round, cm_dat.C_spread)
-        cm_dat.sold_per_hh .+= floor.(cm_dat.sold_per_hh_round, digits=8)
+        # cm_dat.sold_per_hh .+= floor.(cm_dat.sold_per_hh_round, digits=8)
         
         sum!(cm_dat.sold_per_cp_round, cm_dat.C_spread')
-        cm_dat.sold_per_cp .+= floor.(cm_dat.sold_per_cp_round, digits=6)
+        # cm_dat.sold_per_cp .+= floor.(cm_dat.sold_per_cp_round, digits=6)
 
         # Update consumption budget C and inventory N
-        cm_dat.all_C .-= cm_dat.sold_per_hh
+        cm_dat.all_C .-= cm_dat.sold_per_hh_round
         cm_dat.all_C[cm_dat.all_C .<= 1e-1] .= 0.0
 
-        cm_dat.all_N .-= cm_dat.sold_per_cp
+        cm_dat.all_N .-= cm_dat.sold_per_cp_round
         cm_dat.all_C[cm_dat.all_C .<= 1e-1] .= 0.0
 
         # Set weights of sold-out producers to zero

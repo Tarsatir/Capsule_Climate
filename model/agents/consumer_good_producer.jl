@@ -406,74 +406,74 @@ function order_machines_cp!(
 end
 
 
-"""
-Decides if enough inventory to send orders hh, 
-    if yes: transact, if no: send back order unfulfilled or partially fulfilled
-"""
-function send_ordered_goods_all_cp!(
-    all_cp::Vector{Int},
-    t::Int,
-    model::ABM,
-    to
-    )
+# """
+# Decides if enough inventory to send orders hh, 
+#     if yes: transact, if no: send back order unfulfilled or partially fulfilled
+# """
+# function send_ordered_goods_all_cp!(
+#     all_cp::Vector{Int},
+#     t::Int,
+#     model::ABM,
+#     to
+#     )
 
-    # Keep track of total demand, sales and unsatisfied demand
-    total_D = 0.0
-    actual_S = 0.0
-    total_unsat_demand = 0.0
-    share_fulfilled::Float64 = 0.0
+#     # Keep track of total demand, sales and unsatisfied demand
+#     total_D = 0.0
+#     actual_S = 0.0
+#     total_unsat_demand = 0.0
+#     share_fulfilled::Float64 = 0.0
 
-    for cp_id in all_cp
-        # Check if any orders received
-        if model[cp_id].age == 1 && t != 1
-            return nothing
-        elseif length(model[cp_id].order_queue) == 0
-            shift_and_append!(model[cp_id].D, 0.0)
-            model[cp_id].Dᵁ = 0.0
-            model[cp_id].curracc.S = 0.0
-            return nothing
-        end
+#     for cp_id in all_cp
+#         # Check if any orders received
+#         if model[cp_id].age == 1 && t != 1
+#             return nothing
+#         elseif length(model[cp_id].order_queue) == 0
+#             shift_and_append!(model[cp_id].D, 0.0)
+#             model[cp_id].Dᵁ = 0.0
+#             model[cp_id].curracc.S = 0.0
+#             return nothing
+#         end
 
-        # Keep track of total demand, sales and unsatisfied demand
-        total_D = 0.0
-        actual_S = 0.0
-        total_unsat_demand = 0.0
-        share_fulfilled = 0.0
+#         # Keep track of total demand, sales and unsatisfied demand
+#         total_D = 0.0
+#         actual_S = 0.0
+#         total_unsat_demand = 0.0
+#         share_fulfilled = 0.0
         
-        # Loop over orders in queue, add realized sales S
-        for (hh_id, q) in model[cp_id].order_queue
+#         # Loop over orders in queue, add realized sales S
+#         for (hh_id, q) in model[cp_id].order_queue
 
-            total_D += q
+#             total_D += q
 
-            # Check if enough inventory available
-            if model[cp_id].N_goods > q
-                share_fulfilled = 1.0
-                model[cp_id].N_goods -= q
-            elseif model[cp_id].N_goods > 0 && model[cp_id].N_goods < q
-                share_fulfilled = ceil(model[cp_id].N_goods / q, digits=2)
-                total_unsat_demand += q - model[cp_id].N_goods
-                model[cp_id].N_goods = 0
-            else
-                share_fulfilled = 0.0
-                total_unsat_demand += q
-            end
+#             # Check if enough inventory available
+#             if model[cp_id].N_goods > q
+#                 share_fulfilled = 1.0
+#                 model[cp_id].N_goods -= q
+#             elseif model[cp_id].N_goods > 0 && model[cp_id].N_goods < q
+#                 share_fulfilled = ceil(model[cp_id].N_goods / q, digits=2)
+#                 total_unsat_demand += q - model[cp_id].N_goods
+#                 model[cp_id].N_goods = 0
+#             else
+#                 share_fulfilled = 0.0
+#                 total_unsat_demand += q
+#             end
 
-            if share_fulfilled != 1.0
-                println(share_fulfilled)
-            end
+#             if share_fulfilled != 1.0
+#                 println(share_fulfilled)
+#             end
 
-            tot_price = q * share_fulfilled * model[cp_id].p[end]
-            actual_S += tot_price
-            @timeit to "receive order" receive_ordered_goods_hh!(model[hh_id], model[cp_id].id, tot_price, share_fulfilled)
-        end
+#             tot_price = q * share_fulfilled * model[cp_id].p[end]
+#             actual_S += tot_price
+#             @timeit to "receive order" receive_ordered_goods_hh!(model[hh_id], model[cp_id].id, tot_price, share_fulfilled)
+#         end
 
-        shift_and_append!(model[cp_id].D, total_D)
-        model[cp_id].Dᵁ = total_unsat_demand
-        model[cp_id].curracc.S = actual_S
+#         shift_and_append!(model[cp_id].D, total_D)
+#         model[cp_id].Dᵁ = total_unsat_demand
+#         model[cp_id].curracc.S = actual_S
 
-        reset_queue_cp!(model[cp_id])
-    end
-end
+#         reset_queue_cp!(model[cp_id])
+#     end
+# end
 
 
 function reset_brochures_cp!(
@@ -669,9 +669,6 @@ function update_Qˢ_cp!(
     )
 
     cp.Qˢ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0.0)
-    if isnan(cp.Qˢ)
-        println("D: $(cp.Dᵉ), N: $(cp.Nᵈ), N_goods: $(cp.N_goods)")
-    end
 end
 
 

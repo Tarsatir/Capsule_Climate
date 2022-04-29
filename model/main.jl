@@ -434,7 +434,7 @@ end
 
 
 function run_simulation(;
-    T=100::Int,
+    T=400::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
@@ -446,9 +446,9 @@ function run_simulation(;
     @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
-        # if t % 100 == 0
-        println("Step $t")
-        # end
+        if t % 100 == 0
+            println("Step $t")
+        end
 
         @timeit to "step" model_step!(
                                 t,

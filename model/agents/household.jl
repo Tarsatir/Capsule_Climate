@@ -349,7 +349,11 @@ function decide_switching_all_hh!(
 
             # Add new cp if list not already too long
             if length(model[hh_id].cp) < n_cp_hh
-                p_id_new = sample(setdiff(all_cp, model[hh_id].cp))
+                
+                p_id_new = sample(all_cp)
+                while p_id_new ∈ model[hh_id].cp
+                    p_id_new = sample(all_cp)
+                end
                 push!(model[hh_id].cp, p_id_new)
             end
 

@@ -602,7 +602,7 @@ function replace_bankrupt_kp!(
     # Compute share of investments that can be paid from the investment fund                       
     all_req_NW = sum(avg_NW .* NW_coefficients)
     frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
-    println("frac kp: ", frac_NW_if)
+    # println("frac kp: ", frac_NW_if)
 
     # Re-use id of bankrupted company
     for (i, (kp_id, kp_i)) in enumerate(zip(bankrupt_kp, bankrupt_kp_i))

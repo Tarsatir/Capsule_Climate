@@ -35,11 +35,23 @@ function reset_matrices_cp!(
     model::ABM
     )
 
-    for (i,hh_id) ∈ enumerate(all_hh)
+    all_p = map(cp_id -> model[cp_id].p[end], all_cp)
+    all_N_goods = map(cp_id -> model[cp_id].N_goods, all_cp)
+
+    @inbounds for (i,hh_id) ∈ enumerate(all_hh)
+
         cm_dat.all_C[i] = model[hh_id].C
-        for (j,cp_id) ∈ enumerate(all_cp)
-            cm_dat.weights[i,j] = 1 / model[cp_id].p[end]^2
-            cm_dat.all_N[j] = model[cp_id].N_goods * model[cp_id].p[end]
+
+        @inbounds for (j,cp_id) ∈ enumerate(all_cp)
+
+            cm_dat.all_N[j] = all_N_goods[j] * all_p[j]
+
+            if cp_id ∈ model[hh_id].cp
+                cm_dat.weights[i,j] = 1 / all_p[j]
+            else
+                cm_dat.weights[i,j] = 0.0
+            end
+
         end
     end
 
@@ -59,13 +71,13 @@ function reset_matrices_cp!(
     #     end
     # end
 
-    cm_dat.true_D .= 0.0
-    cm_dat.weights_sum .= 0.0
+    # cm_dat.true_D .= 0.0
+    # cm_dat.weights_sum .= 0.0
     cm_dat.transactions .= 0.0
-    cm_dat.demand_per_cp .= 0.0
+    # cm_dat.demand_per_cp .= 0.0
 
-    cm_dat.sold_per_hh .= 0.0
-    cm_dat.sold_per_hh_round .= 0.0
-    cm_dat.sold_per_cp .= 0.0
-    cm_dat.sold_per_cp_round .= 0.0
+    # cm_dat.sold_per_hh .= 0.0
+    # cm_dat.sold_per_hh_round .= 0.0
+    # cm_dat.sold_per_cp .= 0.0
+    # cm_dat.sold_per_cp_round .= 0.0
 end
