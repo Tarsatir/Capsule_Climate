@@ -37,7 +37,7 @@ function hire_worker_p!(
 
     # update labor stock and desired labor
     push!(p.employees, hh.id)
-    p.L += hh.L
+    p.L += hh.L * hh.skill
 end
 
 
@@ -49,7 +49,7 @@ function remove_worker_p!(
     hh::Household
     )
 
-    p.L -= hh.L
+    p.L -= hh.L * hh.skill
     p.employees = filter(hh_id -> hh_id ≠ hh.id, p.employees)
 end
 
@@ -275,4 +275,16 @@ function update_techparam_p(
     κ_i = global_param.κ_lower + κ_i * (global_param.κ_upper - global_param.κ_lower)
 
     return is_EF ? TP_last*(1 - κ_i) : TP_last*(1 + κ_i)
+end
+
+
+"""
+Updates the mean skill level of employees.
+"""
+function update_mean_skill_p!(
+    p::Union{ConsumerGoodProducer, CapitalGoodProducer},
+    model::ABM
+    )
+
+    p.mean_skill = length(p.employees) > 0 ? mean(hh_id -> model[hh_id].skill, p.employees) : 0.0
 end

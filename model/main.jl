@@ -89,6 +89,7 @@ function initialize_model(
     for i in 1:init_param.n_hh
 
         hh = Household(id=id, skill=hh_skills[i])
+        hh.wʳ = max(gov_struct.w_min, hh.wʳ)
         add_agent!(hh, model)
 
         id += 1
@@ -158,6 +159,7 @@ function initialize_model(
     # Spread employed households over producerss
     spread_employees_lm!(
         labormarket_struct,
+        gov_struct,
         all_hh, 
         all_cp, 
         all_kp,
@@ -165,6 +167,10 @@ function initialize_model(
         init_param.n_init_emp_kp,
         model
     )
+
+    for p_id in all_p
+        update_mean_skill_p!(model[p_id], model)
+    end
 
     close_balance_all_p!(all_p, global_param, gov_struct.τᴾ,
                          indexfund_struct, 0, model)
@@ -259,10 +265,15 @@ function model_step!(
         labormarket_struct,
         all_hh, 
         all_p,
-        gov_struct.UB,
         global_param,
+        gov_struct,
         model
     )
+
+    # Update mean skill level of employees
+    for p_id in all_p
+        update_mean_skill_p!(model[p_id], model)
+    end
 
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits

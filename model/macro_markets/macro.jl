@@ -400,7 +400,7 @@ function compute_unsatisfied_demand(
     # end
 
     # macro_struct.unsat_demand[t] = mean_unsat_dem / length(all_hh)
-    macro_struct.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ, all_cp) / sum(cp_id -> model[cp_id].D[end], all_cp)
+    macro_struct.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ, all_cp) / sum(cp_id -> model[cp_id].D[end] + model[cp_id].Dᵁ, all_cp)
 end
 
 

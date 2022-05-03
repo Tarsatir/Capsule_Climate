@@ -8,24 +8,13 @@
 end
 
 
-# function initialize_labormarket()
-#     labormarket_struct = LaborMarket(
-#         [],
-#         [],
-#         0.1,
-#         3,
-#         0
-#     )
-#     return labormarket_struct
-# end
-
-
 """
 Gives all producers a share of the labor force after being initialized.
 Households that are not assigned to a producer are declared unemployed.
 """
 function spread_employees_lm!(
-    labormarket_struct::LaborMarket, 
+    labormarket_struct::LaborMarket,
+    gov_struct::Government, 
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
     all_kp::Vector{Int}, 
@@ -40,7 +29,9 @@ function spread_employees_lm!(
     for cp_id in all_cp
         employees = all_hh[i:i+n_init_emp_cp-1]
         for hh_id in employees
-            set_employed_hh!(model[hh_id], 1.0 * model[hh_id].skill, cp_id)
+            w = max(gov_struct.w_min, model[hh_id].skill)
+            set_employed_hh!(model[hh_id], w, cp_id)
+            model[hh_id].w .= w
             hire_worker_p!(model[cp_id], model[hh_id])
             push!(labormarket_struct.employed, model[hh_id].id)
         end
@@ -55,7 +46,9 @@ function spread_employees_lm!(
     for kp_id in all_kp
         employees = all_hh[i:i+n_init_emp_kp-1]
         for hh_id in employees
-            set_employed_hh!(model[hh_id], 1.0 * model[hh_id].skill, kp_id)
+            w = max(gov_struct.w_min, model[hh_id].skill)
+            set_employed_hh!(model[hh_id], w, kp_id)
+            model[hh_id].w .= w
             hire_worker_p!(model[kp_id], model[hh_id])
             push!(labormarket_struct.employed, model[hh_id].id)
         end
@@ -66,9 +59,9 @@ function spread_employees_lm!(
 
     # Other households are pushed into unemployment
     for hh_id in all_hh[i:end]
-        hh = model[hh_id]
-        set_unemployed_hh!(hh)
-        push!(labormarket_struct.unemployed, hh.id)
+        set_unemployed_hh!(model[hh_id])
+        model[hh_id].w .= 0.0        
+        push!(labormarket_struct.unemployed, model[hh_id].id)
     end
 end
 
@@ -85,8 +78,8 @@ function labormarket_process!(
     labormarket_struct::LaborMarket,
     all_hh::Vector{Int}, 
     all_p::Vector{Int}, 
-    UB :: Float64,
     global_param::GlobalParam,
+    gov_struct::Government,
     model::ABM
     )
 
@@ -107,7 +100,7 @@ function labormarket_process!(
 
     # Update wage parameters households
     for hh_id in all_hh
-        update_sat_req_wage_hh!(model[hh_id], global_param.ϵ, UB)
+        update_sat_req_wage_hh!(model[hh_id], global_param.ϵ, gov_struct.UB, gov_struct.w_min)
     end
 
     if !global_param.fordist_lm
@@ -190,6 +183,8 @@ function matching_lm(
     n_jobswitchers = 0
     n_employed = length(labormarket_struct.employed)
 
+    allowed_excess_L = 50
+
     for _ in 1:labormarket_struct.n_rounds
 
         # Loop over hiring producers producers
@@ -201,26 +196,31 @@ function matching_lm(
             end
 
             # TODO do this in a more sophisticated way
-            n_sample = min(10, length(jobseeking_hh))
+            n_sample = min(30, length(jobseeking_hh))
 
             # Make queue of job-seeking households
             # Only select households with a low enough reservation wage
+            # Lᵈ = sort(sample(jobseeking_hh, n_sample, replace=false), 
+            #           by = hh_id -> model[hh_id].wʳ)
+            # Lᵈ = sort(sample(jobseeking_hh, n_sample, replace=false), 
+            #           by = hh_id -> model[hh_id].wʳ / model[hh_id].skill)
             Lᵈ = sort(sample(jobseeking_hh, n_sample, replace=false), 
-                      by = hh_id -> model[hh_id].wʳ)
+                      by = hh_id -> model[hh_id].L * model[hh_id].skill, rev=true)
 
             to_be_hired = Vector{Int}()
             for hh_id in Lᵈ
                 
                 # Only hire workers if wage can be afforded
                 # TODO: DESCRIBE IN MODEL
-                if model[hh_id].wʳ <= model[p_id].wᴼ_max
+                if ((model[hh_id].wʳ / model[hh_id].skill <= model[p_id].wᴼ_max) &&
+                    (model[hh_id].L * model[hh_id].skill <= ΔL + allowed_excess_L))
                     push!(to_be_hired, hh_id)
-                    ΔL -= model[hh_id].L
+                    ΔL -= model[hh_id].L * model[hh_id].skill
                 end
 
                 # TODO: make this a constant
                 # If producer's labor demand is met, remove from seeking producers
-                if ΔL <= 10
+                if ΔL <= allowed_excess_L
                     filter!(p -> p ≠ p_id, hiring_producers)
                     break
                 end
@@ -235,13 +235,19 @@ function matching_lm(
                 # Hire selected workers
                 for hh_id in to_be_hired
 
+                    # if model[hh_id].wʳ < 0.7
+                    #     println(model[hh_id].wʳ)
+                    # end
+
                     # If employed, change employer, otherwise get employed
                     if model[hh_id].employed
                         remove_worker_p!(model[model[hh_id].employer_id], model[hh_id])
-                        change_employer_hh!(model[hh_id], model[p_id].wᴼ, p_id)
+                        # change_employer_hh!(model[hh_id], model[p_id].wᴼ, p_id)
+                        change_employer_hh!(model[hh_id], model[hh_id].wʳ, p_id)
                         n_jobswitchers += 1
                     else
-                        set_employed_hh!(model[hh_id], model[p_id].wᴼ, p_id)
+                        # set_employed_hh!(model[hh_id], model[p_id].wᴼ, p_id)
+                        set_employed_hh!(model[hh_id], model[hh_id].wʳ, p_id)
                     end
                     
                     hire_worker_p!(model[p_id], model[hh_id])

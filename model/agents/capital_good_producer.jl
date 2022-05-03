@@ -22,6 +22,7 @@
     
     # Employment
     employees::Vector{Int} = []           # employees in company
+    mean_skill::Float64 = 1.0             # mean skill level of employees
     L::Float64 = 0.0                      # labor units in company
     ΔLᵈ::Float64 = 0.0                    # desired change in labor force
     w̄::Vector{Float64}                    # wage level
@@ -354,7 +355,7 @@ function produce_goods_kp!(
         # Production constrained, determine amount of production possible
         # and randomly select which machines to produce
         n_poss_prod = floor(Int, kp.L / req_L)
-        kp.prod_queue = sample(kp.orders, n_poss_prod; replace=false)
+        kp.prod_queue = n_poss_prod >= 1 ? sample(kp.orders, n_poss_prod; replace=false) : []
 
     end
 

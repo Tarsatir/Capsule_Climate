@@ -45,6 +45,7 @@ Defines struct for consumer good producer
 
     π_LP::Float64 = 1.0                       # labor productivity of total capital stock
     π_EE::Float64 = 1.0                       # productivity per energy unit of total capital stock
+    mean_skill::Float64 = 1.0                 # mean skill level of employees
     f::Vector{Float64}                        # hist market share
     Π::Vector{Float64} = zeros(Float64, 3)    # hist profits
     Πᵀ::Vector{Float64} = zeros(Float64, 3)   # Historical profits after tax
@@ -194,7 +195,7 @@ function check_funding_restrictions_cp!(
 
     # Determine expected TCL and TCE
     TCLᵉ = cp.ΔLᵈ > 0 ? cp.w̄[end] * cp.L + cp.ΔLᵈ * cp.wᴼ : (cp.L + cp.ΔLᵈ) * cp.w̄[end]
-    TCE = pₑ * cp.Qˢ / cp.π_EE
+    TCE = pₑ * cp.Qˢ / cp.π_EE 
 
     # Determine how much additional debt can be made
     max_add_debt = max(global_param.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
@@ -730,24 +731,24 @@ function update_μ_cp!(
 
     # if rand() < 1/3
 
-    if cp.age > l && cp.Π[end] != 0
+    # if cp.age > l && cp.Π[end] != 0
 
-        mean_μ = mean(cp.μ)
-        Δμ = (cp.μ[end] - mean_μ) / mean_μ
+    #     mean_μ = mean(cp.μ)
+    #     Δμ = (cp.μ[end] - mean_μ) / mean_μ
 
-        mean_Π = mean(cp.Π)
-        ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
+    #     mean_Π = mean(cp.Π)
+    #     ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
 
-        # TODO: CHANGE TO TAXED PROFITS??
+    #     # TODO: CHANGE TO TAXED PROFITS??
 
-        shock = rand(Uniform(0.0, b))
-        new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+    #     shock = rand(Uniform(0.0, b))
+    #     new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
 
-    elseif cp.Π[end] == 0
-        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
-    else
-        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
-    end
+    # elseif cp.Π[end] == 0
+    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    # else
+    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
+    # end
 
     shift_and_append!(cp.μ, new_μ)
     # else

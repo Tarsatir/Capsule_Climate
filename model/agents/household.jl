@@ -13,8 +13,8 @@
     skill::Float64                              # skill level of household
 
     # Income and wealth variables
-    I::Float64 = 100                            # hist income
-    Iᵀ::Float64 = 100    # change according to tax rate      # hist taxed income
+    I::Float64 = L * skill                      # hist income
+    Iᵀ::Float64 = L * skill  # change according to tax rate      # hist taxed income
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 500                            # wealth or cash on hand
 
@@ -221,7 +221,8 @@ Updates satisfying wage wˢ and requested wage wʳ
 function update_sat_req_wage_hh!(
     hh::Household, 
     ϵ::Float64, 
-    UB::Float64
+    UB::Float64,
+    w_min::Float64
     )
 
     # T = 4
@@ -236,9 +237,10 @@ function update_sat_req_wage_hh!(
     hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ / hh.L
 
     if hh.employed
-        hh.wʳ = hh.w[end] * (1 + ϵ)
+        hh.wʳ = max(w_min, hh.w[end] * (1 + ϵ))
     else
-        hh.wʳ = max(UB/hh.L, hh.wˢ)
+        # hh.wʳ = max(UB/hh.L, hh.wˢ)
+        hh.wʳ = max(w_min, hh.wˢ)
     end
 end
 
