@@ -47,7 +47,7 @@ function reset_matrices_cp!(
             cm_dat.all_N[j] = all_N_goods[j] * all_p[j]
 
             if cp_id ∈ model[hh_id].cp
-                cm_dat.weights[i,j] = 1 / all_p[j]
+                cm_dat.weights[i,j] = 1 / all_p[j]^2
             else
                 cm_dat.weights[i,j] = 0.0
             end

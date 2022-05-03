@@ -12,7 +12,7 @@ Defines struct for consumer good producer
 
     # Production and demand
     D::Vector{Float64}                        # hist demand
-    Dᵉ::Float64 = D[end]                      # exp demand
+    Dᵉ::Float64                               # exp demand
     Dᵁ::Float64 = 0.0                         # unsatisfied demand in last period
     order_queue::Vector = Vector()            # vector containing orders of demanding households
     Nᵈ::Float64                               # desired inventory
@@ -67,7 +67,7 @@ function initialize_cp(
     D=800.0::Float64,
     w=1.0::Float64,
     L=n_init_emp_cp * 100::Int,
-    N_goods=D*ι::Float64,
+    N_goods=3*D*ι::Float64,
     n_consrgood=200::Int,
     f=2/n_consrgood,
     )
@@ -76,7 +76,8 @@ function initialize_cp(
     cp = ConsumerGoodProducer(
         id=id,
         μ = fill(μ, 3),
-        D = fill(D, 3),  
+        D = fill(D, 3),
+        Dᵉ = D,  
         Nᵈ = ι * D,                
         N_goods = N_goods,          
         Q = fill(D * (1 + ι), 3),   
@@ -89,6 +90,7 @@ function initialize_cp(
 
     cp.balance.NW = 500
     cp.balance.EQ = 500
+
     return cp
 end
 
@@ -196,6 +198,7 @@ function check_funding_restrictions_cp!(
 
     # Determine how much additional debt can be made
     max_add_debt = max(global_param.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
+    # max_add_debt = max(global_param.Λ * cp.Dᵉ * cp.p[end - 1] - cp.balance.debt, 0)
 
     # Check if cost of labor and investment can be financed from liquid assets
     NW_no_prod = (cp.balance.NW + cp.Dᵉ * cp.p[end] + cp.curracc.rev_dep 
@@ -251,6 +254,7 @@ function check_funding_restrictions_cp!(
             poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + pₑ / cp.π_EE)
             poss_L = poss_prod / cp.π_LP
             cp.ΔLᵈ = poss_L - cp.L
+            # println("Yeet: $(cp.ΔLᵈ)")
         end
     end
 
@@ -594,6 +598,7 @@ function replace_bankrupt_cp!(
 
         # Sample what the size of the capital stock will be
         D = macro_struct.cu[t] * all_n_machines[i] * global_param.freq_per_machine
+        # println("D: $D, cu: $(macro_struct.cu[t]), am: $(all_n_machines[i])")
 
         # In the first period, the cp has no machines yet, these are delivered at the end
         # of the first period
@@ -631,7 +636,7 @@ function replace_bankrupt_cp!(
 
         customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
     
-        # Add cp to list of bp and lp, according to type
+        # Add cp to list of hh
         for hh_id ∈ customers
             push!(model[hh_id].cp, cp_id)
         end
@@ -652,10 +657,10 @@ function update_Dᵉ_cp!(
     ω::Float64
     )
 
-    if cp.age >= 2
+    if cp.age > 2
         # TODO: DESCRIBE IN MODEL 
         cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * cp.D[end] - cp.D[end-1])
-    else
+    elseif cp.age == 2
         cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * cp.D[end]
     end
 end
@@ -721,6 +726,10 @@ function update_μ_cp!(
     l = 2
     new_μ = cp.μ[end]
 
+    # TODO describe Calvo Pricing
+
+    # if rand() < 1/3
+
     if cp.age > l && cp.Π[end] != 0
 
         mean_μ = mean(cp.μ)
@@ -741,6 +750,9 @@ function update_μ_cp!(
     end
 
     shift_and_append!(cp.μ, new_μ)
+    # else
+        # shift_and_append!(cp.μ, cp.μ[end])
+    # end
 end
 
 

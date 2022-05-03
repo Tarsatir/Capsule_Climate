@@ -9,8 +9,6 @@ using TimerOutputs
 using RecursiveArrayTools
 using DataStructures
 using Parameters
-# using PyCall
-
 using Dates
 
 # Include files
@@ -75,7 +73,7 @@ function initialize_model(
     labormarket_struct = LaborMarket()
 
     # Initialize government struct
-    gov_struct = Government(T=T)
+    gov_struct = Government(curracc = GovCurrentAccount(T=T))
 
     # Initialize energy producer
     ep = initialize_energy_producer(T, init_param, global_param)
@@ -87,9 +85,10 @@ function initialize_model(
     id = 1
 
     # Initialize households
-    for _ in 1:init_param.n_hh
+    hh_skills = sample_skills_hh(init_param)
+    for i in 1:init_param.n_hh
 
-        hh = Household(id=id)
+        hh = Household(id=id, skill=hh_skills[i])
         add_agent!(hh, model)
 
         id += 1

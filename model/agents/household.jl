@@ -10,12 +10,13 @@
     wˢ::Float64 = 1.0                           # satisfying wage
     wʳ::Float64 = 1.0                           # requested wage
     T_unemp::Int = 0                            # time periods unemployed
+    skill::Float64                              # skill level of household
 
     # Income and wealth variables
     I::Float64 = 100                            # hist income
     Iᵀ::Float64 = 100    # change according to tax rate      # hist taxed income
     s::Float64 = 0.0                            # savings rate
-    W::Float64 = 50                             # wealth or cash on hand
+    W::Float64 = 500                            # wealth or cash on hand
 
     # Consumption variables
     C::Float64 = 0.0                           # budget
@@ -231,7 +232,7 @@ function update_sat_req_wage_hh!(
     # end
 
     # Try to use adaptive wˢ
-    ωwˢ = 0.8
+    ωwˢ = 0.9
     hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ / hh.L
 
     if hh.employed
@@ -408,4 +409,26 @@ function refill_suppliers_all_hh!(
             model[hh_id].cp = vcat(model[hh_id].cp, add_cp)
         end
     end
+end
+
+
+"""
+Samples wage levels of households from an empirical distribution.
+"""
+function sample_skills_hh(
+    init_param::InitParam
+    )::Vector{Float64}
+
+    skills = []
+    while length(skills) < init_param.n_hh
+        s = rand(LogNormal(0.0, init_param.σ_hh_I)) * init_param.scale_hh_I
+        if s < 2.5e5
+            push!(skills, s)
+        end
+    end
+
+    # Normalize skills
+    skills = init_param.n_hh .* skills ./ sum(skills)
+
+    return skills
 end

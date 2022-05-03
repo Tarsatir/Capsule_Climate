@@ -19,6 +19,8 @@
 
     # Init params of hh
     n_cp_hh::Int = 14                     # number of cp of hh (also min amount)
+    σ_hh_I::Float64 = 0.731               # sigma of lognormal distribution of income
+    scale_hh_I::Float64 = 34922.802       # scale of lognormal distribution of income
 
     # Init params of ep
     n_powerplants_init::Int = 300_000     # number of unit of power plants in ep

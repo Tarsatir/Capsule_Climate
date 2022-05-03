@@ -1,13 +1,16 @@
 @Base.kwdef mutable struct Government <: AbstractAgent
-    T::Int = T
-    UB::Float64 = 0.0                      # unemployment benefits
-    τᴵ::Float64 = 0.0                      # income tax
-    τˢ::Float64 = 0.0                       # sales tax
+    UB::Float64 = 70.0                     # unemployment benefits
+    w_min::Float64 = 0.0                   # minimum wage
+
+    # Tax rates
+    τᴵ::Float64 = 0.3                      # income tax
+    τˢ::Float64 = 0.0                      # sales tax
     τᴾ::Float64 = 0.0                      # profit tax
-    τᴱ::Float64 = 0.0                       # energy tax
-    τᶜ::Float64 = 0.0                       # emission tax
-    MS::Float64 = 0.0                       # money stock owned by government
-    curracc::GovCurrentAccount = GovCurrentAccount(T=T) # current account of government spending
+    τᴱ::Float64 = 0.0                      # energy tax
+    τᶜ::Float64 = 0.0                      # emission tax
+
+    MS::Float64 = 0.0                      # money stock owned by government
+    curracc::GovCurrentAccount             # current account of government spending
 end
 
 
@@ -123,10 +126,10 @@ function redistribute_surplus_gov!(
 
     if gov_struct.MS > 0.0
 
-        total_I = sum(map(hh_id -> model[hh_id].I, all_hh))
+        total_I = sum(hh_id -> model[hh_id].I, all_hh)
         for hh_id in all_hh
-            # model[hh_id].W[end] += (model[hh_id].I / total_I) * gov_struct.MS
-            model[hh_id].W[end] += gov_struct.MS / length(all_hh)
+            model[hh_id].W += (model[hh_id].I / total_I) * gov_struct.MS
+            # model[hh_id].W += gov_struct.MS / length(all_hh)
         end
         gov_struct.MS = 0.0
     end

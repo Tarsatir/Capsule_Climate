@@ -18,6 +18,13 @@ function consumermarket_process!(
     # Reset cm data 
     @timeit to "reset matrices" reset_matrices_cp!(cm_dat, all_hh, all_cp, model)
 
+    # for (cp_i, N) in enumerate(cm_dat.all_N)
+    #     if N == 0
+    #         cp = model[all_cp[cp_i]]
+    #         println("age: $(cp.age), L: $(cp.L), ΔL: $(cp.ΔLᵈ), π_LP: $(cp.π_LP), mach: $(cp.n_machines), Q: $(cp.Q[end]), Qˢ: $(cp.Qˢ), Nᵈ: $(cp.Nᵈ), Dᵉ: $(cp.Dᵉ), D: $(cp.D[end])")
+    #     end
+    # end
+
     # Market clearing process
     @timeit to "market clearing" cpmarket_matching_cp!(cm_dat)
 
@@ -70,7 +77,6 @@ function process_transactions_cm!(
     )
 
     unsat_demand = zeros(length(all_cp))
-    # hh_transac = zeros(length(all_cp))
     hh_D = zeros(length(all_cp))
 
     # Process transactions for hh
@@ -100,30 +106,16 @@ function process_transactions_cm!(
     # Process transations for cp
     for (i, cp_id) in enumerate(all_cp)
 
-        # @timeit to "c3" cp_transac = cm_dat.transactions[:,i]
-        # @timeit to "c4" cp_D .= cm_dat.true_D[:,i]
-
         # Compute unsat_demand
         @timeit to "c3" unsat_demand = @view cm_dat.true_D[:,i]
         @timeit to "c4" unsat_demand .-= @view cm_dat.transactions[:,i]
         unsat_demand .= max.(unsat_demand, 0.0)
 
+        # TODO decide whether it makes sense if producers know unsatisfied demand
+
         @timeit to "c5" model[cp_id].curracc.S = sum(@view cm_dat.transactions[:,i])
         N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
         shift_and_append!(model[cp_id].D, N_goods_sold)
-
-        # TODO decide whether it makes sense if producers know unsatisfied demand
-
-        # Check if rounding error is only due to floating point error
-        # @assert N_goods_sold * 0.99 < model[cp_id].N_goods
-        # if N_goods_sold >= 1.01 * model[cp_id].N_goods
-        #     for (k,l) in zip(N_goods_sold, model[cp_id].N_goods)
-        #         println("YEET")
-        #         println(k, " ", l)
-        #     end
-        # end
-
-        # model[cp_id].N_goods = max(model[cp_id].N_goods - N_goods_sold, 0.0)
         model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) < 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
         model[cp_id].Dᵁ = sum(unsat_demand)
     end
@@ -142,6 +134,9 @@ function cpmarket_matching_cp!(
     sum!(cm_dat.weights_sum, cm_dat.weights)
     cm_dat.weights ./= cm_dat.weights_sum
     sold_out = []
+
+    # println("total N: $(sum(cm_dat.all_N))")
+    # println(cm_dat.all_N)
 
     for i in 1:3
 
@@ -193,6 +188,8 @@ function cpmarket_matching_cp!(
         cm_dat.sold_per_hh_round .= 0.0
         cm_dat.sold_per_cp_round .= 0.0
     end
+
+    # println("Total sales: $(sum(cm_dat.transactions))")
 
     # return cm_dat.transactions
 end

@@ -22,11 +22,19 @@ def plot_macro_vars(df):
     # ax[0,0].legend()
 
     # Plot real GDP
-    ax[0,0].plot(T, 100 * df.GDP / df.CPI, label='total GDP')
-    ax[0,0].plot(T, 100 * df.GDP_I / df.CPI, label='income share')
-    ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI, label='cp share')
-    ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI, label='kp share')
-    ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI, label='UB exp')
+    # ax[0,0].plot(T, 100 * df.GDP / df.CPI, label='total GDP')
+    # ax[0,0].plot(T, 100 * df.GDP_I / df.CPI, label='income share')
+    # ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI, label='cp share')
+    # ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI, label='kp share')
+    # ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI, label='UB exp')
+    # ax[0,0].set_title("GDP")
+    # ax[0,0].legend()
+
+    ax[0,0].plot(T, df.GDP, label='total GDP')
+    ax[0,0].plot(T, df.GDP_I, label='income share')
+    ax[0,0].plot(T, df.GDP_cp, label='cp share')
+    ax[0,0].plot(T, df.GDP_kp, label='kp share')
+    ax[0,0].plot(T, df.Exp_UB, label='UB exp')
     ax[0,0].set_title("GDP")
     ax[0,0].legend()
 
@@ -256,7 +264,7 @@ def plot_sales_dist():
     df_cp = pd.read_csv('../results/result_data/final_profit_dists_cp.csv')
     df_kp = pd.read_csv('../results/result_data/final_profit_dists_kp.csv')
 
-    fig, ax = plt.subplots(5, 2, figsize=(8,12))
+    fig, ax = plt.subplots(3, 2, figsize=(8,8))
 
     ax[0,0].hist(df_cp.all_S_cp, bins=30)
     ax[0,0].set_title('$S$ of cp')
@@ -264,27 +272,15 @@ def plot_sales_dist():
     ax[1,0].hist(df_cp.all_profit_cp, bins=30)
     ax[1,0].set_title('$\Pi$ of cp')
 
-    ax[3,0].hist(df_cp.all_f_cp, bins=30)
-    ax[3,0].set_title('$f$ of cp')
-    ax[3,0].set_xlim(0, max(df_cp.all_f_cp))
-
-    # ax[1,0].hist(df_cp.all_S_lp, bins=30)
-    # ax[1,0].set_title('$S$ of lp')
-    
-    # ax[1,1].hist(df_cp.all_profit_lp, bins=30)
-    # ax[1,1].set_title('$\Pi$ of lp')
+    ax[2,0].hist(df_cp.all_f_cp, bins=30)
+    ax[2,0].set_title('$f$ of cp')
+    ax[2,0].set_xlim(0, max(df_cp.all_f_cp))
 
     ax[0,1].hist(df_kp.all_S_kp, bins=30)
     ax[0,1].set_title('$S$ of kp')
     
     ax[1,1].hist(df_kp.all_profit_kp, bins=30)
     ax[1,1].set_title('$\Pi$ of kp')
-
-
-
-    # ax[3,1].hist(df_cp.all_f_lp, bins=30)
-    # ax[3,1].set_title('$f$ of lp')
-    # ax[3,1].set_xlim(0, max(df_cp.all_f_lp))
 
     ax[2,1].hist(df_kp.all_f_kp, bins=30)
     ax[2,1].set_title('$f$ of kp')

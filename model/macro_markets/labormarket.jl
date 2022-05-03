@@ -38,33 +38,29 @@ function spread_employees_lm!(
 
     # Loop over cp, allocate households as employees
     for cp_id in all_cp
-        cp = model[cp_id]
         employees = all_hh[i:i+n_init_emp_cp-1]
         for hh_id in employees
-            hh = model[hh_id]
-            set_employed_hh!(hh, 1.0, cp_id)
-            hire_worker_p!(cp, hh)
-            push!(labormarket_struct.employed, hh.id)
+            set_employed_hh!(model[hh_id], 1.0 * model[hh_id].skill, cp_id)
+            hire_worker_p!(model[cp_id], model[hh_id])
+            push!(labormarket_struct.employed, model[hh_id].id)
         end
 
-        cp.employees = employees
-        cp.L = sum(hh_id -> model[hh_id].L, employees)
+        model[cp_id].employees = employees
+        model[cp_id].L = sum(hh_id -> model[hh_id].L, employees)
         i += n_init_emp_cp
 
     end
 
     # Loop over kp, allocate households as employees
     for kp_id in all_kp
-        kp = model[kp_id]
         employees = all_hh[i:i+n_init_emp_kp-1]
         for hh_id in employees
-            hh = model[hh_id]
-            set_employed_hh!(hh, 1.0, kp_id)
-            hire_worker_p!(kp, hh)
-            push!(labormarket_struct.employed, hh.id)
+            set_employed_hh!(model[hh_id], 1.0 * model[hh_id].skill, kp_id)
+            hire_worker_p!(model[kp_id], model[hh_id])
+            push!(labormarket_struct.employed, model[hh_id].id)
         end
-        kp.employees = employees
-        kp.L = sum(hh_id -> model[hh_id].L, employees)
+        model[kp_id].employees = employees
+        model[kp_id].L = sum(hh_id -> model[hh_id].L, employees)
         i += n_init_emp_kp
     end
 
