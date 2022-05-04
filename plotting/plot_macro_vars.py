@@ -1,8 +1,7 @@
-from matplotlib import gridspec
+from matplotlib.gridspec import GridSpec
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
 
 def plot_macro_vars(df):
     """
@@ -160,8 +159,10 @@ def plot_macro_vars(df):
     ax[6,1].legend()
     ax[6,1].set_title('Markup rates $\mu$')
 
-    ax[7,0].plot(range(len(df.unsat_demand)), df.unsat_demand)
-    ax[7,0].set_title('Unsatisfied demand')
+    ax[7,0].plot(T, df.unsat_demand, label='unsatisfied D')
+    ax[7,0].plot(T, df.unspend_C, label='unspend C')
+    ax[7,0].set_title('Unsatisfied demand and unspend C')
+    ax[7,0].legend()
 
     ax[7,1].plot(range(len(df.cu)), df.cu)
     ax[7,1].set_title('Capital utilization ratio')
@@ -175,44 +176,67 @@ def plot_cons_vars(df):
     Plots consumption figures
     """
 
-    fig, ax = plt.subplots(2, 1, figsize=(6,4))
+    fig = plt.figure(figsize=(6, 8))
+
+    gs = GridSpec(3, 2, figure=fig)
+    
+    ax0 = fig.add_subplot(gs[0,:])
+    ax1 = fig.add_subplot(gs[1,:])
+    ax2 = fig.add_subplot(gs[2,0])
+    ax3 = fig.add_subplot(gs[2,1])
 
     # Plot real GDP growth rates
     real_GDP = 100 * df.GDP.to_numpy() / df.CPI.to_numpy()
     delta_GDP = 100 * (real_GDP[1:] - real_GDP[:-1]) / real_GDP[:-1]
 
-    ax[0].hlines(0, 0, max(range(len(delta_GDP))), 
+    ax0.hlines(0, 0, max(range(len(delta_GDP))), 
                  linestyle='dashed', 
                  color='black')
-    ax[0].set_title('Changes in real GDP')
-    ax[0].fill_between(range(len(delta_GDP)), 
+    ax0.set_title('Monhtly changes in real GDP')
+    ax0.fill_between(range(len(delta_GDP)), 
                        [max(i, 0) for i in delta_GDP], 
                        [0 for _ in delta_GDP], 
                        color='green')
-    ax[0].fill_between(range(len(delta_GDP)), 
+    ax0.fill_between(range(len(delta_GDP)), 
                        [min(i, 0) for i in delta_GDP], 
                        [0 for _ in delta_GDP], 
                        color='red')
-
-    ax[0].set_ylim(-7.5,7.5)
+    ax0.set_xlabel('time')
+    ax0.set_ylabel('growth rate (%)')
+    ax0.set_ylim(-7.5,7.5)
 
 
     # Plot consumption growth rates
     C_t = 100 * df.C.to_numpy() / df.CPI.to_numpy()
     delta_C = 100 * (C_t[1:] - C_t[:-1]) / C_t[:-1]
 
-    ax[1].hlines(0, 0, max(range(len(delta_C))), linestyle='dashed', color='black')
-    ax[1].set_title('Changes in real consumption')
-    ax[1].fill_between(range(len(delta_C)), 
+    ax1.hlines(0, 0, max(range(len(delta_C))), linestyle='dashed', color='black')
+    ax1.set_title('Monhtly changes in real consumption')
+    ax1.fill_between(range(len(delta_C)), 
                        [max(i, 0) for i in delta_C], 
                        [0 for _ in delta_C], 
                        color='green')
-    ax[1].fill_between(range(len(delta_C)), 
+    ax1.fill_between(range(len(delta_C)), 
                        [min(i, 0) for i in delta_C], 
                        [0 for _ in delta_C], 
                        color='red')
-    ax[1].set_ylim(-7.5,7.5)
+    ax1.set_ylabel('growth rate (%)')
+    ax1.set_xlabel('time')
+    ax1.set_ylim(-7.5,7.5)
 
+
+    # Compute quarterly GDP growth rates and plot
+    Q_delta_GDP = 100 * (real_GDP[3:] - real_GDP[:-3]) / real_GDP[:-3]
+
+    ax2.set_title('Quarterly GDP growth')
+    ax2.hist(Q_delta_GDP, bins=100, density=True)
+    ax2.set_xlabel('growth rate (%)')
+
+    # Compute quarterly C growth rates and plot
+    Q_delta_C = 100 * (C_t[3:] - C_t[:-3]) / C_t[:-3]
+    ax3.set_title('Quarterly $C$ growth')
+    ax3.hist(Q_delta_C, bins=100, density=True)
+    ax3.set_xlabel('growth rate (%)')
 
 
     plt.tight_layout()
@@ -226,7 +250,7 @@ def plot_income_dist():
 
     df = pd.read_csv('../results/result_data/final_income_dists.csv')
 
-    fig, ax = plt.subplots(3, 2, figsize=(8,8))
+    fig, ax = plt.subplots(4, 2, figsize=(8,10))
 
     ax[0,0].hist(df.all_I, bins=100)
     ax[0,0].set_title('Income ($I_{i,t}$)')
@@ -251,6 +275,12 @@ def plot_income_dist():
     ax[2,1].set_title('Wealth ($W_{i,t}$), log-log')
     ax[2,1].set_xscale('log')
     ax[2,1].set_yscale('log')
+
+    ax[3,0].scatter(df.skills, df.all_I, s=0.3)
+    ax[3,0].set_title('Income to skills')
+
+    ax[3,1].scatter(df.skills, df.all_W, s=0.3)
+    ax[3,1].set_title('Wealth to skills')
 
     plt.tight_layout()
     plt.savefig('plots/final_income_dist.png')
@@ -405,13 +435,13 @@ if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    plot_macro_vars(df_macro)
+    # plot_macro_vars(df_macro)
     plot_cons_vars(df_macro)
 
-    plot_income_dist()
-    plot_inequality(df_macro)
-    plot_sales_dist()
+    # plot_income_dist()
+    # plot_inequality(df_macro)
+    # plot_sales_dist()
 
-    df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
-    plot_energy(df_climate_energy, df_macro)
-    plot_climate(df_climate_energy, df_macro)
+    # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
+    # plot_energy(df_climate_energy, df_macro)
+    # plot_climate(df_climate_energy, df_macro)

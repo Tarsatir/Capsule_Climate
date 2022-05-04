@@ -17,6 +17,7 @@
 
     C::Vector{Float64} = zeros(Float64, T)                  # aggregate consumption over time
     unsat_demand::Vector{Float64} = zeros(Float64, T)       # average ratio of unsatisfied demand
+    unspend_C::Vector{Float64} = zeros(Float64, T)          # average ratio of unspend C
     avg_N_goods::Vector{Float64} = zeros(Float64, T)        # average number of goods in cp firm inventory
 
     # Division of money over sectors
@@ -400,7 +401,9 @@ function compute_unsatisfied_demand(
     # end
 
     # macro_struct.unsat_demand[t] = mean_unsat_dem / length(all_hh)
-    macro_struct.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ, all_cp) / sum(cp_id -> model[cp_id].D[end] + model[cp_id].Dᵁ, all_cp)
+    macro_struct.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ[end], all_cp) / sum(cp_id -> model[cp_id].D[end] + model[cp_id].Dᵁ[end], all_cp)
+
+    macro_struct.unspend_C[t] = 1 - sum(hh_id -> model[hh_id].C_actual, all_hh) / sum(hh_id -> model[hh_id].C, all_hh)
 end
 
 

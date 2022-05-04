@@ -1,16 +1,36 @@
 function fire_excess_workers_p!(
-    p::AbstractAgent, 
+    p::Union{ConsumerGoodProducer, CapitalGoodProducer}, 
     model::ABM
     )::Vector{Int}
 
-    n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
-
-    if n_to_be_fired >= length(p.employees)
+    if p.ΔLᵈ >= p.L
         fired_workers = p.employees
     else
-        # TODO: find a more sophisticated way to select who is fired
-        fired_workers = sample(p.employees, n_to_be_fired, replace=false)
+
+        ΔL = -p.ΔLᵈ
+        fired_workers = []
+
+        # Sort workers based on their relative expensiveness
+        sort!(p.employees, by = hh_id -> model[hh_id].w[end] / model[hh_id].skill, rev=true)
+
+        for hh_id in p.employees
+            if ΔL < 50
+                break
+            end
+            push!(fired_workers, hh_id)
+            ΔL -= model[hh_id].L * model[hh_id].skill
+        end
+
     end
+
+    # n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
+
+    # if n_to_be_fired >= length(p.employees)
+    #     fired_workers = p.employees
+    # else
+    #     # TODO: find a more sophisticated way to select who is fired
+    #     fired_workers = sample(p.employees, n_to_be_fired, replace=false)
+    # end
 
     # Remove employees from labor stock
     if length(fired_workers) > 0

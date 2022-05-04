@@ -23,6 +23,7 @@ function save_macro_data(macro_struct)
         C = macro_struct.C,
 
         unsat_demand = macro_struct.unsat_demand,
+        unspend_C = macro_struct.unspend_C,
         avg_N_goods = macro_struct.avg_N_goods,
 
         CPI=macro_struct.CPI,
@@ -122,6 +123,7 @@ function save_final_dist(
         all_I = map(hh_id -> model[hh_id].I, all_hh),
         all_w = map(hh_id -> model[hh_id].w[end], all_hh),
         all_W = map(hh_id -> model[hh_id].W, all_hh),
+        skills = map(hh_id -> model[hh_id].skill, all_hh)
     )
     CSV.write("results/result_data/final_income_dists.csv", df)
 

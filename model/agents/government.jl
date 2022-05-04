@@ -1,10 +1,10 @@
 @Base.kwdef mutable struct Government <: AbstractAgent
-    UB::Float64 = 0.0                     # unemployment benefits
-    w_min::Float64 = 0.0
+    UB::Float64 = 40.0                     # unemployment benefits
+    w_min::Float64 = 0.5
     # Tax rates
-    τᴵ::Float64 = 0.0                      # income tax
+    τᴵ::Float64 = 0.3                      # income tax
     τˢ::Float64 = 0.0                      # sales tax
-    τᴾ::Float64 = 0.0                      # profit tax
+    τᴾ::Float64 = 0.3                      # profit tax
     τᴱ::Float64 = 0.0                      # energy tax
     τᶜ::Float64 = 0.0                      # emission tax
 

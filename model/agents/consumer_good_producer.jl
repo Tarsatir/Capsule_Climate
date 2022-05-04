@@ -7,13 +7,13 @@ Defines struct for consumer good producer
     
     # Price and cost data
     μ::Vector{Float64}                        # markup rate
-    p::Vector{Float64} = fill(1+μ[end], 3) # hist prices
+    p::Vector{Float64} = fill(1+μ[end], 3)    # hist prices
     c::Vector{Float64} = ones(Float64, 3)     # hist cost
 
     # Production and demand
     D::Vector{Float64}                        # hist demand
+    Dᵁ::Vector{Float64} = zeros(3)            # unsatisfied demand in last period
     Dᵉ::Float64                               # exp demand
-    Dᵁ::Float64 = 0.0                         # unsatisfied demand in last period
     order_queue::Vector = Vector()            # vector containing orders of demanding households
     Nᵈ::Float64                               # desired inventory
     N_goods::Float64                          # inventory in good units
@@ -660,9 +660,9 @@ function update_Dᵉ_cp!(
 
     if cp.age > 2
         # TODO: DESCRIBE IN MODEL 
-        cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * cp.D[end] - cp.D[end-1])
+        cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * (cp.D[end] + cp.Dᵁ[end]) - (cp.D[end-1] + cp.Dᵁ[end-1]))
     elseif cp.age == 2
-        cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * cp.D[end]
+        cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end])
     end
 end
 

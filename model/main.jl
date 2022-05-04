@@ -444,7 +444,7 @@ end
 
 
 function run_simulation(;
-    T=400::Int,
+    T=800::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,

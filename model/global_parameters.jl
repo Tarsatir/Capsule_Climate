@@ -15,7 +15,7 @@
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
     r::Float64 = 0.0                # interest rate
-    ι::Float64 = 0.1                # desired inventories
+    ι::Float64 = 0.5                # desired inventories
     b::Int = 3                      # payback period
     bₑ::Int = 10                    # payback period energy producer
     η::Int = 20                     # physical scrapping age

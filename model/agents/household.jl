@@ -20,6 +20,7 @@
 
     # Consumption variables
     C::Float64 = 0.0                           # budget
+    C_actual::Float64 = 0.0                    # actual spending on consumption goods
     cp::Vector{Int} = Vector{Int}()            # connected cp
     unsat_dem::Vector = Vector()               # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
@@ -55,6 +56,9 @@ function set_consumption_budget_hh!(
 
     # Compute consumption budget
     compute_consumption_budget_hh!(hh, global_param.α_cp, all_W_hh)
+
+    # Reset actual spending to zero
+    hh.C_actual = 0.0
 end
 
 
@@ -200,6 +204,7 @@ function receive_ordered_goods_hh!(
 
     # Decrease wealth with total sold goods
     hh.W -= tot_sales
+    hh.C_actual += tot_sales
 
     for i in findall(cp_id -> cp_id ∈ hh.cp, all_cp)
         if unsat_demand[i] > 0.0
@@ -233,7 +238,7 @@ function update_sat_req_wage_hh!(
     # end
 
     # Try to use adaptive wˢ
-    ωwˢ = 0.9
+    ωwˢ = 0.95
     hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ / hh.L
 
     if hh.employed
@@ -241,6 +246,7 @@ function update_sat_req_wage_hh!(
     else
         # hh.wʳ = max(UB/hh.L, hh.wˢ)
         hh.wʳ = max(w_min, hh.wˢ)
+        # hh.wʳ = max(w_min, hh.w[end] * (1 - ϵ))
     end
 end
 
