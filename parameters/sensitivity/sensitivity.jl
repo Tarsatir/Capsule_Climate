@@ -31,8 +31,11 @@ function generate_data(
     X = py"call_AAT_sampling"(samp_strat, M, X_labels, N)
     
     # Run simulations for the given parameter values
-    Y = zeros(N)
-    Yg = zeros(N)
+    Yg_mean = zeros(N)
+    Yg_std = zeros(N)
+
+    Cg_mean = zeros(N)
+    Cg_std = zeros(N)
 
     for i in 1:N
 
@@ -42,23 +45,26 @@ function generate_data(
         Xi = X[i,:]
         changed_params = Dict(k=>Xi[i] for (i,k) in enumerate(keys(X_labels)))
 
-        # println(changed_params)
-
         # Run simulation
-        Yi, Ygi = run_simulation(
+        Yg, Cg = run_simulation(
                     changed_params=changed_params,
                     full_output=false
-                    )
+                )
 
         # Store output data
-        Y[i] = Yi
-        Yg[i] = Ygi
+        Yg_mean[i] = mean(Yg[100:end])
+        Yg_std[i] = std(Yg[100:end])
+
+        Cg_mean[i] = mean(Cg[100:end])
+        Cg_std[i] = std(Cg[100:end])
     end
 
     # Set up dataframe containing results
     df = DataFrame(Dict(x=>X[:,i] for (i,x) in enumerate(keys(X_labels))))
-    df[!, "GDP"] = Y
-    df[!, "GDP_growth"] = Yg
+    df[!, "Yg_mean"] = Yg_mean
+    df[!, "Yg_std"] = Yg_std
+    df[!, "Cg_mean"] = Cg_mean
+    df[!, "Cg_std"] = Cg_std
 
     # Write results to csv
     CSV.write(path, df)
@@ -84,13 +90,17 @@ function run_PAWN(
         X[:,i] = df[!, Symbol(label)]
     end
 
-    Y = df[!, Symbol("GDP")]
-    py"run_PAWN"(collect(keys(X_labels)), X, Y, run_nr, "GDP")
+    Yg_mean = df[!, Symbol("Yg_mean")]
+    py"run_PAWN"(collect(keys(X_labels)), X, Yg_mean, run_nr, "mean GDP growth")
 
-    Yg = df[!, Symbol("GDP_growth")]
-    py"run_PAWN"(collect(keys(X_labels)), X, Yg, run_nr, "GDP growth")
+    Yg_std = df[!, Symbol("Yg_std")]
+    py"run_PAWN"(collect(keys(X_labels)), X, Yg_std, run_nr, "std GDP growth")
 
+    Cg_mean = df[!, Symbol("Cg_mean")]
+    py"run_PAWN"(collect(keys(X_labels)), X, Cg_mean, run_nr, "mean C growth")
 
+    Cg_std = df[!, Symbol("Cg_std")]
+    py"run_PAWN"(collect(keys(X_labels)), X, Cg_std, run_nr, "std C growth")
 end
 
 
@@ -101,19 +111,17 @@ run_nr = 3
 
 path = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr).csv"
 
-N = 1
+N = 100
 
 X_labels = Dict([["α_cp", [0.6, 1.0]],
-                 ["μ1", [0.0, 0.5]],
+                 ["μ1", [0.0, 0.4]],
                  ["ω", [0.0, 1.0]],
-                 ["ϵ", [0.01, 0.1]],
-                 ["κ_upper", [0.01, 0.3]],
-                 ["κ_lower", [-0.3, -0.01]],
-                 ["β1", [1.0, 5.0]],
-                 ["β2", [1.0, 5.0]],
+                 ["ϵ", [0.0, 0.1]],
+                 ["κ_upper", [0.0, 0.07]],
+                 ["κ_lower", [-0.07, 0.0]],
                  ["ψ_E", [0.0, 1.0]],
                  ["ψ_Q", [0.0, 1.0]],
                  ["ψ_P", [0.0, 1.0]]])
 
 generate_data(X_labels, path; N=N)
-# run_PAWN(X_labels, path, run_nr; N=N)
+run_PAWN(X_labels, path, run_nr; N=N)

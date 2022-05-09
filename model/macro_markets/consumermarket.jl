@@ -83,7 +83,7 @@ function process_transactions_cm!(
     for (i, hh_id) in enumerate(all_hh)
 
         # hh_transac .= cm_dat.transactions[i,:]
-        hh_D .= cm_dat.true_D[i,:]
+        @timeit to "c7" hh_D .= cm_dat.true_D[i,:]
 
         # Compute unsatisfied demand
         @timeit to "c1" unsat_demand = hh_D
@@ -109,7 +109,7 @@ function process_transactions_cm!(
         # Compute unsat_demand
         @timeit to "c3" unsat_demand = @view cm_dat.true_D[:,i]
         @timeit to "c4" unsat_demand .-= @view cm_dat.transactions[:,i]
-        unsat_demand .= max.(unsat_demand, 0.0)
+        @timeit to "c6" unsat_demand .= max.(unsat_demand, 0.0)
 
         # TODO decide whether it makes sense if producers know unsatisfied demand
 

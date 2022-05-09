@@ -34,7 +34,7 @@ include("agents/consumer_good_producer.jl")
 include("agents/capital_good_producer.jl")
 include("agents/general_producer.jl")
 include("agents/energy_producer.jl")
-include("agents/bank.jl")
+# include("agents/bank.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
@@ -444,11 +444,11 @@ end
 
 
 function run_simulation(;
-    T=800::Int,
+    T=200::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
-    )::Tuple{Float64, Float64}
+    )
 
     to = TimerOutput()
 
@@ -456,9 +456,9 @@ function run_simulation(;
     @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
-        if t % 100 == 0
-            println("Step $t")
-        end
+        # if t % 100 == 0
+        println("Step $t")
+        # end
 
         @timeit to "step" model_step!(
                                 t,
@@ -489,7 +489,11 @@ function run_simulation(;
         println()
     end
 
-    return macro_struct.GDP[end], mean(macro_struct.GDP_growth)
+    Yg = (macro_struct.GDP[2:end] .- macro_struct.GDP[1:end-1]) ./ macro_struct.GDP[1:end-1]
+    Cg = (macro_struct.C[2:end] .- macro_struct.C[1:end-1]) ./ macro_struct.C[1:end-1]
+
+    return Yg, Cg
+    # return macro_struct.GDP[end], mean(macro_struct.GDP_growth)
 end
 
-run_simulation()
+# run_simulation()

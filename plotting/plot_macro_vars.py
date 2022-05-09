@@ -435,13 +435,13 @@ if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    # plot_macro_vars(df_macro)
+    plot_macro_vars(df_macro)
     plot_cons_vars(df_macro)
 
-    # plot_income_dist()
-    # plot_inequality(df_macro)
-    # plot_sales_dist()
+    plot_income_dist()
+    plot_inequality(df_macro)
+    plot_sales_dist()
 
-    # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
-    # plot_energy(df_climate_energy, df_macro)
-    # plot_climate(df_climate_energy, df_macro)
+    df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
+    plot_energy(df_climate_energy, df_macro)
+    plot_climate(df_climate_energy, df_macro)
