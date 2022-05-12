@@ -58,6 +58,7 @@ function hire_worker_p!(
     # update labor stock and desired labor
     push!(p.employees, hh.id)
     p.L += hh.L * hh.skill
+    p.ΔLᵈ -= hh.L * hh.skill
 end
 
 
@@ -190,13 +191,13 @@ function check_bankrupty_all_p!(
 
     # return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
 
-    cp_counter = 0
+    # cp_counter = 0
     kp_counter = 0
 
     for p_id in all_p
         if check_if_bankrupt_p!(model[p_id], global_param.t_wait)
             if typeof(model[p_id]) == ConsumerGoodProducer
-                cp_counter += 1
+                # cp_counter += 1
                 push!(bankrupt_cp, p_id)
             else
                 kp_counter += 1
@@ -274,8 +275,9 @@ function check_if_bankrupt_p!(
     t_wait::Int
     )::Bool
 
-    # if p.age > t_wait && (p.f[end] <= 0.0001 || p.balance.EQ < 0)
-    if p.age > t_wait && p.f[end] <= 0.0001
+    if p.age > t_wait && (p.f[end] <= 0.0001 || p.balance.EQ < 0)
+    # if p.age > t_wait && p.f[end] <= 0.0001
+    # if p.age > t_wait && p.balance.EQ < 0
         return true
     end
     return false

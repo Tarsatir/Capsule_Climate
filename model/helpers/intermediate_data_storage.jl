@@ -15,7 +15,7 @@ Mutable struct that holds the data structures used to save data from the consume
     sold_per_cp::Vector{Float64} = zeros(Float64, n_cp)
     sold_per_cp_round::Vector{Float64} = zeros(Float64, n_cp)
 
-    weights::Matrix{Float64} = rand(n_hh, n_cp)
+    weights::Matrix{Float64} = zeros(Float64, n_hh, n_cp)
     weights_sum::Vector{Float64} = zeros(Float64, n_hh)
 
     transactions::Matrix{Float64} = zeros(Float64, n_hh, n_cp)
@@ -35,41 +35,35 @@ function reset_matrices_cp!(
     model::ABM
     )
 
-    all_p = map(cp_id -> model[cp_id].p[end], all_cp)
-    all_N_goods = map(cp_id -> model[cp_id].N_goods, all_cp)
+    # Set to order of small to large id (minimum(all_cp):max(all_cp)
+    all_p = map(cp_id -> model[cp_id].p[end], minimum(all_cp):maximum(all_cp))
+    all_N_goods = map(cp_id -> model[cp_id].N_goods, minimum(all_cp):max(all_cp))
 
-    @inbounds for (i,hh_id) ∈ enumerate(all_hh)
+    @inbounds for (i,hh_id) ∈ enumerate(minimum(all_hh):max(all_hh))
 
         cm_dat.all_C[i] = model[hh_id].C
+        cm_dat.weights[i,:] .= 0.0
 
-        @inbounds for (j,cp_id) ∈ enumerate(all_cp)
+        # for j in indexin(model[hh_id].cp, all_cp)
+        for cp_id in model[hh_id].cp
+
+            # cp are initiated after hh and cp_id will thus correspond to col + len(hh), 
+            # so subtract len(hh) to get index
+            j = cp_id - length(all_hh)
+
+        # @inbounds for (j,cp_id) ∈ enumerate(all_cp)
 
             cm_dat.all_N[j] = all_N_goods[j] * all_p[j]
+            cm_dat.weights[i,j] = 1 / all_p[j]^2
 
-            if cp_id ∈ model[hh_id].cp
-                cm_dat.weights[i,j] = 1 / all_p[j]^2
-            else
-                cm_dat.weights[i,j] = 0.0
-            end
+            # if cp_id ∈ model[hh_id].cp
+                # cm_dat.weights[i,j] = 1 / all_p[j]^2
+            # else
+                # cm_dat.weights[i,j] = 0.0
+            # end
 
         end
     end
-
-    # for i in 1:cm_dat.n_hh
-
-    #     cm_dat.weights_sum[i] = 0.0
-    #     cm_dat.sold_per_hh[i] = 0.0
-    #     cm_dat.sold_per_hh_round[i] = 0.0
-
-    #     for j in 1:cm_dat.n_cp
-    #         cm_dat.true_D[i,j] = 0.0
-    #         cm_dat.transactions[i,j] = 0.0
-
-    #         cm_dat.demand_per_cp[j] = 0.0
-    #         cm_dat.sold_per_cp[j] = 0.0
-    #         cm_dat.sold_per_cp_round[j] = 0.0
-    #     end
-    # end
 
     # cm_dat.true_D .= 0.0
     # cm_dat.weights_sum .= 0.0

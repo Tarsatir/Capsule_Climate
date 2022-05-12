@@ -4,6 +4,7 @@ Defines struct for consumer good producer
 @with_kw mutable struct ConsumerGoodProducer <: AbstractAgent
     id::Int                                   # id
     age::Int = 0                              # firm age
+    t_next_update::Int                        # next update time
     
     # Price and cost data
     μ::Vector{Float64}                        # markup rate
@@ -59,7 +60,8 @@ end
 
 
 function initialize_cp(
-    id::Int, 
+    id::Int,
+    t_next_update::Int, 
     machines::Vector{Machine},  
     # type_good::String,
     n_init_emp_cp::Int,
@@ -75,7 +77,8 @@ function initialize_cp(
 
 
     cp = ConsumerGoodProducer(
-        id=id,
+        id = id,
+        t_next_update = t_next_update,
         μ = fill(μ, 3),
         D = fill(D, 3),
         Dᵉ = D,  
@@ -605,6 +608,7 @@ function replace_bankrupt_cp!(
         # of the first period
         new_cp = initialize_cp(
                     cp_id,
+                    t + 1,
                     Vector{Machine}(),
                     0,
                     macro_struct.μ_cp[t],     

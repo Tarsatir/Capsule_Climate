@@ -22,7 +22,8 @@
     C::Float64 = 0.0                           # budget
     C_actual::Float64 = 0.0                    # actual spending on consumption goods
     cp::Vector{Int} = Vector{Int}()            # connected cp
-    unsat_dem::Vector = Vector()               # unsatisfied demands
+    # unsat_dem::Vector = Vector()             # unsatisfied demands
+    unsat_dem::Dict{Int, Float64} = Dict()     # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
     c_L::Float64 = 0.5                         # share of income used to buy luxury goods
 end
@@ -38,6 +39,9 @@ function select_cp_hh!(
     )
 
     hh.cp = sample(all_cp, n_cp_hh)
+    for cp_id in hh.cp
+        hh.unsat_dem[cp_id] = 0.0
+    end
 end
 
 
@@ -94,78 +98,78 @@ function compute_consumption_budget_hh!(
 end
 
 
-"""
-Places orders at cp
-"""
-function place_orders_hh!(
-    hh_p::Vector{Int},
-    C::Float64,
-    cp_inventories,
-    p_with_inventory::Vector{Int},
-    global_param::GlobalParam,
-    model::ABM,
-    to
-    )
+# """
+# Places orders at cp
+# """
+# function place_orders_hh!(
+#     hh_p::Vector{Int},
+#     C::Float64,
+#     cp_inventories,
+#     p_with_inventory::Vector{Int},
+#     global_param::GlobalParam,
+#     model::ABM,
+#     to
+#     )
 
-    # If none of the known suppliers has products in stock, randomly select
-    # other suppliers until demand can be met.
+#     # If none of the known suppliers has products in stock, randomly select
+#     # other suppliers until demand can be met.
 
-    # Ugly selection to boost performance.
-    poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ hh_p)
-    for p_id in hh_p
-        if p_id ∉ p_with_inventory
-            delete!(poss_p, p_id)
-        end
-    end
+#     # Ugly selection to boost performance.
+#     poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ hh_p)
+#     for p_id in hh_p
+#         if p_id ∉ p_with_inventory
+#             delete!(poss_p, p_id)
+#         end
+#     end
 
-    add_p_id = 0
-    poss_p_ids = collect(keys(poss_p))
-    sum_poss_p = length(poss_p_ids) > 0 ? sum(p_id -> cp_inventories[p_id], poss_p_ids) : 0
+#     add_p_id = 0
+#     poss_p_ids = collect(keys(poss_p))
+#     sum_poss_p = length(poss_p_ids) > 0 ? sum(p_id -> cp_inventories[p_id], poss_p_ids) : 0
 
-    # As long as the current producers do not have enough inventory and there are still
-    # possible producers to sample, randomly sample producers and add to pool of possible cp
-    while sum_poss_p < C && length(poss_p) != length(p_with_inventory)
+#     # As long as the current producers do not have enough inventory and there are still
+#     # possible producers to sample, randomly sample producers and add to pool of possible cp
+#     while sum_poss_p < C && length(poss_p) != length(p_with_inventory)
 
-        add_p_id = sample(p_with_inventory)
-        while add_p_id ∈ poss_p_ids
-            add_p_id = sample(p_with_inventory)
-        end 
+#         add_p_id = sample(p_with_inventory)
+#         while add_p_id ∈ poss_p_ids
+#             add_p_id = sample(p_with_inventory)
+#         end 
 
-        poss_p[add_p_id] = 1 / model[add_p_id].p[end]
-        sum_poss_p += cp_inventories[add_p_id]
-        push!(poss_p_ids, add_p_id) 
-    end
+#         poss_p[add_p_id] = 1 / model[add_p_id].p[end]
+#         sum_poss_p += cp_inventories[add_p_id]
+#         push!(poss_p_ids, add_p_id) 
+#     end
 
-    # Place orders based on the availability of goods
-    chosen_amount = 0
-    chosen_p_id = 0
-    C_per_day = C / global_param.n_cons_market_days
+#     # Place orders based on the availability of goods
+#     chosen_amount = 0
+#     chosen_p_id = 0
+#     C_per_day = C / global_param.n_cons_market_days
 
-    p_orders = Dict(cp_id => 0.0 for cp_id in poss_p_ids)
-    weights = collect(values(poss_p))
+#     p_orders = Dict(cp_id => 0.0 for cp_id in poss_p_ids)
+#     weights = collect(values(poss_p))
     
-    n_round = 1
-    n_round_stop::Int = global_param.n_cons_market_days * 1.5
+#     n_round = 1
+#     n_round_stop::Int = global_param.n_cons_market_days * 1.5
 
-    while C > 0 && length(poss_p) > 0 && n_round < n_round_stop
-        chosen_p_id = sample(poss_p_ids, Weights(weights))
-        chosen_amount = min(C, C_per_day, cp_inventories[chosen_p_id])
-        p_orders[chosen_p_id] += chosen_amount
+#     while C > 0 && length(poss_p) > 0 && n_round < n_round_stop
+#         chosen_p_id = sample(poss_p_ids, Weights(weights))
+#         chosen_amount = min(C, C_per_day, cp_inventories[chosen_p_id])
+#         p_orders[chosen_p_id] += chosen_amount
 
-        C -= chosen_amount
-        cp_inventories[chosen_p_id] -= chosen_amount
+#         C -= chosen_amount
+#         cp_inventories[chosen_p_id] -= chosen_amount
 
-        if cp_inventories[chosen_p_id] == 0
-            filter!(p_id -> p_id ≠ chosen_p_id, poss_p_ids)
-            filter!(weight -> weight ≠ poss_p[chosen_p_id], weights)
-            delete!(poss_p, chosen_p_id)
-            filter!(p_id -> p_id ≠ chosen_p_id, p_with_inventory)
-        end
-        n_round += 1
-    end
+#         if cp_inventories[chosen_p_id] == 0
+#             filter!(p_id -> p_id ≠ chosen_p_id, poss_p_ids)
+#             filter!(weight -> weight ≠ poss_p[chosen_p_id], weights)
+#             delete!(poss_p, chosen_p_id)
+#             filter!(p_id -> p_id ≠ chosen_p_id, p_with_inventory)
+#         end
+#         n_round += 1
+#     end
 
-    return p_orders, cp_inventories, p_with_inventory
-end
+#     return p_orders, cp_inventories, p_with_inventory
+# end
 
 
 # """
@@ -196,7 +200,8 @@ function receive_ordered_goods_hh!(
     tot_sales::Float64,
     unsat_demand::Vector{Float64},
     hh_D::Vector{Float64},
-    all_cp::Vector{Int}
+    all_cp::Vector{Int},
+    n_hh::Int
     # cp_id::Int,
     # tot_price::Float64,
     # share_fulfilled::Float64
@@ -205,11 +210,21 @@ function receive_ordered_goods_hh!(
     # Decrease wealth with total sold goods
     hh.W -= tot_sales
     hh.C_actual += tot_sales
+    # i = 0
 
-    for i in findall(cp_id -> cp_id ∈ hh.cp, all_cp)
-        if unsat_demand[i] > 0.0
-            push!(hh.unsat_dem, (all_cp[i], unsat_demand[i] / hh_D[i]))
-        end
+    # for i in findall(cp_id -> cp_id ∈ hh.cp, all_cp)
+    #     if unsat_demand[i] > 0.0
+    #         push!(hh.unsat_dem, (all_cp[i], unsat_demand[i] / hh_D[i]))
+    #     end
+    # end
+
+    for cp_id in hh.cp
+        i = cp_id - n_hh
+        # println(unsat_demand[i], " ", hh_D[i])
+        hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.0
+        # if unsat_demand[i] > 0.0
+        #     push!(hh.unsat_dem, (all_cp[i], unsat_demand[i] / hh_D[i]))
+        # end
     end
 
     # # If full demand not fulfilled, add cp to unsatisfied demand
@@ -328,6 +343,9 @@ function remove_bankrupt_producers_hh!(
     )
 
     filter!(cp_id -> cp_id ∉ bankrupt_cp, hh.cp)
+    # for cp_id in bankrupt_cp
+    delete!(hh.unsat_dem, bankrupt_cp)
+    # end
 end
 
 
@@ -349,10 +367,12 @@ function decide_switching_all_hh!(
 
             # Pick a supplier to change, first set up weights inversely proportional
             # to supplied share of goods
-            weights = map(p -> 1/max(p[2], 0.001), model[hh_id].unsat_dem)
+            # println(model[hh_id].unsat_dem)
+            # println(values(model[hh_id].unsat_dem))
+            weights = map(p -> p > 0 ? 1/p : 0.0, values(model[hh_id].unsat_dem))
 
             # Sample producer to replace
-            p_id_replaced = sample(model[hh_id].unsat_dem, Weights(weights))[1]
+            p_id_replaced = sample(collect(keys(model[hh_id].unsat_dem)), Weights(weights))[1]
 
             filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
 
@@ -364,6 +384,9 @@ function decide_switching_all_hh!(
                     p_id_new = sample(all_cp)
                 end
                 push!(model[hh_id].cp, p_id_new)
+
+                delete!(model[hh_id].unsat_dem, p_id_replaced)
+                model[hh_id].unsat_dem[p_id_new] = 0.0
             end
 
         end
@@ -384,6 +407,9 @@ function decide_switching_all_hh!(
             # Replace supplier if price of other supplier is lower 
             if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
                 model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
+
+                delete!(model[hh_id].unsat_dem, p_id_candidate1)
+                model[hh_id].unsat_dem[p_id_candidate2] = 0.0
             end
         end
     end
@@ -415,6 +441,10 @@ function refill_suppliers_all_hh!(
             weights = map(cp_id -> 1 / model[cp_id].p[end], poss_cp)
             add_cp = sample(poss_cp, Weights(weights), n_add_cp)
             model[hh_id].cp = vcat(model[hh_id].cp, add_cp)
+
+            for cp_id in add_cp
+                model[hh_id].unsat_dem[cp_id] = 0.0
+            end
         end
     end
 end

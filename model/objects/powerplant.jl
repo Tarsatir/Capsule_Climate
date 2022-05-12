@@ -10,6 +10,8 @@ end
 
 
 """
+    update_c_pp(pp::PowerPlant, p_f::Float64)
+
 Updates the marginal production cost of the power plant based on the type and 
     price of fossil fuels.
     Lamperti (2018), eq 11.

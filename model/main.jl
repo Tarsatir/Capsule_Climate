@@ -10,6 +10,7 @@ using RecursiveArrayTools
 using DataStructures
 using Parameters
 using Dates
+using SparseArrays
 
 # Include files
 include("../results/write_results.jl")
@@ -96,7 +97,7 @@ function initialize_model(
     end
 
     # Initialize consumer good producers
-    for _ in 1:init_param.n_cp
+    for i in 1:init_param.n_cp
 
         # Initialize capital good stock
         machines = initialize_machine_stock(global_param.freq_per_machine, 
@@ -107,8 +108,17 @@ function initialize_model(
                         A_EF = init_param.A_EF_0
                    )
 
+        t_next_update = 1
+        if i > 66
+            t_next_update += 1
+        end
+        if i > 132
+            t_next_update += 1
+        end
+
         cp = initialize_cp(
                 id,
+                t_next_update,
                 machines,  
                 init_param.n_init_emp_cp, 
                 global_param.μ1,
@@ -246,13 +256,16 @@ function model_step!(
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
     for cp_id in all_cp
-        cp = model[cp_id]
-        
-        # Plan production for this period
-        @timeit to "plan prod cp" plan_production_cp!(cp, global_param, t, model)
 
-        # Plan investments for this period
-        @timeit to "plan inv cp" plan_investment_cp!(cp, all_kp, global_param, ep, t, model)
+        if model[cp_id].t_next_update == t        
+            # Plan production for this period
+            @timeit to "plan prod cp" plan_production_cp!(model[cp_id], global_param, t, model)
+
+            # Plan investments for this period
+            @timeit to "plan inv cp" plan_investment_cp!(model[cp_id], all_kp, global_param, ep, t, model)
+
+            model[cp_id].t_next_update += 3
+        end
     end
 
     # (2) capital good producers set labor demand based on ordered machines
@@ -308,7 +321,7 @@ function model_step!(
     # Households update wealth level
     for hh_id in all_hh
         # Reset unsatisfied demand
-        model[hh_id].unsat_dem = Vector()
+        # model[hh_id].unsat_dem = Vector()
 
         # Update household wealth
         update_wealth_hh!(model[hh_id])
@@ -444,7 +457,7 @@ end
 
 
 function run_simulation(;
-    T=200::Int,
+    T=400::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
@@ -496,4 +509,4 @@ function run_simulation(;
     # return macro_struct.GDP[end], mean(macro_struct.GDP_growth)
 end
 
-# run_simulation()
+run_simulation()

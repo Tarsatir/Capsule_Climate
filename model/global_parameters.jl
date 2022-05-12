@@ -34,7 +34,7 @@
 
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
-    ϵ::Float64 = 0.05               # minimum desired wage increase rate
+    ϵ::Float64 = 0.02               # minimum desired wage increase rate
     max_g_wᴼ::Float64 = 0.1         # max growth rate of offered wages
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 

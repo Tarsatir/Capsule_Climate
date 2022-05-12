@@ -29,7 +29,8 @@ function spread_employees_lm!(
     for cp_id in all_cp
         employees = all_hh[i:i+n_init_emp_cp-1]
         for hh_id in employees
-            w = max(gov_struct.w_min, model[hh_id].skill)
+            # w = max(gov_struct.w_min, model[hh_id].skill)
+            w = 1.0
             set_employed_hh!(model[hh_id], w, cp_id)
             model[hh_id].w .= w
             hire_worker_p!(model[cp_id], model[hh_id])
@@ -229,6 +230,8 @@ function matching_lm(
             # Set offered wage to lowest requested wage that makes producer
             # meet the labor target
 
+            unemployed_to_employed = Vector{Int}()
+
             if length(to_be_hired) > 0
                 model[p_id].wᴼ = model[to_be_hired[end]].wʳ
 
@@ -248,6 +251,7 @@ function matching_lm(
                     else
                         # set_employed_hh!(model[hh_id], model[p_id].wᴼ, p_id)
                         set_employed_hh!(model[hh_id], model[hh_id].wʳ, p_id)
+                        push!(unemployed_to_employed, hh_id)
                     end
                     
                     hire_worker_p!(model[p_id], model[hh_id])
@@ -256,15 +260,20 @@ function matching_lm(
 
                 # Labor market aggregates are updated
                 update_w̄_p!(model[p_id], model)
-                update_hiredworkers_lm!(labormarket_struct, to_be_hired)
+                update_hiredworkers_lm!(labormarket_struct, unemployed_to_employed)
 
                 hiring_producers_dict[p_id] = ΔL
             end
         end
     end
 
+    println("job switchers: $(n_jobswitchers)")
+
     # Updates the labor market's switching rate (use n employed from before matching)
     labormarket_struct.switch_rate = n_jobswitchers / n_employed
+
+    println("n employed: $(n_employed)")
+    println("switch rate: $(labormarket_struct.switch_rate)")
 end
 
 
@@ -304,7 +313,7 @@ function update_firedworker_lm!(
     append!(labormarket_struct.unemployed, to_be_fired)
 
     # remove unemployed workers from employed category
-    filter!(hh -> hh ∉ to_be_fired, labormarket_struct.employed)
+    filter!(hh_id -> hh_id ∉ to_be_fired, labormarket_struct.employed)
 
 end
 

@@ -539,12 +539,17 @@ function update_μ_kp!(
     #     shock = rand(Uniform(0.0, b))
 
     #     new_μ = max(kp.μ[end] * (1 + shock_sign * shock), 0)
-    #     push!(kp.μ, new_μ)
+    #     # push!(kp.μ, new_μ)
+    #     shift_and_append!(kp.μ, new_μ)
 
     # elseif kp.Π[end] == 0
-    #     push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
+    #     # push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
+    #     new_μ = kp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    #     shift_and_append!(kp.μ, new_μ)
     # else
-    #     push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
+    #     # push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
+    #     new_μ = kp.μ[end] * (1 + rand(Uniform(-b, b)))
+    #     shift_and_append!(kp.μ, new_μ)
     # end
 
     # push!(kp.μ, kp.μ[end])

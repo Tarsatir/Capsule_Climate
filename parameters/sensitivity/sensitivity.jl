@@ -90,28 +90,30 @@ function run_PAWN(
         X[:,i] = df[!, Symbol(label)]
     end
 
-    Yg_mean = df[!, Symbol("Yg_mean")]
-    py"run_PAWN"(collect(keys(X_labels)), X, Yg_mean, run_nr, "mean GDP growth")
+    labels = collect(keys(X_labels))
+
+    Yg_mean = 100 .* df[!, Symbol("Yg_mean")]
+    py"run_PAWN"(labels, X, Yg_mean, "Yg_mean", run_nr, "mean GDP growth")
 
     Yg_std = df[!, Symbol("Yg_std")]
-    py"run_PAWN"(collect(keys(X_labels)), X, Yg_std, run_nr, "std GDP growth")
+    py"run_PAWN"(labels, X, Yg_std, "Yg_std", run_nr, "std GDP growth")
 
     Cg_mean = df[!, Symbol("Cg_mean")]
-    py"run_PAWN"(collect(keys(X_labels)), X, Cg_mean, run_nr, "mean C growth")
+    py"run_PAWN"(labels, X, Cg_mean, "Cg_mean", run_nr, "mean C growth")
 
     Cg_std = df[!, Symbol("Cg_std")]
-    py"run_PAWN"(collect(keys(X_labels)), X, Cg_std, run_nr, "std C growth")
+    py"run_PAWN"(labels, X, Cg_std, "Cg_std", run_nr, "std C growth")
 end
 
 
 # Include Python file containing GSA functions
 @pyinclude("parameters/sensitivity/run_GSA.py")
 
-run_nr = 3
+run_nr = 4
 
 path = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr).csv"
 
-N = 100
+N = 8
 
 X_labels = Dict([["α_cp", [0.6, 1.0]],
                  ["μ1", [0.0, 0.4]],
@@ -124,4 +126,4 @@ X_labels = Dict([["α_cp", [0.6, 1.0]],
                  ["ψ_P", [0.0, 1.0]]])
 
 generate_data(X_labels, path; N=N)
-run_PAWN(X_labels, path, run_nr; N=N)
+# run_PAWN(X_labels, path, run_nr; N=N)

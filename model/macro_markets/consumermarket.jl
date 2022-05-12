@@ -76,35 +76,40 @@ function process_transactions_cm!(
     to
     )
 
-    unsat_demand = zeros(length(all_cp))
-    hh_D = zeros(length(all_cp))
+    unsat_demand = zeros(Float64, length(all_cp))
+    hh_D = zeros(Float64, length(all_cp))
 
     # Process transactions for hh
-    for (i, hh_id) in enumerate(all_hh)
+    for (i, hh_id) in enumerate(minimum(all_hh):maximum(all_hh))
 
         # hh_transac .= cm_dat.transactions[i,:]
-        @timeit to "c7" hh_D .= cm_dat.true_D[i,:]
+        @timeit to "c7" hh_D .= @view cm_dat.true_D[i,:]
+        # display(hh_D)
 
         # Compute unsatisfied demand
-        @timeit to "c1" unsat_demand = hh_D
+        @timeit to "c1" unsat_demand .= @view cm_dat.true_D[i,:]
         @timeit to "c2" unsat_demand .-= @view cm_dat.transactions[i,:]
         unsat_demand .= max.(unsat_demand, 0.0)
+
+        # display(unsat_demand)
+        # println(sum(cm_dat.transactions))
 
         @timeit to "receive goods" receive_ordered_goods_hh!(
                                         model[hh_id], 
                                         sum(@view cm_dat.transactions[i,:]), 
                                         unsat_demand, 
                                         hh_D, 
-                                        all_cp
+                                        all_cp,
+                                        length(all_hh)
                                     )
     end
 
-    unsat_demand = zeros(length(all_hh))
+    unsat_demand = zeros(Float64, length(all_hh))
     # cp_transac = zeros(length(all_hh))
     # cp_D = zeros(length(all_hh))
 
     # Process transations for cp
-    for (i, cp_id) in enumerate(all_cp)
+    for (i, cp_id) in enumerate(minimum(all_cp):maximum(all_cp))
 
         # Compute unsat_demand
         @timeit to "c3" unsat_demand = @view cm_dat.true_D[:,i]
@@ -133,7 +138,7 @@ function cpmarket_matching_cp!(
     # Normalize weights
     sum!(cm_dat.weights_sum, cm_dat.weights)
     cm_dat.weights ./= cm_dat.weights_sum
-    sold_out = []
+    sold_out = Int64[]
 
     # println("total N: $(sum(cm_dat.all_N))")
     # println(cm_dat.all_N)

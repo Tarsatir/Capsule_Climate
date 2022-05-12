@@ -176,67 +176,105 @@ def plot_cons_vars(df):
     Plots consumption figures
     """
 
-    fig = plt.figure(figsize=(6, 8))
+    fig = plt.figure(figsize=(6, 12))
 
-    gs = GridSpec(3, 2, figure=fig)
+    gs = GridSpec(6, 2, figure=fig)
     
     ax0 = fig.add_subplot(gs[0,:])
     ax1 = fig.add_subplot(gs[1,:])
-    ax2 = fig.add_subplot(gs[2,0])
-    ax3 = fig.add_subplot(gs[2,1])
+    ax2 = fig.add_subplot(gs[2,:])
+    ax3 = fig.add_subplot(gs[3,:])
+    ax4 = fig.add_subplot(gs[4,:])
+    ax5 = fig.add_subplot(gs[5,0])
+    ax6 = fig.add_subplot(gs[5,1])
 
     # Plot real GDP growth rates
-    real_GDP = 100 * df.GDP.to_numpy() / df.CPI.to_numpy()
+    real_GDP = 100 * df.GDP.to_numpy()[100:] / df.CPI.to_numpy()[100:]
     delta_GDP = 100 * (real_GDP[1:] - real_GDP[:-1]) / real_GDP[:-1]
 
-    ax0.hlines(0, 0, max(range(len(delta_GDP))), 
-                 linestyle='dashed', 
-                 color='black')
+    T = np.arange(100, 100+len(real_GDP)-1)
+
+    ax0.hlines(0, min(T), max(T), linestyle='dashed', color='black')
     ax0.set_title('Monhtly changes in real GDP')
-    ax0.fill_between(range(len(delta_GDP)), 
-                       [max(i, 0) for i in delta_GDP], 
-                       [0 for _ in delta_GDP], 
-                       color='green')
-    ax0.fill_between(range(len(delta_GDP)), 
-                       [min(i, 0) for i in delta_GDP], 
-                       [0 for _ in delta_GDP], 
-                       color='red')
+    ax0.fill_between(T, [max(i, 0) for i in delta_GDP], 
+                        [0 for _ in delta_GDP], color='green')
+    ax0.fill_between(T, [min(i, 0) for i in delta_GDP], 
+                        [0 for _ in delta_GDP], color='red')
     ax0.set_xlabel('time')
     ax0.set_ylabel('growth rate (%)')
     ax0.set_ylim(-7.5,7.5)
 
 
     # Plot consumption growth rates
-    C_t = 100 * df.C.to_numpy() / df.CPI.to_numpy()
+    C_t = 100 * df.C.to_numpy()[100:] / df.CPI.to_numpy()[100:]
     delta_C = 100 * (C_t[1:] - C_t[:-1]) / C_t[:-1]
 
-    ax1.hlines(0, 0, max(range(len(delta_C))), linestyle='dashed', color='black')
+    ax1.hlines(0, min(T), max(T), linestyle='dashed', color='black')
     ax1.set_title('Monhtly changes in real consumption')
-    ax1.fill_between(range(len(delta_C)), 
-                       [max(i, 0) for i in delta_C], 
-                       [0 for _ in delta_C], 
-                       color='green')
-    ax1.fill_between(range(len(delta_C)), 
-                       [min(i, 0) for i in delta_C], 
-                       [0 for _ in delta_C], 
-                       color='red')
+    ax1.fill_between(T, [max(i, 0) for i in delta_C], 
+                        [0 for _ in delta_C], color='green')
+    ax1.fill_between(T, [min(i, 0) for i in delta_C], 
+                        [0 for _ in delta_C], color='red')
     ax1.set_ylabel('growth rate (%)')
     ax1.set_xlabel('time')
     ax1.set_ylim(-7.5,7.5)
 
+    # Plot hh GDP rowth rates
+    real_GDP_hh = 100 * df.GDP_I.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    delta_GDP_hh = 100 * (real_GDP_hh[1:] - real_GDP_hh[:-1]) / real_GDP_hh[:-1]
+
+    ax2.hlines(0, min(T), max(T), linestyle='dashed', color='black')
+    ax2.set_title('Monthly changes in real GDP of hh')
+    ax2.fill_between(T, [max(i, 0) for i in delta_GDP_hh], 
+                        [0 for _ in delta_GDP_hh], color='green')
+    ax2.fill_between(T, [min(i, 0) for i in delta_GDP_hh], 
+                        [0 for _ in delta_GDP_hh], color='red')
+    ax2.set_xlabel('time')
+    ax2.set_ylabel('growth rate (%)')
+    ax2.set_ylim(-7.5,7.5)
+
+    # Plot cp GDP growth rates
+    real_GDP_cp = 100 * df.GDP_cp.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    delta_GDP_cp = 100 * (real_GDP_cp[1:] - real_GDP_cp[:-1]) / real_GDP_cp[:-1]
+
+    ax3.hlines(0, min(T), max(T), linestyle='dashed', color='black')
+    ax3.set_title('Monthly changes in real GDP of cp')
+    ax3.fill_between(T, [max(i, 0) for i in delta_GDP_cp], 
+                        [0 for _ in delta_GDP_cp], color='green')
+    ax3.fill_between(T, [min(i, 0) for i in delta_GDP_cp], 
+                        [0 for _ in delta_GDP_cp], color='red')
+    ax3.set_xlabel('time')
+    ax3.set_ylabel('growth rate (%)')
+    ax3.set_ylim(-7.5,7.5)
+
+    # Plot kp GDP growth rates
+    real_GDP_kp = 100 * df.GDP_kp.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    delta_GDP_kp = 100 * (real_GDP_kp[1:] - real_GDP_kp[:-1]) / real_GDP_kp[:-1]
+
+    ax4.hlines(0, min(T), max(T), linestyle='dashed', color='black')
+    ax4.set_title('Monthly changes in real GDP of kp')
+    ax4.fill_between(T, [max(i, 0) for i in delta_GDP_kp], 
+                        [0 for _ in delta_GDP_kp], color='green')
+    ax4.fill_between(T, [min(i, 0) for i in delta_GDP_kp], 
+                        [0 for _ in delta_GDP_kp], color='red')
+    ax4.set_xlabel('time')
+    ax4.set_ylabel('growth rate (%)')
+    ax4.set_ylim(-7.5,7.5)
 
     # Compute quarterly GDP growth rates and plot
     Q_delta_GDP = 100 * (real_GDP[3:] - real_GDP[:-3]) / real_GDP[:-3]
 
-    ax2.set_title('Quarterly GDP growth')
-    ax2.hist(Q_delta_GDP, bins=100, density=True)
-    ax2.set_xlabel('growth rate (%)')
+    ax5.set_title('Quarterly GDP growth')
+    ax5.hist(Q_delta_GDP, bins=100, density=True)
+    ax5.set_xlabel('growth rate (%)')
+    ax5.set_xlim(-7.5, 7.5)
 
     # Compute quarterly C growth rates and plot
     Q_delta_C = 100 * (C_t[3:] - C_t[:-3]) / C_t[:-3]
-    ax3.set_title('Quarterly $C$ growth')
-    ax3.hist(Q_delta_C, bins=100, density=True)
-    ax3.set_xlabel('growth rate (%)')
+    ax6.set_title('Quarterly $C$ growth')
+    ax6.hist(Q_delta_C, bins=100, density=True)
+    ax6.set_xlabel('growth rate (%)')
+    ax6.set_xlim(-7.5, 7.5)
 
 
     plt.tight_layout()
