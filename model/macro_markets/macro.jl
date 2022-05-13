@@ -121,7 +121,8 @@ function update_macro_timeseries(
     gov_struct::Government,
     indexfund_struct::IndexFund,
     global_param::GlobalParam,
-    model::ABM
+    model::ABM,
+    to
     )
 
     # Update GDP
@@ -195,7 +196,7 @@ function update_macro_timeseries(
     macro_struct.avg_n_machines_cp[t] = mean(cp_id -> model[cp_id].n_machines, all_cp)
 
     # Compute GINI coefficients
-    compute_GINI(all_hh, macro_struct, t, model)
+    @timeit to "GINI" compute_GINI(all_hh, macro_struct, t, model)
 
 end
 
@@ -419,24 +420,40 @@ function compute_GINI(
 
     # Compute GINI for income
     all_I = map(hh_id -> model[hh_id].Iᵀ[end], all_hh)
-    all_I_absdiff = zeros(length(all_I))
+    all_I_tmp = zeros(Float64, length(all_I))
+    all_I_absdiff = zeros(Float64, length(all_I))
 
     for (i, I1) in enumerate(all_I)
-        for I2 in all_I
-            @inbounds all_I_absdiff[i] += abs(I1 - I2)
-        end
+        all_I_tmp .= all_I
+        all_I_tmp .-= I1
+        all_I_tmp .= abs.(all_I_tmp)
+        all_I_absdiff[i] = sum(all_I_tmp)
     end
+
+    # for (i, I1) in enumerate(all_I)
+    #     for I2 in all_I
+    #         @inbounds all_I_absdiff[i] += abs(I1 - I2)
+    #     end
+    # end
     macro_struct.GINI_I[t] = sum(all_I_absdiff) / (2 * length(all_hh)^2 * macro_struct.Ī_avg[t])
 
     # Compute GINI for wealth
     all_W = map(hh_id -> model[hh_id].W, all_hh)
-    all_W_absdiff = zeros(length(all_W))
+    all_W_tmp = zeros(Float64, length(all_W))
+    all_W_absdiff = zeros(Float64, length(all_W))
 
     for (i, W1) in enumerate(all_W)
-        for W2 in all_W
-            @inbounds all_W_absdiff[i] += abs(W1 - W2)
-        end
+        all_W_tmp .= all_W
+        all_W_tmp .-= W1
+        all_W_tmp .= abs.(all_W_tmp)
+        all_W_absdiff[i] = sum(all_W_tmp)
     end
+
+    # for (i, W1) in enumerate(all_W)
+    #     for W2 in all_W
+    #         @inbounds all_W_absdiff[i] += abs(W1 - W2)
+    #     end
+    # end
     macro_struct.GINI_W[t] = sum(all_W_absdiff) / (2 * length(all_hh)^2 * macro_struct.M_hh[t] / length(all_hh))
 end
 

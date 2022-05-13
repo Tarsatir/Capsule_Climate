@@ -81,7 +81,8 @@ function labormarket_process!(
     all_p::Vector{Int}, 
     global_param::GlobalParam,
     gov_struct::Government,
-    model::ABM
+    model::ABM,
+    to
     )
 
     # get sets of firing and hiring producers
@@ -114,12 +115,13 @@ function labormarket_process!(
     end
 
     # Labor market matching process
-    matching_lm(
+    @timeit to "matching" matching_lm(
         labormarket_struct, 
         employed_jobseekers, 
         hiring_producers,
         global_param.max_g_wᴼ, 
-        model
+        model,
+        to
     )
 
     # Update the unemployment rate
@@ -173,7 +175,8 @@ function matching_lm(
     employed_jobseekers::Vector{Int}, 
     hiring_producers::Vector{Int},
     max_g_wᴼ::Float64,
-    model::ABM
+    model::ABM,
+    to
     )
 
     # Concatenate all unemployed and job-seeking employed households
@@ -196,17 +199,10 @@ function matching_lm(
                 return
             end
 
-            # TODO do this in a more sophisticated way
-            n_sample = min(30, length(jobseeking_hh))
-
             # Make queue of job-seeking households
-            # Only select households with a low enough reservation wage
-            # Lᵈ = sort(sample(jobseeking_hh, n_sample, replace=false), 
-            #           by = hh_id -> model[hh_id].wʳ)
-            # Lᵈ = sort(sample(jobseeking_hh, n_sample, replace=false), 
-            #           by = hh_id -> model[hh_id].wʳ / model[hh_id].skill)
-            Lᵈ = sort(sample(jobseeking_hh, n_sample, replace=false), 
-                      by = hh_id -> model[hh_id].L * model[hh_id].skill, rev=true)
+            n_sample = min(30, length(jobseeking_hh))
+            @timeit to "sample" Lᵈ = sample(jobseeking_hh, n_sample, replace=false)
+            @timeit to "sort" sort!(Lᵈ, by = hh_id -> model[hh_id].L * model[hh_id].skill, rev=true)
 
             to_be_hired = Vector{Int}()
             for hh_id in Lᵈ
