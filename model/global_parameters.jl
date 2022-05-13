@@ -9,8 +9,8 @@
     ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
-    κ_lower::Float64 = -0.02        # 1st beta dist support
-    κ_upper::Float64 = 0.02         # 2nd beta dist support
+    κ_lower::Float64 = -0.007       # 1st beta dist support
+    κ_upper::Float64 = 0.007        # 2nd beta dist support
 
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule

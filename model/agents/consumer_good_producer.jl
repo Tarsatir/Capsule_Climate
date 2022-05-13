@@ -288,7 +288,9 @@ function choose_producer_cp!(
 
     # If multiple brochures, find brochure with lowest cost of production
     all_cop = map(broch -> broch[2] + b * (cp.w̄[end] / broch[4] + ep.pₑ[t] / broch[5]), cp.brochures)
-    brochure = cp.brochures[argmin(all_cop)]
+    # brochure = cp.brochures[argmin(all_cop)]
+    brochure = sample(cp.brochures, Weights(1 ./ all_cop.^2))
+    # TODO: DESCRIBE IN MODEL
     cp.chosen_kp_id = brochure[1]
 
     return brochure
@@ -735,24 +737,24 @@ function update_μ_cp!(
 
     # if rand() < 1/3
 
-    # if cp.age > l && cp.Π[end] != 0
+    if cp.age > l && cp.Π[end] != 0
 
-    #     mean_μ = mean(cp.μ)
-    #     Δμ = (cp.μ[end] - mean_μ) / mean_μ
+        mean_μ = mean(cp.μ)
+        Δμ = (cp.μ[end] - mean_μ) / mean_μ
 
-    #     mean_Π = mean(cp.Π)
-    #     ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
+        mean_Π = mean(cp.Π)
+        ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
 
-    #     # TODO: CHANGE TO TAXED PROFITS??
+        # TODO: CHANGE TO TAXED PROFITS??
 
-    #     shock = rand(Uniform(0.0, b))
-    #     new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+        shock = rand(Uniform(0.0, b))
+        new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
 
-    # elseif cp.Π[end] == 0
-    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
-    # else
-    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
-    # end
+    elseif cp.Π[end] == 0
+        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    else
+        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
+    end
 
     shift_and_append!(cp.μ, new_μ)
     # else

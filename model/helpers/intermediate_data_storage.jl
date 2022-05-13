@@ -6,21 +6,21 @@ Mutable struct that holds the data structures used to save data from the consume
     n_hh::Int
     n_cp::Int
 
-    true_D::Matrix{Float64} = zeros(Float64, n_hh, n_cp)
+    true_D::Matrix{Float64} = spzeros(Float64, n_hh, n_cp)
     all_C::Vector{Float64} = zeros(Float64, n_hh)
     all_N::Vector{Float64} = zeros(Float64, n_cp)
 
-    sold_per_hh::Vector{Float64} = zeros(Float64, n_hh)
+    sold_per_hh::Vector{Float64} = spzeros(Float64, n_hh)
     sold_per_hh_round::Vector{Float64} = zeros(Float64, n_hh)
     sold_per_cp::Vector{Float64} = zeros(Float64, n_cp)
     sold_per_cp_round::Vector{Float64} = zeros(Float64, n_cp)
 
-    weights::Matrix{Float64} = zeros(Float64, n_hh, n_cp)
+    weights::Matrix{Float64} = spzeros(Float64, n_hh, n_cp)
     weights_sum::Vector{Float64} = zeros(Float64, n_hh)
 
-    transactions::Matrix{Float64} = zeros(Float64, n_hh, n_cp)
+    transactions::Matrix{Float64} = spzeros(Float64, n_hh, n_cp)
     frac_sellable::Vector{Float64} = ones(Float64, n_cp)
-    C_spread::Matrix{Float64} = zeros(Float64, n_hh, n_cp)
+    C_spread::Matrix{Float64} = spzeros(Float64, n_hh, n_cp)
     demand_per_cp::Vector{Float64} = zeros(Float64, n_cp)
 end
 
@@ -37,9 +37,9 @@ function reset_matrices_cp!(
 
     # Set to order of small to large id (minimum(all_cp):max(all_cp)
     all_p = map(cp_id -> model[cp_id].p[end], minimum(all_cp):maximum(all_cp))
-    all_N_goods = map(cp_id -> model[cp_id].N_goods, minimum(all_cp):max(all_cp))
+    all_N_goods = map(cp_id -> model[cp_id].N_goods, minimum(all_cp):maximum(all_cp))
 
-    @inbounds for (i,hh_id) ∈ enumerate(minimum(all_hh):max(all_hh))
+    @inbounds for (i,hh_id) ∈ enumerate(minimum(all_hh):maximum(all_hh))
 
         cm_dat.all_C[i] = model[hh_id].C
         cm_dat.weights[i,:] .= 0.0

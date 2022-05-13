@@ -358,7 +358,8 @@ function decide_switching_all_hh!(
     all_cp::Vector{Int},
     all_p::Vector{Int},
     n_cp_hh::Int,
-    model::ABM
+    model::ABM,
+    to
     )
 
     for hh_id in all_hh
@@ -367,12 +368,12 @@ function decide_switching_all_hh!(
 
             # Pick a supplier to change, first set up weights inversely proportional
             # to supplied share of goods
-            # println(model[hh_id].unsat_dem)
-            # println(values(model[hh_id].unsat_dem))
-            weights = map(p -> p > 0 ? 1/p : 0.0, values(model[hh_id].unsat_dem))
+
+            create_weights(hh::Household, cp_id::Int)::Float64 = hh.unsat_dem[cp_id] > 0 ? 1 / hh.unsat_dem[cp_id] : 0.0
+            @timeit to "s1" weights = map(cp_id -> create_weights(model[hh_id], cp_id), model[hh_id].cp)
 
             # Sample producer to replace
-            p_id_replaced = sample(collect(keys(model[hh_id].unsat_dem)), Weights(weights))[1]
+            @timeit to "s2" p_id_replaced = sample(model[hh_id].cp, Weights(weights))[1]
 
             filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
 

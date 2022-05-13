@@ -201,7 +201,8 @@ function check_bankrupty_all_p!(
                 push!(bankrupt_cp, p_id)
             else
                 kp_counter += 1
-                if kp_counter != length(all_kp)
+                # if kp_counter != length(all_kp)
+                if kp_counter < 4
                     push!(bankrupt_kp, p_id)
                     push!(bankrupt_kp_i, model[p_id].kp_i)
                 end
@@ -275,9 +276,14 @@ function check_if_bankrupt_p!(
     t_wait::Int
     )::Bool
 
-    if p.age > t_wait && (p.f[end] <= 0.0001 || p.balance.EQ < 0)
+
+    if (typeof(p) == ConsumerGoodProducer && p.age > t_wait 
+        && (p.f[end] <= 0.0001 || p.balance.EQ < 0))
     # if p.age > t_wait && p.f[end] <= 0.0001
     # if p.age > t_wait && p.balance.EQ < 0
+        return true
+    elseif (typeof(p) == CapitalGoodProducer && p.age > t_wait 
+            &&  p.balance.EQ < 0)
         return true
     end
     return false

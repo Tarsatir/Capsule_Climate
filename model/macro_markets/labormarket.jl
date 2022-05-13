@@ -267,13 +267,8 @@ function matching_lm(
         end
     end
 
-    println("job switchers: $(n_jobswitchers)")
-
     # Updates the labor market's switching rate (use n employed from before matching)
     labormarket_struct.switch_rate = n_jobswitchers / n_employed
-
-    println("n employed: $(n_employed)")
-    println("switch rate: $(labormarket_struct.switch_rate)")
 end
 
 

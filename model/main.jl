@@ -351,7 +351,8 @@ function model_step!(
         all_cp,
         all_p,
         init_param.n_cp_hh,
-        model
+        model,
+        to
     )
 
     # (6) kp deliver goods to cp, kp make up profits
@@ -453,11 +454,16 @@ function model_step!(
         all_hh,
         model
     )
+
+    for kp_id in all_kp
+        cop = macro_struct.w̄_avg[t] / model[kp_id].A_LP + ep.pₑ[t] / model[kp_id].A_EE
+        println("kp: $kp_id, cop: $cop, f: $(model[kp_id].f[end])")
+    end
 end
 
 
 function run_simulation(;
-    T=400::Int,
+    T=860::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
