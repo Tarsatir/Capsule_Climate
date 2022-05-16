@@ -95,6 +95,7 @@ function compute_consumption_budget_hh!(
         hh.C = 0.0
         hh.s = 0.0
     end
+    # println(hh.s)
 end
 
 
@@ -370,10 +371,10 @@ function decide_switching_all_hh!(
             # to supplied share of goods
 
             create_weights(hh::Household, cp_id::Int)::Float64 = hh.unsat_dem[cp_id] > 0 ? 1 / hh.unsat_dem[cp_id] : 0.0
-            @timeit to "s1" weights = map(cp_id -> create_weights(model[hh_id], cp_id), model[hh_id].cp)
+            weights = map(cp_id -> create_weights(model[hh_id], cp_id), model[hh_id].cp)
 
             # Sample producer to replace
-            @timeit to "s2" p_id_replaced = sample(model[hh_id].cp, Weights(weights))[1]
+            p_id_replaced = sample(model[hh_id].cp, Weights(weights))[1]
 
             filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
 
@@ -400,14 +401,16 @@ function decide_switching_all_hh!(
 
             # Randomly pick another candidate from same type and see if price is lower
             # Ugly sample to boost performance
-            p_id_candidate2 = sample(all_cp)
+           p_id_candidate2 = sample(all_cp)
             while p_id_candidate2 ∈ model[hh_id].cp
                 p_id_candidate2 = sample(all_cp)
             end
             
             # Replace supplier if price of other supplier is lower 
             if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-                model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
+                # model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
+                filter!(p_id -> p_id ≠ p_id_candidate1, model[hh_id].cp)
+                push!(model[hh_id].cp, p_id_candidate2)
 
                 delete!(model[hh_id].unsat_dem, p_id_candidate1)
                 model[hh_id].unsat_dem[p_id_candidate2] = 0.0

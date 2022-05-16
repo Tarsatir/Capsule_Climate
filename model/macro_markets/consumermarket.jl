@@ -11,8 +11,8 @@ function consumermarket_process!(
     )
 
     # Households set consumption budget
-    @inbounds for hh_id in all_hh
-        @timeit to "set budget" set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
+    @timeit to "set budget" @inbounds for hh_id in all_hh
+        set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
     end
 
     # Reset cm data 
@@ -82,43 +82,36 @@ function process_transactions_cm!(
     # Process transactions for hh
     for (i, hh_id) in enumerate(minimum(all_hh):maximum(all_hh))
 
-        # hh_transac .= cm_dat.transactions[i,:]
-        @timeit to "c7" hh_D .= @view cm_dat.true_D[i,:]
-        # display(hh_D)
+        hh_D .= @view cm_dat.true_D[i,:]
 
         # Compute unsatisfied demand
-        @timeit to "c1" unsat_demand .= @view cm_dat.true_D[i,:]
-        @timeit to "c2" unsat_demand .-= @view cm_dat.transactions[i,:]
+        unsat_demand .= @view cm_dat.true_D[i,:]
+        unsat_demand .-= @view cm_dat.transactions[i,:]
         unsat_demand .= max.(unsat_demand, 0.0)
 
-        # display(unsat_demand)
-        # println(sum(cm_dat.transactions))
-
-        @timeit to "receive goods" receive_ordered_goods_hh!(
-                                        model[hh_id], 
-                                        sum(@view cm_dat.transactions[i,:]), 
-                                        unsat_demand, 
-                                        hh_D, 
-                                        all_cp,
-                                        length(all_hh)
-                                    )
+        receive_ordered_goods_hh!(
+            model[hh_id], 
+            sum(@view cm_dat.transactions[i,:]), 
+            unsat_demand, 
+            hh_D, 
+            all_cp,
+            length(all_hh)
+        )
     end
 
     unsat_demand = zeros(Float64, length(all_hh))
-    # cp_transac = zeros(length(all_hh))
-    # cp_D = zeros(length(all_hh))
 
     # Process transations for cp
     for (i, cp_id) in enumerate(minimum(all_cp):maximum(all_cp))
 
         # Compute unsat_demand
-        @timeit to "c3" unsat_demand = @view cm_dat.true_D[:,i]
-        @timeit to "c4" unsat_demand .-= @view cm_dat.transactions[:,i]
-        @timeit to "c6" unsat_demand .= max.(unsat_demand, 0.0)
+        unsat_demand = @view cm_dat.true_D[:,i]
+        unsat_demand .-= @view cm_dat.transactions[:,i]
+        unsat_demand .= max.(unsat_demand, 0.0)
 
         # TODO decide whether it makes sense if producers know unsatisfied demand
 
-        @timeit to "c5" model[cp_id].curracc.S = sum(@view cm_dat.transactions[:,i])
+        model[cp_id].curracc.S = sum(@view cm_dat.transactions[:,i])
         N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
         shift_and_append!(model[cp_id].D, N_goods_sold)
         shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))

@@ -348,7 +348,7 @@ function plan_expansion_cp!(
         cp.n_mach_ordered_EI = floor((cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine)
         cp.EIᵈ = brochure[2] * cp.n_mach_ordered_EI * global_param.freq_per_machine
     else
-        cp.EIᵈ = 0
+        cp.EIᵈ = 0.0
     end
 end
 
@@ -391,7 +391,7 @@ function produce_goods_cp!(
     if cp.n_machines > 0
         cp.cu = Q / cp.n_machines
     else
-        cp.cu = 0
+        cp.cu = 0.0
     end
     
     # Change inventory, will be amount households can buy from
@@ -799,8 +799,8 @@ function update_ΔLᵈ_cp!(
     cp::ConsumerGoodProducer
     )
 
-    Lᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
-    cp.ΔLᵈ = max(Lᵈ, -cp.L)
+    ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
+    cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
 end
 
 

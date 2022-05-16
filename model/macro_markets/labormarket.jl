@@ -189,6 +189,8 @@ function matching_lm(
 
     allowed_excess_L = 50
 
+    Lᵈ = Vector{Int}(undef, 30)
+
     for _ in 1:labormarket_struct.n_rounds
 
         # Loop over hiring producers producers
@@ -197,12 +199,15 @@ function matching_lm(
             # Stop process if no unemployed left
             if length(jobseeking_hh) == 0
                 return
+            elseif length(jobseeking_hh) < length(Lᵈ)
+                Lᵈ = Vector{Int}(undef, length(jobseeking_hh))
             end
 
             # Make queue of job-seeking households
-            n_sample = min(30, length(jobseeking_hh))
-            @timeit to "sample" Lᵈ = sample(jobseeking_hh, n_sample, replace=false)
-            @timeit to "sort" sort!(Lᵈ, by = hh_id -> model[hh_id].L * model[hh_id].skill, rev=true)
+            # n_sample = min(30, length(jobseeking_hh))
+            # @timeit to "sample" Lᵈ .= sample(jobseeking_hh, n_sample, replace=false)
+            StatsBase.sample!(jobseeking_hh, Lᵈ; replace=false)
+            sort!(Lᵈ, by = hh_id -> model[hh_id].L * model[hh_id].skill, rev=true)
 
             to_be_hired = Vector{Int}()
             for hh_id in Lᵈ

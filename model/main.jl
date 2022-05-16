@@ -42,26 +42,31 @@ include("macro_markets/consumermarket.jl")
 
 
 """
-Initializes model.
-- Receives:
-    * number of agents of each type 
-    * number of initial employees per producer type.
-- Returns:
-    * model: Agent Based Model struct
-    * global_param: struct containing global parameter values
-    * macro_struct: mutable struct containing macro variables
-    * gov_struct: mutable struct containing variables concerning the government
-    * labormarket_struct: mutable struct containing variables concerning the labor market
+    initialize_model(T::Int, labormarket_is_fordist::Bool, changed_params::Dict)
+
+## Initializes model.
+Receives:
+* `T`, total number of time steps.
+* `changed_params`, changed global parameters in case
+    of run with other parameters than default parameters.
+    
+Returns:
+* `model`: Agent Based Model struct
+* `global_param`: struct containing global parameter values
+* `macro_struct`: mutable struct containing macro variables
+* `gov_struct`: mutable struct containing variables concerning the government
+* `labormarket_struct`: mutable struct containing variables concerning the labor market
 """
 function initialize_model(
     T::Int,
     labormarket_is_fordist::Bool;
-    changed_params
+    changed_params::Union{Dict, Nothing}
     )
 
     # Initialise model struct
+    scheduler = Agents.Schedulers.by_type(true, true)
     model = ABM(Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
-                scheduler = by_type(true,true), warn=false)
+                scheduler=scheduler, warn=false)
 
     # Initialize struct that holds global params and initial parameters
     global_param  = initialize_global_params(labormarket_is_fordist, changed_params)
@@ -233,11 +238,11 @@ function model_step!(
     # Determine distance matrix between kp
     @timeit to "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
-    for kp_id in all_kp
+    @timeit to "kp innov" for kp_id in all_kp
 
         model[kp_id].curracc = clear_firm_currentaccount_p!(model[kp_id].curracc)
 
-        @timeit to "kp innov" innovate_kp!(
+        innovate_kp!(
             model[kp_id], 
             global_param, 
             all_kp, 
@@ -255,22 +260,22 @@ function model_step!(
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
-    for cp_id in all_cp
+    @timeit to "plan prod inv cp" for cp_id in all_cp
 
         if model[cp_id].t_next_update == t        
             # Plan production for this period
-            @timeit to "plan prod cp" plan_production_cp!(model[cp_id], global_param, t, model)
+            plan_production_cp!(model[cp_id], global_param, t, model)
 
             # Plan investments for this period
-            @timeit to "plan inv cp" plan_investment_cp!(model[cp_id], all_kp, global_param, ep, t, model)
+            plan_investment_cp!(model[cp_id], all_kp, global_param, ep, t, model)
 
             model[cp_id].t_next_update += 3
         end
     end
 
     # (2) capital good producers set labor demand based on ordered machines
-    for kp_id in all_kp
-        @timeit to "plan prod kp" plan_production_kp!(model[kp_id], global_param, model)
+    @timeit to "plan prod kp"  for kp_id in all_kp
+        plan_production_kp!(model[kp_id], global_param, model)
     end
 
     # (3) labor market matching process
@@ -334,16 +339,16 @@ function model_step!(
 
     # Consumer market process
     @timeit to "consumermarket" consumermarket_process!(
-                                    all_hh,
-                                    all_cp,
-                                    all_W_hh,
-                                    gov_struct,
-                                    global_param,
-                                    cm_dat,
-                                    t,
-                                    model,
-                                    to
-                                )
+        all_hh,
+        all_cp,
+        all_W_hh,
+        gov_struct,
+        global_param,
+        cm_dat,
+        t,
+        model,
+        to
+    )
 
     # Households decide to switch suppliers based on satisfied demand and prices
     @timeit to "decide switching hh" decide_switching_all_hh!(
@@ -473,7 +478,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T=100::Int,
+    T=460::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
@@ -485,9 +490,9 @@ function run_simulation(;
     @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
-        # if t % 100 == 0
-        println("Step $t")
-        # end
+        if t % 100 == 0
+            println("Step $t")
+        end
 
         @timeit to "step" model_step!(
                                 t,

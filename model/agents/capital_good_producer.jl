@@ -290,6 +290,8 @@ end
 
 
 """
+    receive_order_kp!(kp::CapitalGoodProducer, cp_id::Int)
+
 Lets kp receive orders, adds client as historical clients if it is not yet.
 """
 function receive_order_kp!(
