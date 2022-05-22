@@ -44,34 +44,23 @@ function reset_matrices_cp!(
         cm_dat.all_C[i] = model[hh_id].C
         cm_dat.weights[i,:] .= 0.0
 
-        # for j in indexin(model[hh_id].cp, all_cp)
         for cp_id in model[hh_id].cp
 
             # cp are initiated after hh and cp_id will thus correspond to col + len(hh), 
             # so subtract len(hh) to get index
             j = cp_id - length(all_hh)
 
-        # @inbounds for (j,cp_id) ∈ enumerate(all_cp)
-
             cm_dat.all_N[j] = all_N_goods[j] * all_p[j]
             cm_dat.weights[i,j] = 1 / all_p[j]^2
-
-            # if cp_id ∈ model[hh_id].cp
-                # cm_dat.weights[i,j] = 1 / all_p[j]^2
-            # else
-                # cm_dat.weights[i,j] = 0.0
-            # end
 
         end
     end
 
-    # cm_dat.true_D .= 0.0
-    # cm_dat.weights_sum .= 0.0
     cm_dat.transactions .= 0.0
-    # cm_dat.demand_per_cp .= 0.0
+end
 
-    # cm_dat.sold_per_hh .= 0.0
-    # cm_dat.sold_per_hh_round .= 0.0
-    # cm_dat.sold_per_cp .= 0.0
-    # cm_dat.sold_per_cp_round .= 0.0
+
+@with_kw mutable struct GINIData{D}
+    I::Matrix{Float64} = Matrix{Float64}(undef, D, D)
+    W::Matrix{Float64} = Matrix{Float64}(undef, D, D)
 end

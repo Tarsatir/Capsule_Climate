@@ -101,6 +101,7 @@
 
     GINI_I::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for income
     GINI_W::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for wealth
+    FGT::Vector{Float64} = zeros(Float64, T)                # Foster-Greer-Thorbecke index
 end
 
 
@@ -393,15 +394,6 @@ function compute_unsatisfied_demand(
     model::ABM
     )
 
-    # mean_unsat_dem = 0.0
-
-    # for hh_id in all_hh
-    #     if length(model[hh_id].unsat_dem) > 0 
-    #         mean_unsat_dem += mean(ud->ud[2], model[hh_id].unsat_dem)
-    #     end
-    # end
-
-    # macro_struct.unsat_demand[t] = mean_unsat_dem / length(all_hh)
     macro_struct.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ[end], all_cp) / sum(cp_id -> model[cp_id].D[end] + model[cp_id].Dᵁ[end], all_cp)
 
     macro_struct.unspend_C[t] = 1 - sum(hh_id -> model[hh_id].C_actual, all_hh) / sum(hh_id -> model[hh_id].C, all_hh)
@@ -430,11 +422,6 @@ function compute_GINI(
         all_I_absdiff[i] = sum(all_I_tmp)
     end
 
-    # for (i, I1) in enumerate(all_I)
-    #     for I2 in all_I
-    #         @inbounds all_I_absdiff[i] += abs(I1 - I2)
-    #     end
-    # end
     macro_struct.GINI_I[t] = sum(all_I_absdiff) / (2 * length(all_hh)^2 * macro_struct.Ī_avg[t])
 
     # Compute GINI for wealth
@@ -449,12 +436,20 @@ function compute_GINI(
         all_W_absdiff[i] = sum(all_W_tmp)
     end
 
-    # for (i, W1) in enumerate(all_W)
-    #     for W2 in all_W
-    #         @inbounds all_W_absdiff[i] += abs(W1 - W2)
-    #     end
-    # end
     macro_struct.GINI_W[t] = sum(all_W_absdiff) / (2 * length(all_hh)^2 * macro_struct.M_hh[t] / length(all_hh))
+
+    # Compute Foster-Greer-Thorbecke index
+
+    z = 60
+
+    H = Float64[]
+    for hh_id in all_hh
+        if model[hh_id].Iᵀ <= z
+            push!(H, ((z - model[hh_id].Iᵀ) / z)^2)
+        end
+    end
+
+    macro_struct.FGT[t] = sum(H) / length(all_hh)
 end
 
 

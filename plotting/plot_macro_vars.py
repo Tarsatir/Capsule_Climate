@@ -365,14 +365,17 @@ def plot_inequality(df_macro):
 
     fig, ax = plt.subplots(1, 2, figsize=(8,4))
 
-    ax[0].plot(range(len(df_macro.gini_I)), df_macro.gini_I, label='model output')
+    T = range(len(df_macro.gini_I))
+
+    ax[0].plot(T, df_macro.gini_I, label='model output')
+    ax[0].plot(T, df_macro.FGT, label='FGT index')
     ax[0].hlines(0.282, 0, len(df_macro.gini_I), linestyle='dashed', color='black', 
                  label='Netherlands (2015)')
     ax[0].set_ylim(0,1)
     ax[0].set_title("Income inequality")
     ax[0].legend()
 
-    ax[1].plot(range(len(df_macro.gini_W)), df_macro.gini_W, label='model output')
+    ax[1].plot(T, df_macro.gini_W, label='model output')
     ax[1].hlines(0.789, 0, len(df_macro.gini_W), linestyle='dashed', color='black', 
                  label='Netherlands (2018)')
     ax[1].set_title("Wealth inequality")

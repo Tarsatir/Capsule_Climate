@@ -379,7 +379,8 @@ function decide_switching_all_hh!(
             filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
 
             # Add new cp if list not already too long
-            if length(model[hh_id].cp) < n_cp_hh
+            if (length(model[hh_id].cp) < n_cp_hh 
+                && length(model[hh_id].cp) < length(all_cp))
                 
                 p_id_new = sample(all_cp)
                 while p_id_new ∈ model[hh_id].cp
@@ -401,8 +402,9 @@ function decide_switching_all_hh!(
 
             # Randomly pick another candidate from same type and see if price is lower
             # Ugly sample to boost performance
-           p_id_candidate2 = sample(all_cp)
-            while p_id_candidate2 ∈ model[hh_id].cp
+            p_id_candidate2 = sample(all_cp)
+            while (p_id_candidate2 ∈ model[hh_id].cp 
+                   && length(model[hh_id].cp) < length(all_cp))
                 p_id_candidate2 = sample(all_cp)
             end
             

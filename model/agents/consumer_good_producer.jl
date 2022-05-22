@@ -101,9 +101,9 @@ end
 
 """
 Plans production amounts for consumer good producer (short term)
-    - updates ST expected demand
-    - determines ST production goals
-    - based on ST, set labor demand
+- updates ST expected demand
+- determines ST production goals
+- based on ST, set labor demand
 """
 function plan_production_cp!(
     cp::ConsumerGoodProducer, 
@@ -166,7 +166,7 @@ function plan_investment_cp!(
     brochure = choose_producer_cp!(cp, global_param.b, all_kp, ep, t, model)
 
     # Update LT production
-    update_Qᵉ_cp!(cp, global_param.ω)
+    update_Qᵉ_cp!(cp, global_param.ω, global_param.ι)
 
     # Plan replacement investments
     plan_replacement_cp!(cp, global_param, ep, brochure, t)
@@ -175,7 +175,7 @@ function plan_investment_cp!(
     plan_expansion_cp!(cp, global_param, brochure)
 
     # Determine total investments
-    cp.Iᵈ = cp.EIᵈ + cp.RSᵈ
+    cp.Iᵈ = (cp.EIᵈ + cp.RSᵈ) / global_param.update_period
 
     # See if enough funds available for investments and production, otherwise
     # change investments and production to match funding availability.
@@ -410,8 +410,9 @@ function order_machines_cp!(
     total_n_machines = cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
 
     # Send orders for machines to kp
-    for _ in 1:total_n_machines
-        receive_order_kp!(model[cp.chosen_kp_id], cp.id)
+    # for _ in 1:total_n_machines
+    if total_n_machines > 0
+        receive_order_kp!(model[cp.chosen_kp_id], cp.id, total_n_machines)
     end
 end
 
@@ -689,10 +690,11 @@ Updates expected long-term production Qᵉ
 """
 function update_Qᵉ_cp!(
     cp::ConsumerGoodProducer,
-    ω::Float64
+    ω::Float64,
+    ι::Float64
     )
 
-    cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * (cp.Dᵉ + cp.Nᵈ)
+    cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * ((1 + ι) * cp.Dᵉ)
 end
 
 
@@ -729,34 +731,41 @@ function update_μ_cp!(
     μ1::Float64
     )
 
-    b = 0.1
-    l = 2
-    new_μ = cp.μ[end]
-
-    # TODO describe Calvo Pricing
-
-    # if rand() < 1/3
-
-    if cp.age > l && cp.Π[end] != 0
-
-        mean_μ = mean(cp.μ)
-        Δμ = (cp.μ[end] - mean_μ) / mean_μ
-
-        mean_Π = mean(cp.Π)
-        ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
-
-        # TODO: CHANGE TO TAXED PROFITS??
-
-        shock = rand(Uniform(0.0, b))
-        new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
-
-    elseif cp.Π[end] == 0
-        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
+        new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
     else
-        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
+        new_μ = cp.μ[end]
     end
-
     shift_and_append!(cp.μ, new_μ)
+
+    # b = 0.1
+    # l = 2
+    # new_μ = cp.μ[end]
+
+    # # TODO describe Calvo Pricing
+
+    # # if rand() < 1/3
+
+    # if cp.age > l && cp.Π[end] != 0
+
+    #     mean_μ = mean(cp.μ)
+    #     Δμ = (cp.μ[end] - mean_μ) / mean_μ
+
+    #     mean_Π = mean(cp.Π)
+    #     ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
+
+    #     # TODO: CHANGE TO TAXED PROFITS??
+
+    #     shock = rand(Uniform(0.0, b))
+    #     new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+
+    # elseif cp.Π[end] == 0
+    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    # else
+    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
+    # end
+
+    # shift_and_append!(cp.μ, new_μ)
     # else
         # shift_and_append!(cp.μ, cp.μ[end])
     # end

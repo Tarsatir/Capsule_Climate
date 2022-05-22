@@ -30,7 +30,7 @@
     wᴼ_max::Float64 = 0.0                 # maximum offered wage
 
     O::Float64 = 0.0                      # total amount of machines ordered
-    prod_queue::Array = []                # production queue of machines
+    prod_queue::Dict = Dict{Int64, Int64}() # production queue of machines
     Q::Vector{Float64} = zeros(Float64, 3)# production quantities
     D::Vector{Float64} = zeros(Float64, 3)# hist demand
     EU::Float64 = 0.0                     # energy use in the last period
@@ -41,7 +41,7 @@
     debt_installments::Vector{Float64} = zeros(Float64, 4)   # installments of debt repayments
     f::Vector{Float64}                    # market share
     brochure = []                         # brochure
-    orders::Array = []                    # orders
+    orders::Dict = Dict{Int64, Int64}()   # orders
     balance::Balance                      # balance sheet
     curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
 
@@ -296,10 +296,13 @@ Lets kp receive orders, adds client as historical clients if it is not yet.
 """
 function receive_order_kp!(
     kp::CapitalGoodProducer,
-    cp_id::Int
+    cp_id::Int,
+    order_size::Int
     )
 
-    push!(kp.orders, cp_id)
+    # push!(kp.orders, cp_id)
+
+    kp.orders[cp_id] = order_size
 
     # If cp not in HC yet, add as a historical client
     if cp_id ∉ kp.HC
@@ -320,7 +323,8 @@ function plan_production_kp!(
     update_w̄_p!(kp, model)
     
     # Determine total amount of capital units to produce and amount of labor to hire
-    kp.O = length(kp.orders) * global_param.freq_per_machine
+    # kp.O = length(kp.orders) * global_param.freq_per_machine
+    kp.O = sum(values(kp.orders)) * global_param.freq_per_machine
 
     # Determine amount of labor to hire
     kp.ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
@@ -340,29 +344,52 @@ function produce_goods_kp!(
     )
 
     # Determine what the total demand is, regardless if it can be satisfied
-    D::Float64 = length(kp.orders) * global_param.freq_per_machine
+    # D = length(kp.orders) * global_param.freq_per_machine
+    D = kp.O
     shift_and_append!(kp.D, D)
 
     # Determine how much labor is needed to produce a full machine
     req_L = global_param.freq_per_machine / kp.B_LP
 
+    kp.prod_queue = Dict{Int64,Int64}()
+
     # Check if production is constrained
-    if kp.L >= req_L * length(kp.orders)
+    if kp.L * kp.B_LP >= kp.O
 
         # Enough labor available, perform full production
-        kp.prod_queue = kp.orders
+        for (cp_id, n_ordered) in kp.orders
+
+            if n_ordered != 0
+                kp.prod_queue[cp_id] = n_ordered
+            end
+        end
 
     else
-
         # Production constrained, determine amount of production possible
         # and randomly select which machines to produce
-        n_poss_prod = floor(Int, kp.L / req_L)
-        kp.prod_queue = n_poss_prod >= 1 ? sample(kp.orders, n_poss_prod; replace=false) : []
+        n_poss_prod = floor(Int64, kp.L / req_L)
+
+        for (cp_id, n_ordered) in kp.orders
+
+            if n_poss_prod > n_ordered && n_ordered != 0
+                kp.prod_queue[cp_id] = n_ordered
+                n_poss_prod -= n_ordered
+            end
+
+            if n_poss_prod == 0
+                break
+            end
+        end
+
+        # kp.prod_queue = n_poss_prod >= 1 ? sample(kp.orders, n_poss_prod; replace=false) : []
 
     end
 
+    # println(kp.orders)
+    # println(kp.prod_queue)
+
     # Append total production amount of capital units
-    Q::Float64 = length(kp.prod_queue) * global_param.freq_per_machine
+    Q = sum(values(kp.prod_queue)) * global_param.freq_per_machine
     shift_and_append!(kp.Q, Q)
 
     # Update energy use from production
@@ -371,7 +398,10 @@ function produce_goods_kp!(
     update_emissions_kp!(kp)
 
     # Empty order queue
-    kp.orders = []
+    # kp.orders = []
+    for cp_id in keys(kp.orders)
+        kp.orders[cp_id] = 0
+    end
 end
 
 
@@ -405,33 +435,38 @@ function send_ordered_machines_kp!(
     model::ABM
     )
 
-    if length(kp.prod_queue) == 0
-        return nothing
-    end
+    # if length(kp.prod_queue) == 0
+    #     return nothing
+    # end
 
     # Count how many machines each individual cp ordered
-    machines_per_cp = counter(kp.prod_queue)
+    # machines_per_cp = counter(kp.prod_queue)
 
-    for (cp_id, n_machines) in machines_per_cp
+    for (cp_id, n_machines) in kp.prod_queue
 
-        # Produce machines in production queue, send to cp
-        machines = initialize_machine_stock(
-                        global_param.freq_per_machine, 
-                        n_machines;
-                        p = kp.p[end], 
-                        A_LP = kp.A_LP,
-                        A_EE = kp.A_EE,
-                        A_EF = kp.A_EF
-                    )
-        Iₜ = n_machines * global_param.freq_per_machine * kp.p[end]
-        receive_machines_cp!(model[cp_id], machines, Iₜ)
+        if n_machines > 0
+
+            # Produce machines in production queue, send to cp
+            machines = initialize_machine_stock(
+                            global_param.freq_per_machine, 
+                            n_machines;
+                            p = kp.p[end], 
+                            A_LP = kp.A_LP,
+                            A_EE = kp.A_EE,
+                            A_EF = kp.A_EF
+                        )
+            Iₜ = n_machines * global_param.freq_per_machine * kp.p[end]
+            receive_machines_cp!(model[cp_id], machines, Iₜ)
+        end
+
+        kp.prod_queue[cp_id] = 0
     end
     
     # Update sales
     kp.curracc.S = kp.Q[end] * kp.p[end]
 
     # Empty production queue
-    kp.prod_queue = []
+    # kp.prod_queue = []
 end
 
 

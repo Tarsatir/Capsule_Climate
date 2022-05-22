@@ -105,7 +105,8 @@ function save_macro_data(macro_struct)
         avg_n_machines_cp = macro_struct.avg_n_machines_cp,
 
         gini_I = macro_struct.GINI_I,
-        gini_W = macro_struct.GINI_W
+        gini_W = macro_struct.GINI_W,
+        FGT = macro_struct.FGT
     )
     CSV.write("results/result_data/first.csv", df)
 end

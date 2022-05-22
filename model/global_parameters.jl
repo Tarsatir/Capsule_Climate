@@ -9,8 +9,9 @@
     ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
-    κ_lower::Float64 = -0.007       # 1st beta dist support
     κ_upper::Float64 = 0.007        # 2nd beta dist support
+    κ_lower::Float64 = -κ_upper     # 1st beta dist support
+    
 
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
@@ -21,6 +22,7 @@
     η::Int = 20                     # physical scrapping age
     ηₑ::Int = 80                    # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
+    update_period::Int=3            # time period after which cp update prod plans
 
     # Determine entrant composition
     φ1::Float64 = 0.1               # 1st Uniform dist support, cp entrant cap
@@ -43,9 +45,9 @@
 
     # Determine household consumption
     α_cp::Float64 = 0.8             # parameter controlling MPC of consumers
-    c_L_max::Float64 = 0.7          # maximum share consumed on luxury goods
-    a_σ::Float64 = 1000             # 1st parameter governing logistic function
-    b_σ::Float64 = 30               # 2nd parameter governing logistic function
+    # c_L_max::Float64 = 0.7          # maximum share consumed on luxury goods
+    # a_σ::Float64 = 1000             # 1st parameter governing logistic function
+    # b_σ::Float64 = 30               # 2nd parameter governing logistic function
 
     # Determine household switching
     ψ_E::Float64 = 0.15             # chance of employed worker looking for a better paying job
@@ -76,6 +78,10 @@ function initialize_global_params(
     if changed_params !== nothing
         for (key, new_param) in changed_params
             setproperty!(global_param, Symbol(key), new_param)
+        end
+
+        if haskey(changed_params, "κ_upper")
+            setproperty!(global_param, Symbol("κ_lower"), -changed_params["κ_upper"])
         end
     end
 

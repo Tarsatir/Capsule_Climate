@@ -266,11 +266,11 @@ function model_step!(
             # Plan production for this period
             plan_production_cp!(model[cp_id], global_param, t, model)
 
-            # Plan investments for this period
-            plan_investment_cp!(model[cp_id], all_kp, global_param, ep, t, model)
-
-            model[cp_id].t_next_update += 3
+            model[cp_id].t_next_update += global_param.update_period
         end
+
+        # Plan investments for this period
+        plan_investment_cp!(model[cp_id], all_kp, global_param, ep, t, model)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
@@ -390,7 +390,6 @@ function model_step!(
     # @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
     @timeit to "check bankr" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
 
-
     # (7) macro-economic indicators are updated.
     @timeit to "update macro ts" update_macro_timeseries(
         macro_struct,
@@ -478,21 +477,22 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T=460::Int,
+    T=860::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
+    threadnr::Int=1
     )
 
     to = TimerOutput()
 
-    println("Init Model:")
+    # println("Init Model:")
     @timeit to "init" model, global_param, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
     for t in 1:T
 
-        if t % 100 == 0
-            println("Step $t")
-        end
+        # if t % 100 == 0
+        # println("   tr $threadnr step $t")
+        # end
 
         @timeit to "step" model_step!(
                                 t,
@@ -524,10 +524,30 @@ function run_simulation(;
     end
 
     Yg = (macro_struct.GDP[2:end] .- macro_struct.GDP[1:end-1]) ./ macro_struct.GDP[1:end-1]
-    Cg = (macro_struct.C[2:end] .- macro_struct.C[1:end-1]) ./ macro_struct.C[1:end-1]
+    # Cg = (macro_struct.C[2:end] .- macro_struct.C[1:end-1]) ./ macro_struct.C[1:end-1]
 
-    return Yg, Cg
+    return Yg, macro_struct.GINI_I, macro_struct.GINI_W, macro_struct.U
     # return macro_struct.GDP[end], mean(macro_struct.GDP_growth)
 end
 
+# X_labels = Dict([["α_cp", [0.6, 1.0]],
+#                  ["μ1", [0.0, 0.4]],
+#                  ["ω", [0.0, 1.0]],
+#                  ["ϵ", [0.0, 0.1]],
+#                  ["κ_upper", [0.0, 0.07]],
+#                  ["κ_lower", [-0.07, 0.0]],
+#                  ["ψ_E", [0.0, 1.0]],
+#                  ["ψ_Q", [0.0, 1.0]],
+#                  ["ψ_P", [0.0, 1.0]]])
+# params = collect(keys(X_labels))
+# genpath(run_nr, thread_nr) = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
+# changedparams =  Dict(params .=> 0.0)
+# df = DataFrame(CSV.File(genpath(4, 1)))
+# for param in params
+#     changedparams[param] = df[3, param]
+# end
+# println(changedparams)
+# run_simulation(changed_params=changedparams)
+
 run_simulation()
+nothing
