@@ -16,7 +16,7 @@
     I::Float64 = L * skill                      # hist income
     Iᵀ::Float64 = L * skill  # change according to tax rate      # hist taxed income
     s::Float64 = 0.0                            # savings rate
-    W::Float64 = 500                            # wealth or cash on hand
+    W::Float64 = 300                            # wealth or cash on hand
 
     # Consumption variables
     C::Float64 = 0.0                           # budget
@@ -203,36 +203,16 @@ function receive_ordered_goods_hh!(
     hh_D::Vector{Float64},
     all_cp::Vector{Int},
     n_hh::Int
-    # cp_id::Int,
-    # tot_price::Float64,
-    # share_fulfilled::Float64
     )
 
     # Decrease wealth with total sold goods
     hh.W -= tot_sales
     hh.C_actual += tot_sales
-    # i = 0
-
-    # for i in findall(cp_id -> cp_id ∈ hh.cp, all_cp)
-    #     if unsat_demand[i] > 0.0
-    #         push!(hh.unsat_dem, (all_cp[i], unsat_demand[i] / hh_D[i]))
-    #     end
-    # end
 
     for cp_id in hh.cp
         i = cp_id - n_hh
-        # println(unsat_demand[i], " ", hh_D[i])
         hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.0
-        # if unsat_demand[i] > 0.0
-        #     push!(hh.unsat_dem, (all_cp[i], unsat_demand[i] / hh_D[i]))
-        # end
     end
-
-    # # If full demand not fulfilled, add cp to unsatisfied demand
-    # if ceil(share_fulfilled; digits=3) < 1.0
-    #     println(share_fulfilled)
-    #     push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
-    # end
 end
 
 
@@ -254,8 +234,8 @@ function update_sat_req_wage_hh!(
     # end
 
     # Try to use adaptive wˢ
-    ωwˢ = 0.95
-    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * hh.Iᵀ / hh.L
+    ωwˢ = 0.5
+    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * (hh.employed ? hh.w[end] : hh.Iᵀ / hh.L)
 
     if hh.employed
         hh.wʳ = max(w_min, hh.w[end] * (1 + ϵ))

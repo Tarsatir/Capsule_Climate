@@ -41,6 +41,7 @@ def plot_macro_vars(df):
     ax[0,1].plot(range(len(df.UR)), df.UR, label='unemployment rate')
     ax[0,1].plot(range(len(df.switch_rate)), df.switch_rate, label='switching rate')
     ax[0,1].set_title("Unemployment rate")
+    ax[0,1].set_ylim(0,1)
     ax[0,1].legend()
 
     # Plot savings rate of households
@@ -147,9 +148,9 @@ def plot_macro_vars(df):
     ax[5,1].set_title('CPI')
     ax[5,1].legend()
 
-    ax[6,0].plot(T, df.bankrupt_cp, label='cp')
-    # ax[6,0].plot((range(len(df.bankrupt_lp))), df.bankrupt_lp, label='lp')
+
     ax[6,0].plot(T, df.bankrupt_kp, label='kp')
+    ax[6,0].plot(T, df.bankrupt_cp, label='cp')
     ax[6,0].legend()
     ax[6,0].set_title('Bankrupty rate')
 
@@ -162,6 +163,7 @@ def plot_macro_vars(df):
     ax[7,0].plot(T, df.unsat_demand, label='unsatisfied D')
     ax[7,0].plot(T, df.unspend_C, label='unspend C')
     ax[7,0].set_title('Unsatisfied demand and unspend C')
+    ax[7,0].set_ylim(0, 1)
     ax[7,0].legend()
 
     ax[7,1].plot(range(len(df.cu)), df.cu)
@@ -334,13 +336,13 @@ def plot_sales_dist():
 
     fig, ax = plt.subplots(3, 2, figsize=(8,8))
 
-    ax[0,0].hist(df_cp.all_S_cp, bins=30)
+    ax[0,0].hist(df_cp.all_S_cp, bins=60)
     ax[0,0].set_title('$S$ of cp')
     
-    ax[1,0].hist(df_cp.all_profit_cp, bins=30)
+    ax[1,0].hist(df_cp.all_profit_cp, bins=60)
     ax[1,0].set_title('$\Pi$ of cp')
 
-    ax[2,0].hist(df_cp.all_f_cp, bins=30)
+    ax[2,0].hist(df_cp.all_f_cp, bins=60)
     ax[2,0].set_title('$f$ of cp')
     ax[2,0].set_xlim(0, max(df_cp.all_f_cp))
 

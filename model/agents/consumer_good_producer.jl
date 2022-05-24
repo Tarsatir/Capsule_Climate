@@ -67,14 +67,13 @@ function initialize_cp(
     n_init_emp_cp::Int,
     μ::Float64,
     ι::Float64;
-    D=800.0::Float64,
+    D=1600.0::Float64,
     w=1.0::Float64,
     L=n_init_emp_cp * 100::Int,
-    N_goods=3*D*ι::Float64,
+    N_goods=D*ι::Float64,
     n_consrgood=200::Int,
     f=2/n_consrgood,
     )
-
 
     cp = ConsumerGoodProducer(
         id = id,
@@ -92,8 +91,8 @@ function initialize_cp(
         f = fill(f, 3)
     )
 
-    cp.balance.NW = 500
-    cp.balance.EQ = 500
+    cp.balance.NW = 1500
+    cp.balance.EQ = 1500
 
     return cp
 end
@@ -132,7 +131,9 @@ function plan_production_cp!(
     update_w̄_p!(cp, model)
 
     # Update markup μ
+    # if t == cp.t_next_update
     update_μ_cp!(cp, t, global_param.μ1)
+    # end
 
     # Update cost of production c
     compute_c_cp!(cp)
@@ -258,7 +259,6 @@ function check_funding_restrictions_cp!(
             poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + pₑ / cp.π_EE)
             poss_L = poss_prod / cp.π_LP
             cp.ΔLᵈ = poss_L - cp.L
-            # println("Yeet: $(cp.ΔLᵈ)")
         end
     end
 
@@ -344,8 +344,10 @@ function plan_expansion_cp!(
     brochure
     )
 
+    # println(cp.Qᵉ, " ", cp.n_machines)
+
     if cp.Qᵉ > cp.n_machines
-        cp.n_mach_ordered_EI = floor((cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine)
+        cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine)
         cp.EIᵈ = brochure[2] * cp.n_mach_ordered_EI * global_param.freq_per_machine
     else
         cp.EIᵈ = 0.0
@@ -629,6 +631,8 @@ function replace_bankrupt_cp!(
         new_cp.n_mach_ordered_EI = all_n_machines[i]
         order_machines_cp!(new_cp, model)
 
+        update_wᴼ_max_cp!(new_cp)
+
         # Augment the balance with acquired NW and K
         new_cp.balance.NW = req_NW[i]
 
@@ -664,6 +668,8 @@ function update_Dᵉ_cp!(
     cp::ConsumerGoodProducer,
     ω::Float64
     )
+
+    ω = 0.9
 
     if cp.age > 2
         # TODO: DESCRIBE IN MODEL 
@@ -731,44 +737,68 @@ function update_μ_cp!(
     μ1::Float64
     )
 
-    if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
-        new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
-    else
-        new_μ = cp.μ[end]
-    end
-    shift_and_append!(cp.μ, new_μ)
+    # if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
+    #     new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
+    # else
+    #     new_μ = cp.μ[end]
+    # end
+    # shift_and_append!(cp.μ, new_μ)
 
-    # b = 0.1
-    # l = 2
+    b = 0.1
+    l = 2
     # new_μ = cp.μ[end]
 
     # # TODO describe Calvo Pricing
 
     # # if rand() < 1/3
 
-    # if cp.age > l && cp.Π[end] != 0
+    if cp.age > l && cp.Π[end] != 0
 
-    #     mean_μ = mean(cp.μ)
-    #     Δμ = (cp.μ[end] - mean_μ) / mean_μ
+        mean_μ = mean(cp.μ)
+        Δμ = (cp.μ[end] - mean_μ) / mean_μ
 
-    #     mean_Π = mean(cp.Π)
-    #     ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
+        mean_Π = mean(cp.Π)
+        ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
 
-    #     # TODO: CHANGE TO TAXED PROFITS??
+        # TODO: CHANGE TO TAXED PROFITS??
 
-    #     shock = rand(Uniform(0.0, b))
-    #     new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+        shock = rand(Uniform(0.0, b))
+        new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
 
-    # elseif cp.Π[end] == 0
-    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    elseif cp.Π[end] == 0
+        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    else
+        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
+    end
+
+    shift_and_append!(cp.μ, new_μ)
     # else
-    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
+    #     shift_and_append!(cp.μ, cp.μ[end])
+    # end
+
+    # if cp.age > l 
+        
+    #     if mean(cp.Dᵁ) / mean(cp.D) >= 0.1
+
+    #         # mean_μ = mean(cp.μ)
+    #         # Δμ = (cp.μ[end] - mean_μ) / mean_μ
+
+    #         # mean_Π = mean(cp.Π)
+    #         # ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
+
+    #         # TODO: CHANGE TO TAXED PROFITS??
+
+    #         shock = rand(Uniform(0.0, b))
+    #         # new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+    #     else
+    #         shock = rand(Uniform(-b, 0.0))
+    #     end
+    #     new_μ = cp.μ[end] * (1 + shock)
+    # else
+    #     new_μ = cp.μ[end]
     # end
 
     # shift_and_append!(cp.μ, new_μ)
-    # else
-        # shift_and_append!(cp.μ, cp.μ[end])
-    # end
 end
 
 
@@ -807,8 +837,9 @@ Computes the desired change in labor supply ΔLᵈ
 function update_ΔLᵈ_cp!(
     cp::ConsumerGoodProducer
     )
-
+    # println("$(cp.L), $(cp.Qˢ / cp.π_LP - cp.L), $(cp.n_machines / cp.π_LP - cp.L)")
     ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
+    # println(ΔLᵈ)
     cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
 end
 

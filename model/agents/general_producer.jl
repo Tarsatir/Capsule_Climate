@@ -3,7 +3,7 @@ function fire_excess_workers_p!(
     model::ABM
     )::Vector{Int}
 
-    if p.ΔLᵈ >= p.L
+    if p.ΔLᵈ <= -p.L
         fired_workers = p.employees
     else
 
@@ -18,7 +18,7 @@ function fire_excess_workers_p!(
                 break
             end
             push!(fired_workers, hh_id)
-            ΔL -= model[hh_id].L * model[hh_id].skill
+            ΔL -= (model[hh_id].L * model[hh_id].skill)
         end
 
     end
@@ -58,7 +58,7 @@ function hire_worker_p!(
     # update labor stock and desired labor
     push!(p.employees, hh.id)
     p.L += hh.L * hh.skill
-    p.ΔLᵈ -= hh.L * hh.skill
+    # p.ΔLᵈ -= hh.L * hh.skill
 end
 
 
@@ -210,6 +210,11 @@ function check_bankrupty_all_p!(
         end
     end
 
+    # meanage = length(bankrupt_cp) > 0 ? mean(cp_id -> model[cp_id].age, bankrupt_cp) : nothing
+    # meanf = length(bankrupt_cp) > 0 ? mean(cp_id -> model[cp_id].f[end], bankrupt_cp) : nothing
+    # meanN = length(bankrupt_cp) > 0 ? mean(cp_id -> model[cp_id].N_goods, bankrupt_cp) : nothing
+    # println("mean age: $meanage, meanf: $meanf, meanN: $meanN")
+
     return bankrupt_cp, bankrupt_kp, bankrupt_kp_i
 end
 
@@ -251,6 +256,9 @@ function kill_all_bankrupt_p!(
     # Fire all workers still remaining in the firm, remove firm
     total_unpaid_net_debt = 0.0
     for p_id in Iterators.flatten((bankrupt_cp, bankrupt_kp))
+
+
+        println("   $(typeof(model[p_id])==ConsumerGoodProducer ? "cp" : "kp"), $(model[p_id].L), $(model[p_id].age)")
 
         # Fire remaining workers
         for hh_id in model[p_id].employees

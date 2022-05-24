@@ -30,6 +30,10 @@ function consumermarket_process!(
 
     @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cm_dat, model, to)
 
+    # for hh_id in all_hh
+    #     model[hh_id].W -= (model[hh_id].C - model[hh_id].C_actual)
+    # end
+
     # TODO: so smt with actual demand
 
     # @timeit to "write demand" write_demand_hh_to_cp!(all_cp, all_hh, transactions, model)

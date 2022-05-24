@@ -19,7 +19,7 @@
     ι::Float64 = 0.5                # desired inventories
     b::Int = 3                      # payback period
     bₑ::Int = 10                    # payback period energy producer
-    η::Int = 20                     # physical scrapping age
+    η::Int = 60                     # physical scrapping age
     ηₑ::Int = 80                    # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
     update_period::Int=3            # time period after which cp update prod plans
@@ -50,14 +50,14 @@
     # b_σ::Float64 = 30               # 2nd parameter governing logistic function
 
     # Determine household switching
-    ψ_E::Float64 = 0.15             # chance of employed worker looking for a better paying job
-    ψ_Q::Float64 = 0.75             # chance of household switching away from cp when demand constrained
-    ψ_P::Float64 = 0.75             # chance of household switching to cp with better price
+    ψ_E::Float64 = 0.25             # chance of employed worker looking for a better paying job
+    ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained
+    ψ_P::Float64 = 0.05             # chance of household switching to cp with better price
 
     freq_per_machine::Int = 50      # capital units per machine
     freq_per_powerplant::Int = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.0             # initial price of fossil fuels
+    p_f::Float64 = 0.0              # initial price of fossil fuels
 
     n_cons_market_days::Int = 4     # number of days in the consumer market process
 

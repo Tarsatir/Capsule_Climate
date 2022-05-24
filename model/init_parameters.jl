@@ -18,7 +18,7 @@
     n_machines_init::Int = 50             # number of machines of cp at init
 
     # Init params of hh
-    n_cp_hh::Int = 14                     # number of cp of hh (also min amount)
+    n_cp_hh::Int = 25                     # number of cp of hh (also min amount)
     σ_hh_I::Float64 = 0.406               # sigma of lognormal distribution of income
     scale_hh_I::Float64 = 29191.575       # scale of lognormal distribution of income
 

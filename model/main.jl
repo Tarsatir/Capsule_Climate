@@ -261,11 +261,11 @@ function model_step!(
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
     @timeit to "plan prod inv cp" for cp_id in all_cp
+      
+        # Plan production for this period
+        plan_production_cp!(model[cp_id], global_param, t, model)
 
-        if model[cp_id].t_next_update == t        
-            # Plan production for this period
-            plan_production_cp!(model[cp_id], global_param, t, model)
-
+        if model[cp_id].t_next_update == t  
             model[cp_id].t_next_update += global_param.update_period
         end
 
@@ -285,6 +285,7 @@ function model_step!(
         all_p,
         global_param,
         gov_struct,
+        t, 
         model,
         to
     )
@@ -477,7 +478,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T=860::Int,
+    T=460::Int,
     changed_params=nothing,
     full_output=true::Bool,
     labormarket_is_fordist=false::Bool,
@@ -491,7 +492,7 @@ function run_simulation(;
     for t in 1:T
 
         # if t % 100 == 0
-        # println("   tr $threadnr step $t")
+        println("   tr $threadnr step $t")
         # end
 
         @timeit to "step" model_step!(
