@@ -120,7 +120,7 @@ function labormarket_process!(
 
     # Round labor amounts to avoid floating point errors
     for p_id in all_p
-        model[p_id].L = round(model[p_id].L; digits=1)
+        model[p_id].L = length(model[p_id].employees) == 0 ? 0.0 : model[p_id].L
     end
 end
 

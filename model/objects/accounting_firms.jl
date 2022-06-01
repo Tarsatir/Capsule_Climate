@@ -190,7 +190,7 @@ function compute_Π_p!(
     Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.TCE - p.curracc.int_debt - writeoffs
     # if typeof(p) == CapitalGoodProducer
     #     println("profit ", Π, " S ", p.curracc.S, "  TCL ", p.curracc.TCL, " TCI ", p.curracc.TCI, " int ", p.curracc.int_debt, " p ", p.p[end])
-    #     println("labor ", p.ΔLᵈ, " O ", p.O, " O/B ", p.O/p.B[end], " RD ", p.RD[end] / p.w̄[end], " L ", p.L, " w ", p.w̄[end])
+    #     println("labor ", p.ΔLᵈ, " O ", p.O, " O/B ", p.O/p.B_LP[end], " RD ", p.RD / p.w̄[end], " L ", p.L, " w ", p.w̄[end])
     # end
     # Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt - writeoffs
 

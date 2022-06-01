@@ -30,6 +30,7 @@ Defines struct for consumer good producer
     n_mach_ordered_EI::Int = 0                # number of machines ordered for expansion
     n_mach_ordered_RS::Int = 0                # number of machines ordered for replacement
     mach_tb_repl::Vector{Machine} = []        # list of to-be replaced machines
+    mach_tb_retired::Vector{Machine} = []     # list of to-be retired machines (without replacement)
     chosen_kp_id::Int = 0                     # id of chosen kp
     debt_installments::Vector{Float64} = zeros(4) # installments of debt repayments
 
@@ -312,14 +313,29 @@ function plan_replacement_cp!(
     p_star = brochure[2]
     c_star = cp.w̄[end] / brochure[4] + ep.pₑ[t] / brochure[5]
 
-    # Loop over machine stock, select which machines to replaceF
     cp.mach_tb_repl = []
+    cp.mach_tb_retired = []
+
+    n_machines_too_many = -min(cp.Qᵉ - cp.n_machines, 0.0)
+
+    # Loop over machine stock, select which machines to replace
     for machine in cp.Ξ
 
         c_A = cp.w̄[end] / machine.A_LP + ep.pₑ[t] / brochure[5]
 
-        if ((c_A != c_star && p_star/(c_A - c_star) <= global_param.b) 
-            || machine.age >= global_param.η)
+        if machine.age >= global_param.η
+            # Machine has reached max age, decide if replaced or not
+            if n_machines_too_many < global_param.freq_per_machine
+                # No machines planned to be written off, replace old machine
+                push!(cp.mach_tb_repl, machine)
+            else
+                # Do not replace machine
+                push!(cp.mach_tb_retired, machine)
+                n_machines_too_many -= machine.freq
+            end
+
+        elseif c_A != c_star && p_star/(c_A - c_star) <= global_param.b
+            # New machine cheaper to operate, replace old machine
             push!(cp.mach_tb_repl, machine)
         end
     end
@@ -344,9 +360,7 @@ function plan_expansion_cp!(
     brochure
     )
 
-    # println(cp.Qᵉ, " ", cp.n_machines)
-
-    if cp.Qᵉ > cp.n_machines
+    if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
         cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine)
         cp.EIᵈ = brochure[2] * cp.n_mach_ordered_EI * global_param.freq_per_machine
     else
@@ -669,7 +683,7 @@ function update_Dᵉ_cp!(
     ω::Float64
     )
 
-    ω = 0.9
+    # ω = 0.9
 
     if cp.age > 2
         # TODO: DESCRIBE IN MODEL 
@@ -711,6 +725,11 @@ function update_n_machines_cp!(
     cp::ConsumerGoodProducer,
     freq_per_machine::Int
     )
+
+    # Retire old machines that are not replaced
+    if length(cp.mach_tb_retired) > 0
+        filter(machine -> machine ∉ cp.mach_tb_retired, cp.Ξ)
+    end
 
     cp.n_machines = length(cp.Ξ) * freq_per_machine
 end
@@ -839,8 +858,13 @@ function update_ΔLᵈ_cp!(
     )
     # println("$(cp.L), $(cp.Qˢ / cp.π_LP - cp.L), $(cp.n_machines / cp.π_LP - cp.L)")
     ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
-    # println(ΔLᵈ)
     cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
+
+    # ω = 0.8
+
+    # req_L = min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
+    # req_L = ω * cp.L + (1 - ω) * req_L
+    # cp.ΔLᵈ = req_L - cp.L
 end
 
 
@@ -865,7 +889,7 @@ function update_wᴼ_max_cp!(
     cp::ConsumerGoodProducer
     )
     # TODO: DESCRIBE IN MODEL
-    cp.wᴼ_max = cp.π_LP * cp.p[end]
+    cp.wᴼ_max = (cp.π_LP * cp.p[end])
     # if cp.ΔLᵈ > 0
     #     # cp.wᴼ_max = (cp.Dᵉ * cp.p[end] - cp.w̄[end] * cp.L) / cp.ΔLᵈ
     #     cp.wᴼ_max = cp.p[end]

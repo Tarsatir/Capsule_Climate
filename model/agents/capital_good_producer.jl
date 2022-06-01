@@ -21,7 +21,7 @@
     c::Vector{Float64} = ones(Float64, 3) # hist cost data
     
     # Employment
-    employees::Vector{Int} = []           # employees in company
+    employees::Vector{Int} = Int64[]      # employees in company
     mean_skill::Float64 = 1.0             # mean skill level of employees
     L::Float64 = 0.0                      # labor units in company
     ΔLᵈ::Float64 = 0.0                    # desired change in labor force
@@ -182,8 +182,8 @@ function choose_technology_kp!(
         kp.B_EE = tech_choices[idx][5]
         kp.B_EF = tech_choices[idx][6]
 
-        shift_and_append!(kp.c, c_h_kp[idx])
-        shift_and_append!(kp.p, p_h[idx])
+        # shift_and_append!(kp.c, c_h_kp[idx])
+        # shift_and_append!(kp.p, p_h[idx])
     end
 end
 
@@ -214,7 +214,7 @@ function send_brochures_kp!(
     if length(kp.HC) == 0
         n_choices = n_hist_clients
     else
-        n_choices = Int(round(global_param.γ * length(kp.HC)))
+        n_choices = round(Int64, global_param.γ * length(kp.HC))
     end
     
     # Send brochures to new clients
@@ -244,17 +244,25 @@ end
 
 
 """
-Lets kp set price
+Lets kp update unit costs
 """
-function set_price_kp!(
-    kp::CapitalGoodProducer, 
-    μ1::Float64, 
+function compute_c_kp!(
+    kp::CapitalGoodProducer
     )
 
-    c_t = kp.w̄[end] / kp.B_LP
-    p_t = (1 + kp.μ[end]) * c_t
+    c_t = kp.Q[end] > 0 ? kp.w̄[end] / kp.B_LP + kp.RD / kp.Q[end] : kp.w̄[end] / kp.B_LP
     shift_and_append!(kp.c, c_t)
-    shift_and_append!(kp.p, p_t)
+end
+
+
+"""
+Lets kp set price
+"""
+function compute_p_kp!(
+    kp::CapitalGoodProducer, 
+    )
+
+    shift_and_append!(kp.p, (1 + kp.μ[end]) * kp.c[end])
 end
 
 
@@ -327,7 +335,16 @@ function plan_production_kp!(
     kp.O = sum(values(kp.orders)) * global_param.freq_per_machine
 
     # Determine amount of labor to hire
-    kp.ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
+    # kp.ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
+    # kp.ΔLᵈ = kp.O / kp.B_LP - kp.L
+
+    ω = 0.5
+
+    req_L = kp.O / kp.B_LP + kp.RD / kp.w̄[end]
+    req_L = ω * kp.L + (1 - ω) * req_L
+    kp.ΔLᵈ = req_L - kp.L
+
+    # kp.ΔLᵈ = global_param.ω * kp.ΔLᵈ + (1-global_param.ω) * (kp.O / kp.B_LP - kp.L)
 
     update_wᴼ_max_kp!(kp)
 end
@@ -372,8 +389,13 @@ function produce_goods_kp!(
         for (cp_id, n_ordered) in kp.orders
 
             if n_poss_prod > n_ordered && n_ordered != 0
+                # Full production possible
                 kp.prod_queue[cp_id] = n_ordered
                 n_poss_prod -= n_ordered
+            elseif n_poss_prod > 0 && n_poss_prod < n_ordered && n_ordered != 0
+                # Partial production possible
+                kp.prod_queue[cp_id] = n_poss_prod
+                n_poss_prod = 0
             end
 
             if n_poss_prod == 0
@@ -435,13 +457,6 @@ function send_ordered_machines_kp!(
     model::ABM
     )
 
-    # if length(kp.prod_queue) == 0
-    #     return nothing
-    # end
-
-    # Count how many machines each individual cp ordered
-    # machines_per_cp = counter(kp.prod_queue)
-
     for (cp_id, n_machines) in kp.prod_queue
 
         if n_machines > 0
@@ -464,9 +479,6 @@ function send_ordered_machines_kp!(
     
     # Update sales
     kp.curracc.S = kp.Q[end] * kp.p[end]
-
-    # Empty production queue
-    # kp.prod_queue = []
 end
 
 
@@ -502,11 +514,6 @@ function update_wᴼ_max_kp!(
     )
     # TODO: DESCRIBE IN MODEL
     kp.wᴼ_max = kp.B_LP * kp.p[end] 
-    # if kp.ΔLᵈ > 0
-    #     kp.wᴼ_max = (kp.O * kp.p[end] - kp.w̄[end] * kp.L) / kp.ΔLᵈ
-    # else
-    #     kp.wᴼ_max = 0
-    # end
 end
 
 
@@ -590,8 +597,8 @@ function update_μ_kp!(
     # end
 
     # push!(kp.μ, kp.μ[end])
-    shift_and_append!(kp.μ, kp.μ[end])
 
+    shift_and_append!(kp.μ, kp.μ[end])
 end
 
 

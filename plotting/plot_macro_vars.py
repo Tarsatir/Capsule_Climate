@@ -21,21 +21,21 @@ def plot_macro_vars(df):
     # ax[0,0].legend()
 
     # Plot real GDP
-    # ax[0,0].plot(T, 100 * df.GDP / df.CPI, label='total GDP')
-    # ax[0,0].plot(T, 100 * df.GDP_I / df.CPI, label='income share')
-    # ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI, label='cp share')
-    # ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI, label='kp share')
-    # ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI, label='UB exp')
-    # ax[0,0].set_title("GDP")
-    # ax[0,0].legend()
-
-    ax[0,0].plot(T, df.GDP, label='total GDP')
-    ax[0,0].plot(T, df.GDP_I, label='income share')
-    ax[0,0].plot(T, df.GDP_cp, label='cp share')
-    ax[0,0].plot(T, df.GDP_kp, label='kp share')
-    ax[0,0].plot(T, df.Exp_UB, label='UB exp')
+    ax[0,0].plot(T, 100 * df.GDP / df.CPI, label='total GDP')
+    ax[0,0].plot(T, 100 * df.GDP_I / df.CPI, label='income share')
+    ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI, label='cp share')
+    ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI, label='kp share')
+    ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI, label='UB exp')
     ax[0,0].set_title("GDP")
     ax[0,0].legend()
+
+    # ax[0,0].plot(T, df.GDP, label='total GDP')
+    # ax[0,0].plot(T, df.GDP_I, label='income share')
+    # ax[0,0].plot(T, df.GDP_cp, label='cp share')
+    # ax[0,0].plot(T, df.GDP_kp, label='kp share')
+    # ax[0,0].plot(T, df.Exp_UB, label='UB exp')
+    # ax[0,0].set_title("GDP")
+    # ax[0,0].legend()
 
     # Plot unemployment rate
     ax[0,1].plot(range(len(df.UR)), df.UR, label='unemployment rate')
@@ -44,15 +44,24 @@ def plot_macro_vars(df):
     ax[0,1].set_ylim(0,1)
     ax[0,1].legend()
 
-    # Plot savings rate of households
-    ax[1,0].plot(T, df.s_emp, color='red', label='employed')
-    ax[1,0].plot(T, df.s_unemp, color='blue', label='unemployed')
-    ax[1,0].set_title("Savings rate")
+    ax[1,0].plot(range(len(df.M)), df.M - df.debt_tot, 
+                 label='total', zorder=5, linestyle='dashed')
+    ax[1,0].plot(range(len(df.M)), df.M_hh, label='hh')
+    ax[1,0].plot(range(len(df.M)), df.M_cp, label='cp')
+    ax[1,0].plot(range(len(df.M)), df.M_kp, label='kp')
+    ax[1,0].plot(range(len(df.M)), df.M_ep, label='ep')
+    ax[1,0].plot(range(len(df.M)), df.M_gov, label='gov')
+    ax[1,0].plot(range(len(df.M)), df.debt_tot, label='total debts')
+    ax[1,0].hlines(df.M[0], 0, len(df.M), linestyle='dotted', alpha=0.5, color='black')
+    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_cp.to_numpy()), label='unpaid cp debt')
+    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_kp.to_numpy()), label='unpaid kp debt')
+    ax[1,0].plot(range(len(df.M)), df.M_if, label='if')
+    ax[1,0].set_title('Money supply')
     ax[1,0].legend()
 
     # Plot wage levels
     real_w_avg = 100 * df.w_avg / df.CPI
-    real_w_avg = 100 * df.w_avg
+    # real_w_avg = 100 * df.w_avg
     ax[1,1].plot(range(len(real_w_avg)), real_w_avg, color='green', label='$\\bar{w}$')
     # ax[1,1].fill_between(range(len(df.w_avg)), df.w_avg + df.w_std, df.w_avg - df.w_std, 
     #                  color='green', alpha=0.4)
@@ -88,21 +97,14 @@ def plot_macro_vars(df):
                          color='purple', 
                          alpha=0.4)
     ax[2,1].set_title('Real income of households')
+    
 
-    ax[3,0].plot(range(len(df.M)), df.M - df.debt_tot, 
-                 label='total', zorder=5, linestyle='dashed')
-    ax[3,0].plot(range(len(df.M)), df.M_hh, label='hh')
-    ax[3,0].plot(range(len(df.M)), df.M_cp, label='cp')
-    ax[3,0].plot(range(len(df.M)), df.M_kp, label='kp')
-    ax[3,0].plot(range(len(df.M)), df.M_ep, label='ep')
-    ax[3,0].plot(range(len(df.M)), df.M_gov, label='gov')
-    ax[3,0].plot(range(len(df.M)), df.debt_tot, label='total debts')
-    ax[3,0].hlines(df.M[0], 0, len(df.M), linestyle='dotted', alpha=0.5, color='black')
-    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_cp.to_numpy()), label='unpaid cp debt')
-    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_kp.to_numpy()), label='unpaid kp debt')
-    ax[3,0].plot(range(len(df.M)), df.M_if, label='if')
-    ax[3,0].set_title('Money supply')
+    # Plot savings rate of households
+    ax[3,0].plot(T, df.s_emp, color='red', label='employed')
+    ax[3,0].plot(T, df.s_unemp, color='blue', label='unemployed')
+    ax[3,0].set_title("Savings rate")
     ax[3,0].legend()
+
 
     ax[3,1].plot(range(len(df.debt_tot)), df.debt_tot, label='total')
     ax[3,1].plot(range(len(df.debt_cp)), df.debt_cp, label='cp', color='green')
@@ -372,7 +374,7 @@ def plot_inequality(df_macro):
     ax[0].plot(T, df_macro.gini_I, label='model output')
     ax[0].plot(T, df_macro.FGT, label='FGT index')
     ax[0].hlines(0.282, 0, len(df_macro.gini_I), linestyle='dashed', color='black', 
-                 label='Netherlands (2015)')
+                 label='Netherlands (2018)')
     ax[0].set_ylim(0,1)
     ax[0].set_title("Income inequality")
     ax[0].legend()

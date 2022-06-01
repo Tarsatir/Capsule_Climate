@@ -252,6 +252,12 @@ function model_step!(
             ep,
             model
         )
+
+        # Update cost of production and price
+        compute_c_kp!(model[kp_id])
+        compute_p_kp!(model[kp_id])
+
+        # Send brochures to cp
         send_brochures_kp!(model[kp_id], all_cp, global_param, model)
     end
 
@@ -327,8 +333,6 @@ function model_step!(
 
     # Households update wealth level
     for hh_id in all_hh
-        # Reset unsatisfied demand
-        # model[hh_id].unsat_dem = Vector()
 
         # Update household wealth
         update_wealth_hh!(model[hh_id])

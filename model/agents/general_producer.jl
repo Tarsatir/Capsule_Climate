@@ -99,7 +99,6 @@ Updates wage level for producer.
 """
 function update_w̄_p!(
     p::AbstractAgent,
-    # t::Int,
     model::ABM
     )
 
@@ -258,7 +257,7 @@ function kill_all_bankrupt_p!(
     for p_id in Iterators.flatten((bankrupt_cp, bankrupt_kp))
 
 
-        println("   $(typeof(model[p_id])==ConsumerGoodProducer ? "cp" : "kp"), $(model[p_id].L), $(model[p_id].age)")
+        # println("   $(typeof(model[p_id])==ConsumerGoodProducer ? "cp" : "kp"), $(model[p_id].L), $(model[p_id].age)")
 
         # Fire remaining workers
         for hh_id in model[p_id].employees
