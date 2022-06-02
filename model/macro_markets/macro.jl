@@ -16,7 +16,9 @@
     CPI_kp :: Vector{Float64} = zeros(Float64, T)           # price index capital goods over time
 
     C::Vector{Float64} = zeros(Float64, T)                  # aggregate consumption over time
-    unsat_demand::Vector{Float64} = zeros(Float64, T)       # average ratio of unsatisfied demand
+    unsat_demand::Vector{Float64} = zeros(Float64, T)       # ratio of unsatisfied demand
+    unsat_invest::Vector{Float64} = zeros(Float64, T)       # ratio of unsatisfied investments
+    unsat_L_demand::Vector{Float64} = zeros(Float64, T)     # ratio of unsatisfied labor demand
     unspend_C::Vector{Float64} = zeros(Float64, T)          # average ratio of unspend C
     avg_N_goods::Vector{Float64} = zeros(Float64, T)        # average number of goods in cp firm inventory
 
@@ -90,7 +92,12 @@
 
     # Production
     avg_Q_cp::Vector{Float64} = zeros(Float64, T)           # average production of cp
+    avg_Qˢ_cp::Vector{Float64} = zeros(Float64, T)          # average desired ST production of cp
+    avg_Qᵉ_cp::Vector{Float64} = zeros(Float64, T)          # average desired LT production of cp
     avg_Q_kp::Vector{Float64} = zeros(Float64, T)           # average production of kp
+    avg_D_cp::Vector{Float64} = zeros(Float64, T)           # average demand of cp
+    avg_Dᵁ_cp::Vector{Float64} = zeros(Float64, T)          # average unsatisfied demand of cp
+    avg_Dᵉ_cp::Vector{Float64} = zeros(Float64, T)          # average expected demand of cp
 
     # Bankrupties
     bankrupt_cp::Vector{Float64} = zeros(Float64, T)        # fraction of cp that went bankrupt
@@ -182,11 +189,16 @@ function update_macro_timeseries(
 
     # Production quantity
     macro_struct.avg_Q_cp[t] = mean(cp_id -> model[cp_id].Q[end], all_cp)
+    macro_struct.avg_Qˢ_cp[t] = mean(cp_id -> model[cp_id].Qˢ, all_cp)
+    macro_struct.avg_Qᵉ_cp[t] = mean(cp_id -> model[cp_id].Qᵉ, all_cp)
     macro_struct.avg_Q_kp[t] = mean(kp_id -> model[kp_id].Q[end], all_kp)
+    macro_struct.avg_D_cp[t] = mean(cp_id -> model[cp_id].D[end], all_cp)
+    macro_struct.avg_Dᵁ_cp[t] = mean(cp_id -> model[cp_id].Dᵁ[end], all_cp)
+    macro_struct.avg_Dᵉ_cp[t] = mean(cp_id -> model[cp_id].Dᵉ, all_cp)
 
     compute_bankrupties(all_cp, all_kp, bankrupt_cp, bankrupt_kp, macro_struct, t)
 
-    compute_unsatisfied_demand(all_cp, all_hh, macro_struct, t, model)
+    compute_unsatisfied_demand(all_cp, all_kp, all_hh, macro_struct, labormarket_struct, t, model)
 
     macro_struct.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
 
@@ -388,8 +400,10 @@ Computes fraction of household that was not satisfied
 """
 function compute_unsatisfied_demand(
     all_cp::Vector{Int},
+    all_kp::Vector{Int},
     all_hh::Vector{Int},
     macro_struct::MacroEconomy,
+    labormarket_struct,
     t::Int,
     model::ABM
     )
@@ -397,6 +411,11 @@ function compute_unsatisfied_demand(
     macro_struct.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ[end], all_cp) / sum(cp_id -> model[cp_id].D[end] + model[cp_id].Dᵁ[end], all_cp)
 
     macro_struct.unspend_C[t] = 1 - sum(hh_id -> model[hh_id].C_actual, all_hh) / sum(hh_id -> model[hh_id].C, all_hh)
+
+    macro_struct.unsat_invest[t] =  1 - (sum(kp_id -> model[kp_id].Q[end], all_kp) / 
+                                    (sum(cp_id -> 50 * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
+
+    macro_struct.unsat_L_demand[t] = labormarket_struct.total_L_hired / labormarket_struct.total_L_demanded
 end
 
 

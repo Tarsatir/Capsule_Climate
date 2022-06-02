@@ -62,7 +62,8 @@ def plot_macro_vars(df):
     # Plot wage levels
     real_w_avg = 100 * df.w_avg / df.CPI
     # real_w_avg = 100 * df.w_avg
-    ax[1,1].plot(range(len(real_w_avg)), real_w_avg, color='green', label='$\\bar{w}$')
+    ax[1,1].plot(range(len(real_w_avg)), real_w_avg, color='green', label='real $\\bar{w}$')
+    ax[1,1].plot(range(len(df.w_avg)), df.w_avg, color='blue', label='$\\bar{w}$')
     # ax[1,1].fill_between(range(len(df.w_avg)), df.w_avg + df.w_std, df.w_avg - df.w_std, 
     #                  color='green', alpha=0.4)
 
@@ -79,6 +80,7 @@ def plot_macro_vars(df):
     ax[1,1].set_title('Real wage level')
     ax[1,1].legend()
 
+    ax[2,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
     ax[2,0].plot(range(len(df.dL_avg)), df.dL_avg, color='red', label='all')
     ax[2,0].fill_between(range(len(df.dL_avg)), df.dL_avg + df.dL_std, df.dL_avg - df.dL_std, color='red', alpha=0.4)
     ax[2,0].plot(range(len(df.dL_cp_avg)), df.dL_cp_avg, color='green', label='cp')
@@ -100,6 +102,7 @@ def plot_macro_vars(df):
     
 
     # Plot savings rate of households
+    ax[3,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
     ax[3,0].plot(T, df.s_emp, color='red', label='employed')
     ax[3,0].plot(T, df.s_unemp, color='blue', label='unemployed')
     ax[3,0].set_title("Savings rate")
@@ -134,14 +137,20 @@ def plot_macro_vars(df):
     ax[4,1].set_title('Productivity')
     ax[4,1].legend()
 
-    ax[5,0].plot(range(len(df.avg_Q_cp)), df.avg_Q_cp, label='cp Q', color='blue')
-    ax[5,0].plot(range(len(df.avg_Q_cp)), df.avg_n_machines_cp, 
+
+    ax[5,0].plot(T, df.avg_Q_kp, label='kp Q')
+    ax[5,0].plot(T, df.avg_Q_cp, label='cp Q', color='green')
+    ax[5,0].plot(T, df.avg_Qs_cp, label='cp $Q^s$', color='green', linestyle='dashed')
+    ax[5,0].plot(T, df.avg_Qe_cp, label='cp $Q^e$', color='green', linestyle='dotted')
+    ax[5,0].plot(T, df.avg_n_machines_cp, 
                  label='cp n machines', color='blue', linestyle='dashed')
+    ax[5,0].plot(T, df.avg_D_cp, label='cp $D$', color='red')
+    ax[5,0].plot(T, df.avg_De_cp, label='cp $D^e$', color='red', linestyle='dashed')
+    ax[5,0].plot(T, df.avg_Du_cp, label='cp $D^U$', color='red', linestyle='dotted', alpha=0.7)
     # ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_Q_lp, label='lp', color='red')
     # ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_n_machines_lp, 
     #              label='lp n machines', color='red', linestyle='dashed')
-    ax[5,0].plot(range(len(df.avg_Q_kp)), df.avg_Q_kp, label='kp Q')
-    ax[5,0].plot(range(len(df.avg_N_goods)), df.avg_N_goods, label='avg $N$', color='orange')
+    ax[5,0].plot(T, df.avg_N_goods, label='avg $N$', color='orange')
     ax[5,0].set_title('Average production quantity')
     ax[5,0].legend()
 
@@ -164,6 +173,8 @@ def plot_macro_vars(df):
 
     ax[7,0].plot(T, df.unsat_demand, label='unsatisfied D')
     ax[7,0].plot(T, df.unspend_C, label='unspend C')
+    ax[7,0].plot(T, df.unsat_invest, label='unsatisfied I')
+    ax[7,0].plot(T, df.unsat_L_demand, label='unsatisfied L')
     ax[7,0].set_title('Unsatisfied demand and unspend C')
     ax[7,0].set_ylim(0, 1)
     ax[7,0].legend()
@@ -192,11 +203,16 @@ def plot_cons_vars(df):
     ax5 = fig.add_subplot(gs[5,0])
     ax6 = fig.add_subplot(gs[5,1])
 
+    
+    if len(df.GDP) <= 100:
+        return
+
     # Plot real GDP growth rates
     real_GDP = 100 * df.GDP.to_numpy()[100:] / df.CPI.to_numpy()[100:]
     delta_GDP = 100 * (real_GDP[1:] - real_GDP[:-1]) / real_GDP[:-1]
 
     T = np.arange(100, 100+len(real_GDP)-1)
+    
 
     ax0.hlines(0, min(T), max(T), linestyle='dashed', color='black')
     ax0.set_title('Monhtly changes in real GDP')
@@ -336,7 +352,7 @@ def plot_sales_dist():
     df_cp = pd.read_csv('../results/result_data/final_profit_dists_cp.csv')
     df_kp = pd.read_csv('../results/result_data/final_profit_dists_kp.csv')
 
-    fig, ax = plt.subplots(3, 2, figsize=(8,8))
+    fig, ax = plt.subplots(5, 2, figsize=(8,12))
 
     ax[0,0].hist(df_cp.all_S_cp, bins=60)
     ax[0,0].set_title('$S$ of cp')
@@ -348,6 +364,9 @@ def plot_sales_dist():
     ax[2,0].set_title('$f$ of cp')
     ax[2,0].set_xlim(0, max(df_cp.all_f_cp))
 
+    ax[3,0].hist(df_cp.all_L_cp, bins=30)
+    ax[3,0].set_title("$L$ of cp")
+
     ax[0,1].hist(df_kp.all_S_kp, bins=30)
     ax[0,1].set_title('$S$ of kp')
     
@@ -357,6 +376,15 @@ def plot_sales_dist():
     ax[2,1].hist(df_kp.all_f_kp, bins=30)
     ax[2,1].set_title('$f$ of kp')
     ax[2,1].set_xlim(0, max(df_kp.all_f_kp))
+
+    ax[3,1].hist(df_kp.all_L_kp, bins=30)
+    ax[3,1].set_title("$L$ of kp")
+
+    ax[4,0].scatter(df_cp.all_w_cp, df_cp.all_L_cp)
+    ax[4,0].set_title("$w$ to $L$")
+
+    ax[4,1].scatter(df_cp.all_p_cp, df_cp.all_L_cp)
+    ax[4,1].set_title("$p$ to $L$")
 
     plt.tight_layout()
     plt.savefig('plots/final_dist_profit.png')

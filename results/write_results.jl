@@ -24,6 +24,8 @@ function save_macro_data(macro_struct)
 
         unsat_demand = macro_struct.unsat_demand,
         unspend_C = macro_struct.unspend_C,
+        unsat_invest = macro_struct.unsat_invest,
+        unsat_L_demand = macro_struct.unsat_L_demand,
         avg_N_goods = macro_struct.avg_N_goods,
 
         CPI=macro_struct.CPI,
@@ -42,11 +44,11 @@ function save_macro_data(macro_struct)
         M_gov=macro_struct.M_gov,
         M_if=macro_struct.M_if,
 
-        debt_tot=macro_struct.debt_tot,
-        debt_cp=macro_struct.debt_cp,
-        debt_cp_allowed=macro_struct.debt_cp_allowed,
-        debt_kp=macro_struct.debt_kp,
-        debt_kp_allowed=macro_struct.debt_kp_allowed,
+        debt_tot = macro_struct.debt_tot,
+        debt_cp = macro_struct.debt_cp,
+        debt_cp_allowed = macro_struct.debt_cp_allowed,
+        debt_kp = macro_struct.debt_kp,
+        debt_kp_allowed = macro_struct.debt_kp_allowed,
         debt_unpaid_kp = macro_struct.debt_unpaid_kp,
         debt_unpaid_cp = macro_struct.debt_unpaid_cp,
 
@@ -91,8 +93,13 @@ function save_macro_data(macro_struct)
 
         # avg_Q_bp=macro_struct.avg_Q_bp,
         avg_Q_cp = macro_struct.avg_Q_cp,
+        avg_Qs_cp = macro_struct.avg_Qˢ_cp,
+        avg_Qe_cp = macro_struct.avg_Qᵉ_cp,
         # avg_Q_lp=macro_struct.avg_Q_lp,
         avg_Q_kp = macro_struct.avg_Q_kp,
+        avg_D_cp = macro_struct.avg_D_cp,
+        avg_Du_cp = macro_struct.avg_Dᵁ_cp,
+        avg_De_cp = macro_struct.avg_Dᵉ_cp,
 
         # bankrupt_bp = macro_struct.bankrupt_bp,
         # bankrupt_lp = macro_struct.bankrupt_lp,
@@ -133,6 +140,9 @@ function save_final_dist(
         all_S_cp = map(cp_id -> model[cp_id].curracc.S, all_cp),
         all_profit_cp = map(cp_id -> model[cp_id].Π[end], all_cp),
         all_f_cp = map(cp_id -> model[cp_id].f[end], all_cp),
+        all_L_cp = map(cp_id -> model[cp_id].L, all_cp),
+        all_p_cp = map(cp_id -> model[cp_id].p[end], all_cp),
+        all_w_cp = map(cp_id -> model[cp_id].w̄[end], all_cp)
     )
     CSV.write("results/result_data/final_profit_dists_cp.csv", df)
 
@@ -140,7 +150,8 @@ function save_final_dist(
     df = DataFrame(
         all_S_kp = map(kp_id -> model[kp_id].curracc.S, all_kp),
         all_profit_kp = map(kp_id -> model[kp_id].Π[end], all_kp),
-        all_f_kp = map(kp_id -> model[kp_id].f[end], all_kp)
+        all_f_kp = map(kp_id -> model[kp_id].f[end], all_kp),
+        all_L_kp = map(kp_id -> model[kp_id].L, all_kp)
     )
     CSV.write("results/result_data/final_profit_dists_kp.csv", df)
 
