@@ -62,6 +62,15 @@ function hire_worker_p!(
 end
 
 
+function update_L!(
+    p::Union{ConsumerGoodProducer, CapitalGoodProducer},
+    model::ABM
+    )
+
+    p.L = length(p.employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, p.employees) : 0.0
+end
+
+
 """
 Removes worker from firm
 """
@@ -283,9 +292,11 @@ function check_if_bankrupt_p!(
     t_wait::Int
     )::Bool
 
+    # return false
 
     if (typeof(p) == ConsumerGoodProducer && p.age > t_wait 
         && (p.f[end] <= 0.0001 || p.balance.EQ < 0))
+        # println("           $(p.f[end]), $(p.ΔLᵈ), $(p.L)")
     # if p.age > t_wait && p.f[end] <= 0.0001
     # if p.age > t_wait && p.balance.EQ < 0
         return true

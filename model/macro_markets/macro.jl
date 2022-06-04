@@ -415,7 +415,7 @@ function compute_unsatisfied_demand(
     macro_struct.unsat_invest[t] =  1 - (sum(kp_id -> model[kp_id].Q[end], all_kp) / 
                                     (sum(cp_id -> 50 * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
 
-    macro_struct.unsat_L_demand[t] = labormarket_struct.total_L_hired / labormarket_struct.total_L_demanded
+    macro_struct.unsat_L_demand[t] = 1 - labormarket_struct.L_hired / labormarket_struct.L_demanded
 end
 
 

@@ -119,7 +119,8 @@ function process_transactions_cm!(
         N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
         shift_and_append!(model[cp_id].D, N_goods_sold)
         shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))
-        model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) < 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
+        model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) > 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
+        # model[cp_id].N_goods = cm_dat.all_N[i]
     end
 
 end
@@ -137,8 +138,11 @@ function cpmarket_matching_cp!(
     cm_dat.weights ./= cm_dat.weights_sum
     sold_out = Int64[]
 
-    # println("total N: $(sum(cm_dat.all_N))")
+    println("   total N: $(sum(cm_dat.all_N))")
+    println("   total C: $(sum(cm_dat.all_C))")
     # println(cm_dat.all_N)
+
+    # display(cm_dat.all_C)
 
     for i in 1:3
 
@@ -176,7 +180,7 @@ function cpmarket_matching_cp!(
         cm_dat.all_C[cm_dat.all_C .<= 1e-1] .= 0.0
 
         cm_dat.all_N .-= cm_dat.sold_per_cp_round
-        cm_dat.all_C[cm_dat.all_C .<= 1e-1] .= 0.0
+        cm_dat.all_N[cm_dat.all_N .<= 1e-1] .= 0.0
 
         # Set weights of sold-out producers to zero
         cm_dat.weights[:,sold_out] .= 0.0
@@ -190,6 +194,8 @@ function cpmarket_matching_cp!(
         cm_dat.sold_per_hh_round .= 0.0
         cm_dat.sold_per_cp_round .= 0.0
     end
+
+    # display(cm_dat.all_C)
 
     # println("Total sales: $(sum(cm_dat.transactions))")
 

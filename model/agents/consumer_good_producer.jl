@@ -10,6 +10,7 @@ Defines struct for consumer good producer
     μ::Vector{Float64}                        # markup rate
     p::Vector{Float64} = fill(1+μ[end], 3)    # hist prices
     c::Vector{Float64} = ones(Float64, 3)     # hist cost
+    true_c::Float64 = 0.0                     # true unit cost
 
     # Production and demand
     D::Vector{Float64}                        # hist demand
@@ -108,6 +109,7 @@ Plans production amounts for consumer good producer (short term)
 function plan_production_cp!(
     cp::ConsumerGoodProducer, 
     global_param::GlobalParam,
+    μ_avg::Float64,
     t::Int,
     model::ABM
     )
@@ -133,7 +135,7 @@ function plan_production_cp!(
 
     # Update markup μ
     # if t == cp.t_next_update
-    update_μ_cp!(cp, t, global_param.μ1)
+    update_μ_cp!(cp, t, global_param.ι, μ_avg)
     # end
 
     # Update cost of production c
@@ -181,6 +183,7 @@ function plan_investment_cp!(
 
     # See if enough funds available for investments and production, otherwise
     # change investments and production to match funding availability.
+
     check_funding_restrictions_cp!(cp, global_param, ep.pₑ[t])
 
     # Send orders to kp
@@ -334,9 +337,9 @@ function plan_replacement_cp!(
                 n_machines_too_many -= machine.freq
             end
 
-        elseif c_A != c_star && p_star/(c_A - c_star) <= global_param.b
-            # New machine cheaper to operate, replace old machine
-            push!(cp.mach_tb_repl, machine)
+        # elseif c_A != c_star && p_star/(c_A - c_star) <= global_param.b && machine.age > global_param.b
+        #     # New machine cheaper to operate, replace old machine
+        #     push!(cp.mach_tb_repl, machine)
         end
     end
 
@@ -361,6 +364,7 @@ function plan_expansion_cp!(
     )
 
     if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
+        # println("   $(cp.Q[end]), $(cp.Qᵉ), $(cp.n_machines)")
         cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine)
         cp.EIᵈ = brochure[2] * cp.n_mach_ordered_EI * global_param.freq_per_machine
     else
@@ -396,7 +400,7 @@ function produce_goods_cp!(
     end
 
     # Compute total production amount
-    Q = max(min(actual_π_LP * cp.L, cp.n_machines, cp.Qˢ), 0)
+    Q = min(actual_π_LP * cp.L, cp.n_machines)
     shift_and_append!(cp.Q, Q)
 
     # Update energy use and carbon emissions from production
@@ -426,81 +430,10 @@ function order_machines_cp!(
     total_n_machines = cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
 
     # Send orders for machines to kp
-    # for _ in 1:total_n_machines
-    if total_n_machines > 0
+    if total_n_machines > 0 && hascapacity(model[cp.chosen_kp_id])
         receive_order_kp!(model[cp.chosen_kp_id], cp.id, total_n_machines)
     end
 end
-
-
-# """
-# Decides if enough inventory to send orders hh, 
-#     if yes: transact, if no: send back order unfulfilled or partially fulfilled
-# """
-# function send_ordered_goods_all_cp!(
-#     all_cp::Vector{Int},
-#     t::Int,
-#     model::ABM,
-#     to
-#     )
-
-#     # Keep track of total demand, sales and unsatisfied demand
-#     total_D = 0.0
-#     actual_S = 0.0
-#     total_unsat_demand = 0.0
-#     share_fulfilled::Float64 = 0.0
-
-#     for cp_id in all_cp
-#         # Check if any orders received
-#         if model[cp_id].age == 1 && t != 1
-#             return nothing
-#         elseif length(model[cp_id].order_queue) == 0
-#             shift_and_append!(model[cp_id].D, 0.0)
-#             model[cp_id].Dᵁ = 0.0
-#             model[cp_id].curracc.S = 0.0
-#             return nothing
-#         end
-
-#         # Keep track of total demand, sales and unsatisfied demand
-#         total_D = 0.0
-#         actual_S = 0.0
-#         total_unsat_demand = 0.0
-#         share_fulfilled = 0.0
-        
-#         # Loop over orders in queue, add realized sales S
-#         for (hh_id, q) in model[cp_id].order_queue
-
-#             total_D += q
-
-#             # Check if enough inventory available
-#             if model[cp_id].N_goods > q
-#                 share_fulfilled = 1.0
-#                 model[cp_id].N_goods -= q
-#             elseif model[cp_id].N_goods > 0 && model[cp_id].N_goods < q
-#                 share_fulfilled = ceil(model[cp_id].N_goods / q, digits=2)
-#                 total_unsat_demand += q - model[cp_id].N_goods
-#                 model[cp_id].N_goods = 0
-#             else
-#                 share_fulfilled = 0.0
-#                 total_unsat_demand += q
-#             end
-
-#             if share_fulfilled != 1.0
-#                 println(share_fulfilled)
-#             end
-
-#             tot_price = q * share_fulfilled * model[cp_id].p[end]
-#             actual_S += tot_price
-#             @timeit to "receive order" receive_ordered_goods_hh!(model[hh_id], model[cp_id].id, tot_price, share_fulfilled)
-#         end
-
-#         shift_and_append!(model[cp_id].D, total_D)
-#         model[cp_id].Dᵁ = total_unsat_demand
-#         model[cp_id].curracc.S = actual_S
-
-#         reset_queue_cp!(model[cp_id])
-#     end
-# end
 
 
 function reset_brochures_cp!(
@@ -685,12 +618,15 @@ function update_Dᵉ_cp!(
 
     # ω = 0.9
 
-    if cp.age > 2
-        # TODO: DESCRIBE IN MODEL 
-        cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * (cp.D[end] + cp.Dᵁ[end]) - (cp.D[end-1] + cp.Dᵁ[end-1]))
-    elseif cp.age == 2
-        cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end])
-    end
+    # if cp.age > 2
+    #     # TODO: DESCRIBE IN MODEL 
+    #     # cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * (cp.D[end] + cp.Dᵁ[end]) - (cp.D[end-1] + cp.Dᵁ[end-1]))
+    #     cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * (cp.D[end] + cp.Dᵁ[end]) - (cp.D[end-1] + cp.Dᵁ[end-1]))
+    # elseif cp.age == 2
+    #     cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end])
+    # end
+
+    cp.Dᵉ = cp.age > 1 ? ω * cp.Dᵉ + (1 - ω) * (cp.D[end]) : cp.Dᵉ
 end
 
 
@@ -752,45 +688,46 @@ Computes the markup rate μ based on the market share f.
 """
 function update_μ_cp!(
     cp::ConsumerGoodProducer,
-    t::Int, 
-    μ1::Float64
+    t::Int,
+    ι::Float64,
+    μ_avg::Float64
     )
 
-    # if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
-    #     new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
-    # else
-    #     new_μ = cp.μ[end]
-    # end
-    # shift_and_append!(cp.μ, new_μ)
+    if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
+        new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
+    else
+        new_μ = cp.μ[end] * 0.95
+    end
+    shift_and_append!(cp.μ, new_μ)
 
-    b = 0.1
-    l = 2
+    # b = 0.02
+    # l = 2
     # new_μ = cp.μ[end]
 
     # # TODO describe Calvo Pricing
 
     # # if rand() < 1/3
 
-    if cp.age > l && cp.Π[end] != 0
+    # if cp.age > l && cp.Π[end] != 0
 
-        mean_μ = mean(cp.μ)
-        Δμ = (cp.μ[end] - mean_μ) / mean_μ
+    #     mean_μ = mean(cp.μ)
+    #     Δμ = (cp.μ[end] - mean_μ) / mean_μ
 
-        mean_Π = mean(cp.Π)
-        ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
+    #     mean_Π = mean(cp.Π)
+    #     ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
 
-        # TODO: CHANGE TO TAXED PROFITS??
+    #     # TODO: CHANGE TO TAXED PROFITS??
 
-        shock = rand(Uniform(0.0, b))
-        new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
+    #     shock = rand(Uniform(0.0, b))
+    #     new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
 
-    elseif cp.Π[end] == 0
-        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
-    else
-        new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
-    end
+    # elseif cp.Π[end] == 0
+    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
+    # else
+    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
+    # end
 
-    shift_and_append!(cp.μ, new_μ)
+    # shift_and_append!(cp.μ, new_μ)
     # else
     #     shift_and_append!(cp.μ, cp.μ[end])
     # end
@@ -818,6 +755,18 @@ function update_μ_cp!(
     # end
 
     # shift_and_append!(cp.μ, new_μ)
+
+    # if cp.N_goods < cp.Q[end] * ι && cp.μ[end] < μ_avg
+    #     new_μ = cp.μ[end] * (1 + rand(Uniform(0.0, b)))
+    # elseif cp.N_goods > cp.Q[end] * (ι + 0.2) && cp.μ[end] > μ_avg
+    #     new_μ = cp.μ[end] * (1 - rand(Uniform(0.0, b)))
+    # else
+    #     new_μ = cp.μ[end]
+    # end
+
+    # shift_and_append!(cp.μ, new_μ)
+
+    # shift_and_append!(cp.μ, cp.μ[end])
 end
 
 
@@ -844,7 +793,8 @@ function compute_p_cp!(
     cp::ConsumerGoodProducer
     )
 
-    shift_and_append!(cp.p, (1 + cp.μ[end]) * cp.c[end])
+    # println(cp.c[end], " ", cp.true_c)
+    shift_and_append!(cp.p, (1 + cp.μ[end]) * max(cp.c[end], cp.true_c))
 end
 
 

@@ -19,6 +19,7 @@
     μ::Vector{Float64}                    # markup rates
     p::Vector{Float64} = fill(1+μ[end], 3) # hist price data
     c::Vector{Float64} = ones(Float64, 3) # hist cost data
+    true_c::Float64 = 0.0                 # true unit cost
     
     # Employment
     employees::Vector{Int} = Int64[]      # employees in company
@@ -297,6 +298,14 @@ function set_RD_kp!(
 end
 
 
+function hascapacity(
+    kp::CapitalGoodProducer
+    )
+
+    return sum(values(kp.orders)) <= kp.Q[end] + 1000
+end
+
+
 """
     receive_order_kp!(kp::CapitalGoodProducer, cp_id::Int)
 
@@ -332,17 +341,20 @@ function plan_production_kp!(
     
     # Determine total amount of capital units to produce and amount of labor to hire
     # kp.O = length(kp.orders) * global_param.freq_per_machine
-    kp.O = sum(values(kp.orders)) * global_param.freq_per_machine
+    # kp.O = sum(values(kp.orders)) * global_param.freq_per_machine
 
     # Determine amount of labor to hire
     # kp.ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
     # kp.ΔLᵈ = kp.O / kp.B_LP - kp.L
 
-    ω = 0.5
+    # ω = 0.5
 
-    req_L = kp.O / kp.B_LP + kp.RD / kp.w̄[end]
-    req_L = ω * kp.L + (1 - ω) * req_L
-    kp.ΔLᵈ = req_L - kp.L
+    # req_L = kp.O / kp.B_LP + kp.RD / kp.w̄[end]
+    # req_L = ω * kp.L + (1 - ω) * req_L
+    # kp.ΔLᵈ = req_L - kp.L
+
+    ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
+    kp.ΔLᵈ = max(ΔLᵈ, -kp.L)
 
     # kp.ΔLᵈ = global_param.ω * kp.ΔLᵈ + (1-global_param.ω) * (kp.O / kp.B_LP - kp.L)
 

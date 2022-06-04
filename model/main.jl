@@ -269,7 +269,8 @@ function model_step!(
     @timeit to "plan prod inv cp" for cp_id in all_cp
       
         # Plan production for this period
-        plan_production_cp!(model[cp_id], global_param, t, model)
+        μ_avg = t > 1 ? macro_struct.μ_cp[t-1] : global_param.μ1
+        plan_production_cp!(model[cp_id], global_param, μ_avg, t, model)
 
         if model[cp_id].t_next_update == t  
             model[cp_id].t_next_update += global_param.update_period
@@ -496,7 +497,7 @@ function run_simulation(;
     for t in 1:T
 
         # if t % 100 == 0
-        println("   tr $threadnr step $t")
+        println("tr $threadnr step $t")
         # end
 
         @timeit to "step" model_step!(

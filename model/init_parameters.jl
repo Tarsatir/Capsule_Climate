@@ -15,7 +15,7 @@
 
     # Init params of cp
     n_init_emp_cp::Int = 10               # number of employees of cp at init
-    n_machines_init::Int = 50             # number of machines of cp at init
+    n_machines_init::Int = 40             # number of machines of cp at init
 
     # Init params of hh
     n_cp_hh::Int = 25                     # number of cp of hh (also min amount)

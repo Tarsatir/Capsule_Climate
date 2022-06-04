@@ -16,7 +16,7 @@
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
     r::Float64 = 0.0                # interest rate
-    ι::Float64 = 0.5                # desired inventories
+    ι::Float64 = 0.2                # desired inventories
     b::Int = 3                      # payback period
     bₑ::Int = 10                    # payback period energy producer
     η::Int = 60                     # physical scrapping age
@@ -41,7 +41,7 @@
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.5                # memory parameter adaptive updating rules
+    ω::Float64 = 0.8                # memory parameter adaptive updating rules
 
     # Determine household consumption
     α_cp::Float64 = 0.8             # parameter controlling MPC of consumers
@@ -50,7 +50,7 @@
     # b_σ::Float64 = 30               # 2nd parameter governing logistic function
 
     # Determine household switching
-    ψ_E::Float64 = 0.25             # chance of employed worker looking for a better paying job
+    ψ_E::Float64 = 0.05             # chance of employed worker looking for a better paying job
     ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained
     ψ_P::Float64 = 0.05             # chance of household switching to cp with better price
 

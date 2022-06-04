@@ -164,6 +164,8 @@ function update_NW_p!(
     end
     
     p.balance.NW = new_NW
+
+    p.true_c = p.Q[end] > 0 ? (TCL + TCI + TCE + rep_debt + add_debt + int_debt) / p.Q[end] : p.c[end]
 end
 
 

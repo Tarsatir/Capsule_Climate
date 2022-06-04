@@ -90,7 +90,8 @@ function compute_consumption_budget_hh!(
 
     if hh.W > 0
         hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
-        hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : -1.0
+        # hh.C = hh.Iᵀ[end]
+        hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : 0.0
     else
         hh.C = 0.0
         hh.s = 0.0
@@ -235,7 +236,7 @@ function update_sat_req_wage_hh!(
 
     # Try to use adaptive wˢ
     ωwˢ = 0.5
-    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * (hh.employed ? hh.w[end] : hh.Iᵀ / hh.L)
+    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * (hh.employed ? hh.w[end] : hh.I[end] / hh.L)
 
     if hh.employed
         hh.wʳ = max(w_min, hh.w[end] * (1 + ϵ))
