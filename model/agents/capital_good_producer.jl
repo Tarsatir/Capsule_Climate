@@ -173,7 +173,6 @@ function choose_technology_kp!(
  
         p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
         r_h = c_h_cp .* global_param.b .+ p_h
-        # r_h = c_h_cp .+ p_h
         idx = argmin(r_h)
 
         # Update tech parameters

@@ -47,7 +47,10 @@
     wᴼ_max_mean::Vector{Float64} = ones(Float64, T)         # average of wᴼ_max
 
     Ī_avg::Vector{Float64} = zeros(Float64, T)              # average income over time
-    Ī_std::Vector{Float64} = zeros(Float64, T)              # std of income over time
+    I_labor_avg::Vector{Float64} = zeros(Float64, T)        # average labor income over time
+    I_capital_avg::Vector{Float64} = zeros(Float64, T)      # average capital income over time
+    I_transfer_avg::Vector{Float64} = zeros(Float64, T)     # average transfer income over time
+
     B̄_avg::Vector{Float64} = zeros(Float64, T)              # average of budget over time
     B̄_std::Vector{Float64} = zeros(Float64, T)              # std of budget over time
     U::Vector{Float64} = zeros(Float64, T)                  # unemployment over time
@@ -164,8 +167,7 @@ function update_macro_timeseries(
     # Wage and income statistics
     update_wage_stats!(all_hh, all_p, macro_struct, t, model)
 
-    macro_struct.Ī_avg[t] = mean(hh_id -> model[hh_id].I[end], all_hh)
-    # macro_struct.Ī_std[t] = std(hh_id -> model[hh_id].I[end], all_hh)
+    update_income_stats!(all_hh, macro_struct, t, model)
 
     update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, global_param.Λ, macro_struct, t, model)
 
@@ -325,6 +327,22 @@ function update_wage_stats!(
     macro_struct.wˢ_avg[t] = mean(hh_id -> model[hh_id].wˢ, all_hh)
 
     macro_struct.wᴼ_max_mean[t] = mean(p_id -> model[p_id].wᴼ_max, all_p)
+end
+
+function update_income_stats!(
+    all_hh::Vector{Int}, 
+    macro_struct::MacroEconomy, 
+    t::Int, 
+    model::ABM
+    )
+
+    macro_struct.I_labor_avg[t] = mean(hh_id -> model[hh_id].labor_I, all_hh)
+
+    macro_struct.I_capital_avg[t] = mean(hh_id -> model[hh_id].capital_I, all_hh)
+
+    macro_struct.I_transfer_avg[t] = mean(hh_id -> model[hh_id].transfer_I, all_hh)
+
+    macro_struct.Ī_avg[t] = mean(hh_id -> model[hh_id].I[end], all_hh)
 end
 
 

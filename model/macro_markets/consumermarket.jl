@@ -1,7 +1,6 @@
 function consumermarket_process!(
     all_hh::Vector{Int},
     all_cp::Vector{Int}, 
-    all_W_hh::Vector{Float64},
     gov_struct::Government,
     global_param::GlobalParam,
     cm_dat::CMData,
@@ -12,7 +11,7 @@ function consumermarket_process!(
 
     # Households set consumption budget
     @timeit to "set budget" @inbounds for hh_id in all_hh
-        set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
+        set_consumption_budget_hh!(model[hh_id], global_param, model)
     end
 
     # Reset cm data 

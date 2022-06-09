@@ -96,7 +96,7 @@ function pay_workers_p!(
     for hh_id in p.employees
         wage = model[hh_id].w[end] * model[hh_id].L
         total_wage += wage
-        get_income_hh!(model[hh_id], wage)
+        receiveincome_hh!(model[hh_id], wage)
     end
     
     p.curracc.TCL += total_wage
@@ -112,10 +112,8 @@ function update_w̄_p!(
     )
 
     if length(p.employees) > 0
-        # p.w̄[end] = mean(hh_id -> model[hh_id].w[end], p.employees)
         shift_and_append!(p.w̄, mean(hh_id -> model[hh_id].w[end], p.employees))
     else
-        # p.w̄[end] = p.w̄[t-1]
         shift_and_append!(p.w̄, p.w̄[end])
     end
 end
@@ -125,8 +123,6 @@ end
 Updates market shares of cp firms
 """
 function update_marketshare_p!(
-    # all_bp::Vector{Int},
-    # all_lp::Vector{Int},
     all_p::Vector{Int},
     model::ABM
     )

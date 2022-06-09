@@ -372,10 +372,10 @@ function plan_expansion_cp!(
     )
 
     if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
-        # println("   $(cp.Q[end]), $(cp.Qᵉ), $(cp.n_machines)")
         cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / global_param.freq_per_machine)
         cp.EIᵈ = brochure[2] * cp.n_mach_ordered_EI * global_param.freq_per_machine
     else
+        cp.n_mach_ordered_EI = 0
         cp.EIᵈ = 0.0
     end
 end
@@ -428,6 +428,8 @@ end
 
 
 """
+    order_machines_cp!(cp::ConsumerGoodProducer, model::ABM)
+
 Lets cp order machines from kp of choice.
 """
 function order_machines_cp!(
@@ -496,29 +498,6 @@ function receive_machines_cp!(
     end
 
     cp.Ξ = vcat(cp.Ξ, new_machines)
-
-    # # Add new machines to capital stock, add investment expenditure
-    # cp.Ξ = vcat(cp.Ξ, new_machines)
-    # cp.curracc.TCI += Iₜ
-
-    # # Check if complete order was received, otherwise partial replacement
-    # if cp.n_mach_ordered_EI == 0 && cp.n_mach_ordered_RS > length(new_machines)
-
-    #     # All machines are meant for replacement
-    #     cp.mach_tb_repl = cp.mach_tb_repl[1:length(new_machines)]
-
-    # elseif length(new_machines) < cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
-
-    #     # Decide how many old machines to discard
-    #     n_old_replace = max(length(new_machines) - cp.n_mach_ordered_EI, 0)
-    #     if n_old_replace > 0
-    #         cp.mach_tb_repl = cp.mach_tb_repl[1:n_old_replace+1]
-    #     else
-    #         cp.mach_tb_repl = []
-    #     end
-    # end
-
-    # filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
 end
 
 
@@ -580,7 +559,6 @@ function replace_bankrupt_cp!(
 
         # Sample what the size of the capital stock will be
         D = macro_struct.cu[t] * all_n_machines[i] * global_param.freq_per_machine
-        # println("D: $D, cu: $(macro_struct.cu[t]), am: $(all_n_machines[i])")
 
         # In the first period, the cp has no machines yet, these are delivered at the end
         # of the first period
@@ -594,7 +572,6 @@ function replace_bankrupt_cp!(
                     D=D,
                     w=macro_struct.w̄_avg[t],
                     L=0,
-                    # Lᵉ=0,
                     N_goods=0.0,
                     f=0.0
                 )
@@ -819,7 +796,6 @@ function compute_p_cp!(
     cp::ConsumerGoodProducer
     )
 
-    # println(cp.c[end], " ", cp.true_c)
     shift_and_append!(cp.p, (1 + cp.μ[end]) * max(cp.c[end], cp.true_c))
 end
 
@@ -832,15 +808,9 @@ Computes the desired change in labor supply ΔLᵈ
 function update_ΔLᵈ_cp!(
     cp::ConsumerGoodProducer
     )
-    # println("$(cp.L), $(cp.Qˢ / cp.π_LP - cp.L), $(cp.n_machines / cp.π_LP - cp.L)")
+    
     ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
     cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
-
-    # ω = 0.8
-
-    # req_L = min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
-    # req_L = ω * cp.L + (1 - ω) * req_L
-    # cp.ΔLᵈ = req_L - cp.L
 end
 
 

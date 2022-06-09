@@ -13,8 +13,11 @@
     skill::Float64                              # skill level of household
 
     # Income and wealth variables
-    I::Float64 = L * skill                      # hist income
-    Iᵀ::Float64 = L * skill  # change according to tax rate      # hist taxed income
+    I::Float64 = L * skill                      # total income
+    labor_I::Float64 = L * skill                # income from labor
+    capital_I::Float64 = 0.0                    # income from capital
+    transfer_I::Float64 = 0.0                   # income from transfers
+    Iᵀ::Float64 = L * skill                     # hist income after tax
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 300                            # wealth or cash on hand
 
@@ -50,7 +53,6 @@ Sets consumption budget based on current wealth level
 """
 function set_consumption_budget_hh!(
     hh::Household,
-    all_W_hh::Vector{Float64},
     global_param::GlobalParam,
     model::ABM
     )
@@ -59,7 +61,7 @@ function set_consumption_budget_hh!(
     update_average_price_hh!(hh, model)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, global_param.α_cp, all_W_hh)
+    compute_consumption_budget_hh!(hh, global_param.α_cp)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
@@ -84,115 +86,19 @@ Computes consumption budget, updates savings rate
 """
 function compute_consumption_budget_hh!(
     hh::Household,
-    α_cp::Float64,
-    all_W_hh::Vector{Float64}
+    α_cp::Float64
     )
 
     if hh.W > 0
         hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
-        # hh.C = hh.Iᵀ[end]
         hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : 0.0
+        # println("   $(hh.s), $(hh.C), $(hh.W)")
     else
         hh.C = 0.0
         hh.s = 0.0
     end
-    # println(hh.s)
 end
 
-
-# """
-# Places orders at cp
-# """
-# function place_orders_hh!(
-#     hh_p::Vector{Int},
-#     C::Float64,
-#     cp_inventories,
-#     p_with_inventory::Vector{Int},
-#     global_param::GlobalParam,
-#     model::ABM,
-#     to
-#     )
-
-#     # If none of the known suppliers has products in stock, randomly select
-#     # other suppliers until demand can be met.
-
-#     # Ugly selection to boost performance.
-#     poss_p = Dict(p_id => 1 / model[p_id].p[end]^2 for p_id ∈ hh_p)
-#     for p_id in hh_p
-#         if p_id ∉ p_with_inventory
-#             delete!(poss_p, p_id)
-#         end
-#     end
-
-#     add_p_id = 0
-#     poss_p_ids = collect(keys(poss_p))
-#     sum_poss_p = length(poss_p_ids) > 0 ? sum(p_id -> cp_inventories[p_id], poss_p_ids) : 0
-
-#     # As long as the current producers do not have enough inventory and there are still
-#     # possible producers to sample, randomly sample producers and add to pool of possible cp
-#     while sum_poss_p < C && length(poss_p) != length(p_with_inventory)
-
-#         add_p_id = sample(p_with_inventory)
-#         while add_p_id ∈ poss_p_ids
-#             add_p_id = sample(p_with_inventory)
-#         end 
-
-#         poss_p[add_p_id] = 1 / model[add_p_id].p[end]
-#         sum_poss_p += cp_inventories[add_p_id]
-#         push!(poss_p_ids, add_p_id) 
-#     end
-
-#     # Place orders based on the availability of goods
-#     chosen_amount = 0
-#     chosen_p_id = 0
-#     C_per_day = C / global_param.n_cons_market_days
-
-#     p_orders = Dict(cp_id => 0.0 for cp_id in poss_p_ids)
-#     weights = collect(values(poss_p))
-    
-#     n_round = 1
-#     n_round_stop::Int = global_param.n_cons_market_days * 1.5
-
-#     while C > 0 && length(poss_p) > 0 && n_round < n_round_stop
-#         chosen_p_id = sample(poss_p_ids, Weights(weights))
-#         chosen_amount = min(C, C_per_day, cp_inventories[chosen_p_id])
-#         p_orders[chosen_p_id] += chosen_amount
-
-#         C -= chosen_amount
-#         cp_inventories[chosen_p_id] -= chosen_amount
-
-#         if cp_inventories[chosen_p_id] == 0
-#             filter!(p_id -> p_id ≠ chosen_p_id, poss_p_ids)
-#             filter!(weight -> weight ≠ poss_p[chosen_p_id], weights)
-#             delete!(poss_p, chosen_p_id)
-#             filter!(p_id -> p_id ≠ chosen_p_id, p_with_inventory)
-#         end
-#         n_round += 1
-#     end
-
-#     return p_orders, cp_inventories, p_with_inventory
-# end
-
-
-# """
-# Household receives ordered cg and mutates balance
-# """
-# function receive_ordered_goods_hh!(
-#     hh::Household,
-#     cp_id::Int,
-#     tot_price::Float64,
-#     share_fulfilled::Float64
-#     )
-
-#     # Decrease wealth with total price paid
-#     hh.W -= tot_price
-
-#     # If full demand not fulfilled, add cp to unsatisfied demand
-#     if ceil(share_fulfilled; digits=3) < 1.0
-#         println(share_fulfilled)
-#         push!(hh.unsat_dem, (cp_id, 1 - share_fulfilled))
-#     end
-# end
 
 """
 Household receives ordered cg and mutates balance
@@ -251,14 +157,27 @@ end
 """
 Lets households get income, either from UB or wage
 """
-function get_income_hh!(
+function receiveincome_hh!(
     hh::Household, 
-    amount::Float64
+    amount::Float64;
+    capgains=false
     )
 
-    hh.I = amount
-    if hh.employed
-        shift_and_append!(hh.w, hh.w[end])
+    if !capgains
+
+        # Add labor or transfer income to income amount
+        hh.I = amount
+
+        # If employed, add to labor income, else add to transfer income
+        if hh.employed
+            hh.labor_I = amount
+            shift_and_append!(hh.w, hh.w[end])
+        else
+            hh.transfer_I = amount
+        end
+    else
+        # Income are capital gains
+        hh.capital_I = amount
     end
 end
 
@@ -270,7 +189,7 @@ function update_wealth_hh!(
     hh::Household
     )
 
-    hh.W += hh.Iᵀ
+    hh.W += (hh.Iᵀ + hh.capital_I)
 end
 
 

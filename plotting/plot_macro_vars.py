@@ -64,19 +64,6 @@ def plot_macro_vars(df):
     # real_w_avg = 100 * df.w_avg
     ax[1,1].plot(range(len(real_w_avg)), real_w_avg, color='green', label='real $\\bar{w}$')
     ax[1,1].plot(range(len(df.w_avg)), df.w_avg, color='blue', label='$\\bar{w}$')
-    # ax[1,1].fill_between(range(len(df.w_avg)), df.w_avg + df.w_std, df.w_avg - df.w_std, 
-    #                  color='green', alpha=0.4)
-
-    # real_wr_avg = 100 * df.wr_avg / df.CPI
-    # ax[1,1].plot(range(len(real_wr_avg)), real_wr_avg, color='red', label='$w^r$')
-    # ax[1,1].fill_between(range(len(df.wr_avg)), df.wr_avg + df.wr_std, df.wr_avg - df.wr_std, 
-    #                  color='red', alpha=0.4)
-
-    # real_ws_avg = 100 * df.ws_avg / df.CPI
-    # ax[1,1].plot(range(len(real_ws_avg)), real_ws_avg, color='blue', label='$w^s$')
-    # ax[1,1].fill_between(range(len(df.ws_avg)), df.ws_avg + df.ws_std, df.ws_avg - df.ws_std, 
-    #                  color='blue', alpha=0.4)
-    # ax[1,1].plot(range(len(df.wo_max_avg)), df.wo_max_avg, color='orange', label='$w^o_\max$')
     ax[1,1].set_title('Real wage level')
     ax[1,1].legend()
 
@@ -88,16 +75,16 @@ def plot_macro_vars(df):
     ax[2,0].set_title('$\Delta L^d$')
     ax[2,0].legend()
 
-    # real_I_avg = 100 * df.I_avg / df.CPI
-    real_I_avg = 100 * df.I_avg
-    real_I_std = 100 * df.I_std / df.I_std
+    real_I_avg = 100 * df.I_avg / df.CPI
+    real_I_labor = 100 * df.I_labor_avg / df.CPI
+    real_I_capital = 100 * df.I_capital_avg / df.CPI
+    real_I_transfer = 100 * df.I_transfer_avg / df.CPI
 
-    ax[2,1].plot(range(len(real_I_avg)), real_I_avg, color='purple')
-    ax[2,1].fill_between(range(len(real_I_avg)), 
-                         real_I_avg + real_I_std, 
-                         real_I_avg - real_I_std, 
-                         color='purple', 
-                         alpha=0.4)
+    ax[2,1].plot(T, real_I_avg, color='purple', label='total')
+    ax[2,1].plot(T, real_I_labor, color='blue', label='labor')
+    ax[2,1].plot(T, real_I_capital, color='red', label='capital')
+    ax[2,1].plot(T, real_I_transfer, color='green', label='transfer')
+    ax[2,1].legend()
     ax[2,1].set_title('Real income of households')
     
 

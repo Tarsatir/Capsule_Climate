@@ -339,15 +339,10 @@ function model_step!(
         update_wealth_hh!(model[hh_id])
     end
 
-    # TODO: put this somewhere else
-    # all_W_hh = map(hh_id -> model[hh_id].W[end], all_hh)
-    all_W_hh = Vector{Float64}()
-
     # Consumer market process
     @timeit to "consumermarket" consumermarket_process!(
         all_hh,
         all_cp,
-        all_W_hh,
         gov_struct,
         global_param,
         cm_dat,
@@ -393,7 +388,6 @@ function model_step!(
     update_marketshare_p!(all_kp, model)
 
     # Select producers that will be declared bankrupt and removed
-    # @timeit to "check bankr" bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
     @timeit to "check bankr" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, global_param, model)
 
     # (7) macro-economic indicators are updated.
@@ -463,7 +457,10 @@ function model_step!(
     # Redistrubute remaining stock of dividents to households
     distribute_dividends_if!(
         indexfund_struct,
+        gov_struct,
         all_hh,
+        gov_struct.τᴷ,
+        t,
         model
     )
 

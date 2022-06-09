@@ -153,9 +153,6 @@ function update_NW_p!(
     rev_dep = p.curracc.rev_dep
     profit_tax = max(τᴾ * p.Π[end], 0)
 
-    # if typeof(p) == ConsumerGoodProducer
-    #     println("NW: $NW, S: $S, TCL: $TCL, TCI: $TCI, rd: $rep_debt, ad: $add_debt, id: $int_debt, pt: $profit_tax")
-    # end
 
     new_NW = NW + S + add_debt + rev_dep - TCL - TCI - TCE - rep_debt - int_debt - profit_tax
 

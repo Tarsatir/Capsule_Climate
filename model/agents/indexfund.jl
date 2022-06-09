@@ -51,6 +51,7 @@ function deduct_unpaid_net_debts_if!(
     indexfund_struct::IndexFund,
     total_unpaid_net_debt::Float64
     )
+
     indexfund_struct.Assets -= total_unpaid_net_debt
 end
 
@@ -60,22 +61,29 @@ Distributes dividends over participants in indexfund
 """
 function distribute_dividends_if!(
     indexfund_struct::IndexFund,
+    government::Government,
     all_hh::Vector{Int},
+    τᴷ::Float64,
+    t::Int,
     model::ABM
     )
 
     # Distribute proportional to wealth
     total_wealth = sum(hh_id -> model[hh_id].W, all_hh)
 
+    total_capgains_tax = 0
+
     for hh_id in all_hh
 
         dividend_share = (model[hh_id].W / total_wealth) * indexfund_struct.Assets
 
-        # TODO: make separate function in hh for this
-        model[hh_id].W += dividend_share
+        total_capgains_tax += τᴷ * dividend_share
+        receiveincome_hh!(model[hh_id], dividend_share * (1 - τᴷ), capgains=true)
     end
 
     # Reset assets back to zero
     indexfund_struct.Assets = 0.0
+
+    receive_capgains_tax_gov!(government, total_capgains_tax, t)
 
 end

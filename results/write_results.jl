@@ -14,11 +14,11 @@ Receives:
 function save_macro_data(macro_struct)
 
     df = DataFrame(
-        GDP=macro_struct.GDP,
-        GDP_I=macro_struct.GDP_I,
-        GDP_cp=macro_struct.GDP_Π_cp,
-        GDP_kp=macro_struct.GDP_Π_kp,
-        GDP_growth=macro_struct.GDP_growth,
+        GDP = macro_struct.GDP,
+        GDP_I = macro_struct.GDP_I,
+        GDP_cp = macro_struct.GDP_Π_cp,
+        GDP_kp = macro_struct.GDP_Π_kp,
+        GDP_growth = macro_struct.GDP_growth,
 
         C = macro_struct.C,
 
@@ -36,13 +36,13 @@ function save_macro_data(macro_struct)
         mu_cp = macro_struct.μ_cp,
         mu_kp = macro_struct.μ_kp,
 
-        M=macro_struct.M,
-        M_hh=macro_struct.M_hh,
-        M_cp=macro_struct.M_cp,
-        M_kp=macro_struct.M_kp,
-        M_ep=macro_struct.M_ep,
-        M_gov=macro_struct.M_gov,
-        M_if=macro_struct.M_if,
+        M = macro_struct.M,
+        M_hh = macro_struct.M_hh,
+        M_cp = macro_struct.M_cp,
+        M_kp = macro_struct.M_kp,
+        M_ep = macro_struct.M_ep,
+        M_gov = macro_struct.M_gov,
+        M_if = macro_struct.M_if,
 
         debt_tot = macro_struct.debt_tot,
         debt_cp = macro_struct.debt_cp,
@@ -52,35 +52,34 @@ function save_macro_data(macro_struct)
         debt_unpaid_kp = macro_struct.debt_unpaid_kp,
         debt_unpaid_cp = macro_struct.debt_unpaid_cp,
 
-        UR=macro_struct.U,
+        UR = macro_struct.U,
         switch_rate = macro_struct.switch_rate,
         Exp_UB=macro_struct.Exp_UB,
 
-        s_emp=macro_struct.s̄_emp,
-        s_unemp=macro_struct.s̄_unemp,
+        s_emp = macro_struct.s̄_emp,
+        s_unemp = macro_struct.s̄_unemp,
 
-        w_avg=macro_struct.w̄_avg,
-        # w_std=macro_struct.w̄_std,
-        wr_avg=macro_struct.wʳ_avg,
-        # wr_std=macro_struct.wʳ_std,
-        ws_avg=macro_struct.wˢ_avg,
-        # ws_std=macro_struct.wˢ_std,
+        w_avg = macro_struct.w̄_avg,
+        wr_avg = macro_struct.wʳ_avg,
+        ws_avg = macro_struct.wˢ_avg,
         wo_max_avg = macro_struct.wᴼ_max_mean,
 
-        I_avg=macro_struct.Ī_avg,
-        I_std=macro_struct.Ī_std,
+        I_avg = macro_struct.Ī_avg,
+        I_labor_avg = macro_struct.I_labor_avg,
+        I_capital_avg = macro_struct.I_capital_avg,
+        I_transfer_avg = macro_struct.I_transfer_avg,
 
-        dL_avg=macro_struct.ΔL̄_avg,
-        dL_std=macro_struct.ΔL̄_std,
-        dL_cp_avg=macro_struct.ΔL̄_cp_avg,
-        dL_kp_avg=macro_struct.ΔL̄_kp_avg,
+        dL_avg = macro_struct.ΔL̄_avg,
+        dL_std = macro_struct.ΔL̄_std,
+        dL_cp_avg = macro_struct.ΔL̄_cp_avg,
+        dL_kp_avg = macro_struct.ΔL̄_kp_avg,
 
-        EI_avg=macro_struct.EI_avg,
-        n_mach_EI=macro_struct.n_mach_EI_avg,
-        RS_avg=macro_struct.RS_avg,
-        n_mach_RS=macro_struct.n_mach_RS_avg,
+        EI_avg = macro_struct.EI_avg,
+        n_mach_EI = macro_struct.n_mach_EI_avg,
+        RS_avg = macro_struct.RS_avg,
+        n_mach_RS = macro_struct.n_mach_RS_avg,
 
-        avg_pi_LP = macro_struct.avg_π_LP,
+        avg_pi_LP =  macro_struct.avg_π_LP,
         avg_pi_EE = macro_struct.avg_π_EE,
 
         avg_A_LP = macro_struct.avg_A_LP,
@@ -91,24 +90,18 @@ function save_macro_data(macro_struct)
         avg_B_EE = macro_struct.avg_B_EE,
         avg_B_EF = macro_struct.avg_B_EF,
 
-        # avg_Q_bp=macro_struct.avg_Q_bp,
         avg_Q_cp = macro_struct.avg_Q_cp,
         avg_Qs_cp = macro_struct.avg_Qˢ_cp,
         avg_Qe_cp = macro_struct.avg_Qᵉ_cp,
-        # avg_Q_lp=macro_struct.avg_Q_lp,
         avg_Q_kp = macro_struct.avg_Q_kp,
         avg_D_cp = macro_struct.avg_D_cp,
         avg_Du_cp = macro_struct.avg_Dᵁ_cp,
         avg_De_cp = macro_struct.avg_Dᵉ_cp,
 
-        # bankrupt_bp = macro_struct.bankrupt_bp,
-        # bankrupt_lp = macro_struct.bankrupt_lp,
         bankrupt_cp = macro_struct.bankrupt_cp,
         bankrupt_kp = macro_struct.bankrupt_kp,
 
         cu = macro_struct.cu,
-        # avg_n_machines_bp = macro_struct.avg_n_machines_bp,
-        # avg_n_machines_lp = macro_struct.avg_n_machines_lp,
         avg_n_machines_cp = macro_struct.avg_n_machines_cp,
 
         gini_I = macro_struct.GINI_I,
