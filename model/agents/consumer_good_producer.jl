@@ -312,23 +312,30 @@ function plan_replacement_cp!(
     t::Int
     )
 
-    # Aᵈ_LP = brochure[4]
     p_star = brochure[2]
     c_star = cp.w̄[end] / brochure[4] + ep.pₑ[t] / brochure[5]
 
     cp.mach_tb_repl = []
     cp.mach_tb_retired = []
 
-    n_machines_too_many = -min(cp.Qᵉ - cp.n_machines, 0.0)
+    # See if machine stock too large in order to decide if need to be replaced
+    if cp.n_machines > cp.Qᵉ
+        n_machines_too_many = cp.n_machines - cp.Qᵉ
+    else
+        n_machines_too_many = 0.0
+    end
+
+    # Sort machines by cost of production
+    sort!(cp.Ξ , by = machine -> cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
 
     # Loop over machine stock, select which machines to replace
     for machine in cp.Ξ
 
-        c_A = cp.w̄[end] / machine.A_LP + ep.pₑ[t] / brochure[5]
+        c_A = cp.w̄[end] / machine.A_LP + ep.pₑ[t] / machine.A_EE
 
         if machine.age >= global_param.η
             # Machine has reached max age, decide if replaced or not
-            if n_machines_too_many < global_param.freq_per_machine
+            if n_machines_too_many < machine.freq
                 # No machines planned to be written off, replace old machine
                 push!(cp.mach_tb_repl, machine)
             else
@@ -337,9 +344,10 @@ function plan_replacement_cp!(
                 n_machines_too_many -= machine.freq
             end
 
-        # elseif c_A != c_star && p_star/(c_A - c_star) <= global_param.b && machine.age > global_param.b
-        #     # New machine cheaper to operate, replace old machine
-        #     push!(cp.mach_tb_repl, machine)
+        elseif (c_A != c_star && p_star/(c_A - c_star) <= global_param.b 
+                && machine.age > global_param.b)
+            # New machine cheaper to operate, replace old machine
+            push!(cp.mach_tb_repl, machine)
         end
     end
 
@@ -471,28 +479,46 @@ function receive_machines_cp!(
     Iₜ::Float64,
     )
 
-    # Add new machines to capital stock, add investment expenditure
-    cp.Ξ = vcat(cp.Ξ, new_machines)
     cp.curracc.TCI += Iₜ
 
-    # Check if complete order was received, otherwise partial replacement
-    if cp.n_mach_ordered_EI == 0 && cp.n_mach_ordered_RS > length(new_machines)
+    # Replace old machines
+    if length(cp.mach_tb_repl) > length(new_machines)
+        # Not all to-be replaced machines were sent, only replace machines
+        # that were delivered
 
-        # All machines are meant for replacement
-        cp.mach_tb_repl = cp.mach_tb_repl[1:length(new_machines)]
-
-    elseif length(new_machines) < cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
-
-        # Decide how many old machines to discard
-        n_old_replace = max(length(new_machines) - cp.n_mach_ordered_EI, 0)
-        if n_old_replace > 0
-            cp.mach_tb_repl = cp.mach_tb_repl[1:n_old_replace+1]
-        else
-            cp.mach_tb_repl = []
-        end
+        # Sort machines by cost of production, replace most expensive first
+        sort!(cp.mach_tb_repl , by = machine -> cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
+        filter!(machine -> machine ∉ cp.mach_tb_repl[1:length(new_machines)], cp.Ξ)
+    else
+        # All to-be replaced machines were sent, replace all machines and add
+        # the additional machines as expansionary investment
+        filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
     end
 
-    filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
+    cp.Ξ = vcat(cp.Ξ, new_machines)
+
+    # # Add new machines to capital stock, add investment expenditure
+    # cp.Ξ = vcat(cp.Ξ, new_machines)
+    # cp.curracc.TCI += Iₜ
+
+    # # Check if complete order was received, otherwise partial replacement
+    # if cp.n_mach_ordered_EI == 0 && cp.n_mach_ordered_RS > length(new_machines)
+
+    #     # All machines are meant for replacement
+    #     cp.mach_tb_repl = cp.mach_tb_repl[1:length(new_machines)]
+
+    # elseif length(new_machines) < cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
+
+    #     # Decide how many old machines to discard
+    #     n_old_replace = max(length(new_machines) - cp.n_mach_ordered_EI, 0)
+    #     if n_old_replace > 0
+    #         cp.mach_tb_repl = cp.mach_tb_repl[1:n_old_replace+1]
+    #     else
+    #         cp.mach_tb_repl = []
+    #     end
+    # end
+
+    # filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
 end
 
 
@@ -664,7 +690,7 @@ function update_n_machines_cp!(
 
     # Retire old machines that are not replaced
     if length(cp.mach_tb_retired) > 0
-        filter(machine -> machine ∉ cp.mach_tb_retired, cp.Ξ)
+        filter!(machine -> machine ∉ cp.mach_tb_retired, cp.Ξ)
     end
 
     cp.n_machines = length(cp.Ξ) * freq_per_machine

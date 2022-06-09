@@ -159,20 +159,21 @@ function choose_technology_kp!(
     update_μ_kp!(kp)
 
     # Make choice between possible technologies
-    if length(tech_choices) == 1
-        # If no new technologies, keep current technologies
-        c_h = kp.w̄[end] / kp.B_LP + ep.pₑ[t] / kp.B_EE
-        p_h = (1 + kp.μ[end]) * c_h
-        shift_and_append!(kp.c, c_h)
-        shift_and_append!(kp.p, p_h)
-    else
+    if length(tech_choices) > 1
+    #     # If no new technologies, keep current technologies
+    #     c_h = kp.w̄[end] / kp.B_LP + ep.pₑ[t] / kp.B_EE
+    #     p_h = (1 + kp.μ[end]) * c_h
+    #     shift_and_append!(kp.c, c_h)
+    #     shift_and_append!(kp.p, p_h)
+    # else
         # If new technologies, update price data
         #   Lamperti et al (2018), eq 1 and 2
         c_h_cp = map(tech -> (w̄/tech[1] + ep.pₑ[t]/tech[2]), tech_choices)
         c_h_kp = map(tech -> (kp.w̄[end]/tech[4] + ep.pₑ[t]/tech[5]), tech_choices)
  
         p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
-        r_h = p_h + global_param.b * c_h_cp 
+        r_h = c_h_cp .* global_param.b .+ p_h
+        # r_h = c_h_cp .+ p_h
         idx = argmin(r_h)
 
         # Update tech parameters
