@@ -835,7 +835,8 @@ function update_wᴼ_max_cp!(
     cp::ConsumerGoodProducer
     )
     # TODO: DESCRIBE IN MODEL
-    cp.wᴼ_max = (cp.π_LP * cp.p[end])
+    # cp.wᴼ_max = (cp.π_LP * cp.p[end])
+    cp.wᴼ_max = Inf
     # if cp.ΔLᵈ > 0
     #     # cp.wᴼ_max = (cp.Dᵉ * cp.p[end] - cp.w̄[end] * cp.L) / cp.ΔLᵈ
     #     cp.wᴼ_max = cp.p[end]

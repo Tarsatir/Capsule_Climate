@@ -135,7 +135,11 @@ function update_sat_req_wage_hh!(
 
     # Update wˢ using adaptive rule
     # hh.wˢ = ω * hh.wˢ + (1 - ω) * (hh.employed ? hh.w[end] : w_min)
-    hh.wˢ = max(w_min, hh.wˢ * (1 - ϵ))
+    if hh.employed
+        hh.wˢ = hh.w[end]
+    else
+        hh.wˢ = max(w_min, hh.wˢ * (1 - ϵ))
+    end
 
     if hh.employed
         hh.wʳ = max(w_min, hh.w[end] * (1 + ϵ))
