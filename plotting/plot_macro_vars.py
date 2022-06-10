@@ -84,6 +84,7 @@ def plot_macro_vars(df):
     ax[2,1].plot(T, real_I_labor, color='blue', label='labor')
     ax[2,1].plot(T, real_I_capital, color='red', label='capital')
     ax[2,1].plot(T, real_I_transfer, color='green', label='transfer')
+    ax[2,1].hlines(0, max(T), 0, linestyle='dashed', color='black')
     ax[2,1].legend()
     ax[2,1].set_title('Real income of households')
     

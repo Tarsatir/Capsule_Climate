@@ -13,11 +13,10 @@
     skill::Float64                              # skill level of household
 
     # Income and wealth variables
-    I::Float64 = L * skill                      # total income
+    total_I::Float64 = L * skill                # total income from all factors
     labor_I::Float64 = L * skill                # income from labor
     capital_I::Float64 = 0.0                    # income from capital
     transfer_I::Float64 = 0.0                   # income from transfers
-    Iᵀ::Float64 = L * skill                     # hist income after tax
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 300                            # wealth or cash on hand
 
@@ -25,7 +24,6 @@
     C::Float64 = 0.0                           # budget
     C_actual::Float64 = 0.0                    # actual spending on consumption goods
     cp::Vector{Int} = Vector{Int}()            # connected cp
-    # unsat_dem::Vector = Vector()             # unsatisfied demands
     unsat_dem::Dict{Int, Float64} = Dict()     # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
     c_L::Float64 = 0.5                         # share of income used to buy luxury goods
@@ -91,7 +89,8 @@ function compute_consumption_budget_hh!(
 
     if hh.W > 0
         hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
-        hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : 0.0
+        # hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : 0.0
+        hh.s = hh.total_I > 0 ? (hh.total_I - hh.C) / hh.total_I : 0.0 
         # println("   $(hh.s), $(hh.C), $(hh.W)")
     else
         hh.C = 0.0
@@ -128,28 +127,20 @@ Updates satisfying wage wˢ and requested wage wʳ
 """
 function update_sat_req_wage_hh!(
     hh::Household, 
-    ϵ::Float64, 
+    ϵ::Float64,
+    ω::Float64, 
     UB::Float64,
     w_min::Float64
     )
 
-    # T = 4
-    # if length(hh.w) > T
-    #     hh.wˢ = mean(hh.w[end-T:end])/hh.L
-    # else
-    #     hh.wˢ = mean(hh.w)/hh.L
-    # end
-
-    # Try to use adaptive wˢ
-    ωwˢ = 0.5
-    hh.wˢ = ωwˢ * hh.wˢ + (1 - ωwˢ) * (hh.employed ? hh.w[end] : hh.I[end] / hh.L)
+    # Update wˢ using adaptive rule
+    # hh.wˢ = ω * hh.wˢ + (1 - ω) * (hh.employed ? hh.w[end] : w_min)
+    hh.wˢ = max(w_min, hh.wˢ * (1 - ϵ))
 
     if hh.employed
         hh.wʳ = max(w_min, hh.w[end] * (1 + ϵ))
     else
-        # hh.wʳ = max(UB/hh.L, hh.wˢ)
         hh.wʳ = max(w_min, hh.wˢ)
-        # hh.wʳ = max(w_min, hh.w[end] * (1 - ϵ))
     end
 end
 
@@ -160,36 +151,26 @@ Lets households get income, either from UB or wage
 function receiveincome_hh!(
     hh::Household, 
     amount::Float64;
-    capgains=false
+    capgains::Bool=false,
+    transfer::Bool=false
     )
 
-    if !capgains
+    # Add income to total income amount
+    hh.total_I += amount
+    hh.W += amount
 
-        # Add labor or transfer income to income amount
-        hh.I = amount
-
-        # If employed, add to labor income, else add to transfer income
-        if hh.employed
-            hh.labor_I = amount
-            shift_and_append!(hh.w, hh.w[end])
-        else
-            hh.transfer_I = amount
-        end
-    else
-        # Income are capital gains
+    if capgains
+        # Capital gains are added directly to the wealth, as they are added
+        # at the end of the period
         hh.capital_I = amount
+    elseif transfer
+        # Transfer income can come from unemployment or other social benefits
+        hh.transfer_I += amount
+    else
+        # If employed, add to labor income, else add to transfer income
+        hh.labor_I = amount
+        shift_and_append!(hh.w, hh.w[end])
     end
-end
-
-
-"""
-Updates household wealth
-"""
-function update_wealth_hh!(
-    hh::Household
-    )
-
-    hh.W += (hh.Iᵀ + hh.capital_I)
 end
 
 
@@ -244,9 +225,7 @@ function remove_bankrupt_producers_hh!(
     )
 
     filter!(cp_id -> cp_id ∉ bankrupt_cp, hh.cp)
-    # for cp_id in bankrupt_cp
     delete!(hh.unsat_dem, bankrupt_cp)
-    # end
 end
 
 
@@ -326,31 +305,26 @@ end
 Refills amount of bp and lp in amount is below minimum. Randomly draws suppliers
     inversely proportional to prices.
 """
-function refill_suppliers_all_hh!(
-    all_hh::Vector{Int},
+function refillsuppliers_hh!(
+    hh::Household,
     all_cp::Vector{Int},
     n_cp_hh::Int,
     model::ABM
     )
 
-    # Check amount of cp of all hh, if insufficient replenish by randomly
-    # drawing other suppliers based on weights
-    for hh_id in all_hh
+    if length(hh.cp) < n_cp_hh
 
-        if length(model[hh_id].cp) < n_cp_hh
+        # Determine which bp are available
+        n_add_cp = n_cp_hh - length(hh.cp)
+        poss_cp = filter(p_id -> p_id ∉ hh.cp, all_cp)
 
-            # Determine which bp are available
-            n_add_cp = n_cp_hh - length(model[hh_id].cp)
-            poss_cp = filter(p_id -> p_id ∉ model[hh_id].cp, all_cp)
+        # Determine weights based on prices, sample and add
+        weights = map(cp_id -> 1 / model[cp_id].p[end], poss_cp)
+        add_cp = sample(poss_cp, Weights(weights), n_add_cp)
+        hh.cp = vcat(hh.cp, add_cp)
 
-            # Determine weights based on prices, sample and add
-            weights = map(cp_id -> 1 / model[cp_id].p[end], poss_cp)
-            add_cp = sample(poss_cp, Weights(weights), n_add_cp)
-            model[hh_id].cp = vcat(model[hh_id].cp, add_cp)
-
-            for cp_id in add_cp
-                model[hh_id].unsat_dem[cp_id] = 0.0
-            end
+        for cp_id in add_cp
+            hh.unsat_dem[cp_id] = 0.0
         end
     end
 end
@@ -375,4 +349,21 @@ function sample_skills_hh(
     skills = init_param.n_hh .* skills ./ sum(skills)
 
     return skills
+end
+
+
+"""
+    reset_incomes_hh!(hh::Household)
+
+Resets types incomes of household back to 0.0. Capital income is reset only before
+    the new capital gains are sent.
+"""
+function resetincomes_hh!(
+    hh::Household
+    )
+
+    hh.total_I = 0.0
+    hh.labor_I = 0.0
+    # hh.capital_I = 0.0
+    hh.transfer_I = 0.0
 end

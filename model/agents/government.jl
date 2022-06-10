@@ -28,7 +28,7 @@ function pay_unemployment_benefits_gov!(
     # Pay out unemployment benefits to households
     total_UB = 0
     for hh_id in unemployed
-        receiveincome_hh!(model[hh_id], government.UB)
+        receiveincome_hh!(model[hh_id], government.UB; transfer=true)
         total_UB += government.UB
     end
 
@@ -37,25 +37,25 @@ function pay_unemployment_benefits_gov!(
 end
 
 
-"""
-Levies income tax on all households
-"""
-function levy_income_tax_gov!(
-    government::Government, 
-    all_hh::Vector{Int},
-    t::Int,
-    model::ABM
-    )
+# """
+# Levies income tax on all households
+# """
+# function levy_income_tax_gov!(
+#     government::Government, 
+#     all_hh::Vector{Int},
+#     t::Int,
+#     model::ABM
+#     )
 
-    total_τᴵ = 0
-    for hh_id in all_hh
-        total_τᴵ += model[hh_id].I * government.τᴵ
-        model[hh_id].Iᵀ = model[hh_id].I * (1 - government.τᴵ)
-    end
+#     total_τᴵ = 0
+#     for hh_id in all_hh
+#         total_τᴵ += model[hh_id].I * government.τᴵ
+#         model[hh_id].Iᵀ = model[hh_id].I * (1 - government.τᴵ)
+#     end
 
-    # Add total income tax to government current account
-    government.curracc.Rev_τᴵ[t] = total_τᴵ
-end
+#     # Add total income tax to government current account
+#     government.curracc.Rev_τᴵ[t] = total_τᴵ
+# end
 
 
 """
@@ -85,17 +85,32 @@ end
 
 
 """
+Lets government receive income tax from employers
+"""
+function receive_incometax_gov!(
+    government::Government,
+    incometax::Float64,
+    t::Int
+    )
+
+    government.curracc.Rev_τᴵ[t] += incometax
+    # government.MS += incometax
+end
+
+
+"""
 Lets government receive capital gains tax from the indexfund
 """
 function receive_capgains_tax_gov!(
     government::Government, 
-    total_capgains_tax::Float64,
+    capgainstax::Float64,
     t::Int
     )
 
-    government.curracc.Rev_τᴷ[t] += total_capgains_tax
-    government.MS += total_capgains_tax
+    government.curracc.Rev_τᴷ[t] += capgainstax
+    # government.MS += capgainstax
 end
+
 
 
 function compute_budget_balance(
@@ -103,10 +118,12 @@ function compute_budget_balance(
     t::Int
     )
 
+    Rev_τᴷ = t > 1 ? government.curracc.Rev_τᴷ[t-1] : 0.0
+
     # Compute total tax revenues
-    Tot_rev = (government.curracc.Rev_τᴵ[t] + government.curracc.Rev_τᴷ[t] 
-               + government.curracc.Rev_τᴾ[t] + government.curracc.Rev_τˢ[t]
-               + government.curracc.Rev_τᴱ[t] + government.curracc.Rev_τᶜ[t])
+    Tot_rev = (government.curracc.Rev_τᴵ[t] + government.curracc.Rev_τᴾ[t] 
+               + government.curracc.Rev_τˢ[t] + government.curracc.Rev_τᴱ[t] 
+               + government.curracc.Rev_τᶜ[t] + Rev_τᴷ)
 
     # Compute total expediture
     Tot_exp = government.curracc.Exp_UB[t] + government.curracc.Exp_Sub[t]
@@ -122,6 +139,7 @@ function add_salestax_transaction_gov!(
     sales_tax_lp::Float64,
     t::Int
     )
+
     government.curracc.Rev_τˢ[t] += (sales_tax_bp + sales_tax_lp)
 end
 
@@ -140,10 +158,10 @@ function redistribute_surplus_gov!(
 
     if government.MS > 0.0
 
-        total_I = sum(hh_id -> model[hh_id].I, all_hh)
+        total_I = sum(hh_id -> model[hh_id].total_I, all_hh)
         for hh_id in all_hh
-            model[hh_id].W += (model[hh_id].I / total_I) * government.MS
-            # model[hh_id].W += government.MS / length(all_hh)
+            socialbenefits = (model[hh_id].total_I / total_I) * government.MS
+            receiveincome_hh!(model[hh_id], socialbenefits; transfer=true)
         end
         government.MS = 0.0
     end

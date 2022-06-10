@@ -229,7 +229,7 @@ function compute_GDP!(
     )
 
     # Household income
-    total_I = sum(hh_id -> model[hh_id].Iᵀ[end], all_hh)
+    total_I = sum(hh_id -> model[hh_id].total_I[end], all_hh)
     macro_struct.GDP_I[t] = total_I
 
     # cp profits
@@ -342,7 +342,8 @@ function update_income_stats!(
 
     macro_struct.I_transfer_avg[t] = mean(hh_id -> model[hh_id].transfer_I, all_hh)
 
-    macro_struct.Ī_avg[t] = mean(hh_id -> model[hh_id].I[end], all_hh)
+    macro_struct.Ī_avg[t] = (macro_struct.I_labor_avg[t] + macro_struct.I_capital_avg[t] 
+                             + macro_struct.I_transfer_avg[t])
 end
 
 
@@ -448,7 +449,7 @@ function compute_GINI(
     )
 
     # Compute GINI for income
-    all_I = map(hh_id -> model[hh_id].Iᵀ[end], all_hh)
+    all_I = map(hh_id -> model[hh_id].total_I[end], all_hh)
     all_I_tmp = zeros(Float64, length(all_I))
     all_I_absdiff = zeros(Float64, length(all_I))
 
@@ -481,8 +482,8 @@ function compute_GINI(
 
     H = Float64[]
     for hh_id in all_hh
-        if model[hh_id].Iᵀ <= z
-            push!(H, ((z - model[hh_id].Iᵀ) / z)^2)
+        if model[hh_id].total_I <= z
+            push!(H, ((z - model[hh_id].total_I) / z)^2)
         end
     end
 

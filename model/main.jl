@@ -220,12 +220,10 @@ function model_step!(
     end
 
     # Check if households still have enough bp and lp, otherwise sample more
-    refill_suppliers_all_hh!(
-        all_hh,
-        all_cp,
-        init_param.n_cp_hh,
-        model
-    )
+    for hh_id in all_hh
+        refillsuppliers_hh!(model[hh_id], all_cp, init_param.n_cp_hh, model)
+        resetincomes_hh!(model[hh_id])
+    end
 
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
     for cp_id in all_cp
@@ -305,13 +303,17 @@ function model_step!(
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
     for p_id in all_p
-        pay_workers_p!(model[p_id], model)
+        pay_workers_p!(
+            model[p_id],
+            gov_struct,
+            t, 
+            model
+        )
     end
     pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed, t, model)
 
     # Government receives income taxes
-    levy_income_tax_gov!(gov_struct, all_hh, t, model)
-
+    # levy_income_tax_gov!(gov_struct, all_hh, t, model)
 
     # (5) Production takes place for cp and kp
 
@@ -331,13 +333,6 @@ function model_step!(
 
     
     # (6) Transactions take place on consumer market
-
-    # Households update wealth level
-    for hh_id in all_hh
-
-        # Update household wealth
-        update_wealth_hh!(model[hh_id])
-    end
 
     # Consumer market process
     @timeit to "consumermarket" consumermarket_process!(

@@ -121,7 +121,7 @@ function save_final_dist(
 
     # Save income data of households 
     df = DataFrame(
-        all_I = map(hh_id -> model[hh_id].I, all_hh),
+        all_I = map(hh_id -> model[hh_id].total_I, all_hh),
         all_w = map(hh_id -> model[hh_id].w[end], all_hh),
         all_W = map(hh_id -> model[hh_id].W, all_hh),
         skills = map(hh_id -> model[hh_id].skill, all_hh)

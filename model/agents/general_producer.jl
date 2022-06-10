@@ -8,7 +8,7 @@ function fire_excess_workers_p!(
     else
 
         ΔL = -p.ΔLᵈ
-        fired_workers = []
+        fired_workers = Int64[]
 
         # Sort workers based on their relative expensiveness
         sort!(p.employees, by = hh_id -> model[hh_id].w[end] / model[hh_id].skill, rev=true)
@@ -55,10 +55,8 @@ function hire_worker_p!(
     hh::Household
     )
 
-    # update labor stock and desired labor
     push!(p.employees, hh.id)
     p.L += hh.L * hh.skill
-    # p.ΔLᵈ -= hh.L * hh.skill
 end
 
 
@@ -88,18 +86,24 @@ end
 Loop over workers and pay out wage.
 """
 function pay_workers_p!(
-    p::AbstractAgent,
+    p::Union{ConsumerGoodProducer, CapitalGoodProducer},
+    government::Government,
+    t::Int,
     model::ABM
     )
 
     total_wage = 0.0
+    total_incometax = 0.0
+
     for hh_id in p.employees
         wage = model[hh_id].w[end] * model[hh_id].L
         total_wage += wage
-        receiveincome_hh!(model[hh_id], wage)
+        total_incometax += government.τᴵ * wage
+        receiveincome_hh!(model[hh_id], wage * (1 - government.τᴵ))
     end
     
-    p.curracc.TCL += total_wage
+    receive_incometax_gov!(government, total_incometax, t)
+    p.curracc.TCL = total_wage
 end
 
 
@@ -205,7 +209,6 @@ function check_bankrupty_all_p!(
                 push!(bankrupt_cp, p_id)
             else
                 kp_counter += 1
-                # if kp_counter != length(all_kp)
                 if kp_counter < 4
                     push!(bankrupt_kp, p_id)
                     push!(bankrupt_kp_i, model[p_id].kp_i)
@@ -316,7 +319,7 @@ function update_techparam_p(
     κ_i = rand(Beta(global_param.α1, global_param.β1))
     κ_i = global_param.κ_lower + κ_i * (global_param.κ_upper - global_param.κ_lower)
 
-    return is_EF ? TP_last*(1 - κ_i) : TP_last*(1 + κ_i)
+    return is_EF ? TP_last * (1 - κ_i) : TP_last * (1 + κ_i)
 end
 
 

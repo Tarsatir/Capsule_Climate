@@ -20,7 +20,7 @@ Households that are not assigned to a producer are declared unemployed.
 """
 function spread_employees_lm!(
     labormarket::LaborMarket,
-    gov_struct::Government, 
+    government::Government, 
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
     all_kp::Vector{Int}, 
@@ -36,7 +36,7 @@ function spread_employees_lm!(
         employees = all_hh[i:i+n_init_emp_cp-1]
 
         for hh_id in employees
-            w = max(gov_struct.w_min, model[hh_id].skill)
+            w = max(government.w_min, model[hh_id].skill)
             set_employed_hh!(model[hh_id], w, cp_id)
             model[hh_id].w .= w
             hire_worker_p!(model[cp_id], model[hh_id])
@@ -54,7 +54,7 @@ function spread_employees_lm!(
         employees = all_hh[i:i+n_init_emp_kp-1]
 
         for hh_id in employees
-            w = max(gov_struct.w_min, model[hh_id].skill)
+            w = max(government.w_min, model[hh_id].skill)
             set_employed_hh!(model[hh_id], w, kp_id)
             model[hh_id].w .= w
             hire_worker_p!(model[kp_id], model[hh_id])
@@ -89,7 +89,7 @@ function labormarket_process!(
     all_hh::Vector{Int}, 
     all_p::Vector{Int}, 
     global_param::GlobalParam,
-    gov_struct::Government,
+    government::Government,
     t::Int,
     model::ABM,
     to
@@ -103,7 +103,13 @@ function labormarket_process!(
 
     # Update wage parameters households
     for hh_id in all_hh
-        update_sat_req_wage_hh!(model[hh_id], global_param.ϵ, gov_struct.UB, gov_struct.w_min)
+        update_sat_req_wage_hh!(
+            model[hh_id], 
+            global_param.ϵ, 
+            global_param.ω, 
+            government.UB, 
+            government.w_min
+        )
     end
 
     # Find all employed households that want to change jobs
@@ -226,7 +232,7 @@ function matching_lm(
 
     allowed_excess_L = 50
 
-    Lᵈ = Vector{Int}(undef, 50)
+    Lᵈ = Vector{Int}(undef, 100)
 
     labormarket.L_demanded = sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers)
     labormarket.L_hired = 0.0

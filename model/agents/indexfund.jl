@@ -10,9 +10,9 @@ Initializes index fund struct
 """
 function initialize_indexfund()::IndexFund
 
-    indexfund_struct = IndexFund()
+    indexfund = IndexFund()
     
-    return indexfund_struct
+    return indexfund
 end
 
 
@@ -20,11 +20,11 @@ end
 Takes dividends from producers
 """
 function receive_dividends_if!(
-    indexfund_struct::IndexFund,
+    indexfund::IndexFund,
     dividends::Float64
     )
     
-    indexfund_struct.Assets += dividends
+    indexfund.Assets += dividends
 end
 
 
@@ -32,14 +32,14 @@ end
 Deducts funds for investment in company
 """
 function decide_investments_if!(
-    indexfund_struct::IndexFund,
+    indexfund::IndexFund,
     all_req_NW::Float64,
     t::Int
     )::Float64
 
-    frac_NW_if = indexfund_struct.Assets > 0 ? min(indexfund_struct.Assets / all_req_NW, 1.0) : 0.0
-    indexfund_struct.funds_inv[t] = all_req_NW * frac_NW_if
-    indexfund_struct.Assets -= indexfund_struct.funds_inv[t]
+    frac_NW_if = indexfund.Assets > 0 ? min(indexfund.Assets / all_req_NW, 1.0) : 0.0
+    indexfund.funds_inv[t] = all_req_NW * frac_NW_if
+    indexfund.Assets -= indexfund.funds_inv[t]
     return frac_NW_if
 end
 
@@ -48,11 +48,11 @@ end
 Deducts funds for net debts lost
 """
 function deduct_unpaid_net_debts_if!(
-    indexfund_struct::IndexFund,
+    indexfund::IndexFund,
     total_unpaid_net_debt::Float64
     )
 
-    indexfund_struct.Assets -= total_unpaid_net_debt
+    indexfund.Assets -= total_unpaid_net_debt
 end
 
 
@@ -60,7 +60,7 @@ end
 Distributes dividends over participants in indexfund
 """
 function distribute_dividends_if!(
-    indexfund_struct::IndexFund,
+    indexfund::IndexFund,
     government::Government,
     all_hh::Vector{Int},
     τᴷ::Float64,
@@ -74,16 +74,13 @@ function distribute_dividends_if!(
     total_capgains_tax = 0
 
     for hh_id in all_hh
-
-        dividend_share = (model[hh_id].W / total_wealth) * indexfund_struct.Assets
-
+        dividend_share = (model[hh_id].W / total_wealth) * indexfund.Assets
         total_capgains_tax += τᴷ * dividend_share
-        receiveincome_hh!(model[hh_id], dividend_share * (1 - τᴷ), capgains=true)
+        receiveincome_hh!(model[hh_id], dividend_share * (1 - τᴷ); capgains=true)
     end
 
     # Reset assets back to zero
-    indexfund_struct.Assets = 0.0
+    indexfund.Assets = 0.0
 
     receive_capgains_tax_gov!(government, total_capgains_tax, t)
-
 end
