@@ -98,7 +98,7 @@ Checks if innovation is performed, then calls appropriate functions
 """
 function innovate_kp!(
     kp::CapitalGoodProducer, 
-    global_param, 
+    globalparam, 
     all_kp::Vector{Int}, 
     kp_distance_matrix::Array{Float64},
     w̄::Float64,
@@ -110,20 +110,20 @@ function innovate_kp!(
     # TODO include labor demand for researchers
 
     # Determine levels of R&D, and how to divide under IN and IM
-    set_RD_kp!(kp, global_param.ξ, global_param.ν)
+    set_RD_kp!(kp, globalparam.ξ, globalparam.ν)
     tech_choices = [(kp.A_LP, kp.A_EE, kp.A_EF, kp.B_LP, kp.B_EE, kp.B_EF)]
 
     # Determine innovation of machines (Dosi et al (2010); eq. 4)
-    θ_IN = 1 - exp(-global_param.ζ * kp.IN)
+    θ_IN = 1 - exp(-globalparam.ζ * kp.IN)
     if rand(Bernoulli(θ_IN))
-        # A_t_in = update_At_kp(kp.A_LP, global_param)
-        A_LP_t_in = update_techparam_p(kp.A_LP, global_param)
-        A_EE_t_in = update_techparam_p(kp.A_EE, global_param)
-        A_EF_t_in = update_techparam_p(kp.A_EF, global_param; is_EF=true)
+        # A_t_in = update_At_kp(kp.A_LP, globalparam)
+        A_LP_t_in = update_techparam_p(kp.A_LP, globalparam)
+        A_EE_t_in = update_techparam_p(kp.A_EE, globalparam)
+        A_EF_t_in = update_techparam_p(kp.A_EF, globalparam; is_EF=true)
 
-        B_LP_t_in = update_techparam_p(kp.B_LP, global_param)
-        B_EE_t_in = update_techparam_p(kp.B_EE, global_param)
-        B_EF_t_in = update_techparam_p(kp.B_EF, global_param; is_EF=true)
+        B_LP_t_in = update_techparam_p(kp.B_LP, globalparam)
+        B_EE_t_in = update_techparam_p(kp.B_EE, globalparam)
+        B_EF_t_in = update_techparam_p(kp.B_EF, globalparam; is_EF=true)
 
         push!(tech_choices, (A_LP_t_in, A_EE_t_in, A_EF_t_in, B_LP_t_in, B_EE_t_in, B_EF_t_in))
     end
@@ -131,7 +131,7 @@ function innovate_kp!(
     # TODO compute real value innovation like rer98
 
     # Determine immitation of competitors
-    θ_IM = 1 - exp(-global_param.ζ * kp.IM)
+    θ_IM = 1 - exp(-globalparam.ζ * kp.IM)
     if rand(Bernoulli(θ_IM))
         # A_LP_t_im, A_EE_t_im, A_EF_t_im, B_LP_t_im, B_EE_t_im, B_EF_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
         # push!(tech_choices, (A_LP_t_im, A_EE_t_im, A_EF_t_im, B_LP_t_im, B_EE_t_im, B_EF_t_im))
@@ -139,7 +139,7 @@ function innovate_kp!(
         push!(tech_choices, imitated_tech)
     end
 
-    choose_technology_kp!(kp, w̄, global_param, tech_choices, t, ep)
+    choose_technology_kp!(kp, w̄, globalparam, tech_choices, t, ep)
 end
 
 
@@ -149,7 +149,7 @@ Lets kp choose technology
 function choose_technology_kp!(
     kp::CapitalGoodProducer,
     w̄::Float64,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     tech_choices,
     t::Int,
     ep
@@ -160,19 +160,12 @@ function choose_technology_kp!(
 
     # Make choice between possible technologies
     if length(tech_choices) > 1
-    #     # If no new technologies, keep current technologies
-    #     c_h = kp.w̄[end] / kp.B_LP + ep.pₑ[t] / kp.B_EE
-    #     p_h = (1 + kp.μ[end]) * c_h
-    #     shift_and_append!(kp.c, c_h)
-    #     shift_and_append!(kp.p, p_h)
-    # else
-        # If new technologies, update price data
         #   Lamperti et al (2018), eq 1 and 2
         c_h_cp = map(tech -> (w̄/tech[1] + ep.pₑ[t]/tech[2]), tech_choices)
         c_h_kp = map(tech -> (kp.w̄[end]/tech[4] + ep.pₑ[t]/tech[5]), tech_choices)
  
         p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
-        r_h = c_h_cp .* global_param.b .+ p_h
+        r_h = c_h_cp .* globalparam.b .+ p_h
         idx = argmin(r_h)
 
         # Update tech parameters
@@ -182,9 +175,6 @@ function choose_technology_kp!(
         kp.B_LP = tech_choices[idx][4]
         kp.B_EE = tech_choices[idx][5]
         kp.B_EF = tech_choices[idx][6]
-
-        # shift_and_append!(kp.c, c_h_kp[idx])
-        # shift_and_append!(kp.p, p_h[idx])
     end
 end
 
@@ -195,7 +185,7 @@ Creates brochures and sends to potential clients.
 function send_brochures_kp!(
     kp::CapitalGoodProducer,
     all_cp::Vector{Int}, 
-    global_param,
+    globalparam,
     model::ABM;
     n_hist_clients=50::Int
     )
@@ -215,7 +205,7 @@ function send_brochures_kp!(
     if length(kp.HC) == 0
         n_choices = n_hist_clients
     else
-        n_choices = round(Int64, global_param.γ * length(kp.HC))
+        n_choices = round(Int64, globalparam.γ * length(kp.HC))
     end
     
     # Send brochures to new clients
@@ -333,15 +323,15 @@ Based on received orders, sets labor demand to fulfill production.
 """
 function plan_production_kp!(
     kp::CapitalGoodProducer,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     model::ABM
     )
 
     update_w̄_p!(kp, model)
     
     # Determine total amount of capital units to produce and amount of labor to hire
-    # kp.O = length(kp.orders) * global_param.freq_per_machine
-    # kp.O = sum(values(kp.orders)) * global_param.freq_per_machine
+    # kp.O = length(kp.orders) * globalparam.freq_per_machine
+    kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
 
     # Determine amount of labor to hire
     # kp.ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
@@ -356,7 +346,7 @@ function plan_production_kp!(
     ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
     kp.ΔLᵈ = max(ΔLᵈ, -kp.L)
 
-    # kp.ΔLᵈ = global_param.ω * kp.ΔLᵈ + (1-global_param.ω) * (kp.O / kp.B_LP - kp.L)
+    # kp.ΔLᵈ = globalparam.ω * kp.ΔLᵈ + (1-globalparam.ω) * (kp.O / kp.B_LP - kp.L)
 
     update_wᴼ_max_kp!(kp)
 end
@@ -368,17 +358,17 @@ Lets kp add goods to the production queue, based on available labor supply
 function produce_goods_kp!(
     kp::CapitalGoodProducer,
     ep,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     t::Int
     )
 
     # Determine what the total demand is, regardless if it can be satisfied
-    # D = length(kp.orders) * global_param.freq_per_machine
+    # D = length(kp.orders) * globalparam.freq_per_machine
     D = kp.O
     shift_and_append!(kp.D, D)
 
     # Determine how much labor is needed to produce a full machine
-    req_L = global_param.freq_per_machine / kp.B_LP
+    req_L = globalparam.freq_per_machine / kp.B_LP
 
     kp.prod_queue = Dict{Int64,Int64}()
 
@@ -423,7 +413,7 @@ function produce_goods_kp!(
     # println(kp.prod_queue)
 
     # Append total production amount of capital units
-    Q = sum(values(kp.prod_queue)) * global_param.freq_per_machine
+    Q = sum(values(kp.prod_queue)) * globalparam.freq_per_machine
     shift_and_append!(kp.Q, Q)
 
     # Update energy use from production
@@ -465,7 +455,9 @@ Sends orders from production queue to cp.
 """
 function send_ordered_machines_kp!(
     kp::CapitalGoodProducer,
-    global_param::GlobalParam,
+    ep,
+    globalparam::GlobalParam,
+    t::Int,
     model::ABM
     )
 
@@ -475,15 +467,15 @@ function send_ordered_machines_kp!(
 
             # Produce machines in production queue, send to cp
             machines = initialize_machine_stock(
-                            global_param.freq_per_machine, 
+                            globalparam.freq_per_machine, 
                             n_machines;
                             p = kp.p[end], 
                             A_LP = kp.A_LP,
                             A_EE = kp.A_EE,
                             A_EF = kp.A_EF
                         )
-            Iₜ = n_machines * global_param.freq_per_machine * kp.p[end]
-            receive_machines_cp!(model[cp_id], machines, Iₜ)
+            Iₜ = n_machines * globalparam.freq_per_machine * kp.p[end]
+            receive_machines_cp!(model[cp_id], ep, machines, Iₜ, t)
         end
 
         kp.prod_queue[cp_id] = 0
@@ -622,7 +614,7 @@ function replace_bankrupt_kp!(
     bankrupt_kp::Vector{Int},
     bankrupt_kp_i::Vector{Int},
     all_kp::Vector{Int},
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     indexfund_struct::IndexFund,
     init_param::InitParam,
     macro_struct::MacroEconomy,
@@ -658,7 +650,7 @@ function replace_bankrupt_kp!(
 
     # Compute the average stock of liquid assets of non-bankrupt kp
     avg_NW = mean(kp_id -> model[kp_id].balance.NW, nonbankrupt_kp)
-    NW_coefficients = rand(Uniform(global_param.φ3, global_param.φ4),
+    NW_coefficients = rand(Uniform(globalparam.φ3, globalparam.φ4),
                            length(bankrupt_kp))
 
     # Compute share of investments that can be paid from the investment fund                       
@@ -670,8 +662,8 @@ function replace_bankrupt_kp!(
     for (i, (kp_id, kp_i)) in enumerate(zip(bankrupt_kp, bankrupt_kp_i))
         # Sample a producer of which to take over the technologies, proportional to the 
         # quality of the technology
-        tech_coeff = (global_param.φ5 + rand(Beta(global_param.α2, global_param.β2)) 
-                                        * (global_param.φ6 - global_param.φ5))
+        tech_coeff = (globalparam.φ5 + rand(Beta(globalparam.α2, globalparam.β2)) 
+                                        * (globalparam.φ6 - globalparam.φ5))
 
         new_A_LP = max(A_LP_max * (1 + tech_coeff), init_param.A_LP_0)
         new_A_EE = max(A_EE_max * (1 + tech_coeff), init_param.A_LP_0)
@@ -701,7 +693,7 @@ function replace_bankrupt_kp!(
         )
 
         # Borrow the remaining funds
-        borrow_funds_p!(new_kp, (1 - frac_NW_if) * NW_stock, global_param.b)
+        borrow_funds_p!(new_kp, (1 - frac_NW_if) * NW_stock, globalparam.b)
 
         add_agent!(new_kp, model)
     end

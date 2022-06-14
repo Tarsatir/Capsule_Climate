@@ -42,11 +42,11 @@ end
 function initialize_energy_producer(
     T::Int,
     init_param::InitParam,
-    global_param::GlobalParam
+    globalparam::GlobalParam
     )::EnergyProducer
 
     # Initialize power plants
-    n_pp::Int = init_param.n_powerplants_init / global_param.freq_per_powerplant
+    n_pp::Int = init_param.n_powerplants_init / globalparam.freq_per_powerplant
     n_pp_green::Int = init_param.frac_green * n_pp
 
     # Initialize green power plants
@@ -54,10 +54,10 @@ function initialize_energy_producer(
     for _ in 1:n_pp_green
         green_pp = PowerPlant(
                     type = "Green",
-                    age = sample(0:global_param.ηₑ),
+                    age = sample(0:globalparam.ηₑ),
                     c = 0.0,
-                    freq = global_param.freq_per_powerplant,
-                    capacity = global_param.freq_per_powerplant,
+                    freq = globalparam.freq_per_powerplant,
+                    capacity = globalparam.freq_per_powerplant,
                     Aᵀ = 0.0,
                     em = 0.0
                    )
@@ -69,14 +69,14 @@ function initialize_energy_producer(
     for _ in n_pp_green+1:n_pp
         dirty_pp = PowerPlant(
                     type = "Dirty",
-                    age = sample(0:global_param.ηₑ),
+                    age = sample(0:globalparam.ηₑ),
                     c = 0.0,
-                    freq = global_param.freq_per_powerplant,
-                    capacity = global_param.freq_per_machine * init_param.Aᵀ_0,
+                    freq = globalparam.freq_per_powerplant,
+                    capacity = globalparam.freq_per_machine * init_param.Aᵀ_0,
                     Aᵀ = init_param.Aᵀ_0,
                     em = init_param.emᵀ_0
                    )
-        update_c_pp!(dirty_pp, global_param.p_f)
+        update_c_pp!(dirty_pp, globalparam.p_f)
         push!(dirty_portfolio, dirty_pp)
     end
 
@@ -104,7 +104,7 @@ function produce_energy_ep!(
     ep::EnergyProducer,
     all_cp::Vector{Int},
     all_kp::Vector{Int},
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     indexfund_struct::IndexFund,
     t::Int,
     model::ABM
@@ -116,12 +116,12 @@ function produce_energy_ep!(
         update_age_pp!(pp)
 
         if pp ∈ ep.dirty_portfolio
-            update_c_pp!(pp, global_param.p_f)
+            update_c_pp!(pp, globalparam.p_f)
         end
     end
     
     # Update cost frontier of ep
-    compute_c_ep!(ep, global_param.p_f, t)
+    compute_c_ep!(ep, globalparam.p_f, t)
 
     # Determine demand for energy
     compute_Dₑ_ep!(ep, all_cp, all_kp, t, model)
@@ -131,11 +131,11 @@ function produce_energy_ep!(
     compute_Q̄_ep!(ep, t)
 
     # Check if production capacity needs to be expanded and old pp replaced
-    plan_investments_ep!(ep, global_param, t)
+    plan_investments_ep!(ep, globalparam, t)
 
     # Choose pp to use in production
     choose_powerplants_ep!(ep, t)
-    compute_FU_ICₑ_ep!(ep, global_param.p_f, t)
+    compute_FU_ICₑ_ep!(ep, globalparam.p_f, t)
     compute_emissions_ep!(ep, t)
 
     # Compute profits
@@ -211,15 +211,15 @@ Investment process of ep
 """
 function plan_investments_ep!(
     ep::EnergyProducer,
-    global_param, 
+    globalparam, 
     t::Int
     )
 
-    compute_RSᵈ_ep!(ep, global_param.ηₑ, t)
+    compute_RSᵈ_ep!(ep, globalparam.ηₑ, t)
 
     compute_EIᵈ_ep!(ep, t)
 
-    expand_and_replace_pp_ep!(ep, global_param, t)
+    expand_and_replace_pp_ep!(ep, globalparam, t)
 end
 
 
@@ -228,15 +228,15 @@ end
 """
 function expand_and_replace_pp_ep!(
     ep::EnergyProducer,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     t::Int
     )
 
-    n_add_pp = ceil(Int, (ep.EIᵈ[t] + ep.RSᵈ[t]) / global_param.freq_per_powerplant)
+    n_add_pp = ceil(Int, (ep.EIᵈ[t] + ep.RSᵈ[t]) / globalparam.freq_per_powerplant)
 
     # TODO: if expanding green, invested sum should go somewhere!
 
-    if ep.IC_g[t] <= global_param.bₑ * ep.c_d[t]
+    if ep.IC_g[t] <= globalparam.bₑ * ep.c_d[t]
         
         # Invest green
         ep.ECₑ[t] = ep.IC_g[t] * ep.EIᵈ[t]
@@ -247,8 +247,8 @@ function expand_and_replace_pp_ep!(
                 type = "Green",
                 age = 0,
                 c = 0.0,
-                freq = global_param.freq_per_powerplant,
-                capacity = global_param.freq_per_powerplant,
+                freq = globalparam.freq_per_powerplant,
+                capacity = globalparam.freq_per_powerplant,
                 Aᵀ = 0.0,
                 em = 0.0
             )
@@ -263,8 +263,8 @@ function expand_and_replace_pp_ep!(
                 type = "Dirty",
                 age = 0,
                 c = ep.c_d[t],
-                freq = global_param.freq_per_powerplant,
-                capacity = global_param.freq_per_machine * ep.Aᵀ_d[t],
+                freq = globalparam.freq_per_powerplant,
+                capacity = globalparam.freq_per_machine * ep.Aᵀ_d[t],
                 Aᵀ = ep.Aᵀ_d[t],
                 em = ep.emᵀ_d[t]
             )
@@ -287,29 +287,29 @@ Innocation process
 """
 function innovate_ep!(
     ep::EnergyProducer,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     t::Int
     )
 
     # Compute R&D spending (Lamperti et al (2018), eq 18)
-    ep.RDₑ[t] = t > 1 ? global_param.νₑ * ep.pₑ[t-1] * ep.Dₑ[t-1] : 0.0
+    ep.RDₑ[t] = t > 1 ? globalparam.νₑ * ep.pₑ[t-1] * ep.Dₑ[t-1] : 0.0
 
     # Compute portions of R&D spending going to innovation in green and dirty tech
     #   (Lamperti et al (2018), eq 18.5)
-    ep.IN_g[t] = global_param.ξₑ * ep.RDₑ[t]
-    ep.IN_d[t] = (1 - global_param.ξₑ) * ep.RDₑ[t]
+    ep.IN_g[t] = globalparam.ξₑ * ep.RDₑ[t]
+    ep.IN_d[t] = (1 - globalparam.ξₑ) * ep.RDₑ[t]
 
     # Define success probabilities of tech search (Lamperti et al (2018), eq 19)
-    θ_g = 1 - exp(-global_param.ζ_ge * ep.IN_g[t])
-    θ_d = 1 - exp(-global_param.ζ_de * ep.IN_d[t])
+    θ_g = 1 - exp(-globalparam.ζ_ge * ep.IN_g[t])
+    θ_d = 1 - exp(-globalparam.ζ_de * ep.IN_d[t])
 
     # Candidate innovation for green tech
     if rand(Bernoulli(θ_g))
         # Draw from Beta distribution
-        κ_g = rand(Beta(global_param.α1, global_param.β1))
+        κ_g = rand(Beta(globalparam.α1, globalparam.β1))
 
         # Scale over supports
-        κ_g = global_param.κ_lower + κ_g * (global_param.κ_upper - global_param.κ_lower)
+        κ_g = globalparam.κ_lower + κ_g * (globalparam.κ_upper - globalparam.κ_lower)
 
         # Compute possible cost, replace all future if better
         #   (Lamperti et al (2018), eq 20)
@@ -320,11 +320,11 @@ function innovate_ep!(
     # Candidate innovation for dirty tech
     if rand(Bernoulli(θ_d))
         # Draw from Beta distribution
-        κ_d_A, κ_d_em = rand(Beta(global_param.α1, global_param.β1), 2)
+        κ_d_A, κ_d_em = rand(Beta(globalparam.α1, globalparam.β1), 2)
 
         # Scale over supports
-        κ_d_A = global_param.κ_lower + κ_d_A * (global_param.κ_upper - global_param.κ_lower)
-        κ_d_em = global_param.κ_lower + κ_d_em * (global_param.κ_upper - global_param.κ_lower)
+        κ_d_A = globalparam.κ_lower + κ_d_A * (globalparam.κ_upper - globalparam.κ_lower)
+        κ_d_em = globalparam.κ_lower + κ_d_em * (globalparam.κ_upper - globalparam.κ_lower)
 
         # Compute possible thermal efficiency, replace all future if better
         #   (Lamperti et al (2018), eq 21)

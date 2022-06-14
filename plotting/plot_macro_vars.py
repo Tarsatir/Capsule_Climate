@@ -78,12 +78,14 @@ def plot_macro_vars(df):
     real_I_avg = 100 * df.I_avg / df.CPI
     real_I_labor = 100 * df.I_labor_avg / df.CPI
     real_I_capital = 100 * df.I_capital_avg / df.CPI
-    real_I_transfer = 100 * df.I_transfer_avg / df.CPI
+    real_I_UB = 100 * df.I_UB_avg / df.CPI
+    real_I_socben = 100 * df.I_socben_avg / df.CPI
 
     ax[2,1].plot(T, real_I_avg, color='purple', label='total')
     ax[2,1].plot(T, real_I_labor, color='blue', label='labor')
     ax[2,1].plot(T, real_I_capital, color='red', label='capital')
-    ax[2,1].plot(T, real_I_transfer, color='green', label='transfer')
+    ax[2,1].plot(T, real_I_UB, color='green', label='UB')
+    ax[2,1].plot(T, real_I_socben, color='orange', label='socben')
     ax[2,1].hlines(0, max(T), 0, linestyle='dashed', color='black')
     ax[2,1].legend()
     ax[2,1].set_title('Real income of households')
@@ -300,6 +302,7 @@ def plot_income_dist():
 
     ax[0,0].hist(df.all_I, bins=100)
     ax[0,0].set_title('Income ($I_{i,t}$)')
+    ax[0,0].set_xlim(0, max(df.all_I))
 
     ax[0,1].hist(df.all_I, bins=300)
     ax[0,1].set_title('Income ($I_{i,t}$), log-log')
@@ -308,6 +311,7 @@ def plot_income_dist():
 
     ax[1,0].hist(df.all_w, bins=100)
     ax[1,0].set_title('Wages ($w_{i,t}$)')
+    ax[1,0].set_xlim(0, max(df.all_w))
 
     ax[1,1].hist(df.all_w, bins=100)
     ax[1,1].set_title('Wages ($w_{i,t}$), log-log')
@@ -316,6 +320,7 @@ def plot_income_dist():
 
     ax[2,0].hist(df.all_W, bins=100)
     ax[2,0].set_title('Wealth ($W_{i,t}$)')
+    ax[2,0].set_xlim(0, max(df.all_W))
 
     ax[2,1].hist(df.all_W, bins=100)
     ax[2,1].set_title('Wealth ($W_{i,t}$), log-log')
@@ -324,9 +329,13 @@ def plot_income_dist():
 
     ax[3,0].scatter(df.skills, df.all_I, s=0.3)
     ax[3,0].set_title('Income to skills')
+    ax[3,0].set_xlabel('skill')
+    ax[3,0].set_ylabel('income')
 
     ax[3,1].scatter(df.skills, df.all_W, s=0.3)
     ax[3,1].set_title('Wealth to skills')
+    ax[3,1].set_xlabel('skill')
+    ax[3,1].set_ylabel('wealth')
 
     plt.tight_layout()
     plt.savefig('plots/final_income_dist.png')

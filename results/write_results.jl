@@ -67,7 +67,8 @@ function save_macro_data(macro_struct)
         I_avg = macro_struct.Ī_avg,
         I_labor_avg = macro_struct.I_labor_avg,
         I_capital_avg = macro_struct.I_capital_avg,
-        I_transfer_avg = macro_struct.I_transfer_avg,
+        I_UB_avg = macro_struct.I_UB_avg,
+        I_socben_avg = macro_struct.I_socben_avg,
 
         dL_avg = macro_struct.ΔL̄_avg,
         dL_std = macro_struct.ΔL̄_std,

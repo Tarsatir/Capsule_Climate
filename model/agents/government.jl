@@ -1,6 +1,6 @@
 @Base.kwdef mutable struct Government <: AbstractAgent
     UB::Float64 = 40.0                     # unemployment benefits
-    w_min::Float64 = 0.5
+    w_min::Float64 = 0.7
 
     # Tax rates
     τᴵ::Float64 = 0.3                      # income tax
@@ -28,34 +28,13 @@ function pay_unemployment_benefits_gov!(
     # Pay out unemployment benefits to households
     total_UB = 0
     for hh_id in unemployed
-        receiveincome_hh!(model[hh_id], government.UB; transfer=true)
+        receiveincome_hh!(model[hh_id], government.UB; UB=true)
         total_UB += government.UB
     end
 
     # Add total UB spending to government current account
     government.curracc.Exp_UB[t] = total_UB
 end
-
-
-# """
-# Levies income tax on all households
-# """
-# function levy_income_tax_gov!(
-#     government::Government, 
-#     all_hh::Vector{Int},
-#     t::Int,
-#     model::ABM
-#     )
-
-#     total_τᴵ = 0
-#     for hh_id in all_hh
-#         total_τᴵ += model[hh_id].I * government.τᴵ
-#         model[hh_id].Iᵀ = model[hh_id].I * (1 - government.τᴵ)
-#     end
-
-#     # Add total income tax to government current account
-#     government.curracc.Rev_τᴵ[t] = total_τᴵ
-# end
 
 
 """
@@ -94,7 +73,6 @@ function receive_incometax_gov!(
     )
 
     government.curracc.Rev_τᴵ[t] += incometax
-    # government.MS += incometax
 end
 
 
@@ -108,7 +86,6 @@ function receive_capgains_tax_gov!(
     )
 
     government.curracc.Rev_τᴷ[t] += capgainstax
-    # government.MS += capgainstax
 end
 
 
@@ -161,8 +138,21 @@ function redistribute_surplus_gov!(
         total_I = sum(hh_id -> model[hh_id].total_I, all_hh)
         for hh_id in all_hh
             socialbenefits = (model[hh_id].total_I / total_I) * government.MS
-            receiveincome_hh!(model[hh_id], socialbenefits; transfer=true)
+            receiveincome_hh!(model[hh_id], socialbenefits; socben=true)
         end
         government.MS = 0.0
     end
+end
+
+
+"""
+Determines the rate of income tax that should be paid over the agent's income.
+    This will be a flat rate by default, and can be ammended to be a progressive tax.
+"""
+function determine_incometaxrate(
+    government::Government,
+    income::Float64
+    )::Float64
+
+    return government.τᴵ
 end

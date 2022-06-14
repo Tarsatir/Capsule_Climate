@@ -88,7 +88,7 @@ function labormarket_process!(
     labormarket::LaborMarket,
     all_hh::Vector{Int}, 
     all_p::Vector{Int}, 
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     government::Government,
     t::Int,
     model::ABM,
@@ -105,22 +105,21 @@ function labormarket_process!(
     for hh_id in all_hh
         update_sat_req_wage_hh!(
             model[hh_id], 
-            global_param.ϵ, 
-            global_param.ω, 
-            government.UB, 
+            globalparam.ϵ, 
+            globalparam.ω, 
             government.w_min
         )
     end
 
     # Find all employed households that want to change jobs
-    employed_jobseekers = find_employed_jobseekers_lm(labormarket.employed_hh, global_param.ψ_E)
+    employed_jobseekers = find_employed_jobseekers_lm(labormarket.employed_hh, globalparam.ψ_E)
 
     # Update jobseeking households
     labormarket.jobseeking_hh = vcat(employed_jobseekers, labormarket.unemployed)
 
     if length(labormarket.jobseeking_hh) > 0 && length(labormarket.unemployed) > 0
         println("   L available $(sum(hh_id -> model[hh_id].L * model[hh_id].skill, labormarket.jobseeking_hh))")
-        println("       L switch $(sum(hh_id -> model[hh_id].L * model[hh_id].skill, employed_jobseekers))")
+        println("       L switch $(length(employed_jobseekers) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employed_jobseekers) : 0.0)")
         println("       L unemp $(sum(hh_id -> model[hh_id].L * model[hh_id].skill, labormarket.unemployed))")
     else
         println("   L available 0")
@@ -128,7 +127,8 @@ function labormarket_process!(
 
     # Labor market matching process
     @timeit to "matching" matching_lm(
-        labormarket, 
+        labormarket,
+        all_p, 
         model,
     )
 
@@ -219,12 +219,11 @@ Matches job-seeking households with employee-seeking firms
 """
 function matching_lm(
     labormarket::LaborMarket,
+    all_p::Vector{Int},
     model::ABM,
     )
     
-    jobseeking_weights = map(hh_id -> model[hh_id].skill, labormarket.jobseeking_hh)
-
-    hiring_producers_dict = Dict(p_id => model[p_id].ΔLᵈ for p_id in labormarket.hiring_producers)
+    # jobseeking_weights = map(hh_id -> model[hh_id].skill, labormarket.jobseeking_hh)
 
     # Track employed jobseekers that actually switch jobs
     n_jobswitchers = 0
@@ -236,6 +235,12 @@ function matching_lm(
 
     labormarket.L_demanded = sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers)
     labormarket.L_hired = 0.0
+
+    # for _ in 1:2
+
+    # update_hiring_firing_producers(labormarket, all_p, model)
+    sort!(labormarket.hiring_producers, by=p_id->model[p_id].ΔLᵈ, rev=true)
+    hiring_producers_dict = Dict(p_id => model[p_id].ΔLᵈ for p_id in labormarket.hiring_producers)
 
     # Loop over hiring producers producers
     for (p_id, ΔL) in hiring_producers_dict
@@ -251,7 +256,6 @@ function matching_lm(
         # n_sample = min(30, length(jobseeking_hh))
         # @timeit to "sample" Lᵈ .= sample(jobseeking_hh, n_sample, replace=false)
         StatsBase.sample!(labormarket.jobseeking_hh, Lᵈ; replace=false)
-        # sort!(Lᵈ, by = hh_id -> model[hh_id].wʳ[end] / model[hh_id].skill)
         sort!(Lᵈ, by = hh_id -> model[hh_id].skill, rev=true)
 
         to_be_hired = Vector{Int}()
@@ -276,7 +280,6 @@ function matching_lm(
         
         # Set offered wage to lowest requested wage that makes producer
         # meet the labor target
-
         unemployed_to_employed = Vector{Int}()
 
         if length(to_be_hired) > 0
@@ -288,11 +291,9 @@ function matching_lm(
                 # If employed, change employer, otherwise get employed
                 if model[hh_id].employed
                     remove_worker_p!(model[model[hh_id].employer_id], model[hh_id])
-                    # change_employer_hh!(model[hh_id], model[p_id].wᴼ, p_id)
                     change_employer_hh!(model[hh_id], model[hh_id].wʳ, p_id)
                     n_jobswitchers += 1
                 else
-                    # set_employed_hh!(model[hh_id], model[p_id].wᴼ, p_id)
                     set_employed_hh!(model[hh_id], model[hh_id].wʳ, p_id)
                     push!(unemployed_to_employed, hh_id)
                 end
@@ -308,6 +309,7 @@ function matching_lm(
             hiring_producers_dict[p_id] = ΔL
         end
     end
+    # end
 
     # Updates the labor market's switching rate (use n employed from before matching)
     labormarket.switch_rate = n_jobswitchers / n_employed

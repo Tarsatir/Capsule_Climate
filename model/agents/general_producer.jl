@@ -57,6 +57,7 @@ function hire_worker_p!(
 
     push!(p.employees, hh.id)
     p.L += hh.L * hh.skill
+    # p.ΔLᵈ = max(0.0, p.ΔLᵈ - hh.L * hh.skill)
 end
 
 
@@ -78,6 +79,7 @@ function remove_worker_p!(
     )
 
     p.L -= hh.L * hh.skill
+    # p.ΔLᵈ += hh.L * hh.skill
     p.employees = filter(hh_id -> hh_id ≠ hh.id, p.employees)
 end
 

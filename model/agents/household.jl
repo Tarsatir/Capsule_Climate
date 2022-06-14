@@ -16,7 +16,8 @@
     total_I::Float64 = L * skill                # total income from all factors
     labor_I::Float64 = L * skill                # income from labor
     capital_I::Float64 = 0.0                    # income from capital
-    transfer_I::Float64 = 0.0                   # income from transfers
+    UB_I::Float64 = 0.0                         # income from unemployment benefits
+    socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 300                            # wealth or cash on hand
 
@@ -51,7 +52,7 @@ Sets consumption budget based on current wealth level
 """
 function set_consumption_budget_hh!(
     hh::Household,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     model::ABM
     )
 
@@ -59,7 +60,7 @@ function set_consumption_budget_hh!(
     update_average_price_hh!(hh, model)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, global_param.α_cp)
+    compute_consumption_budget_hh!(hh, globalparam.α_cp)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
@@ -90,8 +91,8 @@ function compute_consumption_budget_hh!(
     if hh.W > 0
         hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
         # hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : 0.0
-        hh.s = hh.total_I > 0 ? (hh.total_I - hh.C) / hh.total_I : 0.0 
-        # println("   $(hh.s), $(hh.C), $(hh.W)")
+        hh.s = hh.total_I > 0 ? ((hh.total_I + hh.capital_I + hh.socben_I) - hh.C) / (hh.total_I + hh.capital_I + hh.socben_I) : 0.0 
+        # println("   $(hh.s), $(hh.C), $(hh.W), $((hh.total_I + hh.capital_I))")
     else
         hh.C = 0.0
         hh.s = 0.0
@@ -129,14 +130,13 @@ function update_sat_req_wage_hh!(
     hh::Household, 
     ϵ::Float64,
     ω::Float64, 
-    UB::Float64,
     w_min::Float64
     )
 
     # Update wˢ using adaptive rule
     # hh.wˢ = ω * hh.wˢ + (1 - ω) * (hh.employed ? hh.w[end] : w_min)
     if hh.employed
-        hh.wˢ = hh.w[end]
+        hh.wˢ = max(w_min, hh.w[end])
     else
         hh.wˢ = max(w_min, hh.wˢ * (1 - ϵ))
     end
@@ -156,7 +156,8 @@ function receiveincome_hh!(
     hh::Household, 
     amount::Float64;
     capgains::Bool=false,
-    transfer::Bool=false
+    UB::Bool=false,
+    socben::Bool=false
     )
 
     # Add income to total income amount
@@ -167,12 +168,17 @@ function receiveincome_hh!(
         # Capital gains are added directly to the wealth, as they are added
         # at the end of the period
         hh.capital_I = amount
-    elseif transfer
+
+    elseif UB
+        hh.UB_I = UB
+        hh.labor_I = 0.0
+    elseif socben
         # Transfer income can come from unemployment or other social benefits
-        hh.transfer_I += amount
+        hh.socben_I = amount
     else
         # If employed, add to labor income, else add to transfer income
         hh.labor_I = amount
+        hh.UB_I = 0.0
         shift_and_append!(hh.w, hh.w[end])
     end
 end
@@ -237,7 +243,7 @@ end
 Decides whether to switch to other cp
 """
 function decide_switching_all_hh!(
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     all_hh::Vector{Int},
     all_cp::Vector{Int},
     all_p::Vector{Int},
@@ -248,7 +254,7 @@ function decide_switching_all_hh!(
 
     for hh_id in all_hh
         # Check if demand was constrained and for chance of changing cp
-        if length(model[hh_id].unsat_dem) > 0 && rand() < global_param.ψ_Q
+        if length(model[hh_id].unsat_dem) > 0 && rand() < globalparam.ψ_Q
 
             # Pick a supplier to change, first set up weights inversely proportional
             # to supplied share of goods
@@ -278,7 +284,7 @@ function decide_switching_all_hh!(
         end
 
         # Check if household will look for a better price
-        if rand() < global_param.ψ_P
+        if rand() < globalparam.ψ_P
 
             # Randomly select a supplier that may be replaced
             p_id_candidate1 = sample(model[hh_id].cp)
@@ -367,7 +373,7 @@ function resetincomes_hh!(
     )
 
     hh.total_I = 0.0
-    hh.labor_I = 0.0
+    # hh.labor_I = 0.0
     # hh.capital_I = 0.0
-    hh.transfer_I = 0.0
+    # hh.transfer_I = 0.0
 end

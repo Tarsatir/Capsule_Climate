@@ -2,7 +2,7 @@ function consumermarket_process!(
     all_hh::Vector{Int},
     all_cp::Vector{Int}, 
     gov_struct::Government,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     cm_dat::CMData,
     t::Int,
     model::ABM,
@@ -11,7 +11,7 @@ function consumermarket_process!(
 
     # Households set consumption budget
     @timeit to "set budget" @inbounds for hh_id in all_hh
-        set_consumption_budget_hh!(model[hh_id], global_param, model)
+        set_consumption_budget_hh!(model[hh_id], globalparam, model)
     end
 
     # Reset cm data 
@@ -52,10 +52,10 @@ function consumermarket_process!(
     # # Let households set their budget and order their goods
     # @inbounds for hh_id in all_hh
     #     # Set consumption budget and shares of good types and place orders
-    #     set_consumption_budget_hh!(model[hh_id], all_W_hh, global_param, model)
+    #     set_consumption_budget_hh!(model[hh_id], all_W_hh, globalparam, model)
 
         # @timeit to "cp orders" cp_orders, cp_inventories, cp_with_inventory = place_orders_hh!(model[hh_id].cp, model[hh_id].C, 
-    #                                                         cp_inventories, cp_with_inventory, global_param, model, to)
+    #                                                         cp_inventories, cp_with_inventory, globalparam, model, to)
 
     #     for (cp_id, qp) in cp_orders
     #         push!(model[cp_id].order_queue, (hh_id, qp / model[cp_id].p[end]))

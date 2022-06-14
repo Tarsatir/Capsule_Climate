@@ -49,7 +49,8 @@
     Ī_avg::Vector{Float64} = zeros(Float64, T)              # average income over time
     I_labor_avg::Vector{Float64} = zeros(Float64, T)        # average labor income over time
     I_capital_avg::Vector{Float64} = zeros(Float64, T)      # average capital income over time
-    I_transfer_avg::Vector{Float64} = zeros(Float64, T)     # average transfer income over time
+    I_UB_avg::Vector{Float64} = zeros(Float64, T)           # average UB income over time
+    I_socben_avg::Vector{Float64} = zeros(Float64, T)       # average social benefits income over time
 
     B̄_avg::Vector{Float64} = zeros(Float64, T)              # average of budget over time
     B̄_std::Vector{Float64} = zeros(Float64, T)              # std of budget over time
@@ -131,7 +132,7 @@ function update_macro_timeseries(
     labormarket_struct, 
     gov_struct::Government,
     indexfund_struct::IndexFund,
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     model::ABM,
     to
     )
@@ -169,7 +170,7 @@ function update_macro_timeseries(
 
     update_income_stats!(all_hh, macro_struct, t, model)
 
-    update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, global_param.Λ, macro_struct, t, model)
+    update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, globalparam.Λ, macro_struct, t, model)
 
     # Investment
     macro_struct.EI_avg[t] = mean(cp_id -> model[cp_id].EIᵈ, all_cp)
@@ -340,10 +341,12 @@ function update_income_stats!(
 
     macro_struct.I_capital_avg[t] = mean(hh_id -> model[hh_id].capital_I, all_hh)
 
-    macro_struct.I_transfer_avg[t] = mean(hh_id -> model[hh_id].transfer_I, all_hh)
+    macro_struct.I_UB_avg[t] = mean(hh_id -> model[hh_id].UB_I, all_hh)
+
+    macro_struct.I_socben_avg[t] = mean(hh_id -> model[hh_id].socben_I, all_hh)
 
     macro_struct.Ī_avg[t] = (macro_struct.I_labor_avg[t] + macro_struct.I_capital_avg[t] 
-                             + macro_struct.I_transfer_avg[t])
+                             + macro_struct.I_UB_avg[t] + macro_struct.I_socben_avg[t])
 end
 
 
