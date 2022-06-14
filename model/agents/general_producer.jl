@@ -191,7 +191,7 @@ Checks whether producers are bankrupt and should be replaced, returns vectors
 function check_bankrupty_all_p!(
     all_p::Vector{Int},
     all_kp::Vector{Int},
-    global_param::GlobalParam, 
+    globalparam::GlobalParam, 
     model::ABM
     )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}}
 
@@ -205,7 +205,7 @@ function check_bankrupty_all_p!(
     kp_counter = 0
 
     for p_id in all_p
-        if check_if_bankrupt_p!(model[p_id], global_param.t_wait)
+        if check_if_bankrupt_p!(model[p_id], globalparam.t_wait)
             if typeof(model[p_id]) == ConsumerGoodProducer
                 # cp_counter += 1
                 push!(bankrupt_cp, p_id)
@@ -314,12 +314,12 @@ Determines new productivity level, resulting from innovation process for both kp
 """
 function update_techparam_p(
     TP_last::Float64, 
-    global_param::GlobalParam;
+    globalparam::GlobalParam;
     is_EF::Bool = false
     )::Float64
 
-    κ_i = rand(Beta(global_param.α1, global_param.β1))
-    κ_i = global_param.κ_lower + κ_i * (global_param.κ_upper - global_param.κ_lower)
+    κ_i = rand(Beta(globalparam.α1, globalparam.β1))
+    κ_i = globalparam.κ_lower + κ_i * (globalparam.κ_upper - globalparam.κ_lower)
 
     return is_EF ? TP_last * (1 - κ_i) : TP_last * (1 + κ_i)
 end

@@ -699,12 +699,12 @@ function update_μ_cp!(
     μ_avg::Float64
     )
 
-    # if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
-    #     new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
-    # else
-    #     new_μ = cp.μ[end] * 0.95
-    # end
-    # shift_and_append!(cp.μ, new_μ)
+    if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
+        new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
+    else
+        new_μ = cp.μ[end] * 0.95
+    end
+    shift_and_append!(cp.μ, new_μ)
 
     # b = 0.02
     # l = 2
@@ -772,7 +772,7 @@ function update_μ_cp!(
 
     # shift_and_append!(cp.μ, new_μ)
 
-    shift_and_append!(cp.μ, cp.μ[end])
+    # shift_and_append!(cp.μ, cp.μ[end])
 end
 
 
@@ -813,11 +813,11 @@ function update_ΔLᵈ_cp!(
     ω::Float64
     )
     
-    cp.Lᵈ = ω * cp.L + (1 - ω) * min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
-    cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
+    # cp.Lᵈ = ω * cp.L + (1 - ω) * min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
+    # cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
 
-    # ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
-    # cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
+    ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
+    cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
 end
 
 
