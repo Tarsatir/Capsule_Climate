@@ -700,7 +700,7 @@ function update_μ_cp!(
     )
 
     if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
-        new_μ = cp.μ[end] * (1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
+        new_μ = cp.μ[end] * min((1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1]), 1.04)
     else
         new_μ = cp.μ[end] * 0.95
     end

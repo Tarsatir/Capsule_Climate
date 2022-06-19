@@ -55,8 +55,11 @@ function generate_labels(
         df[!, "Gini_W_1st"] .= NaN
         df[!, "Gini_W_2nd"] .= NaN
 
+        # Add unemployment moments
+        df[!, "U_1st"] .= NaN
+        df[!, "U_2nd"] .= NaN
 
-        # Add pov moments
+        # Add poverty moments
         # TODO
 
         # Write to csv
@@ -85,8 +88,6 @@ function generate_simdata(
     
     Threads.@threads for _ in 1:n_threads
 
-        # @eval $(Symbol("df$(Threads.threadid())")) = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
-
         total_completed_runs = 0
 
         params = collect(keys(X_labels))
@@ -111,8 +112,6 @@ function generate_simdata(
                 for param in params
                     changedparams[param] = df[row, param]
                 end
-
-                # println(changedparams)
 
                 # Run the model with changed parameters
                 GDP_g, GINI_I, GINI_W, U = run_simulation(
@@ -151,45 +150,6 @@ function generate_simdata(
                 break
             end
         end
-
-        # # Run simulations for the given parameter values
-        # Yg_mean = zeros(n_per_epoch)
-        # Yg_std = zeros(n_per_epoch)
-
-        # Cg_mean = zeros(N)
-        # Cg_std = zeros(N)
-
-        # for i in 1:N
-
-        #     println("Simulation nr: $i")
-
-        #     # Retrieve variables, repackage to pass to simulation
-        #     Xi = X[i,:]
-        #     changed_params = Dict(k=>Xi[i] for (i,k) in enumerate(keys(X_labels)))
-
-        #     # Run simulation
-        #     Yg, Cg = run_simulation(
-        #                 changed_params=changed_params,
-        #                 full_output=false
-        #             )
-
-        #     # Store output data
-        #     Yg_mean[i] = mean(Yg[100:end])
-        #     Yg_std[i] = std(Yg[100:end])
-
-        #     Cg_mean[i] = mean(Cg[100:end])
-        #     Cg_std[i] = std(Cg[100:end])
-        # end
-
-        # # Set up dataframe containing results
-        # df = DataFrame(Dict(x=>X[:,i] for (i,x) in enumerate(keys(X_labels))))
-        # df[!, "Yg_mean"] = Yg_mean
-        # df[!, "Yg_std"] = Yg_std
-        # df[!, "Cg_mean"] = Cg_mean
-        # df[!, "Cg_std"] = Cg_std
-
-        # # Write results to csv
-        # CSV.write(path, df)
     end
 
 end
@@ -232,31 +192,32 @@ end
 # Include Python file containing GSA functions
 @pyinclude("parameters/sensitivity/run_GSA.py")
 
-run_nr = 4
+run_nr = 5
 
 path(run_nr, thread_nr) = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
 
-n_threads = Threads.nthreads()
-# n_threads = 8
+# n_threads = Threads.nthreads()
+n_threads = 32
 
 # Define number of similated runs
 N_u = 500
 n = 50
-N_c = 500
+N_c = 100
 
 
 # Define number of time steps per simulation and warmup period
 n_timesteps = 460
 n_warmup = 100
 
-X_labels = Dict([["α_cp", [0.6, 1.0]],
+X_labels = Dict([["α_cp", [0.4, 1.0]],
                  ["μ1", [0.0, 0.4]],
                  ["ω", [0.0, 1.0]],
                  ["ϵ", [0.0, 0.1]],
                  ["κ_upper", [0.0, 0.05]],
                  ["ψ_E", [0.0, 0.1]],
-                 ["ψ_Q", [0.0, 1.0]],
-                 ["ψ_P", [0.0, 1.0]]])
+                 ["ψ_Q", [0.0, 0.5]],
+                 ["ψ_P", [0.0, 0.5]],
+                 ["p_f", [0.0, 0.5]]])
 
 # Number of uncertain parameters
 M = length(X_labels)
@@ -264,7 +225,8 @@ M = length(X_labels)
 N = N_u + n * N_c * M
 
 # TEMP
-N = 20
+# println(N)
+N = 35000
 N_per_thread = ceil(Int64, N / n_threads)
 
 # Generate parameters used for SA
@@ -277,7 +239,7 @@ generate_labels(
 )
 
 # Generate simulation data
-n_per_epoch = 2
-generate_simdata(X_labels, n_per_epoch, N_per_thread, run_nr)
+# n_per_epoch = 2
+# generate_simdata(X_labels, n_per_epoch, N_per_thread, run_nr)
 
 # run_PAWN(X_labels, path, run_nr; N=N)

@@ -6,10 +6,8 @@ using Random
 using Agents
 using BenchmarkTools
 using TimerOutputs
-using RecursiveArrayTools
 using DataStructures
 using Parameters
-using Dates
 using SparseArrays
 
 # Include files
@@ -58,8 +56,7 @@ Returns:
 * `labormarket_struct`: mutable struct containing variables concerning the labor market
 """
 function initialize_model(
-    T::Int,
-    labormarket_is_fordist::Bool;
+    T::Int;
     changed_params::Union{Dict, Nothing}
     )
 
@@ -69,7 +66,7 @@ function initialize_model(
                 scheduler=scheduler, warn=false)
 
     # Initialize struct that holds global params and initial parameters
-    globalparam  = initialize_global_params(labormarket_is_fordist, changed_params)
+    globalparam  = initialize_global_params(changed_params)
     init_param = InitParam()
 
     # Initialize struct that holds macro variables
@@ -312,8 +309,6 @@ function model_step!(
     end
     pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed, t, model)
 
-    # Government receives income taxes
-    # levy_income_tax_gov!(gov_struct, all_hh, t, model)
 
     # (5) Production takes place for cp and kp
 
@@ -383,7 +378,7 @@ function model_step!(
     update_marketshare_p!(all_kp, model)
     
     # Select producers that will be declared bankrupt and removed
-    @timeit to "check bankr" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
+    bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
 
     # (7) macro-economic indicators are updated.
     @timeit to "update macro ts" update_macro_timeseries(
@@ -478,18 +473,18 @@ function run_simulation(;
     T=460::Int,
     changed_params=nothing,
     full_output=true::Bool,
-    labormarket_is_fordist=false::Bool,
-    threadnr::Int=1
+    threadnr::Int=1,
+    savedata=false
     )
 
     to = TimerOutput()
 
     # println("Init Model:")
-    @timeit to "init" model, globalparam, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T, labormarket_is_fordist; changed_params=changed_params)
+    @timeit to "init" model, globalparam, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T; changed_params=changed_params)
     for t in 1:T
 
         # if t % 100 == 0
-        println("tr $threadnr step $t")
+        # println("tr $threadnr step $t")
         # end
 
         @timeit to "step" model_step!(
@@ -508,13 +503,15 @@ function run_simulation(;
                             )
     end
 
-    @timeit to "save macro" save_macro_data(macro_struct)
+    if savedata
+        @timeit to "save macro" save_macro_data(macro_struct)
 
-    all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
+        all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
-    @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
+        @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
 
-    @timeit to "save climate" save_climate_data(ep, climate_struct, model)
+        @timeit to "save climate" save_climate_data(ep, climate_struct, model)
+    end
 
     if full_output
         show(to)
@@ -522,30 +519,8 @@ function run_simulation(;
     end
 
     Yg = (macro_struct.GDP[2:end] .- macro_struct.GDP[1:end-1]) ./ macro_struct.GDP[1:end-1]
-    # Cg = (macro_struct.C[2:end] .- macro_struct.C[1:end-1]) ./ macro_struct.C[1:end-1]
 
     return Yg, macro_struct.GINI_I, macro_struct.GINI_W, macro_struct.U
-    # return macro_struct.GDP[end], mean(macro_struct.GDP_growth)
 end
 
-# X_labels = Dict([["α_cp", [0.6, 1.0]],
-#                  ["μ1", [0.0, 0.4]],
-#                  ["ω", [0.0, 1.0]],
-#                  ["ϵ", [0.0, 0.1]],
-#                  ["κ_upper", [0.0, 0.07]],
-#                  ["κ_lower", [-0.07, 0.0]],
-#                  ["ψ_E", [0.0, 1.0]],
-#                  ["ψ_Q", [0.0, 1.0]],
-#                  ["ψ_P", [0.0, 1.0]]])
-# params = collect(keys(X_labels))
-# genpath(run_nr, thread_nr) = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
-# changedparams =  Dict(params .=> 0.0)
-# df = DataFrame(CSV.File(genpath(4, 1)))
-# for param in params
-#     changedparams[param] = df[3, param]
-# end
-# println(changedparams)
-# run_simulation(changed_params=changedparams)
-
-run_simulation()
-nothing
+run_simulation(savedata=true)

@@ -12,7 +12,6 @@
     κ_upper::Float64 = 0.007        # 2nd beta dist support
     κ_lower::Float64 = -κ_upper     # 1st beta dist support
     
-
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
     r::Float64 = 0.0                # interest rate
@@ -37,7 +36,6 @@
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
     ϵ::Float64 = 0.02               # minimum desired wage increase rate
-    max_g_wᴼ::Float64 = 0.1         # max growth rate of offered wages
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
@@ -45,9 +43,6 @@
 
     # Determine household consumption
     α_cp::Float64 = 0.8             # parameter controlling MPC of consumers
-    # c_L_max::Float64 = 0.7          # maximum share consumed on luxury goods
-    # a_σ::Float64 = 1000             # 1st parameter governing logistic function
-    # b_σ::Float64 = 30               # 2nd parameter governing logistic function
 
     # Determine household switching
     ψ_E::Float64 = 0.05             # chance of employed worker looking for a better paying job
@@ -57,18 +52,15 @@
     freq_per_machine::Int = 50      # capital units per machine
     freq_per_powerplant::Int = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.0              # initial price of fossil fuels
+    p_f::Float64 = 0.0              # price of fossil fuels
 
     n_cons_market_days::Int = 4     # number of days in the consumer market process
 
     t_wait::Int = 4                 # number of time periods producers are not allowed to go bankrupt
-
-    fordist_lm::Bool = false        # determines whether the labormarket is Fordist or competetive
 end
 
 
 function initialize_global_params(
-    labormarket_is_fordist::Bool,
     changed_params
     )
 
@@ -84,10 +76,6 @@ function initialize_global_params(
             setproperty!(global_param, Symbol("κ_lower"), -changed_params["κ_upper"])
         end
     end
-
-
-    # df = DataFrame(Dict(x=>getfield(global_param, x) for x in fieldnames(GlobalParam)))
-    # CSV.write("parameters/param_global_default.csv", df)
 
     return global_param
 end

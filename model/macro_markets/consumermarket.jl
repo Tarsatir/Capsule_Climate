@@ -17,57 +17,11 @@ function consumermarket_process!(
     # Reset cm data 
     @timeit to "reset matrices" reset_matrices_cp!(cm_dat, all_hh, all_cp, model)
 
-    # for (cp_i, N) in enumerate(cm_dat.all_N)
-    #     if N == 0
-    #         cp = model[all_cp[cp_i]]
-    #         println("age: $(cp.age), L: $(cp.L), ΔL: $(cp.ΔLᵈ), π_LP: $(cp.π_LP), mach: $(cp.n_machines), Q: $(cp.Q[end]), Qˢ: $(cp.Qˢ), Nᵈ: $(cp.Nᵈ), Dᵉ: $(cp.Dᵉ), D: $(cp.D[end])")
-    #     end
-    # end
-
     # Market clearing process
     @timeit to "market clearing" cpmarket_matching_cp!(cm_dat)
 
     @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cm_dat, model, to)
 
-    # for hh_id in all_hh
-    #     model[hh_id].W -= (model[hh_id].C - model[hh_id].C_actual)
-    # end
-
-    # TODO: so smt with actual demand
-
-    # @timeit to "write demand" write_demand_hh_to_cp!(all_cp, all_hh, transactions, model)
-
-    # @timeit to "send orders" send_ordered_goods_all_cp!(all_cp, t, model, to)
-
-    # # Make a dictionary with all cp and the inventory they own
-    # cp_inventories = Dict(cp_id => model[cp_id].p[end] * model[cp_id].N_goods for cp_id in all_cp)
-
-    # cp_with_inventory = Vector{Int}()
-    # for cp_id in all_cp
-    #     if model[cp_id].N_goods > 0
-    #         push!(cp_with_inventory, cp_id)
-    #     end
-    # end
-
-    # # Let households set their budget and order their goods
-    # @inbounds for hh_id in all_hh
-    #     # Set consumption budget and shares of good types and place orders
-    #     set_consumption_budget_hh!(model[hh_id], all_W_hh, globalparam, model)
-
-        # @timeit to "cp orders" cp_orders, cp_inventories, cp_with_inventory = place_orders_hh!(model[hh_id].cp, model[hh_id].C, 
-    #                                                         cp_inventories, cp_with_inventory, globalparam, model, to)
-
-    #     for (cp_id, qp) in cp_orders
-    #         push!(model[cp_id].order_queue, (hh_id, qp / model[cp_id].p[end]))
-    #     end
-    # end
-
-    # cp's handle order queue, send orders, households track which cp could not
-    # supply the demand.
-    # for cp_id in all_cp
-        # @timeit to "send orders" send_ordered_goods_cp!(model[cp_id], t, model, to)
-    #     reset_queue_cp!(model[cp_id])
-    # end
 end
 
 
@@ -119,7 +73,6 @@ function process_transactions_cm!(
         shift_and_append!(model[cp_id].D, N_goods_sold)
         shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))
         model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) > 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
-        # model[cp_id].N_goods = cm_dat.all_N[i]
     end
 
 end
@@ -137,8 +90,8 @@ function cpmarket_matching_cp!(
     cm_dat.weights ./= cm_dat.weights_sum
     sold_out = Int64[]
 
-    println("   total N: $(sum(cm_dat.all_N))")
-    println("   total C: $(sum(cm_dat.all_C))")
+    # println("   total N: $(sum(cm_dat.all_N))")
+    # println("   total C: $(sum(cm_dat.all_C))")
     # println(cm_dat.all_N)
 
     # display(cm_dat.all_C)
