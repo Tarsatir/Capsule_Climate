@@ -514,7 +514,7 @@ function replace_bankrupt_cp!(
     all_cp::Vector{Int},
     all_kp::Vector{Int},
     globalparam::GlobalParam,
-    indexfund_struct::IndexFund,
+    indexfund::IndexFund,
     macro_struct::MacroEconomy,
     t::Int,
     model::ABM
@@ -556,7 +556,7 @@ function replace_bankrupt_cp!(
     # Compute share of investments that can be paid from the investment fund
     req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps .* globalparam.freq_per_machine))
     all_req_NW = sum(req_NW)
-    frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
+    frac_NW_if = decide_investments_if!(indexfund, all_req_NW, t)
 
     for (i,cp_id) in enumerate(bankrupt_cp)
 

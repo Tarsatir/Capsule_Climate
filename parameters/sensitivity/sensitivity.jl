@@ -60,7 +60,8 @@ function generate_labels(
         df[!, "U_2nd"] .= NaN
 
         # Add poverty moments
-        # TODO
+        df[!, "FGT_1st"] .= NaN
+        df[!, "FGT_2nd"] .= NaN
 
         # Write to csv
         CSV.write(path(run_nr, thread_nr), df)
@@ -114,7 +115,7 @@ function generate_simdata(
                 end
 
                 # Run the model with changed parameters
-                GDP_g, GINI_I, GINI_W, U = run_simulation(
+                GDP_g, GINI_I, GINI_W, U, FGT = run_simulation(
                     changed_params=changedparams,
                     full_output=false;
                     threadnr=Threads.threadid()
@@ -136,6 +137,10 @@ function generate_simdata(
                 # Write unemployment data to dataframe
                 df[row, "U_1st"] = mean(U)
                 df[row, "U_2nd"] = var(U)
+
+                # Write poverty data to dataframe
+                df[row, "FGT_1st"] = mean(FGT)
+                df[row, "FGT_2nd"] = var(FGT)
 
                 # Update total completed runs
                 total_completed_runs += 1

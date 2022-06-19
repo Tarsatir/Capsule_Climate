@@ -129,9 +129,9 @@ function update_macro_timeseries(
     ep,
     bankrupt_cp::Vector{Int},
     bankrupt_kp::Vector{Int},
-    labormarket_struct, 
-    gov_struct::Government,
-    indexfund_struct::IndexFund,
+    labormarket, 
+    government::Government,
+    indexfund::IndexFund,
     globalparam::GlobalParam,
     model::ABM,
     to
@@ -154,12 +154,12 @@ function update_macro_timeseries(
     macro_struct.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)
 
     # Update unemployment rate and unemployment benefits expenditure
-    macro_struct.U[t] = labormarket_struct.E
-    macro_struct.switch_rate[t] = labormarket_struct.switch_rate
-    macro_struct.Exp_UB[t] = gov_struct.curracc.Exp_UB[t]
+    macro_struct.U[t] = labormarket.E
+    macro_struct.switch_rate[t] = labormarket.switch_rate
+    macro_struct.Exp_UB[t] = government.curracc.Exp_UB[t]
 
     # Compute total amount in system
-    compute_M!(all_hh, all_cp, all_kp, ep, gov_struct, indexfund_struct, 
+    compute_M!(all_hh, all_cp, all_kp, ep, government, indexfund, 
                macro_struct, t, model)
 
     # Compute average savings rates
@@ -201,7 +201,7 @@ function update_macro_timeseries(
 
     compute_bankrupties(all_cp, all_kp, bankrupt_cp, bankrupt_kp, macro_struct, t)
 
-    compute_unsatisfied_demand(all_cp, all_kp, all_hh, macro_struct, labormarket_struct, t, model)
+    compute_unsatisfied_demand(all_cp, all_kp, all_hh, macro_struct, labormarket, t, model)
 
     macro_struct.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
 
@@ -279,8 +279,8 @@ function compute_M!(
     all_cp::Vector{Int},
     all_kp::Vector{Int},
     ep,
-    gov_struct::Government,
-    indexfund_struct::IndexFund,
+    government::Government,
+    indexfund::IndexFund,
     macro_struct::MacroEconomy,
     t::Int,
     model::ABM
@@ -299,10 +299,10 @@ function compute_M!(
     macro_struct.M_ep[t] = ep.NWₑ[t]
 
     # Money owned by government
-    macro_struct.M_gov[t] = gov_struct.MS
+    macro_struct.M_gov[t] = government.MS
 
     # Money in investment fund
-    macro_struct.M_if[t] = indexfund_struct.Assets
+    macro_struct.M_if[t] = indexfund.Assets
 
     # Total amount of money stocks
     macro_struct.M[t] = (macro_struct.M_hh[t] + macro_struct.M_cp[t] + macro_struct.M_kp[t] +
@@ -425,7 +425,7 @@ function compute_unsatisfied_demand(
     all_kp::Vector{Int},
     all_hh::Vector{Int},
     macro_struct::MacroEconomy,
-    labormarket_struct,
+    labormarket,
     t::Int,
     model::ABM
     )
@@ -437,7 +437,7 @@ function compute_unsatisfied_demand(
     macro_struct.unsat_invest[t] =  1 - (sum(kp_id -> model[kp_id].Q[end], all_kp) / 
                                     (sum(cp_id -> 50 * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
 
-    macro_struct.unsat_L_demand[t] = 1 - labormarket_struct.L_hired / labormarket_struct.L_demanded
+    macro_struct.unsat_L_demand[t] = 1 - labormarket.L_hired / labormarket.L_demanded
 end
 
 

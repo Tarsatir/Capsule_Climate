@@ -41,13 +41,13 @@ end
 
 function initialize_energy_producer(
     T::Int,
-    init_param::InitParam,
+    initparam::InitParam,
     globalparam::GlobalParam
     )::EnergyProducer
 
     # Initialize power plants
-    n_pp::Int = init_param.n_powerplants_init / globalparam.freq_per_powerplant
-    n_pp_green::Int = init_param.frac_green * n_pp
+    n_pp::Int = initparam.n_powerplants_init / globalparam.freq_per_powerplant
+    n_pp_green::Int = initparam.frac_green * n_pp
 
     # Initialize green power plants
     green_portfolio = []
@@ -72,9 +72,9 @@ function initialize_energy_producer(
                     age = sample(0:globalparam.ηₑ),
                     c = 0.0,
                     freq = globalparam.freq_per_powerplant,
-                    capacity = globalparam.freq_per_machine * init_param.Aᵀ_0,
-                    Aᵀ = init_param.Aᵀ_0,
-                    em = init_param.emᵀ_0
+                    capacity = globalparam.freq_per_machine * initparam.Aᵀ_0,
+                    Aᵀ = initparam.Aᵀ_0,
+                    em = initparam.emᵀ_0
                    )
         update_c_pp!(dirty_pp, globalparam.p_f)
         push!(dirty_portfolio, dirty_pp)
@@ -85,8 +85,8 @@ function initialize_energy_producer(
                         T = T,
                         green_portfolio = green_portfolio,
                         dirty_portfolio = dirty_portfolio,
-                        Aᵀ_d = fill(init_param.Aᵀ_0, T),
-                        emᵀ_d = fill(init_param.emᵀ_0, T)
+                        Aᵀ_d = fill(initparam.Aᵀ_0, T),
+                        emᵀ_d = fill(initparam.emᵀ_0, T)
                       )
     return energy_producer
 end
@@ -105,7 +105,7 @@ function produce_energy_ep!(
     all_cp::Vector{Int},
     all_kp::Vector{Int},
     globalparam::GlobalParam,
-    indexfund_struct::IndexFund,
+    indexfund::IndexFund,
     t::Int,
     model::ABM
     )
@@ -140,7 +140,7 @@ function produce_energy_ep!(
 
     # Compute profits
     compute_Πₑ_NWₑ_ep!(ep, t)
-    pay_dividends_ep!(ep, indexfund_struct, t)
+    pay_dividends_ep!(ep, indexfund, t)
 end
 
 
@@ -180,7 +180,7 @@ end
 
 function pay_dividends_ep!(
     ep::EnergyProducer, 
-    indexfund_struct, 
+    indexfund::IndexFund, 
     t::Int
     )
 
@@ -197,7 +197,7 @@ function pay_dividends_ep!(
     dividends = ep.PCₑ[t] + ep.ICₑ[t] + ep.RDₑ[t] + max(ep.NWₑ[t] - req_NW, 0)
     ep.NWₑ[t] = min(ep.NWₑ[t], req_NW)
 
-    receive_dividends_if!(indexfund_struct, dividends)
+    receive_dividends_if!(indexfund, dividends)
 end
 
 

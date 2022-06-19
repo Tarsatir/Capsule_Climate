@@ -49,7 +49,7 @@ function runsensitivitythread(;
             end
 
             # Run the model with changed parameters
-            GDP_g, GINI_I, GINI_W, U = run_simulation(
+            GDP_g, GINI_I, GINI_W, U, FGT = run_simulation(
                 changed_params=changedparams,
                 full_output=false;
                 threadnr=threadnr
@@ -71,6 +71,10 @@ function runsensitivitythread(;
             # Write unemployment data to dataframe
             df[row, "U_1st"] = mean(U)
             df[row, "U_2nd"] = var(U)
+
+            # Write poverty data to dataframe
+            df[row, "FGT_1st"] = mean(FGT)
+            df[row, "FGT_2nd"] = var(FGT)
 
             # Update total completed runs
             total_completed_runs += 1

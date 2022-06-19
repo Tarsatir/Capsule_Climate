@@ -51,9 +51,9 @@ Receives:
 Returns:
 * `model`: Agent Based Model struct
 * `globalparam`: struct containing global parameter values
-* `macro_struct`: mutable struct containing macro variables
-* `gov_struct`: mutable struct containing variables concerning the government
-* `labormarket_struct`: mutable struct containing variables concerning the labor market
+* `macroeconomy`: mutable struct containing macro variables
+* `government`: mutable struct containing variables concerning the government
+* `labormarket`: mutable struct containing variables concerning the labor market
 """
 function initialize_model(
     T::Int;
@@ -67,47 +67,47 @@ function initialize_model(
 
     # Initialize struct that holds global params and initial parameters
     globalparam  = initialize_global_params(changed_params)
-    init_param = InitParam()
+    initparam = InitParam()
 
     # Initialize struct that holds macro variables
-    macro_struct = MacroEconomy(T=T)
+    macroeconomy = MacroEconomy(T=T)
 
     # Initialize labor market struct
-    labormarket_struct = LaborMarket()
+    labormarket = LaborMarket()
 
     # Initialize government struct
-    gov_struct = Government(curracc = GovCurrentAccount(T=T))
+    government = Government(curracc = GovCurrentAccount(T=T))
 
     # Initialize energy producer
-    ep = initialize_energy_producer(T, init_param, globalparam)
+    ep = initialize_energy_producer(T, initparam, globalparam)
 
     # Initialize climate struct
-    climate_struct = Climate(T=T)
+    climate = Climate(T=T)
 
     # Global id
     id = 1
 
     # Initialize households
-    hh_skills = sample_skills_hh(init_param)
-    for i in 1:init_param.n_hh
+    hh_skills = sample_skills_hh(initparam)
+    for i in 1:initparam.n_hh
 
         hh = Household(id=id, skill=hh_skills[i])
-        hh.wʳ = max(gov_struct.w_min, hh.wʳ)
+        hh.wʳ = max(government.w_min, hh.wʳ)
         add_agent!(hh, model)
 
         id += 1
     end
 
     # Initialize consumer good producers
-    for i in 1:init_param.n_cp
+    for i in 1:initparam.n_cp
 
         # Initialize capital good stock
         machines = initialize_machine_stock(globalparam.freq_per_machine, 
-                        init_param.n_machines_init,
+                        initparam.n_machines_init,
                         η=globalparam.η; 
-                        A_LP = init_param.A_LP_0,
-                        A_EE = init_param.A_EE_0,
-                        A_EF = init_param.A_EF_0
+                        A_LP = initparam.A_LP_0,
+                        A_EE = initparam.A_EE_0,
+                        A_EF = initparam.A_EF_0
                    )
 
         t_next_update = 1
@@ -122,10 +122,10 @@ function initialize_model(
                 id,
                 t_next_update,
                 machines,  
-                init_param.n_init_emp_cp, 
+                initparam.n_init_emp_cp, 
                 globalparam.μ1,
                 globalparam.ι;
-                n_consrgood=init_param.n_cp
+                n_consrgood=initparam.n_cp
             )
         update_n_machines_cp!(cp, globalparam.freq_per_machine)
         add_agent!(cp, model)
@@ -134,18 +134,18 @@ function initialize_model(
     end
 
     # Initialize capital good producers
-    for kp_i in 1:init_param.n_kp
+    for kp_i in 1:initparam.n_kp
 
         kp = initialize_kp(
                 id, 
                 kp_i, 
-                init_param.n_kp; 
-                A_LP=init_param.A_LP_0,
-                A_EE=init_param.A_EE_0,
-                A_EF=init_param.A_EF_0, 
-                B_LP=init_param.B_LP_0,
-                B_EE=init_param.B_EE_0,
-                B_EF=init_param.B_EF_0
+                initparam.n_kp; 
+                A_LP=initparam.A_LP_0,
+                A_EE=initparam.A_EE_0,
+                A_EF=initparam.A_EF_0, 
+                B_LP=initparam.B_LP_0,
+                B_EE=initparam.B_EE_0,
+                B_EF=initparam.B_EF_0
              )
         add_agent!(kp, model)
 
@@ -156,7 +156,7 @@ function initialize_model(
     all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
     # Initialize index fund struct
-    indexfund_struct = IndexFund(T=T)
+    indexfund = IndexFund(T=T)
 
     # Let all capital good producers select historical clients
     for kp_id in all_kp
@@ -165,18 +165,18 @@ function initialize_model(
 
     # Let all households select cp of both types for trading network
     for hh_id in all_hh
-        select_cp_hh!(model[hh_id], all_cp, init_param.n_cp_hh)
+        select_cp_hh!(model[hh_id], all_cp, initparam.n_cp_hh)
     end
 
     # Spread employed households over producerss
     spread_employees_lm!(
-        labormarket_struct,
-        gov_struct,
+        labormarket,
+        government,
         all_hh, 
         all_cp, 
         all_kp,
-        init_param.n_init_emp_cp,
-        init_param.n_init_emp_kp,
+        initparam.n_init_emp_cp,
+        initparam.n_init_emp_kp,
         model
     )
 
@@ -184,12 +184,12 @@ function initialize_model(
         update_mean_skill_p!(model[p_id], model)
     end
 
-    close_balance_all_p!(all_p, globalparam, gov_struct.τᴾ,
-                         indexfund_struct, 0, model)
+    close_balance_all_p!(all_p, globalparam, government.τᴾ,
+                         indexfund, 0, model)
 
-    cm_dat = CMData(n_hh=init_param.n_hh, n_cp=init_param.n_cp)
+    cm_dat = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
 
-    return model, globalparam, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat
+    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat
 end
 
 
@@ -197,13 +197,13 @@ function model_step!(
     t::Int,
     to,
     globalparam::GlobalParam, 
-    init_param::InitParam,
-    macro_struct::MacroEconomy, 
-    gov_struct::Government,
+    initparam::InitParam,
+    macroeconomy::MacroEconomy, 
+    government::Government,
     ep::EnergyProducer, 
-    labormarket_struct::LaborMarket,
-    indexfund_struct::IndexFund,
-    climate_struct::Climate,
+    labormarket::LaborMarket,
+    indexfund::IndexFund,
+    climate::Climate,
     cm_dat::CMData,
     model::ABM
     )
@@ -218,7 +218,7 @@ function model_step!(
 
     # Check if households still have enough bp and lp, otherwise sample more
     for hh_id in all_hh
-        refillsuppliers_hh!(model[hh_id], all_cp, init_param.n_cp_hh, model)
+        refillsuppliers_hh!(model[hh_id], all_cp, initparam.n_cp_hh, model)
         resetincomes_hh!(model[hh_id])
     end
 
@@ -242,7 +242,7 @@ function model_step!(
             globalparam, 
             all_kp, 
             kp_distance_matrix,
-            macro_struct.w̄_avg[max(t-1,1)],
+            macroeconomy.w̄_avg[max(t-1,1)],
             t,
             ep,
             model
@@ -264,7 +264,7 @@ function model_step!(
     @timeit to "plan prod inv cp" for cp_id in all_cp
       
         # Plan production for this period
-        μ_avg = t > 1 ? macro_struct.μ_cp[t-1] : globalparam.μ1
+        μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
         plan_production_cp!(model[cp_id], globalparam, μ_avg, t, model)
 
         if model[cp_id].t_next_update == t  
@@ -282,11 +282,11 @@ function model_step!(
 
     # (3) labor market matching process
     @timeit to "labormarket" labormarket_process!(
-        labormarket_struct,
+        labormarket,
         all_hh, 
         all_p,
         globalparam,
-        gov_struct,
+        government,
         t, 
         model,
         to
@@ -302,12 +302,12 @@ function model_step!(
     for p_id in all_p
         pay_workers_p!(
             model[p_id],
-            gov_struct,
+            government,
             t, 
             model
         )
     end
-    pay_unemployment_benefits_gov!(gov_struct, labormarket_struct.unemployed, t, model)
+    pay_unemployment_benefits_gov!(government, labormarket.unemployed, t, model)
 
 
     # (5) Production takes place for cp and kp
@@ -324,7 +324,7 @@ function model_step!(
     end
 
     # Let energy producer meet energy demand
-    produce_energy_ep!(ep, all_cp, all_kp, globalparam, indexfund_struct, t, model)
+    produce_energy_ep!(ep, all_cp, all_kp, globalparam, indexfund, t, model)
 
     
     # (6) Transactions take place on consumer market
@@ -333,7 +333,7 @@ function model_step!(
     @timeit to "consumermarket" consumermarket_process!(
         all_hh,
         all_cp,
-        gov_struct,
+        government,
         globalparam,
         cm_dat,
         t,
@@ -347,7 +347,7 @@ function model_step!(
         all_hh,
         all_cp,
         all_p,
-        init_param.n_cp_hh,
+        initparam.n_cp_hh,
         model,
         to
     )
@@ -365,13 +365,13 @@ function model_step!(
     end 
 
     # Close balances of firms, if insolvent, liquidate firms
-    @timeit to "close balance" close_balance_all_p!(all_p, globalparam, gov_struct.τᴾ,
-                                    indexfund_struct, t, model)
+    @timeit to "close balance" close_balance_all_p!(all_p, globalparam, government.τᴾ,
+                                    indexfund, t, model)
 
     # (7) government receives profit taxes and computes budget balance
-    levy_profit_tax_gov!(gov_struct, all_p, t, model)
-    compute_budget_balance(gov_struct, t)
-    redistribute_surplus_gov!(gov_struct, all_hh, model)
+    levy_profit_tax_gov!(government, all_p, t, model)
+    compute_budget_balance(government, t)
+    redistribute_surplus_gov!(government, all_hh, model)
 
     # Update market shares of cp and kp
     update_marketshare_p!(all_cp, model)
@@ -382,7 +382,7 @@ function model_step!(
 
     # (7) macro-economic indicators are updated.
     @timeit to "update macro ts" update_macro_timeseries(
-        macro_struct,
+        macroeconomy,
         t, 
         all_hh, 
         all_cp, 
@@ -391,17 +391,17 @@ function model_step!(
         ep,
         bankrupt_cp,
         bankrupt_kp,
-        labormarket_struct,
-        gov_struct,
-        indexfund_struct,
+        labormarket,
+        government,
+        indexfund,
         globalparam,
         model,
         to
     )
 
     # Update climate parameters, compute new carbon equilibria and temperature change
-    collect_emissions_cl!(climate_struct, all_cp, all_kp, ep, t, model)
-    carbon_equilibrium_tempchange_cl!(climate_struct, t)
+    collect_emissions_cl!(climate, all_cp, all_kp, ep, t, model)
+    carbon_equilibrium_tempchange_cl!(climate, t)
 
     # Remove bankrupt companies.
     @timeit to "kill bankr p" kill_all_bankrupt_p!(
@@ -409,11 +409,11 @@ function model_step!(
         bankrupt_kp, 
         all_hh,
         all_kp,
-        labormarket_struct,
-        indexfund_struct, 
+        labormarket,
+        indexfund, 
         model
     )
-    update_unemploymentrate_lm!(labormarket_struct)
+    update_unemploymentrate_lm!(labormarket)
 
 
     # Replace bankrupt kp. Do this before you replace cp, such that new cp can also choose
@@ -423,9 +423,9 @@ function model_step!(
         bankrupt_kp_i, 
         all_kp,
         globalparam,
-        indexfund_struct,
-        init_param,
-        macro_struct,
+        indexfund,
+        initparam,
+        macroeconomy,
         t,
         model
     )
@@ -438,24 +438,24 @@ function model_step!(
         all_cp,
         all_kp,
         globalparam,
-        indexfund_struct,
-        macro_struct,
+        indexfund,
+        macroeconomy,
         t,
         model
     )
 
     # Redistrubute remaining stock of dividents to households
     distribute_dividends_if!(
-        indexfund_struct,
-        gov_struct,
+        indexfund,
+        government,
         all_hh,
-        gov_struct.τᴷ,
+        government.τᴷ,
         t,
         model
     )
 
     # for kp_id in all_kp
-    #     cop = macro_struct.w̄_avg[t] / model[kp_id].A_LP + ep.pₑ[t] / model[kp_id].A_EE
+    #     cop = macroeconomy.w̄_avg[t] / model[kp_id].A_LP + ep.pₑ[t] / model[kp_id].A_EE
     #     println("kp: $kp_id, cop: $cop, f: $(model[kp_id].f[end])")
     # end
 end
@@ -480,7 +480,7 @@ function run_simulation(;
     to = TimerOutput()
 
     # println("Init Model:")
-    @timeit to "init" model, globalparam, init_param, macro_struct, gov_struct, ep, labormarket_struct, indexfund_struct, climate_struct, cm_dat = initialize_model(T; changed_params=changed_params)
+    @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat = initialize_model(T; changed_params=changed_params)
     for t in 1:T
 
         # if t % 100 == 0
@@ -491,26 +491,26 @@ function run_simulation(;
                                 t,
                                 to, 
                                 globalparam, 
-                                init_param,
-                                macro_struct, 
-                                gov_struct,
+                                initparam,
+                                macroeconomy, 
+                                government,
                                 ep,
-                                labormarket_struct, 
-                                indexfund_struct,
-                                climate_struct,
+                                labormarket, 
+                                indexfund,
+                                climate,
                                 cm_dat, 
                                 model
                             )
     end
 
     if savedata
-        @timeit to "save macro" save_macro_data(macro_struct)
+        @timeit to "save macro" save_macro_data(macroeconomy)
 
         all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
         @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
 
-        @timeit to "save climate" save_climate_data(ep, climate_struct, model)
+        @timeit to "save climate" save_climate_data(ep, climate, model)
     end
 
     if full_output
@@ -518,9 +518,9 @@ function run_simulation(;
         println()
     end
 
-    Yg = (macro_struct.GDP[2:end] .- macro_struct.GDP[1:end-1]) ./ macro_struct.GDP[1:end-1]
+    Yg = (macroeconomy.GDP[2:end] .- macroeconomy.GDP[1:end-1]) ./ macroeconomy.GDP[1:end-1]
 
-    return Yg, macro_struct.GINI_I, macro_struct.GINI_W, macro_struct.U
+    return Yg, macroeconomy.GINI_I, macroeconomy.GINI_W, macroeconomy.U, macroeconomy.FGT
 end
 
 run_simulation(savedata=true)

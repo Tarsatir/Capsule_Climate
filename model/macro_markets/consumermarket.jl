@@ -1,7 +1,7 @@
 function consumermarket_process!(
     all_hh::Vector{Int},
     all_cp::Vector{Int}, 
-    gov_struct::Government,
+    government::Government,
     globalparam::GlobalParam,
     cm_dat::CMData,
     t::Int,

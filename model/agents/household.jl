@@ -344,19 +344,19 @@ end
 Samples wage levels of households from an empirical distribution.
 """
 function sample_skills_hh(
-    init_param::InitParam
+    initparam::InitParam
     )::Vector{Float64}
 
     skills = []
-    while length(skills) < init_param.n_hh
-        s = rand(LogNormal(0.0, init_param.σ_hh_I)) * init_param.scale_hh_I
+    while length(skills) < initparam.n_hh
+        s = rand(LogNormal(0.0, initparam.σ_hh_I)) * initparam.scale_hh_I
         if s < 2.5e5
             push!(skills, s)
         end
     end
 
     # Normalize skills
-    skills = init_param.n_hh .* skills ./ sum(skills)
+    skills = initparam.n_hh .* skills ./ sum(skills)
 
     return skills
 end

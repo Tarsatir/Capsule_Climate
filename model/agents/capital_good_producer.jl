@@ -615,8 +615,8 @@ function replace_bankrupt_kp!(
     bankrupt_kp_i::Vector{Int},
     all_kp::Vector{Int},
     globalparam::GlobalParam,
-    indexfund_struct::IndexFund,
-    init_param::InitParam,
+    indexfund::IndexFund,
+    initparam::InitParam,
     macro_struct::MacroEconomy,
     t::Int,
     model::ABM
@@ -655,7 +655,7 @@ function replace_bankrupt_kp!(
 
     # Compute share of investments that can be paid from the investment fund                       
     all_req_NW = sum(avg_NW .* NW_coefficients)
-    frac_NW_if = decide_investments_if!(indexfund_struct, all_req_NW, t)
+    frac_NW_if = decide_investments_if!(indexfund, all_req_NW, t)
     # println("frac kp: ", frac_NW_if)
 
     # Re-use id of bankrupted company
@@ -665,13 +665,13 @@ function replace_bankrupt_kp!(
         tech_coeff = (globalparam.φ5 + rand(Beta(globalparam.α2, globalparam.β2)) 
                                         * (globalparam.φ6 - globalparam.φ5))
 
-        new_A_LP = max(A_LP_max * (1 + tech_coeff), init_param.A_LP_0)
-        new_A_EE = max(A_EE_max * (1 + tech_coeff), init_param.A_LP_0)
-        new_A_EF = min(A_EF_min * (1 - tech_coeff), init_param.A_LP_0)
+        new_A_LP = max(A_LP_max * (1 + tech_coeff), initparam.A_LP_0)
+        new_A_EE = max(A_EE_max * (1 + tech_coeff), initparam.A_LP_0)
+        new_A_EF = min(A_EF_min * (1 - tech_coeff), initparam.A_LP_0)
 
-        new_B_LP = max(B_LP_max * (1 + tech_coeff), init_param.B_LP_0)
-        new_B_EE = max(B_EE_max * (1 + tech_coeff), init_param.B_LP_0)
-        new_B_EF = min(B_EF_min * (1 - tech_coeff), init_param.B_LP_0)
+        new_B_LP = max(B_LP_max * (1 + tech_coeff), initparam.B_LP_0)
+        new_B_EE = max(B_EE_max * (1 + tech_coeff), initparam.B_LP_0)
+        new_B_EF = min(B_EF_min * (1 - tech_coeff), initparam.B_LP_0)
 
         NW_stock = NW_coefficients[i] * avg_NW
 
