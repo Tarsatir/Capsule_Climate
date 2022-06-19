@@ -482,7 +482,6 @@ function compute_GINI(
     # Compute Foster-Greer-Thorbecke index
 
     z = 60
-
     H = Float64[]
     for hh_id in all_hh
         if model[hh_id].total_I <= z

@@ -25,6 +25,7 @@
     employees::Vector{Int} = Int64[]      # employees in company
     mean_skill::Float64 = 1.0             # mean skill level of employees
     L::Float64 = 0.0                      # labor units in company
+    Lᵈ::Float64 = L                       # desired labor units in company
     ΔLᵈ::Float64 = 0.0                    # desired change in labor force
     w̄::Vector{Float64}                    # wage level
     wᴼ::Float64 = w̄[end]                  # offered wage
@@ -334,17 +335,7 @@ function plan_production_kp!(
     kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
 
     # Determine amount of labor to hire
-    # kp.ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
-    # kp.ΔLᵈ = kp.O / kp.B_LP - kp.L
-
-    # ω = 0.5
-
-    # req_L = kp.O / kp.B_LP + kp.RD / kp.w̄[end]
-    # req_L = ω * kp.L + (1 - ω) * req_L
-    # kp.ΔLᵈ = req_L - kp.L
-
-    ΔLᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L
-    kp.ΔLᵈ = max(ΔLᵈ, -kp.L)
+    update_Lᵈ!(kp, globalparam.ω)
 
     # kp.ΔLᵈ = globalparam.ω * kp.ΔLᵈ + (1-globalparam.ω) * (kp.O / kp.B_LP - kp.L)
 
@@ -697,4 +688,13 @@ function replace_bankrupt_kp!(
 
         add_agent!(new_kp, model)
     end
+end
+
+function update_Lᵈ!(
+    kp::CapitalGoodProducer, 
+    ω::Float64
+    )
+
+    kp.Lᵈ = ω * kp.L + (1 - ω) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L)
+    kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end

@@ -28,7 +28,7 @@ function pay_unemployment_benefits_gov!(
     # Pay out unemployment benefits to households
     total_UB = 0
     for hh_id in unemployed
-        receiveincome_hh!(model[hh_id], government.UB; UB=true)
+        receiveincome_hh!(model[hh_id], government.UB; isUB=true)
         total_UB += government.UB
     end
 

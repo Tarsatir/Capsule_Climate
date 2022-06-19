@@ -156,7 +156,7 @@ function receiveincome_hh!(
     hh::Household, 
     amount::Float64;
     capgains::Bool=false,
-    UB::Bool=false,
+    isUB::Bool=false,
     socben::Bool=false
     )
 
@@ -169,8 +169,8 @@ function receiveincome_hh!(
         # at the end of the period
         hh.capital_I = amount
 
-    elseif UB
-        hh.UB_I = UB
+    elseif isUB
+        hh.UB_I = amount
         hh.labor_I = 0.0
     elseif socben
         # Transfer income can come from unemployment or other social benefits
