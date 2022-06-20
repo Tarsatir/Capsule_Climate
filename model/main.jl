@@ -1,4 +1,3 @@
-using Printf
 using Statistics
 using Distributions
 using StatsBase
@@ -460,11 +459,6 @@ function model_step!(
         t,
         model
     )
-
-    # for kp_id in all_kp
-    #     cop = macroeconomy.w̄_avg[t] / model[kp_id].A_LP + ep.pₑ[t] / model[kp_id].A_EE
-    #     println("kp: $kp_id, cop: $cop, f: $(model[kp_id].f[end])")
-    # end
 end
 
 
@@ -486,7 +480,6 @@ function run_simulation(;
 
     to = TimerOutput()
 
-    # println("Init Model:")
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat = initialize_model(T; changed_params=changed_params)
     for t in 1:T
 
@@ -530,4 +523,4 @@ function run_simulation(;
     return Yg, macroeconomy.GINI_I, macroeconomy.GINI_W, macroeconomy.U, macroeconomy.FGT
 end
 
-run_simulation(savedata=true)
+# run_simulation(savedata=true)

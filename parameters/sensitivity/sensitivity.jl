@@ -21,23 +21,22 @@ function generate_labels(
     X_labels::Dict,
     run_nr::Int,
     N::Int,
-    N_per_thread::Int,
-    n_threads::Int,
+    n_per_thread::Int,
+    n_threads::Int;
+    samp_strat::String = "lhs"
     )
-
-    # Define parameter distributions
-    samp_strat = "lhs"
-
-    # Call SAMP function to get the input parameters for running the models
-    X = py"call_AAT_sampling"(samp_strat, M, X_labels, N)
 
     for thread_nr in 1:n_threads
 
-        # Define boundaries computed within thread
-        thread_start = (thread_nr-1) * N_per_thread + 1
-        thread_end = min(thread_nr * N_per_thread, N)
+        # Call SAMP function to get the input parameters for running the models
+        X = py"call_AAT_sampling"(samp_strat, M, X_labels, n_per_thread)
 
-        params = Dict(x=>X[thread_start:thread_end, j] for (j,x) in enumerate(keys(X_labels)))
+        # Define boundaries computed within thread
+        # thread_start = (thread_nr-1) * n_per_thread + 1
+        # thread_end = min(thread_nr * n_per_thread, N)
+
+        # params = Dict(x=>X[thread_start:thread_end, j] for (j,x) in enumerate(keys(X_labels)))
+        params = Dict(x=>X[:, j] for (j,x) in enumerate(keys(X_labels)))
         
         # Write to dataframe
         df = DataFrame(params)
@@ -70,20 +69,20 @@ end
 
 
 """
-    generate_simdata(X_labels::Dict, n_per_epoch::Int, N_per_thread::Int, run_nr::Int)
+    generate_simdata(X_labels::Dict, n_per_epoch::Int, n_per_thread::Int, run_nr::Int)
 
 Generates data used by sensitivity analysis.
     Code augmented from SAFE package preparation of variables.
 
     - `X_labels`: dictionary of changed parameters and their ranges.
     - `n_per_epoch`: number of simulations per epoch, after which (intermediate) save is made.
-    - `N_per_thread`: number of simulations per thread.
+    - `n_per_thread`: number of simulations per thread.
     - `run_nr`: identifier of run attempt.
 """
 function generate_simdata(
     X_labels::Dict,
     n_per_epoch::Int,
-    N_per_thread::Int,
+    n_per_thread::Int,
     run_nr::Int
     )
     
@@ -94,7 +93,7 @@ function generate_simdata(
         params = collect(keys(X_labels))
         changedparams = Dict(params .=> 0.0)
 
-        n_epochs = ceil(Int64, N_per_thread / n_per_epoch)
+        n_epochs = ceil(Int64, n_per_thread / n_per_epoch)
 
         for epoch in 1:n_epochs
 
@@ -230,21 +229,19 @@ M = length(X_labels)
 N = N_u + n * N_c * M
 
 # TEMP
-# println(N)
-N = 35000
-N_per_thread = ceil(Int64, N / n_threads)
+n_per_thread = ceil(Int64, N / n_threads)
 
 # Generate parameters used for SA
 generate_labels(
     X_labels, 
     run_nr,
     N,
-    N_per_thread,  
+    n_per_thread,  
     n_threads,
 )
 
 # Generate simulation data
 # n_per_epoch = 2
-# generate_simdata(X_labels, n_per_epoch, N_per_thread, run_nr)
+# generate_simdata(X_labels, n_per_epoch, n_per_thread, run_nr)
 
 # run_PAWN(X_labels, path, run_nr; N=N)
