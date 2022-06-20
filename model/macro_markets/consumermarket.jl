@@ -20,7 +20,7 @@ function consumermarket_process!(
     # Market clearing process
     @timeit to "market clearing" cpmarket_matching_cp!(cm_dat)
 
-    @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cm_dat, model, to)
+    @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cm_dat, government, model, t, to)
 
 end
 
@@ -28,8 +28,10 @@ end
 function process_transactions_cm!(
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
-    cm_dat::CMData, 
+    cm_dat::CMData,
+    government::Government,
     model::ABM,
+    t::Int64,
     to
     )
 
@@ -57,6 +59,7 @@ function process_transactions_cm!(
     end
 
     unsat_demand = zeros(Float64, length(all_hh))
+    total_salestax = 0.0
 
     # Process transations for cp
     for (i, cp_id) in enumerate(minimum(all_cp):maximum(all_cp))
@@ -69,11 +72,17 @@ function process_transactions_cm!(
         # TODO decide whether it makes sense if producers know unsatisfied demand
 
         model[cp_id].curracc.S = sum(@view cm_dat.transactions[:,i])
+
+        total_salestax += model[cp_id].curracc.S * (government.τˢ / (1 + government.τˢ))
+        model[cp_id].curracc.S = model[cp_id].curracc.S * (1 / (1 + government.τˢ))
+
         N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
         shift_and_append!(model[cp_id].D, N_goods_sold)
         shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))
         model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) > 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
     end
+
+    receive_salestax_gov!(government, total_salestax, t)
 
 end
 
@@ -89,12 +98,6 @@ function cpmarket_matching_cp!(
     sum!(cm_dat.weights_sum, cm_dat.weights)
     cm_dat.weights ./= cm_dat.weights_sum
     sold_out = Int64[]
-
-    # println("   total N: $(sum(cm_dat.all_N))")
-    # println("   total C: $(sum(cm_dat.all_C))")
-    # println(cm_dat.all_N)
-
-    # display(cm_dat.all_C)
 
     for i in 1:3
 
@@ -122,10 +125,7 @@ function cpmarket_matching_cp!(
 
         # Update how much was sold per hh and cp
         sum!(cm_dat.sold_per_hh_round, cm_dat.C_spread)
-        # cm_dat.sold_per_hh .+= floor.(cm_dat.sold_per_hh_round, digits=8)
-        
         sum!(cm_dat.sold_per_cp_round, cm_dat.C_spread')
-        # cm_dat.sold_per_cp .+= floor.(cm_dat.sold_per_cp_round, digits=6)
 
         # Update consumption budget C and inventory N
         cm_dat.all_C .-= cm_dat.sold_per_hh_round
@@ -146,12 +146,6 @@ function cpmarket_matching_cp!(
         cm_dat.sold_per_hh_round .= 0.0
         cm_dat.sold_per_cp_round .= 0.0
     end
-
-    # display(cm_dat.all_C)
-
-    # println("Total sales: $(sum(cm_dat.transactions))")
-
-    # return cm_dat.transactions
 end
 
 

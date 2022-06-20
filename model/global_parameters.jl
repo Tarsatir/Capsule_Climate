@@ -42,7 +42,7 @@
     ω::Float64 = 0.8                # memory parameter adaptive updating rules
 
     # Determine household consumption
-    α_cp::Float64 = 0.8             # parameter controlling MPC of consumers
+    α_cp::Float64 = 0.85             # parameter controlling MPC of consumers
 
     # Determine household switching
     ψ_E::Float64 = 0.05             # chance of employed worker looking for a better paying job

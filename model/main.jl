@@ -265,7 +265,14 @@ function model_step!(
       
         # Plan production for this period
         μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
-        plan_production_cp!(model[cp_id], globalparam, μ_avg, t, model)
+        plan_production_cp!(
+            model[cp_id], 
+            globalparam, 
+            μ_avg, 
+            government.τˢ, 
+            t, 
+            model
+        )
 
         if model[cp_id].t_next_update == t  
             model[cp_id].t_next_update += globalparam.update_period

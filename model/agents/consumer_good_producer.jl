@@ -111,6 +111,7 @@ function plan_production_cp!(
     cp::ConsumerGoodProducer, 
     globalparam::GlobalParam,
     μ_avg::Float64,
+    τˢ::Float64,
     t::Int,
     model::ABM
     )
@@ -144,7 +145,7 @@ function plan_production_cp!(
     compute_c_cp!(cp)
 
     # Compute price
-    compute_p_cp!(cp)
+    compute_p_cp!(cp, τˢ)
 end
 
 
@@ -709,11 +710,6 @@ function update_μ_cp!(
 
     # b = 0.02
     # l = 2
-    # # new_μ = cp.μ[end]
-
-    # # # TODO describe Calvo Pricing
-
-    # # # if rand() < 1/3
 
     # if cp.age > l && cp.Π[end] != 0
 
@@ -735,6 +731,7 @@ function update_μ_cp!(
     # end
 
     # shift_and_append!(cp.μ, new_μ)
+
     # else
     #     shift_and_append!(cp.μ, cp.μ[end])
     # end
@@ -797,10 +794,11 @@ end
 Computes price based on cost c and markup μ
 """
 function compute_p_cp!(
-    cp::ConsumerGoodProducer
+    cp::ConsumerGoodProducer,
+    τˢ::Float64
     )
 
-    shift_and_append!(cp.p, (1 + cp.μ[end]) * max(cp.c[end], cp.true_c))
+    shift_and_append!(cp.p, (1 + τˢ)*((1 + cp.μ[end]) * max(cp.c[end], cp.true_c)))
 end
 
 

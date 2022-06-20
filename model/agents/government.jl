@@ -89,6 +89,18 @@ function receive_capgains_tax_gov!(
 end
 
 
+"""
+Lets government receive sales taxes from consumer good producers
+"""
+function receive_salestax_gov!(
+    government::Government,
+    salestax::Float64,
+    t::Int
+    )
+
+    government.curracc.Rev_τˢ[t] += salestax
+end
+
 
 function compute_budget_balance(
     government::Government,

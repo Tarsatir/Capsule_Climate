@@ -25,6 +25,7 @@
     employees::Vector{Int} = Int64[]      # employees in company
     mean_skill::Float64 = 1.0             # mean skill level of employees
     L::Float64 = 0.0                      # labor units in company
+    L_RD::Float64 = 0.0                   # labor units used for R&D
     Lᵈ::Float64 = L                       # desired labor units in company
     ΔLᵈ::Float64 = 0.0                    # desired change in labor force
     w̄::Vector{Float64}                    # wage level
@@ -278,6 +279,9 @@ function set_RD_kp!(
         kp.RD = ν * max(kp.balance.NW, 0)
     end
 
+    # Cap R&D to possible innovation based on labor available in company
+    kp.RD = min(kp.RD, kp.L * kp.w̄[end])
+
     # TODO: now based on prev profit to avoid large losses. If kept, describe!
 
     # kp.curracc.TCI += kp.RD
@@ -307,8 +311,6 @@ function receive_order_kp!(
     cp_id::Int,
     order_size::Int
     )
-
-    # push!(kp.orders, cp_id)
 
     kp.orders[cp_id] = order_size
 
@@ -354,7 +356,6 @@ function produce_goods_kp!(
     )
 
     # Determine what the total demand is, regardless if it can be satisfied
-    # D = length(kp.orders) * globalparam.freq_per_machine
     D = kp.O
     shift_and_append!(kp.D, D)
 
@@ -395,13 +396,7 @@ function produce_goods_kp!(
                 break
             end
         end
-
-        # kp.prod_queue = n_poss_prod >= 1 ? sample(kp.orders, n_poss_prod; replace=false) : []
-
     end
-
-    # println(kp.orders)
-    # println(kp.prod_queue)
 
     # Append total production amount of capital units
     Q = sum(values(kp.prod_queue)) * globalparam.freq_per_machine
@@ -413,7 +408,6 @@ function produce_goods_kp!(
     update_emissions_kp!(kp)
 
     # Empty order queue
-    # kp.orders = []
     for cp_id in keys(kp.orders)
         kp.orders[cp_id] = 0
     end
@@ -518,11 +512,8 @@ Filters out historical clients if they went bankrupt
 function remove_bankrupt_HC_kp!(
     kp::CapitalGoodProducer,
     bankrupt_cp::Vector{Int}
-    # bankrupt_lp::Vector{Int},
-    # bankrupt_bp::Vector{Int}
     )
 
-    # filter!(bp_id -> bp_id ∉ bankrupt_bp, kp.HC)
     filter!(cp_id -> cp_id ∉ bankrupt_cp, kp.HC)
 end
 
