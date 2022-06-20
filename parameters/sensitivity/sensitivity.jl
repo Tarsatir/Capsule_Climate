@@ -199,18 +199,20 @@ end
 # Include Python file containing GSA functions
 @pyinclude("parameters/sensitivity/run_GSA.py")
 
-run_nr = 5
+run_nr = 6
 
-path(run_nr, thread_nr) = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
+if length(ARGS) == 0
+    dir = "parameters/sensitivity/sensitivity_runs/"
+else
+    dir = ARGS[1]
+end
 
-n_threads = Threads.nthreads()
-# n_threads = 32
+path(run_nr, thread_nr) = "$(dir)sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
 
 # Define number of similated runs
 N_u = 500
 n = 50
 N_c = 100
-
 
 # Define number of time steps per simulation and warmup period
 n_timesteps = 460
@@ -224,28 +226,33 @@ X_labels = Dict([["α_cp", [0.4, 1.0]],
                  ["ψ_E", [0.0, 0.1]],
                  ["ψ_Q", [0.0, 0.5]],
                  ["ψ_P", [0.0, 0.5]],
-                 ["p_f", [0.0, 0.5]]])
+                 ["p_f", [0.0, 1.0]]])
 
 # Number of uncertain parameters
 M = length(X_labels)
 
-N = N_u + n * N_c * M
+if length(ARGS) < 2
+    N = N_u + n * N_c * M
+else
+    N = parse(Int64, ARGS[2])
+end
 
-# TEMP
+# Specify number of threads and n per thread
+n_threads = Threads.nthreads()
 n_per_thread = ceil(Int64, N / n_threads)
 
 # Generate parameters used for SA
-# generate_labels(
-#     X_labels, 
-#     run_nr,
-#     N,
-#     n_per_thread,  
-#     n_threads,
-# )
+generate_labels(
+    X_labels, 
+    run_nr,
+    N,
+    n_per_thread,  
+    n_threads,
+)
 
 # Generate simulation data
-n_per_epoch = 2
-n_per_thread = 2
-generate_simdata(X_labels, n_threads, n_per_epoch, n_per_thread, run_nr)
+# n_per_epoch = 2
+# n_per_thread = 2
+# generate_simdata(X_labels, n_threads, n_per_epoch, n_per_thread, run_nr)
 
 # run_PAWN(X_labels, path, run_nr; N=N)

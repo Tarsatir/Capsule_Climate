@@ -30,4 +30,5 @@ plotting/plot_D_p.jl
 
 # Avoid clutter files and folders
 parameters/sensitivity/__pycache__
-parameters/sensitivity/sensitivity_runs
+# parameters/sensitivity/sensitivity_runs
+parameters/sensitivity/oldruns

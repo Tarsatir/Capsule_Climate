@@ -482,10 +482,6 @@ function run_simulation(;
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat = initialize_model(T; changed_params=changed_params)
     for t in 1:T
 
-        # if t % 100 == 0
-        # println("tr $threadnr step $t")
-        # end
-
         @timeit to "step" model_step!(
                                 t,
                                 to, 
