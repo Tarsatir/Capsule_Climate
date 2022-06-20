@@ -509,8 +509,7 @@ function compute_GINI(
     macroeconomy.GINI_W[t] = sum(all_W_absdiff) / (2 * length(all_hh)^2 * macroeconomy.M_hh[t] / length(all_hh))
 
     # Compute Foster-Greer-Thorbecke index
-
-    z = 60
+    z = 80
     H = Float64[]
     for hh_id in all_hh
         if model[hh_id].total_I <= z

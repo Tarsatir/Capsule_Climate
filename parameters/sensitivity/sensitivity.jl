@@ -81,8 +81,9 @@ Generates data used by sensitivity analysis.
 """
 function generate_simdata(
     X_labels::Dict,
-    n_per_epoch::Int,
-    n_per_thread::Int,
+    n_threads::Int64,
+    n_per_epoch::Int64,
+    n_per_thread::Int64,
     run_nr::Int
     )
     
@@ -102,7 +103,9 @@ function generate_simdata(
             df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
 
             firstrow = total_completed_runs + 1
-            lastrow = firstrow + n_per_epoch
+            lastrow = firstrow + n_per_epoch - 1
+
+            println("       $(firstrow), $(lastrow)")
 
             for row in firstrow:lastrow
 
@@ -200,8 +203,8 @@ run_nr = 5
 
 path(run_nr, thread_nr) = "parameters/sensitivity/sensitivity_runs/sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
 
-# n_threads = Threads.nthreads()
-n_threads = 32
+n_threads = Threads.nthreads()
+# n_threads = 32
 
 # Define number of similated runs
 N_u = 500
@@ -232,16 +235,17 @@ N = N_u + n * N_c * M
 n_per_thread = ceil(Int64, N / n_threads)
 
 # Generate parameters used for SA
-generate_labels(
-    X_labels, 
-    run_nr,
-    N,
-    n_per_thread,  
-    n_threads,
-)
+# generate_labels(
+#     X_labels, 
+#     run_nr,
+#     N,
+#     n_per_thread,  
+#     n_threads,
+# )
 
 # Generate simulation data
-# n_per_epoch = 2
-# generate_simdata(X_labels, n_per_epoch, n_per_thread, run_nr)
+n_per_epoch = 2
+n_per_thread = 2
+generate_simdata(X_labels, n_threads, n_per_epoch, n_per_thread, run_nr)
 
 # run_PAWN(X_labels, path, run_nr; N=N)

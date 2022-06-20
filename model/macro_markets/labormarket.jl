@@ -247,10 +247,8 @@ function matching_lm(
 
     Lᵈ = Vector{Int}(undef, 100)
 
-    labormarket.L_demanded = sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers)
+    labormarket.L_demanded = length(labormarket.hiring_producers) > 0 ? sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers) : 0.0
     labormarket.L_hired = 0.0
-
-    # for _ in 1:2
 
     # update_hiring_firing_producers(labormarket, all_p, model)
     sort!(labormarket.hiring_producers, by=p_id->model[p_id].ΔLᵈ, rev=true)
@@ -353,7 +351,6 @@ function update_firedworker_lm!(
 
     # Remove unemployed workers from employed category
     filter!(hh_id -> hh_id ∉ to_be_fired, labormarket.employed_hh)
-
 end
 
 

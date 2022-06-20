@@ -32,7 +32,6 @@ include("agents/consumer_good_producer.jl")
 include("agents/capital_good_producer.jl")
 include("agents/general_producer.jl")
 include("agents/energy_producer.jl")
-# include("agents/bank.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
