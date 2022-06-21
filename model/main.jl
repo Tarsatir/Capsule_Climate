@@ -518,4 +518,4 @@ function run_simulation(;
     return Yg, macroeconomy.GINI_I, macroeconomy.GINI_W, macroeconomy.U, macroeconomy.FGT, climate.C_a[end]
 end
 
-# run_simulation(savedata=true)
+run_simulation(savedata=true)

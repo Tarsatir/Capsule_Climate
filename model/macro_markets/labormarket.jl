@@ -44,7 +44,7 @@ function spread_employees_lm!(
         end
 
         model[cp_id].employees = employees
-        model[cp_id].L = sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees)
+        model[cp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
         i += n_init_emp_cp
 
     end
@@ -61,7 +61,7 @@ function spread_employees_lm!(
             push!(labormarket.employed_hh, hh_id)
         end
         model[kp_id].employees = employees
-        model[kp_id].L = sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees)
+        model[kp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
         i += n_init_emp_kp
     end
 

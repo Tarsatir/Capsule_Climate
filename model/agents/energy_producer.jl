@@ -419,7 +419,7 @@ function compute_Q̄_ep!(
     ep.Q̄ₑ[t] = ep.green_capacity[t] 
 
     if length(ep.dirty_portfolio) > 0
-        ep.Q̄ₑ[t] += sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio)
+        ep.Q̄ₑ[t] += length(ep.dirty_portfolio) > 0 ? sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio) : 0.0
     end
 end
 

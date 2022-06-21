@@ -257,7 +257,7 @@ n_per_thread = ceil(Int64, N / n_threads)
 # )
 
 # Generate simulation data
-n_per_epoch = 2
+n_per_epoch = 10
 # n_per_thread = 2
 generate_simdata(X_labels, n_threads, n_per_epoch, n_per_thread, run_nr)
 
