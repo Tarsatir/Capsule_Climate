@@ -62,6 +62,9 @@ function generate_labels(
         df[!, "FGT_1st"] .= NaN
         df[!, "FGT_2nd"] .= NaN
 
+        # Add atmospheric carbon concentration at final step
+        df[!, "carbon_conc"] .= NaN
+
         # Write to csv
         CSV.write(path(run_nr, thread_nr), df)
     end
@@ -98,18 +101,18 @@ function generate_simdata(
 
         for epoch in 1:n_epochs
 
-            println("Thread $(Threads.threadid()), epoch $epoch")
+            # println("Thread $(Threads.threadid()), epoch $epoch")
 
             df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
 
             firstrow = total_completed_runs + 1
             lastrow = firstrow + n_per_epoch - 1
 
-            println("       $(firstrow), $(lastrow)")
+            # println("       $(firstrow), $(lastrow)")
 
             for row in firstrow:lastrow
 
-                println("   Tr $(Threads.threadid()), row $row")
+                # println("   Tr $(Threads.threadid()), row $row")
 
                 # Fill in changed parameters
                 for param in params
@@ -117,7 +120,7 @@ function generate_simdata(
                 end
 
                 # Run the model with changed parameters
-                GDP_g, GINI_I, GINI_W, U, FGT = run_simulation(
+                GDP_g, GINI_I, GINI_W, U, FGT, carbon_conc = run_simulation(
                     changed_params=changedparams,
                     full_output=false;
                     threadnr=Threads.threadid()
@@ -143,6 +146,9 @@ function generate_simdata(
                 # Write poverty data to dataframe
                 df[row, "FGT_1st"] = mean(FGT)
                 df[row, "FGT_2nd"] = var(FGT)
+
+                # Write atmospheric carbon concentration
+                df[row, "carbon_conc"] = carbon_conc
 
                 # Update total completed runs
                 total_completed_runs += 1
@@ -197,7 +203,7 @@ end
 
 
 # Include Python file containing GSA functions
-@pyinclude("parameters/sensitivity/run_GSA.py")
+# @pyinclude("parameters/sensitivity/run_GSA.py")
 
 run_nr = 6
 
@@ -242,17 +248,17 @@ n_threads = Threads.nthreads()
 n_per_thread = ceil(Int64, N / n_threads)
 
 # Generate parameters used for SA
-generate_labels(
-    X_labels, 
-    run_nr,
-    N,
-    n_per_thread,  
-    n_threads,
-)
+# generate_labels(
+#     X_labels, 
+#     run_nr,
+#     N,
+#     n_per_thread,  
+#     n_threads,
+# )
 
 # Generate simulation data
-# n_per_epoch = 2
+n_per_epoch = 2
 # n_per_thread = 2
-# generate_simdata(X_labels, n_threads, n_per_epoch, n_per_thread, run_nr)
+generate_simdata(X_labels, n_threads, n_per_epoch, n_per_thread, run_nr)
 
 # run_PAWN(X_labels, path, run_nr; N=N)

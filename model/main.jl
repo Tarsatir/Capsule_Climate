@@ -515,7 +515,7 @@ function run_simulation(;
 
     Yg = (macroeconomy.GDP[2:end] .- macroeconomy.GDP[1:end-1]) ./ macroeconomy.GDP[1:end-1]
 
-    return Yg, macroeconomy.GINI_I, macroeconomy.GINI_W, macroeconomy.U, macroeconomy.FGT
+    return Yg, macroeconomy.GINI_I, macroeconomy.GINI_W, macroeconomy.U, macroeconomy.FGT, climate.C_a[end]
 end
 
 # run_simulation(savedata=true)
