@@ -14,19 +14,19 @@ from SAFEpython.util import aggregate_boot  # function to aggregate the bootstra
 import matplotlib.pyplot as plt
 
 
-def call_AAT_sampling(samp_strat, M, X_labels, N):
+def call_AAT_sampling(samp_strat, X_labels, N):
     """
     Samples parameters to use for simulation runs.
     """
     
     # Define distribution of parameters
-    distr_fun = [stats.uniform] * M
+    distr_fun = [stats.uniform] * len(X_labels)
 
-    distr_par = [np.nan] * M
+    distr_par = [np.nan] * len(X_labels)
     for i,key in enumerate(X_labels):
         distr_par[i] = [X_labels[key][0], X_labels[key][1] - X_labels[key][0]]
 
-    X = AAT_sampling(samp_strat, M, distr_fun, distr_par, N)
+    X = AAT_sampling(samp_strat, len(X_labels), distr_fun, distr_par, N)
     
     return X
 

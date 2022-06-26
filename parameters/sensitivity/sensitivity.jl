@@ -21,68 +21,19 @@ Generates labels (parameters) used to run the sensitivity analysis. Saves to csv
     - `n_threads`: total number of threads
     - `samp_strat` [OPT]: samling strategy (default=`lhs`)
 """
-function generate_labels(
-    X_labels::Dict,
+
+
+function getfilepath(
+    folderpath::String,
     run_nr::Int64,
-    N::Int64,
-    n_per_thread::Int64,
-    n_threads::Int64;
-    samp_strat::String = "lhs"
-    )
+    thread_nr::Int64;
+    isinput::Bool=false
+    )::String
 
-    for thread_nr in 1:n_threads
-
-        # Call SAMP function to get the input parameters for running the models
-        X = py"call_AAT_sampling"(samp_strat, M, X_labels, n_per_thread)
-
-        # Define boundaries computed within thread
-        # thread_start = (thread_nr-1) * n_per_thread + 1
-        # thread_end = min(thread_nr * n_per_thread, N)
-
-        # params = Dict(x=>X[thread_start:thread_end, j] for (j,x) in enumerate(keys(X_labels)))
-        params = Dict(x=>X[:, j] for (j,x) in enumerate(keys(X_labels)))
-        
-        # Write to dataframe
-        df = DataFrame(params)
-
-        # Add GDP moments
-        df[!, "GDP_1st"] .= NaN
-        df[!, "GDP_2nd"] .= NaN
-        df[!, "GDP_3rd"] .= NaN
-        df[!, "GDP_4th"] .= NaN
-
-        # Add Gini moments
-        df[!, "Gini_I_1st"] .= NaN
-        df[!, "Gini_I_2nd"] .= NaN
-
-        df[!, "Gini_W_1st"] .= NaN
-        df[!, "Gini_W_2nd"] .= NaN
-
-        # Add unemployment moments
-        df[!, "U_1st"] .= NaN
-        df[!, "U_2nd"] .= NaN
-
-        # Add productivity growth
-        df[!, "LP_1st"] .= NaN
-        df[!, "LP_2nd"] .= NaN
-
-        df[!, "EE_1st"] .= NaN
-        df[!, "EE_2nd"] .= NaN
-
-        df[!, "EF_1st"] .= NaN
-        df[!, "EF_2nd"] .= NaN
-
-        # Add poverty moments
-        df[!, "FGT_1st"] .= NaN
-        df[!, "FGT_2nd"] .= NaN
-
-        # Add emissions indexes
-        df[!, "em2030"] .= NaN
-        df[!, "em2040"] .= NaN
-        df[!, "em2050"] .= NaN
-
-        # Write to csv
-        CSV.write(path(run_nr, thread_nr), df)
+    if isinput
+        return folderpath * "gsa_input_run$(run_nr)_thread$(thread_nr).csv"
+    else
+        return folderpath * "gsa_output_run$(run_nr)_thread$(thread_nr).csv"
     end
 end
 
@@ -92,6 +43,75 @@ function compute_growthrates(
     )
 
     return 100 .* (ts[1:end-1] .- ts[2:end]) ./ ts[2:end]
+end
+
+
+function generate_labels(
+    X_labels::Dict,
+    run_nr::Int64,
+    n_per_thread::Int64,
+    n_threads::Int64,
+    inputpath::String;
+    samp_strat::String = "lhs"
+    )
+
+    # Include Python file containing GSA functions
+    @pyinclude("parameters/sensitivity/run_GSA.py")
+
+    for thread_nr in 1:n_threads
+
+        # Call SAMP function to get the input parameters for running the models
+        X = py"call_AAT_sampling"(samp_strat, X_labels, n_per_thread)
+
+        # Define boundaries computed within thread
+        # thread_start = (thread_nr-1) * n_per_thread + 1
+        # thread_end = min(thread_nr * n_per_thread, N)
+
+        params = Dict(x=>X[:, j] for (j,x) in enumerate(keys(X_labels)))
+        
+        # Write to dataframe
+        df = DataFrame(params)
+
+        # Add GDP moments
+        # df[!, "GDP_1st"] .= NaN
+        # df[!, "GDP_2nd"] .= NaN
+        # df[!, "GDP_3rd"] .= NaN
+        # df[!, "GDP_4th"] .= NaN
+
+        # # Add Gini moments
+        # df[!, "Gini_I_1st"] .= NaN
+        # df[!, "Gini_I_2nd"] .= NaN
+
+        # df[!, "Gini_W_1st"] .= NaN
+        # df[!, "Gini_W_2nd"] .= NaN
+
+        # # Add unemployment moments
+        # df[!, "U_1st"] .= NaN
+        # df[!, "U_2nd"] .= NaN
+
+        # # Add productivity growth
+        # df[!, "LP_1st"] .= NaN
+        # df[!, "LP_2nd"] .= NaN
+
+        # df[!, "EE_1st"] .= NaN
+        # df[!, "EE_2nd"] .= NaN
+
+        # df[!, "EF_1st"] .= NaN
+        # df[!, "EF_2nd"] .= NaN
+
+        # # Add poverty moments
+        # df[!, "FGT_1st"] .= NaN
+        # df[!, "FGT_2nd"] .= NaN
+
+        # # Add emissions indexes
+        # df[!, "em2030"] .= NaN
+        # df[!, "em2040"] .= NaN
+        # df[!, "em2050"] .= NaN
+
+        # Write to csv
+        filepath = getfilepath(inputpath, run_nr, thread_nr; isinput=true)
+        CSV.write(filepath, df)
+    end
 end
 
 
@@ -122,31 +142,15 @@ function generate_simdata(
         params = collect(keys(X_labels))
         changedparams = Dict(params .=> 0.0)
 
-        # n_epochs = ceil(Int64, n_per_thread / n_per_epoch)
+        inputpath = 
+        outputpath = 
+        res = nothing
 
-        df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
-
-        # for _ in 1:n_epochs
-
-        for row in 1:n_per_thread
-
-            # df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
-
-            # Update firstrow and 
-            # if total_completed_runs % n_per_epoch == 0
-                # firstrow = total_completed_runs + 1
-                # lastrow = firstrow + n_per_epoch - 1
-            # end
-
-            # println("       $(firstrow), $(lastrow)")
-
-            # for row in firstrow:lastrow
-
-            println("   Tr $(Threads.threadid()), row $row")
+        for (i, row) in enumerate(CSV.Rows(inputpath))
 
             # Fill in changed parameters
             for param in params
-                changedparams[param] = df[row, param]
+                changedparams[param] = row[param]
             end
 
             # Run the model with changed parameters
@@ -156,63 +160,154 @@ function generate_simdata(
                 threadnr=Threads.threadid()
             )
 
-            # Write GDP data to dataframe
-            df[row, "GDP_1st"] = mean(runoutput.GDP_growth[t_warmup:end])
-            df[row, "GDP_2nd"] = var(runoutput.GDP_growth[t_warmup:end])
-            df[row, "GDP_3rd"] = skewness(runoutput.GDP_growth[t_warmup:end])
-            df[row, "GDP_4th"] = kurtosis(runoutput.GDP_growth[t_warmup:end])
+            # Prepare data to be written to dataframe
+            GDP_1st = mean(runoutput.GDP_growth[t_warmup:end])
+            GDP_2nd = var(runoutput.GDP_growth[t_warmup:end])
+            GDP_3rd = skewness(runoutput.GDP_growth[t_warmup:end])
+            GDP_4th = kurtosis(runoutput.GDP_growth[t_warmup:end])
 
             # Write unemployment data to dataframe
-            df[row, "U_1st"] = mean(runoutput.U[t_warmup:end])
-            df[row, "U_2nd"] = var(runoutput.U[t_warmup:end])
+            U_1st = mean(runoutput.U[t_warmup:end])
+            U_2nd = var(runoutput.U[t_warmup:end])
 
             # Write Gini data to dataframe
-            df[row, "Gini_I_1st"] = mean(runoutput.GINI_I[t_warmup:end])
-            df[row, "Gini_I_2nd"] = var(runoutput.GINI_I[t_warmup:end])
+            GINI_I_1st = mean(runoutput.GINI_I[t_warmup:end])
+            GINI_I_2nd = var(runoutput.GINI_I[t_warmup:end])
 
-            df[row, "Gini_W_1st"] = mean(runoutput.GINI_W[t_warmup:end])
-            df[row, "Gini_W_2nd"] = var(runoutput.GINI_W[t_warmup:end])
+            GINI_W_1st = mean(runoutput.GINI_W[t_warmup:end])
+            GINI_W_2nd = var(runoutput.GINI_W[t_warmup:end])
 
             # Add productivity growth
             LP_g = compute_growthrates(runoutput.avg_π_LP)
-            df[row, "LP_1st"] .= mean(LP_g[t_warmup:end])
-            df[row, "LP_2nd"] .= var(LP_g[t_warmup:end])
+            LP_g_1st = mean(LP_g[t_warmup:end])
+            LP_g_2nd = var(LP_g[t_warmup:end])
 
             EE_g = compute_growthrates(runoutput.avg_π_EE)
-            df[row, "EE_1st"] .= mean(EE_g[t_warmup:end])
-            df[row, "EE_2nd"] .= var(EE_g[t_warmup:end])
+            EE_g_1st = mean(EE_g[t_warmup:end])
+            EE_g_2nd = var(EE_g[t_warmup:end])
 
             EF_g = compute_growthrates(runoutput.avg_π_EF)
-            df[row, "EF_1st"] .= mean(EF_g[t_warmup:end])
-            df[row, "EF_2nd"] .= var(EF_g[t_warmup:end])
+            EF_g_1st = mean(EF_g[t_warmup:end])
+            EF_g_2nd = var(EF_g[t_warmup:end])
 
             # Write poverty data to dataframe
-            df[row, "FGT_1st"] = mean(runoutput.FGT[t_warmup:end])
-            df[row, "FGT_2nd"] = var(runoutput.FGT[t_warmup:end])
+            FGT_1st = mean(runoutput.FGT[t_warmup:end])
+            FGT_2nd = var(runoutput.FGT[t_warmup:end])
 
             # Write emissions indexes
-            df[row, "em2030"] = runoutput.emissions_index[220]
-            df[row, "em2040"] = runoutput.emissions_index[340]
-            df[row, "em2050"] = runoutput.emissions_index[460]
+            em2030 = runoutput.emissions_index[220]
+            em2040 = runoutput.emissions_index[340]
+            em2050 = runoutput.emissions_index[460]
 
-            # Update total completed runs
-            total_completed_runs += 1
+            # If new epoch starts, make new dataframe holding data. Otherwise, push
+            # data to existing dataframe.
+            if (i - 1) % n_per_epoch == 0
+                res = DataFrame(
+                    :GDP_1st => GDP_1st,
+                    :GDP_2nd => GDP_2nd,
+                    :GDP_3rd => GDP_3rd,
+                    :GDP_4th => GDP_4th,
+                    :U_1st => U_1st,
+                    :U_2nd => U_2nd,
+                    :GINI_I_1st => GINI_I_1st,
+                    :GINI_I_2nd => GINI_I_2nd,
+                    :GINI_W_1st => GINI_W_1st,
+                    :GINI_W_2nd => GINI_W_2nd,
+                    :LP_g_1st => LP_g_1st,
+                    :LP_g_2nd => LP_g_2nd,
+                    :EE_g_1st => EE_g_1st,
+                    :EE_g_2nd => EE_g_2nd,
+                    :EF_g_1st => EF_g_1st,
+                    :EF_g_2nd => EF_g_2nd,
+                    :FGT_1st => FGT_1st,
+                    :FGT_2nd => FGT_2nd,
+                    :em2030 => em2030,
+                    :em2040 => em2040,
+                    :em2050 => em2050
+                )
+            else
+                push!(res, [
+                            GDP_1st, GDP_2nd, GDP_3rd, GDP_4th, U_1st, U_2nd, 
+                            GINI_I_1st, GINI_I_2nd, GINI_W_1st, GINI_W_2nd,
+                            LP_g_1st, LP_g_2nd, EE_g_1st, EE_g_2nd,
+                            EF_g_1st, EF_g_2nd, FGT_1st, FGT_2nd,
+                            em2030, em2040, em2050
+                           ]
+                     )
+            end
 
-                # if total_completed_runs == nrow(df)
-                #     break
-                # end
+        # df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
+
+        # for row in 1:n_per_thread
+
+        #     println("   Tr $(Threads.threadid()), row $row")
+
+            # # Fill in changed parameters
+            # for param in params
+            #     changedparams[param] = df[row, param]
             # end
 
-            if total_completed_runs % n_per_epoch == 0
-                println("   writing to csv...")
-                # firstrow = total_completed_runs + 1
-                # lastrow = firstrow + n_per_epoch - 1
-                CSV.write(path(run_nr, Threads.threadid()), df)
-            end
-            # CSV.write(path(run_nr, Threads.threadid()), df)
+            # # Run the model with changed parameters
+            # runoutput = run_simulation(
+            #     changed_params=changedparams,
+            #     full_output=false;
+            #     threadnr=Threads.threadid()
+            # )
 
-            if total_completed_runs == nrow(df)
-                return nothing
+        #     # Write GDP data to dataframe
+        #     df[row, "GDP_1st"] = mean(runoutput.GDP_growth[t_warmup:end])
+        #     df[row, "GDP_2nd"] = var(runoutput.GDP_growth[t_warmup:end])
+        #     df[row, "GDP_3rd"] = skewness(runoutput.GDP_growth[t_warmup:end])
+        #     df[row, "GDP_4th"] = kurtosis(runoutput.GDP_growth[t_warmup:end])
+
+        #     # Write unemployment data to dataframe
+        #     df[row, "U_1st"] = mean(runoutput.U[t_warmup:end])
+        #     df[row, "U_2nd"] = var(runoutput.U[t_warmup:end])
+
+        #     # Write Gini data to dataframe
+        #     df[row, "Gini_I_1st"] = mean(runoutput.GINI_I[t_warmup:end])
+        #     df[row, "Gini_I_2nd"] = var(runoutput.GINI_I[t_warmup:end])
+
+        #     df[row, "Gini_W_1st"] = mean(runoutput.GINI_W[t_warmup:end])
+        #     df[row, "Gini_W_2nd"] = var(runoutput.GINI_W[t_warmup:end])
+
+        #     # Add productivity growth
+        #     LP_g = compute_growthrates(runoutput.avg_π_LP)
+        #     df[row, "LP_1st"] .= mean(LP_g[t_warmup:end])
+        #     df[row, "LP_2nd"] .= var(LP_g[t_warmup:end])
+
+        #     EE_g = compute_growthrates(runoutput.avg_π_EE)
+        #     df[row, "EE_1st"] .= mean(EE_g[t_warmup:end])
+        #     df[row, "EE_2nd"] .= var(EE_g[t_warmup:end])
+
+        #     EF_g = compute_growthrates(runoutput.avg_π_EF)
+        #     df[row, "EF_1st"] .= mean(EF_g[t_warmup:end])
+        #     df[row, "EF_2nd"] .= var(EF_g[t_warmup:end])
+
+        #     # Write poverty data to dataframe
+        #     df[row, "FGT_1st"] = mean(runoutput.FGT[t_warmup:end])
+        #     df[row, "FGT_2nd"] = var(runoutput.FGT[t_warmup:end])
+
+        #     # Write emissions indexes
+        #     df[row, "em2030"] = runoutput.emissions_index[220]
+        #     df[row, "em2040"] = runoutput.emissions_index[340]
+        #     df[row, "em2050"] = runoutput.emissions_index[460]
+
+        #     # Update total completed runs
+        #     total_completed_runs += 1
+
+        #     if total_completed_runs % n_per_epoch == 0
+        #         println("   writing to csv...")
+        #         CSV.write(path(run_nr, Threads.threadid()), df)
+        #     end
+
+        #     if total_completed_runs == nrow(df)
+        #         return nothing
+        #     end
+
+            # If end of epoch is reached, write results to output csv
+            if nrow(res) == n_per_epoch 
+                CSV.write(output_path, res; append=i≠1)
             end
         end
     end
@@ -226,9 +321,8 @@ Calls SAFE toolbox in Python script.
 """
 function run_PAWN(
     X_labels::Dict,
-    run_nr;
-    nthreads::Int64=16,
-    N=100
+    run_nr::Int64;
+    nthreads::Int64=16
     )
 
     # Read simulation data, save X and Y as matrices
@@ -282,10 +376,6 @@ function run_PAWN(
 
 end
 
-# Define number of similated runs
-N_u = 500
-n = 50
-N_c = 100
 
 function parse_commandline(
     M::Int64;
@@ -305,22 +395,36 @@ function parse_commandline(
             help="number of simulations per epoch"
             arg_type=Int64
             default=10
-        "--path"
-            help="path to directory with parameter and result files"
+        "--inputpath"
+            help="path to directory with input files"
             arg_type=String
-            default="parameters/sensitivity/sensitivity_runs/"
+            default="parameters/sensitivity/sensitivity_runs/input_data/"
+        "--outputpath"
+            help="path to directory with output files"
+            arg_type=String
+            default="parameters/sensitivity/sensitivity_runs/output_data/"
+        "--geninput"
+            help="determines if input parameters are generated"
+            arg_type=Bool
+            default=false
+        "--genoutput"
+            help="determines if output parameters are generated (may take a long time)"
+            arg_type=Bool
+            default=true
+        "--runpawn"
+            help="determines if PAWN indeces are run"
+            arg_type=Bool
+            default=false
     end
 
     return parse_args(s)
 end
 
 
-# Include Python file containing GSA functions
-# @pyinclude("parameters/sensitivity/run_GSA.py")
-
-
 function main(;
-    run_nr::Int64=6
+    run_nr::Int64=7,
+    n_timesteps::Int64=460,
+    n_warmup::Int64=100
     )
 
     X_labels = Dict([["α_cp", [0.4, 1.0]],
@@ -335,53 +439,48 @@ function main(;
                     )
 
     parsed_args = parse_commandline(length(X_labels))
-    
-    println(parsed_args)
 
-    # if length(ARGS) == 0
-    #     dir = "parameters/sensitivity/sensitivity_runs/"
-    # else
-    #     dir = ARGS[1]
-    # end
+    n_sims = parsed_args["n_sims"]
+    n_per_epoch = parsed_args["n_per_epoch"]
+    inputpath = parsed_args["inputpath"]
+    outputpath = parsed_args["outputpath"]
+    geninput = parsed_args["gen_input"]
+    genoutput = parsed_args["gen_output"]
+    runpawn = parsed_args["run_pawn"]
+
+    # Specify number of threads and n per thread
+    n_threads = Threads.nthreads()
+    n_per_thread = ceil(Int64, n_sims / n_threads)
+    n_per_epoch = 50
 
     # path(run_nr, thread_nr) = "$(dir)sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
 
+    # Generate parameters used for SA
+    if geninput 
+        generate_labels(
+            X_labels, 
+            run_nr,
+            n_per_thread,  
+            n_threads,
+            inputpath
+        )
+    end
 
+    # Generate simulation data
+    if genoutput
+        @time generate_simdata(
+            X_labels, 
+            n_threads, 
+            n_per_epoch, 
+            n_per_thread, 
+            run_nr
+        )
+    end
 
-    # # Define number of time steps per simulation and warmup period
-    # n_timesteps = 460
-    # n_warmup = 100
-
-
-
-    # # Number of uncertain parameters
-    # M = length(X_labels)
-
-    # if length(ARGS) < 2
-    #     N = N_u + n * N_c * M
-    # else
-    #     N = parse(Int64, ARGS[2])
-    # end
-
-    # # Specify number of threads and n per thread
-    # n_threads = Threads.nthreads()
-    # n_per_thread = ceil(Int64, N / n_threads)
-
-    # # Generate parameters used for SA
-    # # generate_labels(
-    # #     X_labels, 
-    # #     run_nr,
-    # #     N,
-    # #     n_per_thread,  
-    # #     n_threads,
-    # # )
-
-    # # Generate simulation data
-    # # n_per_epoch = 10
-    # n_per_epoch = 2
-    # @time generate_simdata(X_labels, n_threads, n_per_epoch, n_per_thread, run_nr)
-
-    # # run_PAWN(X_labels, run_nr; N=N)
+    # Generate PAWN indeces
+    if runpawn
+        run_PAWN(X_labels, run_nr; n_threads=n_treads)
+    end
 end
 
 main()
