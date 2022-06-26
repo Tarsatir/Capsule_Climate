@@ -8,6 +8,12 @@ using TimerOutputs
 using DataStructures
 using Parameters
 using SparseArrays
+using PyCall
+
+# using Conda
+# Conda.add("scipy")
+
+# scipy = pyimport("scipy")
 
 # Include files
 include("../results/write_results.jl")
@@ -334,6 +340,13 @@ function model_step!(
     
     # (6) Transactions take place on consumer market
 
+    all_I = map(hh_id -> model[hh_id].total_I, all_hh)
+
+    # Households set consumption budget
+    @timeit to "set budget" @inbounds for hh_id in all_hh
+        set_consumption_budget_hh!(model[hh_id], all_I, globalparam, model)
+    end
+
     # Consumer market process
     @timeit to "consumermarket" consumermarket_process!(
         all_hh,
@@ -406,7 +419,9 @@ function model_step!(
 
     # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, model)
-    carbon_equilibrium_tempchange_cl!(climate, t)
+
+    # NOTE: climate process no longer tracked
+    # carbon_equilibrium_tempchange_cl!(climate, t)
 
     # Remove bankrupt companies.
     @timeit to "kill bankr p" kill_all_bankrupt_p!(
@@ -513,9 +528,19 @@ function run_simulation(;
         println()
     end
 
-    Yg = (macroeconomy.GDP[2:end] .- macroeconomy.GDP[1:end-1]) ./ macroeconomy.GDP[1:end-1]
-
-    return Yg, macroeconomy.GINI_I, macroeconomy.GINI_W, macroeconomy.U, macroeconomy.FGT, climate.C_a[end]
+    # Pack output in struct
+    runoutput = RunOutput(
+        macroeconomy.GDP_growth,
+        macroeconomy.U,
+        macroeconomy.GINI_I,
+        macroeconomy.GINI_W,
+        macroeconomy.FGT,
+        macroeconomy.avg_π_LP,
+        macroeconomy.avg_π_EE,
+        macroeconomy.avg_π_EF,
+        climate.emissions_index
+    )
+    return runoutput
 end
 
-# run_simulation(savedata=true)
+run_simulation(savedata=true)

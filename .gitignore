@@ -32,3 +32,5 @@ plotting/plot_D_p.jl
 parameters/sensitivity/__pycache__
 # parameters/sensitivity/sensitivity_runs
 parameters/sensitivity/oldruns
+parameters/sensitivity/sensitivity_runs_10000
+parameters/sensitivity/sensitivity_plots

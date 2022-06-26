@@ -85,8 +85,9 @@ function save_macro_data(macroeconomy)
         RS_avg = macroeconomy.RS_avg,
         n_mach_RS = macroeconomy.n_mach_RS_avg,
 
-        avg_pi_LP =  macroeconomy.avg_π_LP,
+        avg_pi_LP = macroeconomy.avg_π_LP,
         avg_pi_EE = macroeconomy.avg_π_EE,
+        avg_pi_EF = macroeconomy.avg_π_EF,
 
         avg_A_LP = macroeconomy.avg_A_LP,
         avg_A_EE = macroeconomy.avg_A_EE,

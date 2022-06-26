@@ -64,3 +64,15 @@ end
     I::Matrix{Float64} = Matrix{Float64}(undef, D, D)
     W::Matrix{Float64} = Matrix{Float64}(undef, D, D)
 end
+
+struct RunOutput
+    GDP_growth::Vector{Float64}
+    U::Vector{Float64}
+    GINI_I::Vector{Float64}
+    GINI_W::Vector{Float64}
+    FGT::Vector{Float64}
+    π_LP::Vector{Float64}
+    π_EE::Vector{Float64}
+    π_EF::Vector{Float64}
+    emissions_index::Vector{Float64}
+end

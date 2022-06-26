@@ -53,7 +53,7 @@ def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, n=10, Nboot=3000):
     plt.figure(figsize=(10, 4))
     pf.boxplot1(KS_mean_m, S_lb=KS_mean_lb, S_ub=KS_mean_ub,
                 X_Labels=X_labels, Y_Label=f'{name_dep_var} (mean)')
-    plt.savefig(f'parameters/sensitivity/sensitivity_runs/sa_{type}_max_plot{run_nr}.png')
+    plt.savefig(f'parameters/sensitivity/sensitivity_plots/sa_{type}_max_plot{run_nr}.png')
 
     # YF, FU, FC, xc = PAWN.pawn_plot_cdf(X, Y, n, cbar=True, n_col=3, labelinput=X_labels)
     # plt.show()

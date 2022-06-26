@@ -9,12 +9,13 @@ Parameters and parameter values all follow from table 9 in Lamperti et al. (2018
 """
 @with_kw mutable struct Climate
 
-    T::Int
+    T::Int64
 
     # Emissions
     carbon_emissions::Vector{Float64} = zeros(Float64, T)      # carbon emissions
     carbon_emissions_kp::Vector{Float64} = zeros(Float64, T)   # carbon emissions of cp
     carbon_emissions_cp::Vector{Float64} = zeros(Float64, T)   # carbon emissions of kp
+    emissions_index::Vector{Float64} = fill(100.0, T)          # index of carbon emissions
 
     # Carbon Cycle
     C_a::Vector{Float64} = fill(830.0, T)                      # atmospheric carbon levels
@@ -33,12 +34,12 @@ Parameters and parameter values all follow from table 9 in Lamperti et al. (2018
     δT_d::Vector{Float64} = zeros(Float64, T)                   # Temperature anomaly in deep ocean layer wrt pre-industrial
 
     # Pre-industrial reference levels
-    T_m_0::Int = 14                  # Pre-industrial global mean surface temp
-    T_d_0::Int = 4                   # Pre-industrial deep ocean temp                 
-    C_md_0::Int = 10_237e9           # Pre-industrial carbon in ocean
-    C_a_0::Int = 590e9               # Pre-industrial carbon level
-    NPP_0::Float64 = 85.177e9 / 4    # Pre-industrial NPP
-    ξ_0::Float64 = 9.7               # Reference Revelle/buffer factor
+    T_m_0::Int64 = 14                 # Pre-industrial global mean surface temp
+    T_d_0::Int64 = 4                  # Pre-industrial deep ocean temp                 
+    C_md_0::Int64 = 10_237e9          # Pre-industrial carbon in ocean
+    C_a_0::Int64 = 590e9              # Pre-industrial carbon level
+    NPP_0::Float64 = 85.177e9 / 4     # Pre-industrial NPP
+    ξ_0::Float64 = 9.7                # Reference Revelle/buffer factor
 
     # Initial levels
     δT_a_init::Float64 = 14.8 - T_m_0 # Initial global mean surface temp anaomly wrt pre-industrial
@@ -56,9 +57,9 @@ Parameters and parameter values all follow from table 9 in Lamperti et al. (2018
     δ::Float64 = 3.92                # Index response of buffer factor to carbon concentration
     σ::Float64 = 1.0                 # transfer rate of water from upper to lower ocean layer
 
-    k_eddy::Int = 1                  # Eddy diffusion coefficient
-    d_mixed::Int = 100               # Mixed ocean depth
-    d_deep::Int = 3500               # Deep ocean depth
+    k_eddy::Int64 = 1                # Eddy diffusion coefficient
+    d_mixed::Int64 = 100             # Mixed ocean depth
+    d_deep::Int64 = 3500             # Deep ocean depth
 
     c1::Float64 = 0.098              # Diffusion for atmospheric temp eq
     c3::Float64 = 0.088              # Diffusion for deep oceans temp eq
@@ -73,19 +74,25 @@ end
 Collect carbon emissions from producers.
 """
 function collect_emissions_cl!(
-    cl::Climate,
-    all_cp::Vector{Int},
-    all_kp::Vector{Int},
+    climate::Climate,
+    all_cp::Vector{Int64},
+    all_kp::Vector{Int64},
     ep,
-    t::Int,
-    model::ABM
+    t::Int64,
+    model::ABM;
+    t_warmup::Int64=100
     )
 
-    cl.carbon_emissions_cp[t] = sum(cp_id -> model[cp_id].emissions, all_cp)
-    cl.carbon_emissions_kp[t] = sum(kp_id -> model[kp_id].emissions, all_kp)
-    cl.carbon_emissions[t] = (cl.carbon_emissions_kp[t] + 
-                              cl.carbon_emissions_cp[t] + 
-                              ep.emissions[t])
+    climate.carbon_emissions_cp[t] = sum(cp_id -> model[cp_id].emissions, all_cp)
+    climate.carbon_emissions_kp[t] = sum(kp_id -> model[kp_id].emissions, all_kp)
+    climate.carbon_emissions[t] = (climate.carbon_emissions_kp[t] + 
+                                   climate.carbon_emissions_cp[t] + 
+                                   ep.emissions[t])
+
+    # Start saving emission indeces from warmup time
+    if t > t_warmup
+        climate.emissions_index[t] = 100 * climate.carbon_emissions[t] / climate.carbon_emissions[t_warmup]
+    end
 end
 
 
@@ -94,41 +101,41 @@ Update carbon concentrations C_a, C_m and C_d, updates temperature.
     Based on section 2.3.3 in Lamperti et al (2018)
 """
 function carbon_equilibrium_tempchange_cl!(
-    cl::Climate,
-    t::Int
+    climate::Climate,
+    t::Int64
     )
 
     g = 1e5
 
     # (1) Determine the atmospheric carbon amount without interactions with the
     # biospehere or oceans
-    C_a_t = t > 1 ? cl.C_a[t-1] + cl.carbon_emissions[t] * g : cl.C_a_init + cl.carbon_emissions[t] * g
+    C_a_t = t > 1 ? climate.C_a[t-1] + climate.carbon_emissions[t] * g : climate.C_a_init + climate.carbon_emissions[t] * g
 
     # (2) Determine new capacity of oceans to update CO2
 
     # Compute Revelle factor
-    compute_Revelle_cl!(cl, t)
+    compute_Revelle_cl!(climate, t)
 
     # Compute reference carbon concentration
-    compute_C_m_star_cl!(cl, t)
+    compute_C_m_star_cl!(climate, t)
 
     # (3) Carbon exchanges between atmosphere and biosphere and oceans
 
     # Compute NPP
-    compute_NPP_cl!(cl, C_a_t, t)
+    compute_NPP_cl!(climate, C_a_t, t)
 
     # Compute flux of mixed to deep layer
-    compute_ΔC_md_cl!(cl, t)
+    compute_ΔC_md_cl!(climate, t)
 
     # Compute carbon concentration in mixed layer
-    compute_C_m_cl!(cl, C_a_t, t)
+    compute_C_m_cl!(climate, C_a_t, t)
 
     # (4) Compute the new carbon equilibria
-    compute_carbon_equilibria_cl!(cl, C_a_t, t)
+    compute_carbon_equilibria_cl!(climate, C_a_t, t)
 
     # (5)-(6) Compute new radiative forcing and new temperature
-    compute_F_CO2_cl!(cl, t)
-    compute_new_temp_cl!(cl, t)
+    compute_F_CO2_cl!(climate, t)
+    compute_new_temp_cl!(climate, t)
 end
 
 
@@ -137,19 +144,15 @@ Computes the net primary production (NPP).
     Lamperti et al (2018) eq 22.
 """
 function compute_NPP_cl!(
-    cl::Climate,
+    climate::Climate,
     C_a_t::Float64,
-    t::Int
+    t::Int64
     )
 
-    # println(C_a_t)
-    # println(cl.C_a_init)
-    # println(log(C_a_t / cl.C_a_init))
-
     if t > 1
-        cl.NPP[t] = cl.NPP_0 * (1 + cl.β_C * log(C_a_t / cl.C_a_init)) * (1 - cl.β_TC * cl.δT_m[t-1])
+        climate.NPP[t] = climate.NPP_0 * (1 + climate.β_C * log(C_a_t / climate.C_a_init)) * (1 - climate.β_TC * climate.δT_m[t-1])
     else
-        cl.NPP[t] = cl.NPP_0 * (1 + cl.β_C * log(C_a_t / cl.C_a_init)) * (1 - cl.β_TC * cl.δT_m_init)
+        climate.NPP[t] = climate.NPP_0 * (1 + climate.β_C * log(C_a_t / climate.C_a_init)) * (1 - climate.β_TC * climate.δT_m_init)
     end
 end
 
@@ -159,11 +162,11 @@ Computes the Revelle factor ξ.
     Lamperti et al (2018) eq 24.
 """
 function compute_Revelle_cl!(
-    cl::Climate,
-    t::Int
+    climate::Climate,
+    t::Int64
     )
 
-    cl.ξ[t] = t > 1 ? cl.ξ_0 + cl.δ * log(cl.C_a[t-1] / cl.C_a_init) : cl.ξ_0
+    climate.ξ[t] = t > 1 ? climate.ξ_0 + climate.δ * log(climate.C_a[t-1] / climate.C_a_init) : climate.ξ_0
 end
 
 
@@ -172,11 +175,11 @@ Computes reference carbon concentration in mixed layer C*ₘ.
     Lamperti et al (2018) eq 25.
 """
 function compute_C_m_star_cl!(
-    cl::Climate, 
-    t::Int
+    climate::Climate, 
+    t::Int64
     )
 
-    cl.C_m_star[t] = t > 1 ? cl.C_m_init * (1 - cl.β_T * cl.δT_m[t-1]) : cl.C_m_init
+    climate.C_m_star[t] = t > 1 ? climate.C_m_init * (1 - climate.β_T * climate.δT_m[t-1]) : climate.C_m_init
 end
 
 
@@ -185,13 +188,13 @@ Computes carbon concentration in mixed layer Cₘ.
     Lamperti et al (2018) eq 23.
 """
 function compute_C_m_cl!(
-    cl::Climate,
+    climate::Climate,
     C_a_t::Float64,
-    t::Int
+    t::Int64
     )
 
-    cl.C_m[t] = cl.C_m_star[t] * (C_a_t / cl.C_a_init) ^ (1 / cl.ξ[t])
-    cl.ΔC_am[t] = t > 1 ? cl.C_m[t] - cl.C_m[t-1] : cl.C_m[t] - cl.C_m_init
+    climate.C_m[t] = climate.C_m_star[t] * (C_a_t / climate.C_a_init) ^ (1 / climate.ξ[t])
+    climate.ΔC_am[t] = t > 1 ? climate.C_m[t] - climate.C_m[t-1] : climate.C_m[t] - climate.C_m_init
 end
 
 
@@ -200,14 +203,14 @@ Computes net flux from mixed to deep layer ΔC_md.
     Lamperti et al (2018) eq 26.
 """
 function compute_ΔC_md_cl!(
-    cl::Climate, 
-    t::Int
+    climate::Climate, 
+    t::Int64
     )
 
     if t > 1
-        cl.ΔC_md[t] = cl.k_eddy * (cl.C_m[t-1] / cl.d_mixed - cl.C_d[t-1] / cl.d_deep) / mean((cl.d_deep, cl.d_mixed))
+        climate.ΔC_md[t] = climate.k_eddy * (climate.C_m[t-1] / climate.d_mixed - climate.C_d[t-1] / climate.d_deep) / mean((climate.d_deep, climate.d_mixed))
     else
-        cl.ΔC_md[t] = cl.k_eddy * (cl.C_m_init / cl.d_mixed - cl.C_d_init / cl.d_deep) / mean((cl.d_deep, cl.d_mixed))
+        climate.ΔC_md[t] = climate.k_eddy * (climate.C_m_init / climate.d_mixed - climate.C_d_init / climate.d_deep) / mean((climate.d_deep, climate.d_mixed))
     end
 end
 
@@ -216,19 +219,18 @@ end
 Computes the new carbon dioxide equilibria in the atmosphere, mixed layer and deep layer.
 """
 function compute_carbon_equilibria_cl!(
-    cl::Climate, 
+    climate::Climate, 
     C_a_t::Float64,
-    t::Int
+    t::Int64
     )
 
     # Compute how much was taken up by biospehere and oceans
-    carbon_uptaken = cl.NPP[t] + cl.ΔC_am[t]
-    # carbon_uptaken = 0
-    cl.C_a[t] = t > 1 ? C_a_t - carbon_uptaken : C_a_t - carbon_uptaken
+    carbon_uptaken = climate.NPP[t] + climate.ΔC_am[t]
+    climate.C_a[t] = t > 1 ? C_a_t - carbon_uptaken : C_a_t - carbon_uptaken
 
     # Exchange carbon between mixed and deep layers
-    cl.C_m[t] -= cl.ΔC_md[t]
-    cl.C_d[t] = t > 1 ? cl.C_d[t-1] + cl.ΔC_md[t] : cl.C_d_init + cl.ΔC_md[t]
+    climate.C_m[t] -= climate.ΔC_md[t]
+    climate.C_d[t] = t > 1 ? climate.C_d[t-1] + climate.ΔC_md[t] : climate.C_d_init + climate.ΔC_md[t]
 end
 
 
@@ -237,11 +239,11 @@ Computes the new value for ratiate forcing F_CO2.
     Lamperti et al (2018) eq 29.
 """
 function compute_F_CO2_cl!(
-    cl::Climate, 
-    t::Int
+    climate::Climate, 
+    t::Int64
     )
 
-    cl.F_CO2[t] = cl.γ * log(cl.C_a[t] / cl.C_a_init)
+    climate.F_CO2[t] = climate.γ * log(climate.C_a[t] / climate.C_a_init)
 end
 
 
@@ -250,17 +252,17 @@ Computes new equilibrium temperatures for atmosphere, mixed and deep ocean layer
     Lamperti et al (2018) eq 27 and 28.
 """
 function compute_new_temp_cl!(
-    cl::Climate, 
-    t::Int
+    climate::Climate, 
+    t::Int64
     )
 
     if t > 1
-        cl.δT_m[t] = cl.δT_m[t-1] + cl.c1 * (cl.F_CO2[t] - cl.λ * cl.δT_m[t-1] - 
-                    cl.c3 * (cl.δT_m[t-1] - cl.δT_d[t-1]))
-        cl.δT_d[t] = cl.δT_d[t-1] + cl.c4 * (cl.σ * (cl.δT_m[t-1] - cl.δT_d[t-1]))
+        climate.δT_m[t] = climate.δT_m[t-1] + climate.c1 * (climate.F_CO2[t] - climate.λ * climate.δT_m[t-1] - 
+                                             climate.c3 * (climate.δT_m[t-1] - climate.δT_d[t-1]))
+        climate.δT_d[t] = climate.δT_d[t-1] + climate.c4 * (climate.σ * (climate.δT_m[t-1] - climate.δT_d[t-1]))
     else
-        cl.δT_m[t] = cl.δT_m_init + cl.c1 * (cl.F_CO2[t] - cl.λ * cl.δT_m_init - 
-                    cl.c3 * (cl.δT_m_init - cl.δT_d_init))
-        cl.δT_d[t] = cl.δT_d_init + cl.c4 * (cl.σ * (cl.δT_m_init - cl.δT_d_init))
+        climate.δT_m[t] = climate.δT_m_init + climate.c1 * (climate.F_CO2[t] - climate.λ * climate.δT_m_init - 
+                                             climate.c3 * (climate.δT_m_init - climate.δT_d_init))
+        climate.δT_d[t] = climate.δT_d_init + climate.c4 * (climate.σ * (climate.δT_m_init - climate.δT_d_init))
     end
 end

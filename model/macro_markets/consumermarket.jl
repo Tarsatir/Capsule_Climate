@@ -9,11 +9,6 @@ function consumermarket_process!(
     to
     )
 
-    # Households set consumption budget
-    @timeit to "set budget" @inbounds for hh_id in all_hh
-        set_consumption_budget_hh!(model[hh_id], globalparam, model)
-    end
-
     # Reset cm data 
     @timeit to "reset matrices" reset_matrices_cp!(cm_dat, all_hh, all_cp, model)
 

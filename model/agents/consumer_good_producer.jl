@@ -49,6 +49,7 @@ Defines struct for consumer good producer
 
     π_LP::Float64 = 1.0                       # labor productivity of total capital stock
     π_EE::Float64 = 1.0                       # productivity per energy unit of total capital stock
+    π_EF::Float64 = 1.0                       # environmental friendlisness of total capital stock
     mean_skill::Float64 = 1.0                 # mean skill level of employees
     f::Vector{Float64}                        # hist market share
     Π::Vector{Float64} = zeros(Float64, 3)    # hist profits
@@ -688,6 +689,7 @@ function update_π_cp!(
 
     cp.π_LP = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_LP) / cp.n_machines, cp.Ξ) : 1.0
     cp.π_EE = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_EE) / cp.n_machines, cp.Ξ) : 1.0
+    cp.π_EF = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_EF) / cp.n_machines, cp.Ξ) : 1.0
 end
 
 

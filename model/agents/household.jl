@@ -17,6 +17,7 @@
     labor_I::Float64 = L * skill                # income from labor
     capital_I::Float64 = 0.0                    # income from capital
     UB_I::Float64 = 0.0                         # income from unemployment benefits
+    I_percentile::Float64 = 50.0                # income percentile
     socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 300                            # wealth or cash on hand
@@ -47,17 +48,35 @@ function select_cp_hh!(
 end
 
 
+function updatesavingsrate!(
+    hh::Household;
+    a::Float64 = 0.10397,
+    # b::Float64 = 0.12551,
+    b::Float64 = -0.2,
+    c::Float64 = 106.86875,
+    d::Float64 = -4.38985
+    )
+
+    hh.s = -a * log(-1 + c / (hh.I_percentile - d)) + b
+end
+
+
 """
 Sets consumption budget based on current wealth level
 """
 function set_consumption_budget_hh!(
     hh::Household,
+    all_I::Vector{Float64},
     globalparam::GlobalParam,
     model::ABM
     )
 
+    # hh.I_percentile = scipy.stats.percentileofscore(all_I, hh.total_I)
+
     # Update average price level of bp and lp
     update_average_price_hh!(hh, model)
+
+    # updatesavingsrate!(hh)
 
     # Compute consumption budget
     compute_consumption_budget_hh!(hh, globalparam.α_cp)
@@ -97,6 +116,10 @@ function compute_consumption_budget_hh!(
         hh.C = 0.0
         hh.s = 0.0
     end
+
+    
+    # hh.C = min((1 - hh.s) * hh.total_I, hh.W)
+    # println("   W: $(hh.W), I: $(hh.total_I), C: $(hh.C), s: $(hh.s)")
 end
 
 

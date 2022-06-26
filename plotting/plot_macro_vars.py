@@ -116,14 +116,15 @@ def plot_macro_vars(df):
     ax[4,0].plot(range(len(df.n_mach_RS)), df.n_mach_RS, label='n RS')
     ax[4,0].legend()
 
-    ax[4,1].plot(range(len(df.avg_pi_LP)), df.avg_pi_LP, label='$\\bar{\pi}_{LP}$')
-    ax[4,1].plot(range(len(df.avg_pi_EE)), df.avg_pi_EE, label='$\\bar{\pi}_{EE}$')
-    ax[4,1].plot(range(len(df.avg_A_LP)), df.avg_A_LP, label='$\\bar{A}_{LP}$')
-    ax[4,1].plot(range(len(df.avg_A_EE)), df.avg_A_EE, label='$\\bar{A}_{EE}$')
-    ax[4,1].plot(range(len(df.avg_A_EF)), df.avg_A_EF, label='$\\bar{A}_{EF}$')
-    ax[4,1].plot(range(len(df.avg_B_LP)), df.avg_B_LP, label='$\\bar{B}_{LP}}$')
-    ax[4,1].plot(range(len(df.avg_B_EE)), df.avg_B_EE, label='$\\bar{B}_{EE}}$')
-    ax[4,1].plot(range(len(df.avg_B_EF)), df.avg_B_EF, label='$\\bar{B}_{EF}}$')
+    ax[4,1].plot(T, df.avg_pi_LP, label='$\\bar{\pi}_{LP}$')
+    ax[4,1].plot(T, df.avg_pi_EE, label='$\\bar{\pi}_{EE}$')
+    ax[4,1].plot(T, df.avg_pi_EF, label='$\\bar{\pi}_{EF}$')
+    ax[4,1].plot(T, df.avg_A_LP, label='$\\bar{A}_{LP}$')
+    ax[4,1].plot(T, df.avg_A_EE, label='$\\bar{A}_{EE}$')
+    ax[4,1].plot(T, df.avg_A_EF, label='$\\bar{A}_{EF}$')
+    ax[4,1].plot(T, df.avg_B_LP, label='$\\bar{B}_{LP}}$')
+    ax[4,1].plot(T, df.avg_B_EE, label='$\\bar{B}_{EE}}$')
+    ax[4,1].plot(T, df.avg_B_EF, label='$\\bar{B}_{EF}}$')
     ax[4,1].set_title('Productivity')
     ax[4,1].legend()
 
@@ -505,6 +506,61 @@ def plot_climate(df_climate_energy, df_macro):
     plt.tight_layout()
     plt.savefig('plots/climate.png')
 
+
+def get_indexnumbers(timeseries):
+    return timeseries / timeseries[0] * 100
+
+def get_share(timeseries, tottimeseries, tot_index):
+    return tot_index * timeseries / tottimeseries
+
+
+def plot_emissions(df_climate_energy, df_macro, warmup=100):
+
+    T = range(len(df_climate_energy.emissions_total))[warmup:]
+
+    fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+    em_tot = get_indexnumbers(df_climate_energy.emissions_total[warmup:].to_numpy())
+
+    ax[0].plot(T, em_tot, label='$sim results$')
+    ax[0].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
+    ax[0].legend()
+
+
+    em_kp = get_share(df_climate_energy.emissions_kp[warmup:].to_numpy(),
+                      df_climate_energy.emissions_total[warmup:].to_numpy(),
+                      em_tot)
+    em_cp = get_share(df_climate_energy.emissions_cp[warmup:].to_numpy(),
+                      df_climate_energy.emissions_total[warmup:].to_numpy(),
+                      em_tot)
+    em_ep = get_share(df_climate_energy.emissions_ep[warmup:].to_numpy(),
+                      df_climate_energy.emissions_total[warmup:].to_numpy(),
+                      em_tot)
+
+    ax[1].plot(T, em_tot, label='$c^{total}_t$')
+    ax[1].plot(T, em_kp, label='$c^{kp}_t$')
+    ax[1].plot(T, em_cp, label='$c^{cp}_t$')
+    ax[1].plot(T, em_ep, label='$c^{ep}_t$')
+    ax[1].set_title('CO$_2$ emissions')
+    ax[1].set_xlabel('time')
+    ax[1].set_ylabel('total CO$_2$ emission')
+    ax[1].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
+    ax[1].legend()
+
+    # real_GDP = (100 * df_macro.GDP / df_macro.CPI)[warmup:]
+    # ax[1].plot(T, df_climate_energy.emissions_total[warmup:] / real_GDP, label='total emissions')
+    # ax[1].plot(T, df_climate_energy.emissions_kp[warmup:] / real_GDP, label='kp emissions')
+    # ax[1].plot(T, df_climate_energy.emissions_cp[warmup:] / real_GDP, label='cp emissions')
+    # ax[1].plot(T, df_climate_energy.emissions_ep[warmup:] / real_GDP, label='ep emissions')
+    # ax[1].set_title('CO$_2$ emissions per unit of real GDP')
+    # ax[1].set_xlabel('time')
+    # ax[1].set_ylabel('CO$_2$ / GDP')
+    # ax[1].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
+    # ax[1].legend()
+
+    plt.tight_layout()
+    plt.savefig('plots/emissions.png')
+
     
 if __name__=="__main__":
 
@@ -520,3 +576,4 @@ if __name__=="__main__":
     df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
     plot_energy(df_climate_energy, df_macro)
     plot_climate(df_climate_energy, df_macro)
+    # plot_emissions(df_climate_energy, df_macro)

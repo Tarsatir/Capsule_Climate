@@ -90,6 +90,7 @@
     # Productivity
     avg_π_LP::Vector{Float64} = zeros(Float64, T)           # average labor productivity cp
     avg_π_EE::Vector{Float64} = zeros(Float64, T)           # average productivity per energy unit cp
+    avg_π_EF::Vector{Float64} = zeros(Float64, T)           # average energy friendliness 
 
     avg_A_LP::Vector{Float64} = zeros(Float64, T)           # average A_LP at kp
     avg_A_EE::Vector{Float64} = zeros(Float64, T)           # average A_EE at kp
@@ -188,6 +189,7 @@ function update_macro_timeseries(
     # Productivity
     macroeconomy.avg_π_LP[t] = mean(cp_id -> model[cp_id].π_LP, all_cp)
     macroeconomy.avg_π_EE[t] = mean(cp_id -> model[cp_id].π_EE, all_cp)
+    macroeconomy.avg_π_EF[t] = mean(cp_id -> model[cp_id].π_EF, all_cp)
 
     macroeconomy.avg_A_LP[t] = mean(kp_id -> model[kp_id].A_LP[end], all_kp)
     macroeconomy.avg_A_EE[t] = mean(kp_id -> model[kp_id].A_EE[end], all_kp)
