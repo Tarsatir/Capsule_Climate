@@ -71,8 +71,8 @@ struct RunOutput
     GINI_I::Vector{Float64}
     GINI_W::Vector{Float64}
     FGT::Vector{Float64}
-    π_LP::Vector{Float64}
-    π_EE::Vector{Float64}
-    π_EF::Vector{Float64}
+    avg_π_LP::Vector{Float64}
+    avg_π_EE::Vector{Float64}
+    avg_π_EF::Vector{Float64}
     emissions_index::Vector{Float64}
 end

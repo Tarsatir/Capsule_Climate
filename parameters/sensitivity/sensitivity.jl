@@ -60,17 +60,25 @@ function generate_labels(
 
     for thread_nr in 1:n_threads
 
+        df = DataFrame()
+
         # Call SAMP function to get the input parameters for running the models
         X = py"call_AAT_sampling"(samp_strat, X_labels, n_per_thread)
 
-        # Define boundaries computed within thread
-        # thread_start = (thread_nr-1) * n_per_thread + 1
-        # thread_end = min(thread_nr * n_per_thread, N)
+        # Add simulation number
+        df[!, :sim_nr] = (thread_nr - 1) * n_per_thread + 1 : thread_nr * n_per_thread
 
-        params = Dict(x=>X[:, j] for (j,x) in enumerate(keys(X_labels)))
+        # Add samples parameter values
+        for (j,label) in enumerate(keys(X_labels))
+            df[!, Symbol(label)] = X[:,j]
+        end
+
+
+        # params = Dict(x=>X[:, j] for (j,x) in enumerate(keys(X_labels)))
+        # params["sim_nr"] = (thread_nr - 1) * n_per_thread : thread_nr * n_per_thread
         
-        # Write to dataframe
-        df = DataFrame(params)
+        # # Write to dataframe
+        # df = DataFrame(params)
 
         # Add GDP moments
         # df[!, "GDP_1st"] .= NaN
@@ -131,26 +139,30 @@ function generate_simdata(
     n_threads::Int64,
     n_per_epoch::Int64,
     n_per_thread::Int64,
+    inputpath::String,
+    outputpath::String,
     run_nr::Int64;
     t_warmup::Int64=100
     )
     
     Threads.@threads for _ in 1:n_threads
 
-        total_completed_runs = 0
-
         params = collect(keys(X_labels))
         changedparams = Dict(params .=> 0.0)
 
-        inputpath = 
-        outputpath = 
+        thread_nr = Threads.threadid()
+
+        inputfilepath = getfilepath(inputpath, run_nr, thread_nr; isinput=true)
+        outputfilepath = getfilepath(outputpath, run_nr, thread_nr)
         res = nothing
 
-        for (i, row) in enumerate(CSV.Rows(inputpath))
+        for (i, row) in enumerate(CSV.Rows(inputfilepath))
+
+            sim_nr = row.sim_nr
 
             # Fill in changed parameters
             for param in params
-                changedparams[param] = row[param]
+                changedparams[param] = parse(Float64, getproperty(row, Symbol(param)))
             end
 
             # Run the model with changed parameters
@@ -203,6 +215,7 @@ function generate_simdata(
             # data to existing dataframe.
             if (i - 1) % n_per_epoch == 0
                 res = DataFrame(
+                    :sim_nr => sim_nr,
                     :GDP_1st => GDP_1st,
                     :GDP_2nd => GDP_2nd,
                     :GDP_3rd => GDP_3rd,
@@ -227,6 +240,7 @@ function generate_simdata(
                 )
             else
                 push!(res, [
+                            sim_nr,
                             GDP_1st, GDP_2nd, GDP_3rd, GDP_4th, U_1st, U_2nd, 
                             GINI_I_1st, GINI_I_2nd, GINI_W_1st, GINI_W_2nd,
                             LP_g_1st, LP_g_2nd, EE_g_1st, EE_g_2nd,
@@ -234,6 +248,11 @@ function generate_simdata(
                             em2030, em2040, em2050
                            ]
                      )
+            end
+
+            # If end of epoch is reached, write results to output csv
+            if nrow(res) == n_per_epoch 
+                CSV.write(outputfilepath, res; append=i≠1)
             end
 
         # df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
@@ -304,11 +323,6 @@ function generate_simdata(
         #     if total_completed_runs == nrow(df)
         #         return nothing
         #     end
-
-            # If end of epoch is reached, write results to output csv
-            if nrow(res) == n_per_epoch 
-                CSV.write(output_path, res; append=i≠1)
-            end
         end
     end
 end
@@ -394,7 +408,7 @@ function parse_commandline(
         "--n_per_epoch"
             help="number of simulations per epoch"
             arg_type=Int64
-            default=10
+            default=50
         "--inputpath"
             help="path to directory with input files"
             arg_type=String
@@ -440,20 +454,18 @@ function main(;
 
     parsed_args = parse_commandline(length(X_labels))
 
+    # Unpack parsed arguments
     n_sims = parsed_args["n_sims"]
     n_per_epoch = parsed_args["n_per_epoch"]
     inputpath = parsed_args["inputpath"]
     outputpath = parsed_args["outputpath"]
-    geninput = parsed_args["gen_input"]
-    genoutput = parsed_args["gen_output"]
-    runpawn = parsed_args["run_pawn"]
+    geninput = parsed_args["geninput"]
+    genoutput = parsed_args["genoutput"]
+    runpawn = parsed_args["runpawn"]
 
     # Specify number of threads and n per thread
     n_threads = Threads.nthreads()
     n_per_thread = ceil(Int64, n_sims / n_threads)
-    n_per_epoch = 50
-
-    # path(run_nr, thread_nr) = "$(dir)sensitivity_run_$(run_nr)_thr_$(thread_nr).csv"
 
     # Generate parameters used for SA
     if geninput 
@@ -469,17 +481,19 @@ function main(;
     # Generate simulation data
     if genoutput
         @time generate_simdata(
-            X_labels, 
-            n_threads, 
+            X_labels,
+            n_threads,
             n_per_epoch, 
-            n_per_thread, 
+            n_per_thread,
+            inputpath,
+            outputpath, 
             run_nr
         )
     end
 
     # Generate PAWN indeces
     if runpawn
-        run_PAWN(X_labels, run_nr; n_threads=n_treads)
+        run_PAWN(X_labels, run_nr; nthreads=n_treads)
     end
 end
 
