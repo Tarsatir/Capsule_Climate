@@ -157,6 +157,8 @@ function generate_simdata(
         res = nothing
 
         for (i, row) in enumerate(CSV.Rows(inputfilepath))
+            
+            # println("   Tr $(Threads.threadid()), row $i")
 
             sim_nr = row.sim_nr
 
@@ -166,7 +168,7 @@ function generate_simdata(
             end
 
             # Run the model with changed parameters
-            runoutput = run_simulation(
+            @time runoutput = run_simulation(
                 changed_params=changedparams,
                 full_output=false;
                 threadnr=Threads.threadid()
@@ -251,8 +253,9 @@ function generate_simdata(
             end
 
             # If end of epoch is reached, write results to output csv
-            if nrow(res) == n_per_epoch 
-                CSV.write(outputfilepath, res; append=i≠1)
+            if nrow(res) == n_per_epoch
+                # println("   write to csv thread $(Threads.threadid())") 
+                CSV.write(outputfilepath, res; append=i≠n_per_epoch)
             end
 
         # df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))

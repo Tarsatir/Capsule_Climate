@@ -529,7 +529,7 @@ function run_simulation(;
     end
 
     # Pack output in struct
-    runoutput = RunOutput(
+    @timeit to "save output" runoutput = RunOutput(
         macroeconomy.GDP_growth,
         macroeconomy.U,
         macroeconomy.GINI_I,
