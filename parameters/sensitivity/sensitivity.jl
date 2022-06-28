@@ -148,6 +148,7 @@ function generate_simdata(
     Threads.@threads for _ in 1:n_threads
 
         params = collect(keys(X_labels))
+        println(params)
         changedparams = Dict(params .=> 0.0)
 
         thread_nr = Threads.threadid()
@@ -168,7 +169,7 @@ function generate_simdata(
             end
 
             # Run the model with changed parameters
-            @time runoutput = run_simulation(
+            runoutput = run_simulation(
                 changed_params=changedparams,
                 full_output=false;
                 threadnr=Threads.threadid()

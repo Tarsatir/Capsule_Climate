@@ -1,3 +1,8 @@
+"""
+Performs calibration of parameters
+
+"""
+
 import spotpy
 import numpy as np
 
@@ -12,19 +17,27 @@ import numpy as np
 #                  ["p_f", [0.0, 1.0]]])
 
 
-class spotpy_setup(object):
-    def __init__(self):
-        self.parameters = [
-            spotpy.parameter.Uniform('μ1', 0.0, 0.4),
-            spotpy.parameter.Uniform('ω', 0.0, 1.0),
-            spotpy.parameter.Uniform('ϵ', 0.0, 0.1),
-            spotpy.parameter.Uniform('κ_upper', [0.0, 0.05])
-        ]
+# class spotpy_setup(object):
+#     def __init__(self):
+#         self.parameters = [
+#             spotpy.parameter.Uniform('μ1', 0.0, 0.4),
+#             spotpy.parameter.Uniform('ω', 0.0, 1.0),
+#             spotpy.parameter.Uniform('ϵ', 0.0, 0.1),
+#             spotpy.parameter.Uniform('κ_upper', [0.0, 0.05])
+#             spotpy.parameter.Uniform('')
+#         ]
 
-    def parameters(self):
-        return spotpy.parameter.generate(self.parameters)
+#     def parameters(self):
+#         return spotpy.parameter.generate(self.parameters)
 
-    # def 
+#     def objectivefunction(self):
+#         pass
+
+def calibrate_parameters():
+
+    # Import data files of sensitivity runs
+
+    # Reshape 
 
 
 if __name__ == "__main__":

@@ -10,8 +10,34 @@
     τᴱ::Float64 = 0.0                      # energy tax
     τᶜ::Float64 = 0.0                      # emission tax
 
+    # τᴵ::Float64 = 0.0                      # income tax
+    # τᴷ::Float64 = 0.00                     # capital gains tax
+    # τˢ::Float64 = 0.0                      # sales tax
+    # τᴾ::Float64 = 0.0                      # profit tax
+    # τᴱ::Float64 = 0.0                      # energy tax
+    # τᶜ::Float64 = 0.0                      # emission tax
+
     MS::Float64 = 0.0                      # money stock owned by government
     curracc::GovCurrentAccount             # current account of government spending
+end
+
+
+function initgovernment(
+    T::Int64,
+    changedtaxrates::Union{Vector, Nothing}
+    )::Government
+
+    # Initialize government structure
+    government = Government(curracc = GovCurrentAccount(T=T))
+
+    # If changed tax rates passed, change in government struct
+    if changedtaxrates ≠ nothing
+        for (taxtype, taxrate) in changedtaxrates
+            setproperty!(government, taxtype, taxrate)
+        end
+    end
+
+    return government
 end
 
 
@@ -122,30 +148,24 @@ function compute_budget_balance(
 end
 
 
-function add_salestax_transaction_gov!(
-    government::Government,
-    sales_tax_bp::Float64, 
-    sales_tax_lp::Float64,
-    t::Int
-    )
-
-    government.curracc.Rev_τˢ[t] += (sales_tax_bp + sales_tax_lp)
-end
-
-
 """
-Redistributes surplusses such that government does not acquire assets.
+    resolve_gov_balance()
+
+Redistributes surplusses such that government does not acquire assets, or acquires
+    capital such that the government does not incur debts on the long run (long-run
+    budget deficits thus drain the capital market)
 """
-function redistribute_surplus_gov!(
+function resolve_gov_balance!(
     government::Government,
+    indexfund,
     all_hh::Vector{Int},
-    model
+    model::ABM
     )
 
     # NOTE: now does not apply redistribution between income groups!
     # NOTE: redist goes both ways!
 
-    if government.MS > 0.0
+    if government.MS >= 0.0
 
         total_I = sum(hh_id -> model[hh_id].total_I, all_hh)
         for hh_id in all_hh
@@ -153,6 +173,11 @@ function redistribute_surplus_gov!(
             receiveincome_hh!(model[hh_id], socialbenefits; socben=true)
         end
         government.MS = 0.0
+    else
+
+        issuegovbonds(indexfund, -government.MS)
+        government.MS = 0.0
+
     end
 end
 

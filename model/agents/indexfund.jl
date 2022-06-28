@@ -62,9 +62,9 @@ Distributes dividends over participants in indexfund
 function distribute_dividends_if!(
     indexfund::IndexFund,
     government::Government,
-    all_hh::Vector{Int},
+    all_hh::Vector{Int64},
     τᴷ::Float64,
-    t::Int,
+    t::Int64,
     model::ABM
     )
 
@@ -83,4 +83,16 @@ function distribute_dividends_if!(
     indexfund.Assets = 0.0
 
     receive_capgains_tax_gov!(government, total_capgains_tax, t)
+end
+
+
+"""
+Lets government issue bonds on the capital market.
+"""
+function issuegovbonds(
+    indexfund::IndexFund, 
+    govdeficit::Float64
+    )
+
+    indexfund.Assets -= govdeficit
 end

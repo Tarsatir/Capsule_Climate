@@ -67,7 +67,7 @@ function initialize_global_params(
     global_param = GlobalParam()
 
     # Change parameters if needed before returning.
-    if changed_params !== nothing
+    if changed_params ≠ nothing
         for (key, new_param) in changed_params
             setproperty!(global_param, Symbol(key), new_param)
         end

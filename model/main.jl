@@ -61,7 +61,8 @@ Returns:
 """
 function initialize_model(
     T::Int;
-    changed_params::Union{Dict, Nothing}
+    changed_params::Union{Dict, Nothing},
+    changedtaxrates::Union{Vector, Nothing}
     )
 
     # Initialise model struct
@@ -80,7 +81,7 @@ function initialize_model(
     labormarket = LaborMarket()
 
     # Initialize government struct
-    government = Government(curracc = GovCurrentAccount(T=T))
+    government = initgovernment(T, changedtaxrates)
 
     # Initialize energy producer
     ep = initialize_energy_producer(T, initparam, globalparam)
@@ -389,7 +390,7 @@ function model_step!(
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(government, all_p, t, model)
     compute_budget_balance(government, t)
-    redistribute_surplus_gov!(government, all_hh, model)
+    resolve_gov_balance!(government, indexfund, all_hh, model)
 
     # Update market shares of cp and kp
     update_marketshare_p!(all_cp, model)
@@ -487,14 +488,15 @@ end
 function run_simulation(;
     T=460::Int,
     changed_params=nothing,
-    full_output=true::Bool,
-    threadnr::Int=1,
-    savedata=false
+    changedtaxrates::Union{Vector,Nothing}=nothing,
+    full_output::Bool=true,
+    threadnr::Int64=1,
+    savedata::Bool=false
     )
 
     to = TimerOutput()
 
-    @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat = initialize_model(T; changed_params=changed_params)
+    @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat = initialize_model(T; changed_params=changed_params, changedtaxrates=changedtaxrates)
     for t in 1:T
 
         @timeit to "step" model_step!(
