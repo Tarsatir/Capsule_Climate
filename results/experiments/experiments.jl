@@ -31,7 +31,7 @@ Runs OFAT experiment on the various tax rates
 function OFAT_taxrates(
     folderpath::String;
     n_per_type::Int64=10,
-    n_per_rate::Int64=1,
+    n_per_rate::Int64=10,
     t_warmup::Int64=100,
     )
 
@@ -45,21 +45,22 @@ function OFAT_taxrates(
         # :τᶜ => (0.0, 1.0)
     )
 
+    lk = Threads.ReentrantLock()
 
     for (i, (taxtype, raterange)) in enumerate(taxrates)
 
         outputfilepath = getfilepath(folderpath, taxtype)
 
-        println(taxtype, " ", raterange)
+        println("type $taxtype, range $raterange")
 
         results = nothing
 
-        for taxrate in LinRange(raterange[1], raterange[2], n_per_type)
+        Threads.@threads for taxrate in LinRange(raterange[1], raterange[2], n_per_type)
             changedtaxrates = [(taxtype, taxrate)]
 
             for i in 1:n_per_rate
 
-                println("   $(taxtype), $(taxrate), $(i)")
+                println("   thr $(Threads.threadid()), tr $(taxrate), i $(i)")
 
                 # Run the model with changed tax rate
                 runoutput = run_simulation(
@@ -68,22 +69,24 @@ function OFAT_taxrates(
                     threadnr=Threads.threadid()
                 )
 
-                GDP_1st = mean(runoutput.GDP_growth[t_warmup:end])
-
                 # Save results of run
                 if results == nothing
-                    results = DataFrame(
-                        :taxtype => taxtype,
-                        :taxrate => taxrate,
-                        :GDP_1st => GDP_1st
-                    )
+                    results = convertrunoutput(runoutput; return_as_df=true)
+                    results[!, :taxtype] = taxtype
+                    results[!, :taxrate] = taxtype
                 else
                     push!(results, [taxtype, taxrate, GDP_1st])
                 end
             end
-        end
 
-        CSV.write(outputfilepath, results)
+            # Save simulation data, wait for other threads already
+            # augmenting the file.
+            lock(lk) do
+                println("$(Threads.threadid()) is saving...")
+                CSV.write(outputfilepath, results)
+            end
+
+        end
     end
 end
 

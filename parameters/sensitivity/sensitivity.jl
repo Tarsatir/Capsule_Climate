@@ -9,19 +9,6 @@ using ArgParse
 
 include("../../model/main.jl")
 
-"""
-    generate_labels(X_labels::Dict, path::String; N::Int64)
-
-Generates labels (parameters) used to run the sensitivity analysis. Saves to csv
-
-    - `X_labels` dict of independent parameters that will be tested.
-    - `run_nr`: number of complete run of SA.
-    - `N`: number of simulations.
-    - `n_per_thread`: number of simulations per thread
-    - `n_threads`: total number of threads
-    - `samp_strat` [OPT]: samling strategy (default=`lhs`)
-"""
-
 
 function getfilepath(
     folderpath::String,
@@ -46,6 +33,19 @@ function compute_growthrates(
 end
 
 
+"""
+    generate_labels(X_labels::Dict, run_nr::Int64, n_per_thread::Int64, 
+                    n_threads::Int64, inputpath::String; samp_strat::String = "lhs")
+
+Generates labels (parameters) used to run the sensitivity analysis. Saves to csv
+
+    - `X_labels` dict of independent parameters that will be tested.
+    - `run_nr`: number of complete run of SA.
+    - `N`: number of simulations.
+    - `n_per_thread`: number of simulations per thread
+    - `n_threads`: total number of threads
+    - `samp_strat` [OPT]: samling strategy (default=`lhs`)
+"""
 function generate_labels(
     X_labels::Dict,
     run_nr::Int64,
@@ -72,49 +72,6 @@ function generate_labels(
         for (j,label) in enumerate(keys(X_labels))
             df[!, Symbol(label)] = X[:,j]
         end
-
-
-        # params = Dict(x=>X[:, j] for (j,x) in enumerate(keys(X_labels)))
-        # params["sim_nr"] = (thread_nr - 1) * n_per_thread : thread_nr * n_per_thread
-        
-        # # Write to dataframe
-        # df = DataFrame(params)
-
-        # Add GDP moments
-        # df[!, "GDP_1st"] .= NaN
-        # df[!, "GDP_2nd"] .= NaN
-        # df[!, "GDP_3rd"] .= NaN
-        # df[!, "GDP_4th"] .= NaN
-
-        # # Add Gini moments
-        # df[!, "Gini_I_1st"] .= NaN
-        # df[!, "Gini_I_2nd"] .= NaN
-
-        # df[!, "Gini_W_1st"] .= NaN
-        # df[!, "Gini_W_2nd"] .= NaN
-
-        # # Add unemployment moments
-        # df[!, "U_1st"] .= NaN
-        # df[!, "U_2nd"] .= NaN
-
-        # # Add productivity growth
-        # df[!, "LP_1st"] .= NaN
-        # df[!, "LP_2nd"] .= NaN
-
-        # df[!, "EE_1st"] .= NaN
-        # df[!, "EE_2nd"] .= NaN
-
-        # df[!, "EF_1st"] .= NaN
-        # df[!, "EF_2nd"] .= NaN
-
-        # # Add poverty moments
-        # df[!, "FGT_1st"] .= NaN
-        # df[!, "FGT_2nd"] .= NaN
-
-        # # Add emissions indexes
-        # df[!, "em2030"] .= NaN
-        # df[!, "em2040"] .= NaN
-        # df[!, "em2050"] .= NaN
 
         # Write to csv
         filepath = getfilepath(inputpath, run_nr, thread_nr; isinput=true)
@@ -158,8 +115,6 @@ function generate_simdata(
         res = nothing
 
         for (i, row) in enumerate(CSV.Rows(inputfilepath))
-            
-            # println("   Tr $(Threads.threadid()), row $i")
 
             sim_nr = row.sim_nr
 
@@ -255,84 +210,15 @@ function generate_simdata(
 
             # If end of epoch is reached, write results to output csv
             if nrow(res) == n_per_epoch
-                # println("   write to csv thread $(Threads.threadid())") 
                 CSV.write(outputfilepath, res; append=i≠n_per_epoch)
             end
-
-        # df = DataFrame(CSV.File(path(run_nr, Threads.threadid())))
-
-        # for row in 1:n_per_thread
-
-        #     println("   Tr $(Threads.threadid()), row $row")
-
-            # # Fill in changed parameters
-            # for param in params
-            #     changedparams[param] = df[row, param]
-            # end
-
-            # # Run the model with changed parameters
-            # runoutput = run_simulation(
-            #     changed_params=changedparams,
-            #     full_output=false;
-            #     threadnr=Threads.threadid()
-            # )
-
-        #     # Write GDP data to dataframe
-        #     df[row, "GDP_1st"] = mean(runoutput.GDP_growth[t_warmup:end])
-        #     df[row, "GDP_2nd"] = var(runoutput.GDP_growth[t_warmup:end])
-        #     df[row, "GDP_3rd"] = skewness(runoutput.GDP_growth[t_warmup:end])
-        #     df[row, "GDP_4th"] = kurtosis(runoutput.GDP_growth[t_warmup:end])
-
-        #     # Write unemployment data to dataframe
-        #     df[row, "U_1st"] = mean(runoutput.U[t_warmup:end])
-        #     df[row, "U_2nd"] = var(runoutput.U[t_warmup:end])
-
-        #     # Write Gini data to dataframe
-        #     df[row, "Gini_I_1st"] = mean(runoutput.GINI_I[t_warmup:end])
-        #     df[row, "Gini_I_2nd"] = var(runoutput.GINI_I[t_warmup:end])
-
-        #     df[row, "Gini_W_1st"] = mean(runoutput.GINI_W[t_warmup:end])
-        #     df[row, "Gini_W_2nd"] = var(runoutput.GINI_W[t_warmup:end])
-
-        #     # Add productivity growth
-        #     LP_g = compute_growthrates(runoutput.avg_π_LP)
-        #     df[row, "LP_1st"] .= mean(LP_g[t_warmup:end])
-        #     df[row, "LP_2nd"] .= var(LP_g[t_warmup:end])
-
-        #     EE_g = compute_growthrates(runoutput.avg_π_EE)
-        #     df[row, "EE_1st"] .= mean(EE_g[t_warmup:end])
-        #     df[row, "EE_2nd"] .= var(EE_g[t_warmup:end])
-
-        #     EF_g = compute_growthrates(runoutput.avg_π_EF)
-        #     df[row, "EF_1st"] .= mean(EF_g[t_warmup:end])
-        #     df[row, "EF_2nd"] .= var(EF_g[t_warmup:end])
-
-        #     # Write poverty data to dataframe
-        #     df[row, "FGT_1st"] = mean(runoutput.FGT[t_warmup:end])
-        #     df[row, "FGT_2nd"] = var(runoutput.FGT[t_warmup:end])
-
-        #     # Write emissions indexes
-        #     df[row, "em2030"] = runoutput.emissions_index[220]
-        #     df[row, "em2040"] = runoutput.emissions_index[340]
-        #     df[row, "em2050"] = runoutput.emissions_index[460]
-
-        #     # Update total completed runs
-        #     total_completed_runs += 1
-
-        #     if total_completed_runs % n_per_epoch == 0
-        #         println("   writing to csv...")
-        #         CSV.write(path(run_nr, Threads.threadid()), df)
-        #     end
-
-        #     if total_completed_runs == nrow(df)
-        #         return nothing
-        #     end
         end
     end
 end
 
+getinputpath(threadi::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/input_data/gsa_input_run$(run_nr)_thread$threadi.csv"
 
-getpath(threadi::Int64) = "parameters/sensitivity/sensitivity_runs_10000/sensitivity_run_6_thr_$threadi.csv"
+getoutputpath(threadi::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run$(run_nr)_thread$threadi.csv"
 
 """
 Calls SAFE toolbox in Python script.
@@ -343,54 +229,90 @@ function run_PAWN(
     nthreads::Int64=16
     )
 
-    # Read simulation data, save X and Y as matrices
-    # df = DataFrame(CSV.File(path))
+    # Include Python file containing GSA functions
+    @pyinclude("parameters/sensitivity/run_GSA.py")
 
-    # Open all dataframes
-    dfs = [DataFrame(CSV.File(getpath(i))) for i in 1:nthreads]
-
-    all_df = dfs[1]
+    # Open all input dataframes
+    dfs = [DataFrame(CSV.File(getinputpath(i, run_nr))) for i in 1:nthreads]
+    input_df = dfs[1]
     for df in dfs[2:end]
-        append!(all_df, df)
+        append!(input_df, df)
     end
 
-    filter!(row -> !isnan(row.GDP_1st), all_df)
+    # Open all output dataframes
+    dfs = [DataFrame(CSV.File(getoutputpath(i, run_nr))) for i in 1:nthreads]
+    output_df = dfs[1]
+    for df in dfs[2:end]
+        append!(output_df, df)
+    end
+
+    # Merge input and output dataframes
+    df = innerjoin(input_df, output_df, on=:sim_nr)
 
     labels = collect(keys(X_labels))
-    X = zeros(nrow(all_df), length(labels))
-    X .= all_df[:, labels]
+    labelnames = ["ψ_Q", "ψ_E", "μ_1", "κ_{upper}", "ω", "ϵ", "α_{cp}", "ψ_P", "p_f"]
+    X = zeros(nrow(df), length(labels))
+    X .= df[:, labels]
 
     # GDP
-    # GDP_1st = 100 .* all_df[!, Symbol("GDP_1st")]
-    # py"run_PAWN"(labels, X, GDP_1st, "GDP_1", run_nr, "mean GDP growth")
+    GDP_1st = 100 .* df[!, Symbol("GDP_1st")]
+    py"run_PAWN"(labelnames, X, GDP_1st, "GDP_1", run_nr, "mean GDP growth")
 
-    GDP_2nd = 100 .* all_df[!, Symbol("GDP_2nd")]
-    py"run_PAWN"(labels, X, GDP_2nd, "GDP_2", run_nr, "var GDP growth")
+    GDP_2nd = 100 .* df[!, Symbol("GDP_2nd")]
+    py"run_PAWN"(labelnames, X, GDP_2nd, "GDP_2", run_nr, "var GDP growth")
 
-    GDP_3rd = 100 .* all_df[!, Symbol("GDP_3rd")]
-    py"run_PAWN"(labels, X, GDP_3rd, "GDP_3", run_nr, "skew GDP growth")
+    GDP_3rd = 100 .* df[!, Symbol("GDP_3rd")]
+    py"run_PAWN"(labelnames, X, GDP_3rd, "GDP_3", run_nr, "skew GDP growth")
 
-    GDP_4th = 100 .* all_df[!, Symbol("GDP_4th")]
-    py"run_PAWN"(labels, X, GDP_4th, "GDP_4", run_nr, "kurtosis GDP growth")
+    GDP_4th = 100 .* df[!, Symbol("GDP_4th")]
+    py"run_PAWN"(labelnames, X, GDP_4th, "GDP_4", run_nr, "kurtosis GDP growth")
 
     # GINI coefficients
-    # GINI_I_1st = all_df[!, Symbol("Gini_I_1st")]
-    # py"run_PAWN"(labels, X, GINI_I_1st, "GINI_I_1", run_nr, "mean income GINI")
+    GINI_I_1st = df[!, Symbol("GINI_I_1st")]
+    py"run_PAWN"(labelnames, X, GINI_I_1st, "GINI_I_1", run_nr, "mean income GINI")
 
-    # GINI_W_1st = all_df[!, Symbol("Gini_W_1st")]
-    # py"run_PAWN"(labels, X, GINI_W_1st, "GINI_W_1", run_nr, "mean wealth GINI")
+    GINI_I_2nd = df[!, Symbol("GINI_I_2nd")]
+    py"run_PAWN"(labelnames, X, GINI_I_2nd, "GINI_I_2", run_nr, "var income GINI")
+
+    GINI_W_1st = df[!, Symbol("GINI_W_1st")]
+    py"run_PAWN"(labelnames, X, GINI_W_1st, "GINI_W_1", run_nr, "mean wealth GINI")
+
+    GINI_W_2nd = df[!, Symbol("GINI_W_2nd")]
+    py"run_PAWN"(labelnames, X, GINI_W_2nd, "GINI_W_2nd", run_nr, "var wealth GINI")
     
     # Unemployment
-    # U_1st = all_df[!, Symbol("U_1st")]
-    # py"run_PAWN"(labels, X, U_1st, "U_1", run_nr, "mean unemployment rate")
+    U_1st = df[!, Symbol("U_1st")]
+    py"run_PAWN"(labelnames, X, U_1st, "U_1", run_nr, "mean unemployment rate")
+
+    U_2nd = df[!, Symbol("U_2nd")]
+    py"run_PAWN"(labelnames, X, U_2nd, "U_2", run_nr, "var unemployment rate")
 
     # Poverty
-    # FGT_1st = all_df[!, Symbol("FGT_1st")]
-    # py"run_PAWN"(labels, X, FGT_1st, "FGT_1", run_nr, "mean FGT")
+    FGT_1st = df[!, Symbol("FGT_1st")]
+    py"run_PAWN"(labelnames, X, FGT_1st, "FGT_1", run_nr, "mean FGT")
+
+    FGT_2nd = df[!, Symbol("FGT_2nd")]
+    py"run_PAWN"(labelnames, X, FGT_2nd, "FGT_2", run_nr, "var FGT")
 
     # Carbon emissions
-    # carbon_conc = all_df[!, Symbol("carbon_conc")]
-    # py"run_PAWN"(labels, X, carbon_conc, "carbon_conc", run_nr, "carbon concentration")
+    em2030 = df[!, Symbol("em2030")]
+    py"run_PAWN"(labelnames, X, em2030, "em2030", run_nr, "CO_2 em 2030")
+
+    em2040 = df[!, Symbol("em2040")]
+    py"run_PAWN"(labelnames, X, em2040, "em2040", run_nr, "CO_2 em 2040")
+
+    em2050 = df[!, Symbol("em2050")]
+    py"run_PAWN"(labelnames, X, em2050, "em2050", run_nr, "CO_2 em 2050")
+
+    # Productivity
+    LP_g_1st = df[!, Symbol("LP_g_1st")]
+    py"run_PAWN"(labelnames, X, LP_g_1st, "LP_g", run_nr, "mean LP growth")
+
+    EE_g_1st = df[!, Symbol("EE_g_1st")]
+    py"run_PAWN"(labelnames, X, EE_g_1st, "EE_g", run_nr, "mean EE growth")
+
+    EF_g_1st = df[!, Symbol("EF_g_1st")]
+    py"run_PAWN"(labelnames, X, EF_g_1st, "EF_g", run_nr, "mean EF growth")
 
 end
 
@@ -497,7 +419,7 @@ function main(;
 
     # Generate PAWN indeces
     if runpawn
-        run_PAWN(X_labels, run_nr; nthreads=n_treads)
+        run_PAWN(X_labels, run_nr)
     end
 end
 
