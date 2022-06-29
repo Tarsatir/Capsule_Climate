@@ -8,6 +8,7 @@ using PyCall
 using ArgParse
 
 include("../../model/main.jl")
+include("../../results/experiments/experiment_helpers.jl")
 
 
 function getfilepath(
@@ -24,13 +25,6 @@ function getfilepath(
     end
 end
 
-
-function compute_growthrates(
-    ts::Vector{Float64}
-    )
-
-    return 100 .* (ts[1:end-1] .- ts[2:end]) ./ ts[2:end]
-end
 
 
 """

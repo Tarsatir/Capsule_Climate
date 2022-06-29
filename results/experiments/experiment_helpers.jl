@@ -1,9 +1,18 @@
+function compute_growthrates(
+    ts::Vector{Float64}
+    )
+
+    return 100 .* (ts[1:end-1] .- ts[2:end]) ./ ts[2:end]
+end
+
+
 """
 Computes moments of runoutput and writes to dataframe or array
 """
 function convertrunoutput(
     runoutput::RunOutput;
-    return_as_df::Bool=false
+    return_as_df::Bool=false,
+    t_warmup::Int64=100
     )
 
     # Prepare data to be written to dataframe
@@ -47,7 +56,7 @@ function convertrunoutput(
 
     if return_as_df
         return DataFrame(
-                    :sim_nr => sim_nr,
+                    # :sim_nr => sim_nr,
                     :GDP_1st => GDP_1st,
                     :GDP_2nd => GDP_2nd,
                     :GDP_3rd => GDP_3rd,
@@ -71,7 +80,7 @@ function convertrunoutput(
                     :em2050 => em2050
                 )
     else
-        return Float64[
+        return [
                 GDP_1st, GDP_2nd, GDP_3rd, GDP_4th, U_1st, U_2nd, 
                 GINI_I_1st, GINI_I_2nd, GINI_W_1st, GINI_W_2nd,
                 LP_g_1st, LP_g_2nd, EE_g_1st, EE_g_2nd,
