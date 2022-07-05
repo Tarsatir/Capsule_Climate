@@ -39,12 +39,12 @@ function OFAT_taxrates(
 
     # Define ranges of tax rates
     taxrates = Dict(
-        :τᴵ => (0.0, 0.8),
-        :τᴷ => (0.0, 0.5),
-        :τˢ => (0.0, 0.5),
-        :τᴾ => (0.0, 0.8),
-        :τᴱ => (0.0, 1.0),
-        :τᶜ => (0.0, 1.0)
+        # :τᴵ => (0.0, 0.8),
+        # :τᴷ => (0.0, 0.5),
+        # :τˢ => (0.0, 0.5),
+        # :τᴾ => (0.0, 0.8),
+        # :τᴱ => (0.0, 1.0),
+        :τᶜ => (0.0, 0.2)
     )
 
     lk = Threads.ReentrantLock()
@@ -54,7 +54,7 @@ function OFAT_taxrates(
         firstsave = true
         outputfilepath = getfilepath(folderpath, taxtype)
 
-        # println("type $taxtype, range $raterange")
+        println("type $taxtype, range $raterange")
 
         Threads.@threads for taxrate in LinRange(raterange[1], raterange[2], n_per_taxtype)
             changedtaxrates = [(taxtype, taxrate)]
@@ -63,7 +63,7 @@ function OFAT_taxrates(
 
             for i in 1:n_per_taxrate
 
-                # println("   thr $(Threads.threadid()), tr $(taxrate), i $(i)")
+                println("   thr $(Threads.threadid()), tr $(taxrate), i $(i)")
 
                 # Run the model with changed tax rate
                 runoutput = run_simulation(
@@ -84,7 +84,7 @@ function OFAT_taxrates(
             # Save simulation data, wait for other threads already
             # augmenting the file.
             lock(lk) do
-                # println("$(Threads.threadid()) is saving...")
+                println("$(Threads.threadid()) is saving...")
                 CSV.write(outputfilepath, results; append=!firstsave)
                 firstsave = false
             end

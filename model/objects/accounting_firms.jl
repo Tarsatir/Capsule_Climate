@@ -20,7 +20,7 @@ If firm is insolvent, liquidate firm.
 function close_balance_all_p!(
     all_p::Vector{Int},
     global_param::GlobalParam,
-    τᴾ::Float64,
+    government,
     indexfund_struct,
     t::Int,
     model::ABM
@@ -45,10 +45,16 @@ function close_balance_all_p!(
         writeoffs = update_K_p!(model[p_id], global_param.η)
 
         # Compute profits
-        compute_Π_p!(model[p_id]; writeoffs)
+        compute_Π_p!(model[p_id], government; writeoffs)
+
+        if t >= 1
+            # Compute and pay energy and carbon taxes
+            pay_carbontax_p!(model[p_id], government, t)
+            pay_energytax_p!(model[p_id], government, t)
+        end
 
         # Update liquid assets NW
-        update_NW_p!(model[p_id], τᴾ)
+        update_NW_p!(model[p_id], government.τᴾ)
 
         # Update valuation of inventory. kp do not have inventory.
         if typeof(model[p_id]) == ConsumerGoodProducer
@@ -151,10 +157,12 @@ function update_NW_p!(
     add_debt = p.curracc.add_debt
     int_debt = p.curracc.int_debt
     rev_dep = p.curracc.rev_dep
-    profit_tax = max(τᴾ * p.Π[end], 0)
+    profittax = p.curracc.profittax
+    carbontax = p.curracc.carbontax
+    energytax = p.curracc.energytax
 
-
-    new_NW = NW + S + add_debt + rev_dep - TCL - TCI - TCE - rep_debt - int_debt - profit_tax
+    new_NW = (NW + S + add_debt + rev_dep - TCL - TCI - TCE - rep_debt - int_debt 
+              - profittax - carbontax - energytax)
 
     if typeof(p) == ConsumerGoodProducer
         p.NW_growth = (new_NW - p.balance.NW) / p.balance.NW
@@ -179,23 +187,50 @@ end
 
 
 """
-Computes profit of cp in previous time period
+Computes profit of p in previous time period and profit tax that has to be paid.
 """
 function compute_Π_p!(
-    p::AbstractAgent;
+    p::AbstractAgent,
+    government;
     writeoffs=0.0::Float64
     )
  
     Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.TCE - p.curracc.int_debt - writeoffs
-    # if typeof(p) == CapitalGoodProducer
-    #     println("profit ", Π, " S ", p.curracc.S, "  TCL ", p.curracc.TCL, " TCI ", p.curracc.TCI, " int ", p.curracc.int_debt, " p ", p.p[end])
-    #     println("labor ", p.ΔLᵈ, " O ", p.O, " O/B ", p.O/p.B_LP[end], " RD ", p.RD / p.w̄[end], " L ", p.L, " w ", p.w̄[end])
-    # end
-    # Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.int_debt - writeoffs
-
-    # push!(p.Π, Π)
     shift_and_append!(p.Π, Π)
+
+    # Compute profit taxes
+    p.curracc.profittax = max(government.τᴾ * p.Π[end], 0)
 end
+
+
+"""
+Computes carbon tax p has to pay
+"""
+function pay_carbontax_p!(
+    p::AbstractAgent,
+    government,
+    t::Int64
+    )
+
+    p.curracc.carbontax = government.τᶜ * p.emissions
+    receive_carbontax_gov!(government, p.curracc.carbontax, t)
+end
+
+
+"""
+Computes carbon tax p has to pay
+"""
+function pay_energytax_p!(
+    p::AbstractAgent,
+    government,
+    t::Int64
+    )
+
+    p.curracc.energytax = government.τᴱ * p.curracc.TCE
+    receive_energytax_gov!(government, p.curracc.energytax, t)
+end
+
+
 
 
 """
@@ -213,6 +248,10 @@ CURRENT ACCOUNT
     TCE::Float64 = 0.0             # Total cost of energy
     int_debt::Float64 = 0.0        # Interest paid over debt
     rep_debt::Float64 = 0.0        # Debt repayments
+
+    profittax::Float64 = 0.0       # Profit tax
+    carbontax::Float64 = 0.0       # Carbon tax
+    energytax::Float64 = 0.0       # Energy tax
 end
 
 
@@ -232,6 +271,10 @@ function clear_firm_currentaccount_p!(
     ca.TCE = 0.0
     ca.int_debt = 0.0
     ca.rep_debt = 0.0
+
+    ca.profittax = 0.0
+    ca.carbontax = 0.0
+    ca.energytax = 0.0
 
     return ca
 end

@@ -438,6 +438,7 @@ def plot_energy(df_climate_energy, df_macro):
     ax[0,0].set_title('Energy demand and consumption')
     ax[0,0].set_xlabel('Time')
     ax[0,0].set_ylabel('Units of energy')
+    ax[0,0].ticklabel_format(axis='y', style='sci')
     ax[0,0].legend()
 
     # Plot energy intensity

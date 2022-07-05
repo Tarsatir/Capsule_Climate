@@ -100,6 +100,7 @@ Checks if innovation is performed, then calls appropriate functions
 """
 function innovate_kp!(
     kp::CapitalGoodProducer, 
+    government::Government,
     globalparam, 
     all_kp::Vector{Int}, 
     kp_distance_matrix::Array{Float64},
@@ -141,7 +142,7 @@ function innovate_kp!(
         push!(tech_choices, imitated_tech)
     end
 
-    choose_technology_kp!(kp, w̄, globalparam, tech_choices, t, ep)
+    choose_technology_kp!(kp, government, w̄, globalparam, tech_choices, t, ep)
 end
 
 
@@ -150,6 +151,7 @@ Lets kp choose technology
 """
 function choose_technology_kp!(
     kp::CapitalGoodProducer,
+    government::Government,
     w̄::Float64,
     globalparam::GlobalParam,
     tech_choices,
@@ -162,9 +164,9 @@ function choose_technology_kp!(
 
     # Make choice between possible technologies
     if length(tech_choices) > 1
-        #   Lamperti et al (2018), eq 1 and 2
-        c_h_cp = map(tech -> (w̄/tech[1] + ep.pₑ[t]/tech[2]), tech_choices)
-        c_h_kp = map(tech -> (kp.w̄[end]/tech[4] + ep.pₑ[t]/tech[5]), tech_choices)
+        #   Lamperti et al (2018), eq 1 and 2, augmented for tax rates
+        c_h_cp = map(tech -> (w̄/tech[1] + ((1 + government.τᴱ) * ep.pₑ[t])/tech[2] + government.τᶜ * tech[3]), tech_choices)
+        c_h_kp = map(tech -> (kp.w̄[end]/tech[4] + ((1 + government.τᴱ) * ep.pₑ[t])/tech[5] + government.τᶜ * tech[6]), tech_choices)
  
         p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
         r_h = c_h_cp .* globalparam.b .+ p_h

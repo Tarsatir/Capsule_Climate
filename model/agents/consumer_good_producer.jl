@@ -158,7 +158,8 @@ Plans production amounts for consumer good producer (long term)
     - based on LT, set investment amount
 """
 function plan_investment_cp!(
-    cp::ConsumerGoodProducer, 
+    cp::ConsumerGoodProducer,
+    government::Government, 
     all_kp::Vector{Int},
     globalparam::GlobalParam,
     ep,
@@ -171,7 +172,7 @@ function plan_investment_cp!(
     cp.n_mach_ordered_RS = 0
 
     # Choose kp
-    brochure = choose_producer_cp!(cp, globalparam.b, all_kp, ep, t, model)
+    brochure = choose_producer_cp!(cp, government, globalparam.b, all_kp, ep, t, model)
 
     # Update LT production
     update_Qᵉ_cp!(cp, globalparam.ω, globalparam.ι)
@@ -279,7 +280,8 @@ end
 Lets cp make decision for kp out of available kp in brochures.
 """
 function choose_producer_cp!(
-    cp::ConsumerGoodProducer, 
+    cp::ConsumerGoodProducer,
+    government::Government, 
     b::Int, 
     all_kp::Vector{Int},
     ep,
@@ -295,10 +297,24 @@ function choose_producer_cp!(
     end
 
     # If multiple brochures, find brochure with lowest cost of production
-    all_cop = map(broch -> broch[2] + b * (cp.w̄[end] / broch[4] + ep.pₑ[t] / broch[5]), cp.brochures)
+    all_cop = Float64[]
+    for brochure in cp.brochures
+        p_mach = brochure[2]
+        A_LP = brochure[4]
+        A_EE = brochure[5]
+        A_EF = brochure[6]
+
+        cop = p_mach + b * (cp.w̄[end] / A_LP 
+                            + ((1 + government.τᴱ) * ep.pₑ[t]) / A_EE
+                            + government.τᶜ * A_EF)
+        push!(all_cop, cop)
+    end
+    # all_cop = map(broch -> broch[2] + b * (cp.w̄[end] / broch[4] + ep.pₑ[t] / broch[5]), cp.brochures)
     # brochure = cp.brochures[argmin(all_cop)]
+
     brochure = sample(cp.brochures, Weights(1 ./ all_cop.^2))
     # TODO: DESCRIBE IN MODEL
+
     cp.chosen_kp_id = brochure[1]
 
     return brochure

@@ -10,10 +10,6 @@ using Parameters
 using SparseArrays
 using PyCall
 
-# using Conda
-# Conda.add("scipy")
-
-# scipy = pyimport("scipy")
 
 # Include files
 include("../results/write_results.jl")
@@ -189,7 +185,7 @@ function initialize_model(
         update_mean_skill_p!(model[p_id], model)
     end
 
-    close_balance_all_p!(all_p, globalparam, government.τᴾ,
+    close_balance_all_p!(all_p, globalparam, government,
                          indexfund, 0, model)
 
     cm_dat = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
@@ -243,7 +239,8 @@ function model_step!(
         model[kp_id].curracc = clear_firm_currentaccount_p!(model[kp_id].curracc)
 
         innovate_kp!(
-            model[kp_id], 
+            model[kp_id],
+            government, 
             globalparam, 
             all_kp, 
             kp_distance_matrix,
@@ -284,7 +281,7 @@ function model_step!(
         end
 
         # Plan investments for this period
-        plan_investment_cp!(model[cp_id], all_kp, globalparam, ep, t, model)
+        plan_investment_cp!(model[cp_id], government, all_kp, globalparam, ep, t, model)
     end
 
     # (2) capital good producers set labor demand based on ordered machines
@@ -336,7 +333,7 @@ function model_step!(
     end
 
     # Let energy producer meet energy demand
-    produce_energy_ep!(ep, all_cp, all_kp, globalparam, indexfund, t, model)
+    produce_energy_ep!(ep, government, all_cp, all_kp, globalparam, indexfund, t, model)
 
     
     # (6) Transactions take place on consumer market
@@ -384,8 +381,14 @@ function model_step!(
     end 
 
     # Close balances of firms, if insolvent, liquidate firms
-    @timeit to "close balance" close_balance_all_p!(all_p, globalparam, government.τᴾ,
-                                    indexfund, t, model)
+    @timeit to "close balance" close_balance_all_p!(
+                                all_p, 
+                                globalparam,
+                                government,
+                                indexfund, 
+                                t, 
+                                model
+                            )
 
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(government, all_p, t, model)
@@ -487,7 +490,7 @@ end
 """
 function run_simulation(;
     T=460::Int,
-    changed_params=nothing,
+    changed_params::Union{Dict,Nothing}=nothing,
     changedtaxrates::Union{Vector,Nothing}=nothing,
     full_output::Bool=true,
     threadnr::Int64=1,
@@ -534,6 +537,7 @@ function run_simulation(;
     @timeit to "save output" runoutput = RunOutput(
         macroeconomy.GDP_growth,
         macroeconomy.U,
+        macroeconomy.dU,
         macroeconomy.GINI_I,
         macroeconomy.GINI_W,
         macroeconomy.FGT,
@@ -545,4 +549,4 @@ function run_simulation(;
     return runoutput
 end
 
-# run_simulation(savedata=true)
+# @time run_simulation(savedata=true)

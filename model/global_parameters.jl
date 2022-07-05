@@ -19,7 +19,7 @@
     b::Int = 3                      # payback period
     bₑ::Int = 10                    # payback period energy producer
     η::Int = 60                     # physical scrapping age
-    ηₑ::Int = 80                    # physical scrapping age energy producer
+    ηₑ::Int = 240                   # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
     update_period::Int=3            # time period after which cp update prod plans
 
@@ -52,7 +52,7 @@
     freq_per_machine::Int = 50      # capital units per machine
     freq_per_powerplant::Int = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.0              # price of fossil fuels
+    p_f::Float64 = 0.5             # price of fossil fuels
 
     n_cons_market_days::Int = 4     # number of days in the consumer market process
 

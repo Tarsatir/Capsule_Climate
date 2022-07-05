@@ -17,7 +17,7 @@
     labor_I::Float64 = L * skill                # income from labor
     capital_I::Float64 = 0.0                    # income from capital
     UB_I::Float64 = 0.0                         # income from unemployment benefits
-    I_percentile::Float64 = 50.0                # income percentile
+    # I_percentile::Float64 = 50.0                # income percentile
     socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 300                            # wealth or cash on hand

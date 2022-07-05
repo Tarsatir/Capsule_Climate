@@ -1,12 +1,13 @@
 
 @Base.kwdef mutable struct MacroEconomy
     T::Int=T                                                # number of timesteps
+
+    # GDP
     GDP::Vector{Float64} = zeros(Float64, T)                # GDP over time
     GDP_I::Vector{Float64} = zeros(Float64, T)              # income share of GDP over time
     GDP_Π_cp::Vector{Float64} = zeros(Float64, T)           # profit share of GDP of cp over time
     GDP_Π_kp::Vector{Float64} = zeros(Float64, T)           # profit share of GDP of kp over time
-
-    GDP_growth::Vector{Float64} = zeros(Float64, T)         # GDP growth rates over time
+    GDP_growth::Vector{Float64} = zeros(Float64, T)         # quarterly GDP growth rates
 
     total_C::Vector{Float64} = zeros(Float64, T)            # total spending on consumption
     total_C_actual::Vector{Float64} = zeros(Float64, T)     # total actual spending on consumption
@@ -59,7 +60,9 @@
 
     B̄_avg::Vector{Float64} = zeros(Float64, T)              # average of budget over time
     B̄_std::Vector{Float64} = zeros(Float64, T)              # std of budget over time
+
     U::Vector{Float64} = zeros(Float64, T)                  # unemployment over time
+    dU::Vector{Float64} = zeros(Float64, T)                 # quarterly change in unemployment rate
     switch_rate::Vector{Float64} = zeros(Float64, T)        # rate of switching employers
     Exp_UB::Vector{Float64} = zeros(Float64, T)             # total spending on UB
     AB::Vector{Float64} = zeros(Float64, T)                 # average labor productivity over time
@@ -143,9 +146,10 @@ function update_macro_timeseries(
     to
     )
 
-    # Update GDP
+    # Update total GDP, per sector and GDP growth
     compute_GDP!(all_hh, all_cp, all_kp, macroeconomy, t, model)
 
+    # Update spending of different sectors
     compute_spending!(all_hh, all_cp, all_kp, all_p, macroeconomy, t, model)
 
     # Update CPI
@@ -153,18 +157,21 @@ function update_macro_timeseries(
 
     # Update average labor demand
     macroeconomy.ΔL̄_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
-    # macroeconomy.ΔL̄_std[t] = std(p_id -> model[p_id].ΔLᵈ, all_p)
     macroeconomy.ΔL̄_cp_avg[t] = mean(cp_id -> model[cp_id].ΔLᵈ, all_cp)
-    # macroeconomy.ΔL̄_cp_std[t] = std(cp_id -> model[cp_id].ΔLᵈ, all_cp)
     macroeconomy.ΔL̄_kp_avg[t] = mean(kp_id -> model[kp_id].ΔLᵈ, all_kp)
-
-    # Consumption 
-    macroeconomy.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)
 
     # Update unemployment rate and unemployment benefits expenditure
     macroeconomy.U[t] = labormarket.E
     macroeconomy.switch_rate[t] = labormarket.switch_rate
     macroeconomy.Exp_UB[t] = government.curracc.Exp_UB[t]
+
+    # Compute change in unemployment rate
+    if t > 3 
+        macroeconomy.dU[t] = 100 * (macroeconomy.U[t] - macroeconomy.U[t-3]) / macroeconomy.U[t-3]
+    end
+
+    # Consumption 
+    macroeconomy.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)
 
     # Compute total amount in system
     compute_M!(all_hh, all_cp, all_kp, ep, government, indexfund, 
@@ -175,7 +182,6 @@ function update_macro_timeseries(
 
     # Wage and income statistics
     update_wage_stats!(all_hh, all_p, macroeconomy, t, model)
-
     update_income_stats!(all_hh, macroeconomy, t, model)
 
     update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, globalparam.Λ, macroeconomy, t, model)
@@ -253,9 +259,9 @@ function compute_GDP!(
     # total GDP
     macroeconomy.GDP[t] = total_I + total_Π_cp + total_Π_kp
 
-    # GDP growth
-    if t > 1
-        macroeconomy.GDP_growth[t] = (macroeconomy.GDP[t] - macroeconomy.GDP[t-1]) / macroeconomy.GDP[t-1]
+    # quarterly GDP growth
+    if t > 3
+        macroeconomy.GDP_growth[t] = 100 * (macroeconomy.GDP[t] - macroeconomy.GDP[t-3]) / macroeconomy.GDP[t-3]
     end
 end
 
@@ -378,6 +384,9 @@ function update_income_stats!(
 
     macroeconomy.Ī_avg[t] = (macroeconomy.I_labor_avg[t] + macroeconomy.I_capital_avg[t] 
                              + macroeconomy.I_UB_avg[t] + macroeconomy.I_socben_avg[t])
+    
+    # all_I = map(hh_id -> model[hh_id].total_I, all_hh)
+    # println(percentile(all_I, 0.1))
 end
 
 

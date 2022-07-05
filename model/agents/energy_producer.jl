@@ -5,7 +5,7 @@
     Q̄ₑ::Vector{Float64} = zeros(Float64, T)     # Maximum production of units over time
 
     # Prices, cost and investments
-    μₑ::Float64 = 0.01                          # Markup to determine price
+    μₑ::Float64                                 # Markup to determine price
     Πₑ::Vector{Float64} = zeros(Float64, T)     # Profits over time
     NWₑ::Vector{Float64} = zeros(Float64, T)    # Stock of liquid assets over time
     pₑ::Vector{Float64} = zeros(Float64, T)     # Price of energy over time
@@ -18,10 +18,10 @@
     EIᵈ::Vector{Float64} = zeros(Float64, T)    # Desired amount of units of expansionary investments
     RSᵈ::Vector{Float64} = zeros(Float64, T)    # Desired amount of units of replacement investments
     ECₑ::Vector{Float64} = zeros(Float64, T)    # Cost of spansionary investment
+    carbontax::Vector{Float64} = zeros(Float64, T) # Paid carbon taxes
 
     # Technological parameters
-    IC_g::Vector{Float64} = fill(0.012, T)       # Fixed investment cost of the cheapest new green power plant
-    # IC_g::Vector{Float64} = fill(0.0, T)        # Fixed investment cost of the cheapest new green power plant
+    IC_g::Vector{Float64}                       # Fixed investment cost of the cheapest new green power plant
     Aᵀ_d::Vector{Float64} = zeros(Float64, T)   # Thermal efficiency of new power plants
     emᵀ_d::Vector{Float64} = zeros(Float64, T)  # Emissions of new power plants
     c_d::Vector{Float64} = zeros(Float64, T)    # Discounted production cost of the cheapest dirty plant 
@@ -85,8 +85,10 @@ function initialize_energy_producer(
                         T = T,
                         green_portfolio = green_portfolio,
                         dirty_portfolio = dirty_portfolio,
+                        μₑ = initparam.μₑ,
                         Aᵀ_d = fill(initparam.Aᵀ_0, T),
-                        emᵀ_d = fill(initparam.emᵀ_0, T)
+                        emᵀ_d = fill(initparam.emᵀ_0, T),
+                        IC_g = fill(initparam.IC_g_0, T)
                       )
     return energy_producer
 end
@@ -102,6 +104,7 @@ Production process of ep
 """
 function produce_energy_ep!(
     ep::EnergyProducer,
+    government::Government,
     all_cp::Vector{Int},
     all_kp::Vector{Int},
     globalparam::GlobalParam,
@@ -119,24 +122,26 @@ function produce_energy_ep!(
             update_c_pp!(pp, globalparam.p_f)
         end
     end
-    
-    # Update cost frontier of ep
-    compute_c_ep!(ep, globalparam.p_f, t)
-
-    # Determine demand for energy
-    compute_Dₑ_ep!(ep, all_cp, all_kp, t, model)
 
     # Update production capacities
     update_capacities_ep!(ep, t)
     compute_Q̄_ep!(ep, t)
+    
+    # Update cost frontier of ep
+    compute_c_ep!(ep, government, globalparam.p_f, t)
+
+    # Determine demand for energy
+    compute_Dₑ_ep!(ep, all_cp, all_kp, t, model)
 
     # Check if production capacity needs to be expanded and old pp replaced
-    plan_investments_ep!(ep, globalparam, t)
+    plan_investments_ep!(ep, government, globalparam, t)
 
     # Choose pp to use in production
     choose_powerplants_ep!(ep, t)
     compute_FU_ICₑ_ep!(ep, globalparam.p_f, t)
     compute_emissions_ep!(ep, t)
+
+    pay_carbontax_ep!(ep, government, t)
 
     # Compute profits
     compute_Πₑ_NWₑ_ep!(ep, t)
@@ -155,11 +160,11 @@ function choose_powerplants_ep!(
     # Check if all production can be done using green tech, if not, compute cost
     # of production using dirty tech
     if ep.Dₑ[t] < ep.green_capacity[t]
-        ep.infra_marg = deepcopy(ep.green_portfolio)
+        ep.infra_marg = copy(ep.green_portfolio)
         ep.green_frac_prod[t] = 1.0
     else
 
-        ep.infra_marg = deepcopy(ep.green_portfolio)
+        ep.infra_marg = copy(ep.green_portfolio)
         total_capacity = ep.green_capacity[t]
 
         # Sort dirty portfolio as to take low cost power plants first
@@ -211,6 +216,7 @@ Investment process of ep
 """
 function plan_investments_ep!(
     ep::EnergyProducer,
+    government::Government,
     globalparam, 
     t::Int
     )
@@ -354,8 +360,10 @@ function compute_Πₑ_NWₑ_ep!(
     t::Int
     )
 
-    ep.Πₑ[t] = ep.pₑ[t] * ep.Dₑ[t] - ep.PCₑ[t] - ep.ICₑ[t] - ep.RDₑ[t]
+    ep.Πₑ[t] = ep.pₑ[t] * ep.Dₑ[t] - ep.PCₑ[t] - ep.ICₑ[t] - ep.RDₑ[t] - ep.carbontax[t]
     ep.NWₑ[t] = t > 1 ? ep.NWₑ[t-1] + ep.Πₑ[t] : ep.Πₑ[t]
+
+    
 end
 
 
@@ -389,7 +397,8 @@ function compute_pₑ_ep!(
     )
 
     c̄ = length(ep.dirty_portfolio) > 0 ? ep.dirty_portfolio[end].c : 0.0
-    ep.pₑ[t] = t > 1 && ep.Dₑ[t-1] <= ep.green_capacity[t] ? ep.μₑ : c̄ + ep.μₑ
+    # ep.pₑ[t] = t > 1 && ep.Dₑ[t-1] <= ep.green_capacity[t] ? ep.μₑ : c̄ + ep.μₑ
+    ep.pₑ[t] = t > 1 ? ep.μₑ + (1 - ep.green_frac_prod[t-1]) * c̄ : 0.1
 end
 
 
@@ -402,8 +411,8 @@ function update_capacities_ep!(
     t::Int
     )
 
-    ep.green_capacity[t:end] .= length(ep.green_portfolio) > 0 ? sum(pp -> pp.freq, ep.green_portfolio) : 0.0
-    ep.dirty_capacity[t:end] .= length(ep.dirty_portfolio) > 0 ? sum(pp -> pp.freq, ep.dirty_portfolio) : 0.0
+    ep.green_capacity[t] = length(ep.green_portfolio) > 0 ? sum(pp -> pp.freq, ep.green_portfolio) : 0.0
+    ep.dirty_capacity[t] = length(ep.dirty_portfolio) > 0 ? sum(pp -> pp.freq, ep.dirty_portfolio) : 0.0
 end
 
 
@@ -478,12 +487,13 @@ end
 Computes cost of dirty powerplant at technological frontier
 """
 function compute_c_ep!(
-    ep::EnergyProducer, 
+    ep::EnergyProducer,
+    government::Government, 
     p_f::Float64, 
     t::Int
     )
 
-    ep.c_d[t] = p_f / ep.Aᵀ_d[t]
+    ep.c_d[t] = p_f / ep.Aᵀ_d[t] + government.τᶜ * ep.emᵀ_d[t]
 end
 
 
@@ -525,6 +535,18 @@ function compute_emissions_ep!(
         ep.emissions[t] = total_emissions
     end
 end
+
+
+function pay_carbontax_ep!(
+    ep::EnergyProducer,
+    government::Government,
+    t::Int64
+    )
+
+    ep.carbontax[t] = government.τᶜ * ep.emissions[t]
+    government.curracc.Rev_τᶜ[t] += ep.carbontax[t]
+end
+
 
 function compute_FU_ICₑ_ep!(
     ep::EnergyProducer,

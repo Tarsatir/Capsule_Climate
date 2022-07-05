@@ -1,6 +1,7 @@
 @Base.kwdef mutable struct Government <: AbstractAgent
-    UB::Float64 = 40.0                     # unemployment benefits
+    
     w_min::Float64 = 0.7
+    UB::Float64 = 100 * 0.7 * w_min        # unemployment benefits
 
     # Tax rates
     τᴵ::Float64 = 0.3                      # income tax
@@ -10,12 +11,9 @@
     τᴱ::Float64 = 0.0                      # energy tax
     τᶜ::Float64 = 0.0                      # emission tax
 
-    # τᴵ::Float64 = 0.0                      # income tax
-    # τᴷ::Float64 = 0.00                     # capital gains tax
-    # τˢ::Float64 = 0.0                      # sales tax
-    # τᴾ::Float64 = 0.0                      # profit tax
-    # τᴱ::Float64 = 0.0                      # energy tax
-    # τᶜ::Float64 = 0.0                      # emission tax
+    # # Subsidies
+    # σᴿ::Float64 = 0.0                      # R&D subsidies
+    # σ ::Float64
 
     MS::Float64 = 0.0                      # money stock owned by government
     curracc::GovCurrentAccount             # current account of government spending
@@ -125,6 +123,32 @@ function receive_salestax_gov!(
     )
 
     government.curracc.Rev_τˢ[t] += salestax
+end
+
+
+"""
+Lets government receive energy taxes from producers
+"""
+function receive_energytax_gov!(
+    government::Government,
+    energytax::Float64,
+    t::Int
+    )
+
+    government.curracc.Rev_τᴱ[t] += energytax
+end
+
+
+"""
+Lets government receive carbon taxes from producers
+"""
+function receive_carbontax_gov!(
+    government::Government,
+    carbontax::Float64,
+    t::Int
+    )
+
+    government.curracc.Rev_τᶜ[t] += carbontax
 end
 
 
