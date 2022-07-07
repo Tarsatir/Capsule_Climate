@@ -251,7 +251,7 @@ function model_step!(
         )
 
         # Update cost of production and price
-        compute_c_kp!(model[kp_id])
+        compute_c_kp!(model[kp_id], government, ep.pₑ[t])
         compute_p_kp!(model[kp_id])
 
         # Send brochures to cp
@@ -268,7 +268,9 @@ function model_step!(
         # Plan production for this period
         μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
         plan_production_cp!(
-            model[cp_id], 
+            model[cp_id],
+            government, 
+            ep,
             globalparam, 
             μ_avg, 
             government.τˢ, 
@@ -393,7 +395,7 @@ function model_step!(
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(government, all_p, t, model)
     compute_budget_balance(government, t)
-    resolve_gov_balance!(government, indexfund, all_hh, model)
+    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
 
     # Update market shares of cp and kp
     update_marketshare_p!(all_cp, model)
@@ -549,4 +551,4 @@ function run_simulation(;
     return runoutput
 end
 
-# @time run_simulation(savedata=true)
+@time run_simulation(savedata=true)

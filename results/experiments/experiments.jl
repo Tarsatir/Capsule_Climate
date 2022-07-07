@@ -43,7 +43,7 @@ function OFAT_taxrates(
         # :τᴷ => (0.0, 0.5),
         # :τˢ => (0.0, 0.5),
         # :τᴾ => (0.0, 0.8),
-        # :τᴱ => (0.0, 1.0),
+        :τᴱ => (0.0, 1.0),
         :τᶜ => (0.0, 0.2)
     )
 
@@ -74,10 +74,10 @@ function OFAT_taxrates(
 
                 # Save results of run
                 if results == nothing
-                    results = convertrunoutput(runoutput; return_as_df=true)
+                    results = convertrunoutput(runoutput, i; return_as_df=true)
                     results[!, "taxrate"] = [taxrate]
                 else
-                    push!(results, vcat(convertrunoutput(runoutput), [taxrate]))
+                    push!(results, vcat(convertrunoutput(runoutput, i), [taxrate]))
                 end
             end
 

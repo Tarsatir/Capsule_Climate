@@ -174,69 +174,72 @@ function run_PAWN(
     df = innerjoin(input_df, output_df, on=:sim_nr)
 
     labels = collect(keys(X_labels))
-    labelnames = ["ψ_Q", "ψ_E", "μ_1", "κ_{upper}", "ω", "ϵ", "α_{cp}", "ψ_P", "p_f"]
+    labelnames = ["ψ_E", "μ_1", "κ_{upper}", "ω", "ϵ", "α_{cp}", "p_f"]
     X = zeros(nrow(df), length(labels))
     X .= df[:, labels]
 
     # GDP
-    GDP_1st = 100 .* df[!, Symbol("GDP_1st")]
-    py"run_PAWN"(labelnames, X, GDP_1st, "GDP_1", run_nr, "mean GDP growth")
+    # GDP_1st = 100 .* df[!, Symbol("GDP_1st")]
+    # py"run_PAWN"(labelnames, X, GDP_1st, "GDP_1", run_nr, "mean GDP growth")
 
-    GDP_2nd = 100 .* df[!, Symbol("GDP_2nd")]
-    py"run_PAWN"(labelnames, X, GDP_2nd, "GDP_2", run_nr, "var GDP growth")
+    # GDP_2nd = 100 .* df[!, Symbol("GDP_2nd")]
+    # py"run_PAWN"(labelnames, X, GDP_2nd, "GDP_2", run_nr, "var GDP growth")
 
-    GDP_3rd = 100 .* df[!, Symbol("GDP_3rd")]
-    py"run_PAWN"(labelnames, X, GDP_3rd, "GDP_3", run_nr, "skew GDP growth")
+    # GDP_3rd = 100 .* df[!, Symbol("GDP_3rd")]
+    # py"run_PAWN"(labelnames, X, GDP_3rd, "GDP_3", run_nr, "skew GDP growth")
 
-    GDP_4th = 100 .* df[!, Symbol("GDP_4th")]
-    py"run_PAWN"(labelnames, X, GDP_4th, "GDP_4", run_nr, "kurtosis GDP growth")
+    # GDP_4th = 100 .* df[!, Symbol("GDP_4th")]
+    # py"run_PAWN"(labelnames, X, GDP_4th, "GDP_4", run_nr, "kurtosis GDP growth")
 
-    # GINI coefficients
-    GINI_I_1st = df[!, Symbol("GINI_I_1st")]
-    py"run_PAWN"(labelnames, X, GINI_I_1st, "GINI_I_1", run_nr, "mean income GINI")
+    GDP_acorr = df[!, Symbol("acorr_GDP")]
+    py"run_PAWN"(labelnames, X, GDP_acorr, "acorr_GDP", run_nr, "GDP growth autocorrelation")
 
-    GINI_I_2nd = df[!, Symbol("GINI_I_2nd")]
-    py"run_PAWN"(labelnames, X, GINI_I_2nd, "GINI_I_2", run_nr, "var income GINI")
+    # # GINI coefficients
+    # GINI_I_1st = df[!, Symbol("GINI_I_1st")]
+    # py"run_PAWN"(labelnames, X, GINI_I_1st, "GINI_I_1", run_nr, "mean income GINI")
 
-    GINI_W_1st = df[!, Symbol("GINI_W_1st")]
-    py"run_PAWN"(labelnames, X, GINI_W_1st, "GINI_W_1", run_nr, "mean wealth GINI")
+    # GINI_I_2nd = df[!, Symbol("GINI_I_2nd")]
+    # py"run_PAWN"(labelnames, X, GINI_I_2nd, "GINI_I_2", run_nr, "var income GINI")
 
-    GINI_W_2nd = df[!, Symbol("GINI_W_2nd")]
-    py"run_PAWN"(labelnames, X, GINI_W_2nd, "GINI_W_2nd", run_nr, "var wealth GINI")
+    # GINI_W_1st = df[!, Symbol("GINI_W_1st")]
+    # py"run_PAWN"(labelnames, X, GINI_W_1st, "GINI_W_1", run_nr, "mean wealth GINI")
+
+    # GINI_W_2nd = df[!, Symbol("GINI_W_2nd")]
+    # py"run_PAWN"(labelnames, X, GINI_W_2nd, "GINI_W_2nd", run_nr, "var wealth GINI")
     
-    # Unemployment
-    U_1st = df[!, Symbol("U_1st")]
-    py"run_PAWN"(labelnames, X, U_1st, "U_1", run_nr, "mean unemployment rate")
+    # # Unemployment
+    # U_1st = df[!, Symbol("U_1st")]
+    # py"run_PAWN"(labelnames, X, U_1st, "U_1", run_nr, "mean unemployment rate")
 
-    U_2nd = df[!, Symbol("U_2nd")]
-    py"run_PAWN"(labelnames, X, U_2nd, "U_2", run_nr, "var unemployment rate")
+    # U_2nd = df[!, Symbol("U_2nd")]
+    # py"run_PAWN"(labelnames, X, U_2nd, "U_2", run_nr, "var unemployment rate")
 
-    # Poverty
-    FGT_1st = df[!, Symbol("FGT_1st")]
-    py"run_PAWN"(labelnames, X, FGT_1st, "FGT_1", run_nr, "mean FGT")
+    # # Poverty
+    # FGT_1st = df[!, Symbol("FGT_1st")]
+    # py"run_PAWN"(labelnames, X, FGT_1st, "FGT_1", run_nr, "mean FGT")
 
-    FGT_2nd = df[!, Symbol("FGT_2nd")]
-    py"run_PAWN"(labelnames, X, FGT_2nd, "FGT_2", run_nr, "var FGT")
+    # FGT_2nd = df[!, Symbol("FGT_2nd")]
+    # py"run_PAWN"(labelnames, X, FGT_2nd, "FGT_2", run_nr, "var FGT")
 
-    # Carbon emissions
-    em2030 = df[!, Symbol("em2030")]
-    py"run_PAWN"(labelnames, X, em2030, "em2030", run_nr, "CO_2 em 2030")
+    # # Carbon emissions
+    # em2030 = df[!, Symbol("em2030")]
+    # py"run_PAWN"(labelnames, X, em2030, "em2030", run_nr, "CO_2 em 2030")
 
-    em2040 = df[!, Symbol("em2040")]
-    py"run_PAWN"(labelnames, X, em2040, "em2040", run_nr, "CO_2 em 2040")
+    # em2040 = df[!, Symbol("em2040")]
+    # py"run_PAWN"(labelnames, X, em2040, "em2040", run_nr, "CO_2 em 2040")
 
-    em2050 = df[!, Symbol("em2050")]
-    py"run_PAWN"(labelnames, X, em2050, "em2050", run_nr, "CO_2 em 2050")
+    # em2050 = df[!, Symbol("em2050")]
+    # py"run_PAWN"(labelnames, X, em2050, "em2050", run_nr, "CO_2 em 2050")
 
-    # Productivity
-    LP_g_1st = df[!, Symbol("LP_g_1st")]
-    py"run_PAWN"(labelnames, X, LP_g_1st, "LP_g", run_nr, "mean LP growth")
+    # # Productivity
+    # LP_g_1st = df[!, Symbol("LP_g_1st")]
+    # py"run_PAWN"(labelnames, X, LP_g_1st, "LP_g", run_nr, "mean LP growth")
 
-    EE_g_1st = df[!, Symbol("EE_g_1st")]
-    py"run_PAWN"(labelnames, X, EE_g_1st, "EE_g", run_nr, "mean EE growth")
+    # EE_g_1st = df[!, Symbol("EE_g_1st")]
+    # py"run_PAWN"(labelnames, X, EE_g_1st, "EE_g", run_nr, "mean EE growth")
 
-    EF_g_1st = df[!, Symbol("EF_g_1st")]
-    py"run_PAWN"(labelnames, X, EF_g_1st, "EF_g", run_nr, "mean EF growth")
+    # EF_g_1st = df[!, Symbol("EF_g_1st")]
+    # py"run_PAWN"(labelnames, X, EF_g_1st, "EF_g", run_nr, "mean EF growth")
 
 end
 

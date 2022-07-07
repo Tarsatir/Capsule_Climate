@@ -165,8 +165,9 @@ function choose_technology_kp!(
     # Make choice between possible technologies
     if length(tech_choices) > 1
         #   Lamperti et al (2018), eq 1 and 2, augmented for tax rates
-        c_h_cp = map(tech -> (w̄/tech[1] + ((1 + government.τᴱ) * ep.pₑ[t])/tech[2] + government.τᶜ * tech[3]), tech_choices)
-        c_h_kp = map(tech -> (kp.w̄[end]/tech[4] + ((1 + government.τᴱ) * ep.pₑ[t])/tech[5] + government.τᶜ * tech[6]), tech_choices)
+        # c_h_cp = map(tech -> (w̄/tech[1] + ((1 + government.τᴱ) * ep.pₑ[t])/tech[2] + government.τᶜ * tech[3]), tech_choices)
+        c_h_cp = map(tech -> cop(w̄, tech[1], government.τᴱ, ep.pₑ[t], tech[2], government.τᶜ, tech[3]), tech_choices)
+        c_h_kp = map(tech -> cop(kp.w̄[end], tech[4], government.τᴱ, ep.pₑ[t], tech[5], government.τᶜ,  tech[6]), tech_choices)
  
         p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
         r_h = c_h_cp .* globalparam.b .+ p_h
@@ -242,10 +243,18 @@ end
 Lets kp update unit costs
 """
 function compute_c_kp!(
-    kp::CapitalGoodProducer
+    kp::CapitalGoodProducer,
+    government::Government,
+    pₑ::Float64
     )
 
-    c_t = kp.Q[end] > 0 ? kp.w̄[end] / kp.B_LP + kp.RD / kp.Q[end] : kp.w̄[end] / kp.B_LP
+    # c_t = kp.Q[end] > 0 ? kp.w̄[end] / kp.B_LP + kp.RD / kp.Q[end] : kp.w̄[end] / kp.B_LP
+    # shift_and_append!(kp.c, c_t)
+
+    c_t = cop(kp.w̄[end], kp.B_LP, government.τᴱ, pₑ, kp.B_EE, government.τᶜ, kp.B_EF)
+    if kp.Q[end] > 0
+        c_t += kp.RD / kp.Q[end]
+    end
     shift_and_append!(kp.c, c_t)
 end
 

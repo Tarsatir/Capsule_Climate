@@ -37,3 +37,8 @@ parameters/sensitivity/sensitivity_plots
 parameters/calibration/calibrate_example.py
 
 results/experiments/OFAT_experiments
+
+parameters/calibration/calibrate_example.py
+parameters/calibration/calibration_simple.py
+parameters/calibration/surrogatemodel_calibration.py
+parameters/calibration/surrogatemodel_calibration.ipynb

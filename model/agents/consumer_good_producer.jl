@@ -102,6 +102,20 @@ function initialize_cp(
 end
 
 
+# function cop(
+#     w::Float64,
+#     π_LP::Float64,
+#     τᴱ::Float64,
+#     pₑ::Float64,
+#     π_EE::Float64,
+#     τᶜ::Float64,
+#     π_EF::Float64
+#     )
+
+#     return w / π_LP + (1 + τᴱ) * pₑ / π_EE + τᶜ * π_EF
+# end
+
+
 """
 Plans production amounts for consumer good producer (short term)
 - updates ST expected demand
@@ -110,6 +124,8 @@ Plans production amounts for consumer good producer (short term)
 """
 function plan_production_cp!(
     cp::ConsumerGoodProducer, 
+    government::Government,
+    ep,
     globalparam::GlobalParam,
     μ_avg::Float64,
     τˢ::Float64,
@@ -132,18 +148,15 @@ function plan_production_cp!(
 
     # Compute corresponding change in labor stock
     update_Lᵈ!(cp, globalparam.ω)
-    # update_ΔLᵈ_cp!(cp, globalparam.ω)
 
     # Update average wage w̄
     update_w̄_p!(cp, model)
 
     # Update markup μ
-    # if t == cp.t_next_update
     update_μ_cp!(cp, t, globalparam.ι, μ_avg)
-    # end
 
     # Update cost of production c
-    compute_c_cp!(cp)
+    compute_c_cp!(cp, ep.pₑ[t], government.τᴱ, government.τᶜ)
 
     # Compute price
     compute_p_cp!(cp, τˢ)
@@ -178,7 +191,7 @@ function plan_investment_cp!(
     update_Qᵉ_cp!(cp, globalparam.ω, globalparam.ι)
 
     # Plan replacement investments
-    plan_replacement_cp!(cp, globalparam, ep, brochure, t)
+    plan_replacement_cp!(cp, government, globalparam, ep, brochure, t)
 
     # Plan expansion investments
     plan_expansion_cp!(cp, globalparam, brochure)
@@ -189,7 +202,7 @@ function plan_investment_cp!(
     # See if enough funds available for investments and production, otherwise
     # change investments and production to match funding availability.
 
-    check_funding_restrictions_cp!(cp, globalparam, ep.pₑ[t])
+    check_funding_restrictions_cp!(cp, government, globalparam, ep.pₑ[t])
 
     # Send orders to kp
     order_machines_cp!(cp, model)
@@ -202,13 +215,15 @@ Checks funding restructions based on expected revenue and expenses. If not enoug
 """
 function check_funding_restrictions_cp!(
     cp::ConsumerGoodProducer,
+    government::Government,
     globalparam::GlobalParam,
     pₑ::Float64
     )
 
     # Determine expected TCL and TCE
     TCLᵉ = cp.ΔLᵈ > 0 ? cp.w̄[end] * cp.L + cp.ΔLᵈ * cp.wᴼ : (cp.L + cp.ΔLᵈ) * cp.w̄[end]
-    TCE = pₑ * cp.Qˢ / cp.π_EE 
+    TCE = (1 + government.τᴱ) * pₑ * cp.Qˢ / cp.π_EE + government.τᶜ * cp.Qˢ * cp.π_EF
+    # TODO: describe TCE also includes carbon
 
     # Determine how much additional debt can be made
     max_add_debt = max(globalparam.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
@@ -304,10 +319,13 @@ function choose_producer_cp!(
         A_EE = brochure[5]
         A_EF = brochure[6]
 
-        cop = p_mach + b * (cp.w̄[end] / A_LP 
-                            + ((1 + government.τᴱ) * ep.pₑ[t]) / A_EE
-                            + government.τᶜ * A_EF)
-        push!(all_cop, cop)
+        # cop = p_mach + b * (cp.w̄[end] / A_LP 
+        #                     + ((1 + government.τᴱ) * ep.pₑ[t]) / A_EE
+        #                     + government.τᶜ * A_EF)
+
+        c = p_mach + b * cop(cp.w̄[end], A_LP, government.τᴱ, ep.pₑ[t], A_EE, government.τᶜ, A_EF)
+
+        push!(all_cop, c)
     end
     # all_cop = map(broch -> broch[2] + b * (cp.w̄[end] / broch[4] + ep.pₑ[t] / broch[5]), cp.brochures)
     # brochure = cp.brochures[argmin(all_cop)]
@@ -326,6 +344,7 @@ Plans replacement investment based on age machines and available new machines
 """
 function plan_replacement_cp!(
     cp::ConsumerGoodProducer,
+    government::Government,
     globalparam::GlobalParam,
     ep,
     brochure,
@@ -333,7 +352,8 @@ function plan_replacement_cp!(
     )
 
     p_star = brochure[2]
-    c_star = cp.w̄[end] / brochure[4] + ep.pₑ[t] / brochure[5]
+    # c_star = cp.w̄[end] / brochure[4] + ep.pₑ[t] / brochure[5]
+    c_star = cop(cp.w̄[end], brochure[4], government.τᴱ, ep.pₑ[t], brochure[5], government.τᶜ, brochure[6])
 
     cp.mach_tb_repl = []
     cp.mach_tb_retired = []
@@ -351,7 +371,8 @@ function plan_replacement_cp!(
     # Loop over machine stock, select which machines to replace
     for machine in cp.Ξ
 
-        c_A = cp.w̄[end] / machine.A_LP + ep.pₑ[t] / machine.A_EE
+        # c_A = cp.w̄[end] / machine.A_LP + ep.pₑ[t] / machine.A_EE
+        c_A = cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF)
 
         if machine.age >= globalparam.η
             # Machine has reached max age, decide if replaced or not
@@ -797,10 +818,14 @@ Compute production cost per unit c
 """
 function compute_c_cp!(
     cp::ConsumerGoodProducer,
+    pₑ::Float64,
+    τᴱ::Float64,
+    τᶜ::Float64
     )
 
     if cp.L + cp.ΔLᵈ > 0
-        c = cp.w̄[end] / cp.π_LP
+        # c = cp.w̄[end] / cp.π_LP + p_f / cp.π_EE + τᴱ * π_EF
+        c = cop(cp.w̄[end], cp.π_LP, τᴱ, pₑ, cp.π_EE, τᶜ, cp.π_EF)
         shift_and_append!(cp.c, c)
     else
         shift_and_append!(cp.c, cp.c[end])

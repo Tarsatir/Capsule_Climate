@@ -182,6 +182,7 @@ Redistributes surplusses such that government does not acquire assets, or acquir
 function resolve_gov_balance!(
     government::Government,
     indexfund,
+    globalparam::GlobalParam,
     all_hh::Vector{Int},
     model::ABM
     )
@@ -191,9 +192,12 @@ function resolve_gov_balance!(
 
     if government.MS >= 0.0
 
-        total_I = sum(hh_id -> model[hh_id].total_I, all_hh)
+        total_I = sum(hh_id -> model[hh_id].total_I ^ -globalparam.prog, all_hh)
+
         for hh_id in all_hh
-            socialbenefits = (model[hh_id].total_I / total_I) * government.MS
+            # socialbenefits = (model[hh_id].total_I / total_I) * government.MS
+            share = (model[hh_id].total_I ^ -globalparam.prog) / total_I
+            socialbenefits = government.MS * share
             receiveincome_hh!(model[hh_id], socialbenefits; socben=true)
         end
         government.MS = 0.0

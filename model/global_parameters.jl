@@ -44,6 +44,9 @@
     # Determine household consumption
     α_cp::Float64 = 0.85             # parameter controlling MPC of consumers
 
+    # Deterime extend of proggesivity of government spending
+    prog::Float64 = 0.0
+
     # Determine household switching
     ψ_E::Float64 = 0.05             # chance of employed worker looking for a better paying job
     ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained

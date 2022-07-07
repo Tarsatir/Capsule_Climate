@@ -1,3 +1,17 @@
+function cop(
+    w::Float64,
+    π_LP::Float64,
+    τᴱ::Float64,
+    pₑ::Float64,
+    π_EE::Float64,
+    τᶜ::Float64,
+    π_EF::Float64
+    )
+
+    return w / π_LP + (1 + τᴱ) * pₑ / π_EE + τᶜ * π_EF
+end
+
+
 function fire_excess_workers_p!(
     p::Union{ConsumerGoodProducer, CapitalGoodProducer}, 
     model::ABM
