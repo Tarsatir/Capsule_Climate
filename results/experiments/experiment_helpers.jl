@@ -99,3 +99,42 @@ function convertrunoutput(
                 ]
     end
 end
+
+
+function savefulloutput(
+    runoutput::RunOutput,
+    sim_nr::Int64;
+    return_as_df::Bool=false,
+    t_warmup::Int64=100,
+    )
+
+    data = vcat(
+        [sim_nr],
+        runoutput.GDP_growth[t_warmup:end],
+        runoutput.U[t_warmup:end],
+        # runoutput.GINI_I[t_warmup:end],
+        # runoutput.GINI_W[t_warmup:end],
+        runoutput.emissions_index[t_warmup:end]
+    )
+
+    if return_as_df
+
+        cols_GDP = map(i -> Symbol("GDP_$i"), t_warmup:460)
+        cols_U = map(i -> Symbol("U_$i"), t_warmup:460)
+        # cols_GINI_I = map(i -> Symbol("GINI_I_$i"), t_warmup:460)
+        # cols_GINI_W = map(i -> Symbol("GINI_W_$i"), t_warmup:460)
+        cols_em = map(i -> Symbol("em_$i"), t_warmup:460)
+
+        # cols = vcat([Symbol("sim_nr")], cols_GDP, cols_U, cols_GINI_I, cols_GINI_W, cols_em)
+
+        cols = vcat([Symbol("sim_nr")], cols_GDP, cols_U, cols_em)
+
+        data = map(d -> [d], data)
+        # colsdata = Dict(cols .=> data)
+        df = DataFrame(data, cols)
+
+        return df
+    end
+
+    return data
+end

@@ -121,7 +121,7 @@ function generate_simdata_multithreaded(
             # Run the model with changed parameters
             runoutput = run_simulation(
                 changed_params=changedparams,
-                full_output=true;
+                full_output=false;
                 threadnr=Threads.threadid()
             )
 
@@ -132,7 +132,7 @@ function generate_simdata_multithreaded(
             end
 
             # If end of epoch is reached, write results to output csv
-            if nrow(res) == n_per_epoch
+            if nrow(res) == n_per_epoch || nrow(res) == n_per_thread
                 CSV.write(outputfilepath, res; append=i≠n_per_epoch)
                 res = nothing
             end
@@ -174,7 +174,7 @@ function run_PAWN(
     df = innerjoin(input_df, output_df, on=:sim_nr)
 
     labels = collect(keys(X_labels))
-    labelnames = ["ψ_E", "μ_1", "κ_{upper}", "ω", "ϵ", "α_{cp}", "p_f"]
+    labelnames = ["ψ_E", "μ_1", "κ_{upper}", "ω", "ϵ", "α_{cp}", "p_f", "prog"]
     X = zeros(nrow(df), length(labels))
     X .= df[:, labels]
 
@@ -191,8 +191,8 @@ function run_PAWN(
     # GDP_4th = 100 .* df[!, Symbol("GDP_4th")]
     # py"run_PAWN"(labelnames, X, GDP_4th, "GDP_4", run_nr, "kurtosis GDP growth")
 
-    GDP_acorr = df[!, Symbol("acorr_GDP")]
-    py"run_PAWN"(labelnames, X, GDP_acorr, "acorr_GDP", run_nr, "GDP growth autocorrelation")
+    # GDP_acorr = df[!, Symbol("acorr_GDP")]
+    # py"run_PAWN"(labelnames, X, GDP_acorr, "acorr_GDP", run_nr, "GDP growth autocorrelation")
 
     # # GINI coefficients
     # GINI_I_1st = df[!, Symbol("GINI_I_1st")]
@@ -213,6 +213,12 @@ function run_PAWN(
 
     # U_2nd = df[!, Symbol("U_2nd")]
     # py"run_PAWN"(labelnames, X, U_2nd, "U_2", run_nr, "var unemployment rate")
+
+    dU_1st = df[!, Symbol("dU1st")]
+    py"run_PAWN"(labelnames, X, dU_1st, "dU_1", run_nr, "% change in unemployment rate")
+
+    corr_GDP_dU = df[!, Symbol("corr_GDP_dU")]
+    py"run_PAWN"(labelnames, X, corr_GDP_dU, "corr_GDP_dU", run_nr, "corr GDP growth and % change in U")
 
     # # Poverty
     # FGT_1st = df[!, Symbol("FGT_1st")]
@@ -289,7 +295,7 @@ end
 
 
 function main(;
-    run_nr::Int64=8,
+    run_nr::Int64=9,
     n_timesteps::Int64=460,
     n_warmup::Int64=100
     )
@@ -304,15 +310,15 @@ function main(;
     #                  ["ψ_P", [0.0, 0.5]],
     #                  ["p_f", [0.0, 1.0]]]
     #                 )
-    
+
     X_labels = Dict([
         ["α_cp", [0.4, 1.0]],
         ["prog", [-1.0, 1.0]],
-        ["μ1", [0.0, 0.5]],
+        # ["μ1", [0.0, 0.5]],
         ["ω", [0.0, 1.0]],
         ["ϵ", [0.0, 0.1]],
         ["κ_upper", [0.0, 0.05]],
-        ["ψ_E", [0.0, 0.1]],
+        # ["ψ_E", [0.0, 0.1]],
         ["p_f", [0.0, 1.0]]]
    )
 

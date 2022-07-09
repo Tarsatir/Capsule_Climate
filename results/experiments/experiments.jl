@@ -97,7 +97,7 @@ function parse_commandline()
 
     s = ArgParseSettings()
     @add_arg_table s begin
-        
+
         "--n_per_taxtype"
             help="number of simulations per tax type"
             arg_type=Int64
@@ -125,7 +125,6 @@ function main()
     folderpath = parsed_args["outputpath"]
 
     OFAT_taxrates(folderpath; n_per_taxtype=n_per_taxtype, n_per_taxrate=n_per_taxrate)
-
 end
 
 main()
