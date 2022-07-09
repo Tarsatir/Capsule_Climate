@@ -45,7 +45,7 @@ function gen_calibration_data(
 
             sim_nr = parse(Int64, row.sim_nr)
 
-            println("sim nr $sim_nr")
+            # println("sim nr $sim_nr")
 
             # Fill in changed parameters
             for param in params
@@ -67,9 +67,13 @@ function gen_calibration_data(
 
             # If end of epoch is reached, write results to output csv
             if nrow(res) == n_per_epoch || i == n_per_thread
-                println("tread $(thread_nr) is saving...")
+                # println("tread $(thread_nr) is saving...")
                 CSV.write(outputfilepath, res; append=i≠n_per_epoch)
                 res = nothing
+            end
+
+            if i == n_per_thread
+                break
             end
 
         end
