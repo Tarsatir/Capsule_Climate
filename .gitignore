@@ -42,3 +42,7 @@ parameters/calibration/calibrate_example.py
 parameters/calibration/calibration_simple.py
 parameters/calibration/surrogatemodel_calibration.py
 parameters/calibration/surrogatemodel_calibration.ipynb
+parameters/calibration/MSE_trial.ipynb
+parameters/calibration/mse_trial.csv
+parameters/calibration/postdists.csv
+parameters/calibration/calibrationdata

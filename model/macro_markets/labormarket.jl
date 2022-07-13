@@ -103,9 +103,9 @@ function labormarket_process!(
     # L_fired_cp = 0
     # for p_id in labormarket.firing_producers
     #     if typeof(model[p_id]) == CapitalGoodProducer
-    #         L_fired_kp += -model[p_id].ΔLᵈ
+    #         L_fired_kp += model[p_id].ΔLᵈ
     #     else
-    #         L_fired_cp += -model[p_id].ΔLᵈ
+    #         L_fired_cp += model[p_id].ΔLᵈ
     #     end
     # end
     
@@ -158,6 +158,7 @@ function labormarket_process!(
     # println("   L fired $(labormarket.L_fired)")
     # println("       L fired kp $(L_fired_kp)")
     # println("       L fired cp $(L_fired_cp)")
+    # println()
 end
 
 
@@ -243,7 +244,7 @@ function matching_lm(
     n_jobswitchers = 0
     n_employed = length(labormarket.employed_hh)
 
-    allowed_excess_L = 50
+    allowed_excess_L = 100
 
     Lᵈ = Vector{Int}(undef, 100)
 
@@ -256,6 +257,9 @@ function matching_lm(
 
     # Loop over hiring producers producers
     for (p_id, ΔL) in hiring_producers_dict
+        # println(ΔL)
+
+        demanded_labor = ΔL
 
         # Stop process if no unemployed left
         if length(labormarket.jobseeking_hh) == 0
@@ -276,15 +280,15 @@ function matching_lm(
             # Only hire workers if wage can be afforded
             # TODO: DESCRIBE IN MODEL
             if ((model[hh_id].wʳ / model[hh_id].skill <= model[p_id].wᴼ_max) &&
-                (model[hh_id].L * model[hh_id].skill <= ΔL + allowed_excess_L))
+                (model[hh_id].L * model[hh_id].skill <= demanded_labor + allowed_excess_L))
                 push!(to_be_hired, hh_id)
-                ΔL -= model[hh_id].L * model[hh_id].skill
+                demanded_labor -= model[hh_id].L * model[hh_id].skill
                 labormarket.L_hired += model[hh_id].L * model[hh_id].skill
             end
 
             # TODO: make this a constant
             # If producer's labor demand is met, remove from seeking producers
-            if ΔL <= allowed_excess_L
+            if demanded_labor <= allowed_excess_L
                 filter!(p -> p ≠ p_id, labormarket.hiring_producers)
                 break
             end
@@ -318,10 +322,9 @@ function matching_lm(
             update_w̄_p!(model[p_id], model)
             update_hiredworkers_lm!(labormarket, unemployed_to_employed)
 
-            hiring_producers_dict[p_id] = ΔL
+            hiring_producers_dict[p_id] = demanded_labor
         end
     end
-    # end
 
     # Updates the labor market's switching rate (use n employed from before matching)
     labormarket.switch_rate = n_jobswitchers / n_employed

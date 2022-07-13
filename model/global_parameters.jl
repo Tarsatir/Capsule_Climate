@@ -9,7 +9,7 @@
     ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
-    κ_upper::Float64 = 0.007        # 2nd beta dist support
+    κ_upper::Float64 = 0.005        # 2nd beta dist support
     κ_lower::Float64 = -κ_upper     # 1st beta dist support
     
     γ::Float64 = 0.5                # new custommer sample parameter
@@ -40,22 +40,23 @@
 
     # Determine expectation updating cp
     ω::Float64 = 0.8                # memory parameter adaptive updating rules
+    λ::Float64 = 0.7                # parameter for labor demand smoothing
 
     # Determine household consumption
-    α_cp::Float64 = 0.85             # parameter controlling MPC of consumers
+    α_cp::Float64 = 0.95            # parameter controlling MPC of consumers
 
     # Deterime extend of proggesivity of government spending
-    prog::Float64 = 0.0
+    prog::Float64 = -0.25
 
     # Determine household switching
-    ψ_E::Float64 = 0.05             # chance of employed worker looking for a better paying job
+    ψ_E::Float64 = 0.15             # chance of employed worker looking for a better paying job
     ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained
     ψ_P::Float64 = 0.05             # chance of household switching to cp with better price
 
     freq_per_machine::Int = 50      # capital units per machine
     freq_per_powerplant::Int = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.5             # price of fossil fuels
+    p_f::Float64 = 0.221             # price of fossil fuels
 
     n_cons_market_days::Int = 4     # number of days in the consumer market process
 

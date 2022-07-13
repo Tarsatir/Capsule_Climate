@@ -1,131 +1,131 @@
 
 import numpy as np
-from sklearn.covariance import log_likelihood
+# from sklearn.covariance import log_likelihood
 import statsmodels.api as sm
-import scipy
+# import scipy
+import matplotlib.pyplot as plt
+import julia
+
+# import pymc3 as pm
+
 
 from calibration_helpers import *
 
 class BayesianEstimator:
 
-    def __init__(self, X, Y, Y_true):
-        self.X = X
-        self.Y = Y
-        self.Y_true = Y_true
+    def __init__(self, df_X, df_Y, y_true):
+        self.df_X = df_X
+        self.df_Y = df_Y
+        self.y_true = y_true
+        self.n_samples = len(df_X)
 
-        self.priors = None
-        self.f = None
-        self.posterior = None
+        self.get_col_labels()
 
-    def compute_coeff(self):
+    def get_col_labels(self):
+
+        self.all_gdp = [col for col in self.df_Y if col.startswith('GDP')]
+        self.all_u = [col for col in self.df_Y if col.startswith('U')]
+        self.all_em = [col for col in self.df_Y if col.startswith('em')]
+
+    def build_Julia_session(self):
+        jl = julia.Julia(compiled_modules=False)
+        jl.include("bayesian_calibration.jl")
+        return jl
+
+    def sample_coeff(self):
+
+        # Make a Julia session
+        # jl = self.build_Julia_session()
         
-        # Fit likelihood
-        self.compute_f()
-
-        self.sample_posterior()
-
-
-    def compute_f(self):
-
-        # print(self.Y[0,0], self.Y[0,1], self.Y[0,2])
+        # # Initialize with first observed combination
+        # x_curr = self.get_x(0)
+        # # y = self.get_y(0)
         
-        self.f = sm.nonparametric.KDEMultivariateConditional(
-                    endog=self.Y,
-                    exog=self.X, 
-                    dep_type='c' * self.Y.shape[1],
-                    indep_type='c' * self.X.shape[1],
-                    bw='normal_reference'
-                )
+        # gdp, u, em = jl.run_model(x_curr[1:])
+        # y = np.array([gdp, u, em]).T
+        # curr_lh = self.compute_likelihood(y)
 
-    def compute_likelihood(self, x):
-        # likelihood = 1
-        # for y in self.Y_true:
-        #     # print(x)
+        # # print(curr_lh)
+
+        # # min_x = x_curr
+        # # min_y = y
+        # # min_lh = curr_lh
+
+        # for i_row in range(1, self.n_samples):
+
+        #     # Gather data and transform
+        #     y = self.get_y(i_row)
+
+        #     # print(self.y_true)
         #     # print(y)
-        #     a = self.f.pdf(endog_predict=y, exog_predict=x)
-        #     # print(a)
-        #     likelihood *= a
-        # return likelihood
+        #     # return
 
-        x = np.repeat([x], len(self.Y_true), axis=0)
+        #     # Compute likelihood of observed series y
+        #     new_lh = self.compute_likelihood(y)
+        #     print(i_row, new_lh)
 
-        return np.product(self.f.pdf(endog_predict=self.Y_true, 
-                                     exog_predict=x))
+        #     # alpha = np.min([1., new_lh / curr_lh])
+        #     # if np.random.rand() < alpha:
+        #     #     x_curr = self.get_x(i_row)
+        #     #     curr_lh = new_lh
+        #     #     print(f'accepted at alpha = {alpha}')
 
-    def checkbounds(self, x_new, bounds):
-        for i,x in enumerate(x_new):
-            if x < bounds[i][0] or x > bounds[i][1]:
-                return True
-        return False
+        #     if new_lh > min_lh:
+        #         min_x = self.get_x(i_row)
+        #         min_y = y
+        #         min_lh = new_lh
 
-    def sample_posterior(self):
+        # print(min_x)
+        # print(min_y)
+        # print(min_lh)
 
-        x_curr = np.array([0.05, 0.2, 0.005, 0.8, 0.02, 0.8, 0.5, 0.0])
-        bounds = [(0.05, 0.05),
-                  (0.2, 0.2),
-                  (0.001, 0.01),
-                  (0., 1.),
-                  (0., 0.05),
-                  (0.6, 1.),
-                  (0., 1.),
-                  (-1., 1.)]
-        
-        weights = 10 * np.array([0, 0, 0.001, .5, 0.01, .5, .7, .7])
-        curr_lh = self.compute_likelihood(x_curr)
+        # fig, ax = plt.subplots(1,3)
+        # ax[0].hist(self.y_true[:, 0], alpha=0.5, density=True, bins=20)
+        # ax[0].hist(min_y[:, 0], alpha=0.5, density=True, bins=20)
 
-        all_x = []
+        # ax[1].hist(self.y_true[:,1], alpha=0.5, density=True, bins=20)
+        # ax[1].hist(min_y[:,1], alpha=0.5, density=True, bins=20)
 
-        for _ in range(100):
+        # ax[2].hist(self.y_true[:,2], alpha=0.5, density=True, bins=20)
+        # ax[2].hist(min_y[:,2], alpha=0.5, density=True, bins=20)
 
-            selec = np.zeros(len(x_curr))
-            selec_idx = np.random.randint(2, len(x_curr))
-            selec[selec_idx] = 1.
+        # plt.show()
 
-            epsilon = np.random.normal(0, 0.1, 8)
-            x_new = x_curr + epsilon * weights * selec
+    def get_y(self, i):
 
-            while self.checkbounds(x_new, bounds):
-                epsilon = np.random.normal(0, 0.1, 8)
-                x_new = x_curr + epsilon * weights * selec
-            
-            new_lh = self.compute_likelihood(x_new)
-            print(new_lh)
+        df_y = self.df_Y.iloc[[i]]
 
-            alpha = min(1, new_lh / curr_lh)
-            print(alpha)
+        gdp = df_y[self.all_gdp].to_numpy()[:, 1:].flatten()
+        u = df_y[self.all_u].to_numpy()[:, 1:].flatten() * 100
+        em = df_y[self.all_em].to_numpy()[:, 1:].flatten()
 
-            if np.random.rand() < alpha:
-                x_curr = x_new
-                curr_lh = new_lh
-                all_x.append(x_curr)
-                # print(x_curr)
+        return np.array([gdp, u, em]).T
 
-        all_x = np.array(all_x)
-        res = {'κ_upper': all_x.T[2], 'ω': all_x.T[3], 'ϵ': all_x.T[4], 
-               'α_cp': all_x.T[5], 'p_f': all_x.T[6], 'prog': all_x.T[7]}
-        pd.DataFrame(res).to_csv('postdists.csv', index=False)
+    def get_x(self, i):
+        return self.df_X.iloc[[i]].to_numpy()[0]
+
+    def compute_likelihood(self, y):
+
+        # Fit function f
+        f = sm.nonparametric.KDEMultivariate(
+                data=y, 
+                var_type='c'*y.shape[1],
+                bw='normal_reference'
+            )
+        likelihood = np.product(f.pdf(self.y_true))
+        return likelihood
 
 
 if __name__ == "__main__":
 
     inputpath = '../sensitivity/sensitivity_runs/input_data/'
     outputpath = 'calibrationdata/'
-    n_threads = 4
+    n_threads = 16
+    run_nr = 9
 
-    # Y_true = {
-    #     'GDP_1st': 0.482,
-    #     'GDP_2nd': 0.47,
-    #     'U_1st': 0.06097,
-    #     'em2030': 112.72,
-    #     'em2030': 121.82,
-    #     'em2040': 127.27
-    # }
+    Y_true = pd.read_csv(outputpath + 'truedata.csv')[["dGDP", "Ur", "em"]].to_numpy()
 
-    # dep_vars = Y_true.keys()
+    df_X, df_Y = load_data(inputpath, outputpath, n_threads, run_nr=run_nr, return_as_np=False)
 
-    Y_true = pd.read_csv(outputpath + 'truedata.csv')[["dGDP", "em"]].to_numpy()
-
-    X, Y = load_data(inputpath, outputpath, n_threads)
-
-    estimator = BayesianEstimator(X, Y, Y_true)
-    estimator.compute_coeff()
+    estimator = BayesianEstimator(df_X, df_Y, Y_true)
+    estimator.sample_coeff()

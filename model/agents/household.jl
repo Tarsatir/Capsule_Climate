@@ -66,7 +66,7 @@ Sets consumption budget based on current wealth level
 """
 function set_consumption_budget_hh!(
     hh::Household,
-    all_I::Vector{Float64},
+    all_W::Vector{Float64},
     globalparam::GlobalParam,
     model::ABM
     )
@@ -79,7 +79,7 @@ function set_consumption_budget_hh!(
     # updatesavingsrate!(hh)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, globalparam.α_cp)
+    compute_consumption_budget_hh!(hh, minimum(all_W), maximum(all_W), globalparam.α_cp)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
@@ -104,11 +104,20 @@ Computes consumption budget, updates savings rate
 """
 function compute_consumption_budget_hh!(
     hh::Household,
+    W_min,
+    W_max,
     α_cp::Float64
     )
 
+    W_min = 0
+    # W_max = 800
+
     if hh.W > 0
-        hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
+        # Scale W between 0 and 100
+        W_scaled = 100 * (hh.W - W_min) / (W_max - W_min)
+        # hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
+        hh.C = hh.W * min(hh.P̄[end] * (W_scaled / hh.P̄[end])^α_cp, 100) / 100
+        # hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
         # hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : 0.0
         hh.s = hh.total_I > 0 ? ((hh.total_I + hh.capital_I + hh.socben_I) - hh.C) / (hh.total_I + hh.capital_I + hh.socben_I) : 0.0 
         # println("   $(hh.s), $(hh.C), $(hh.W), $((hh.total_I + hh.capital_I))")

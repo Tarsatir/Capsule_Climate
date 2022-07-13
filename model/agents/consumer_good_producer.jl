@@ -147,7 +147,7 @@ function plan_production_cp!(
     update_π_cp!(cp)
 
     # Compute corresponding change in labor stock
-    update_Lᵈ!(cp, globalparam.ω)
+    update_Lᵈ!(cp, globalparam.λ)
 
     # Update average wage w̄
     update_w̄_p!(cp, model)
@@ -847,19 +847,19 @@ end
 
 function update_Lᵈ!(
     cp::ConsumerGoodProducer, 
-    ω::Float64
+    λ::Float64
     )
 
-    cp.Lᵈ = ω * cp.L + (1 - ω) * min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
+    cp.Lᵈ = λ * cp.L + (1 - λ) * min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
     cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
 
-    # if cp.Lᵈ > cp.L
-    #     # cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
-    #     ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
-    #     cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
-    # else
-    #     cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
-    # end
+#     if cp.Lᵈ > cp.L
+#         # cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
+#         ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
+#         cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
+#     else
+#         cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
+#     end
 end
 
 

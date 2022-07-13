@@ -13,7 +13,7 @@ def load_data(inputpath, outputpath, n_threads, run_nr=8, return_as_np=True):
     # Read output data
     all_dfs = []
     for thread_nr in range(1, n_threads+1):
-        df = pd.read_csv(outputpath + f'cal_output_run{run_nr}_thread{thread_nr}.csv')
+        df = pd.read_csv(outputpath + f'$cal_output_run{run_nr}_thread{thread_nr}.csv')
         all_dfs.append(df)
     df_output = pd.concat(all_dfs, axis=0, ignore_index=True)
 
@@ -34,19 +34,21 @@ def load_data(inputpath, outputpath, n_threads, run_nr=8, return_as_np=True):
         all_U = [col for col in df if col.startswith('U')]
         all_em = [col for col in df if col.startswith('em')]
 
-        dGDP = df_output[all_GDP].to_numpy()[:, 1:].flatten()
-        # dU = df_output[all_U].pct_change(axis=1).fillna(0).to_numpy()[:, 1:].flatten()
-        dU = df_output[all_U].to_numpy()[:, 1:].flatten()
-        # dem = df_output[all_em].pct_change(axis=1).fillna(0).to_numpy()[:, 1:].flatten()
+        gdp = df_output[all_GDP].to_numpy()[:, 1:].flatten()
+        # U = df_output[all_U].pct_change(axis=1).fillna(0).to_numpy()[:, 1:].flatten()
+        u = df_output[all_U].to_numpy()[:, 1:].flatten()
+        # em = df_output[all_em].pct_change(axis=1).fillna(0).to_numpy()[:, 1:].flatten()
         em = df_output[all_em].to_numpy()[:, 1:].flatten()
 
         # print(df_output[all_U])
         # print(df_output[all_U].pct_change(axis=1).fillna(0).var(axis=1).isna())
         
-        Y = np.array([dGDP, dU, em]).T
-        Y = np.array([dGDP, em]).T
+        # Y = np.array([dGDP, dU, em]).T
+        # Y = np.array([gdp, u, em]).T
+        # Y = np.array([gdp, em]).T
+        Y = np.array([gdp, u]).T
 
-        indepvar = ['ψ_E', 'μ1', 'κ_upper', 'ω', 'ϵ', 'α_cp', 'p_f', 'prog']
+        indepvar = ['κ_upper', 'ω', 'ϵ', 'α_cp', 'p_f', 'prog']
         X = np.repeat(df_input[indepvar].to_numpy(), 360, axis=0)
 
         return X, Y

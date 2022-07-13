@@ -340,11 +340,11 @@ function model_step!(
     
     # (6) Transactions take place on consumer market
 
-    all_I = map(hh_id -> model[hh_id].total_I, all_hh)
+    all_W = map(hh_id -> model[hh_id].W, all_hh)
 
     # Households set consumption budget
     @timeit to "set budget" @inbounds for hh_id in all_hh
-        set_consumption_budget_hh!(model[hh_id], all_I, globalparam, model)
+        set_consumption_budget_hh!(model[hh_id], all_W, globalparam, model)
     end
 
     # Consumer market process
