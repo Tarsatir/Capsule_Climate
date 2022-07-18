@@ -362,8 +362,6 @@ function compute_Πₑ_NWₑ_ep!(
 
     ep.Πₑ[t] = ep.pₑ[t] * ep.Dₑ[t] - ep.PCₑ[t] - ep.ICₑ[t] - ep.RDₑ[t] - ep.carbontax[t]
     ep.NWₑ[t] = t > 1 ? ep.NWₑ[t-1] + ep.Πₑ[t] : ep.Πₑ[t]
-
-    
 end
 
 

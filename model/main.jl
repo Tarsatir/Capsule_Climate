@@ -336,7 +336,6 @@ function model_step!(
 
     # Let energy producer meet energy demand
     produce_energy_ep!(ep, government, all_cp, all_kp, globalparam, indexfund, t, model)
-
     
     # (6) Transactions take place on consumer market
 
@@ -424,7 +423,7 @@ function model_step!(
     )
 
     # Update climate parameters, compute new carbon equilibria and temperature change
-    collect_emissions_cl!(climate, all_cp, all_kp, ep, t, model)
+    collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
 
     # NOTE: climate process no longer tracked
     # carbon_equilibrium_tempchange_cl!(climate, t)
@@ -491,7 +490,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T=460::Int,
+    T=660::Int,
     changed_params::Union{Dict,Nothing}=nothing,
     changedtaxrates::Union{Vector,Nothing}=nothing,
     full_output::Bool=true,
@@ -551,4 +550,4 @@ function run_simulation(;
     return runoutput
 end
 
-# @time run_simulation(savedata=true)
+@time run_simulation(savedata=true)

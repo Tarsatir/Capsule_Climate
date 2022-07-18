@@ -67,7 +67,6 @@ function initialize_cp(
     id::Int,
     t_next_update::Int, 
     machines::Vector{Machine},  
-    # type_good::String,
     n_init_emp_cp::Int,
     μ::Float64,
     ι::Float64;
@@ -100,20 +99,6 @@ function initialize_cp(
 
     return cp
 end
-
-
-# function cop(
-#     w::Float64,
-#     π_LP::Float64,
-#     τᴱ::Float64,
-#     pₑ::Float64,
-#     π_EE::Float64,
-#     τᶜ::Float64,
-#     π_EF::Float64
-#     )
-
-#     return w / π_LP + (1 + τᴱ) * pₑ / π_EE + τᶜ * π_EF
-# end
 
 
 """
@@ -153,7 +138,7 @@ function plan_production_cp!(
     update_w̄_p!(cp, model)
 
     # Update markup μ
-    update_μ_cp!(cp, t, globalparam.ι, μ_avg)
+    update_μ_cp!(cp)
 
     # Update cost of production c
     compute_c_cp!(cp, ep.pₑ[t], government.τᴱ, government.τᶜ)
@@ -223,11 +208,9 @@ function check_funding_restrictions_cp!(
     # Determine expected TCL and TCE
     TCLᵉ = cp.ΔLᵈ > 0 ? cp.w̄[end] * cp.L + cp.ΔLᵈ * cp.wᴼ : (cp.L + cp.ΔLᵈ) * cp.w̄[end]
     TCE = (1 + government.τᴱ) * pₑ * cp.Qˢ / cp.π_EE + government.τᶜ * cp.Qˢ * cp.π_EF
-    # TODO: describe TCE also includes carbon
 
     # Determine how much additional debt can be made
     max_add_debt = max(globalparam.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
-    # max_add_debt = max(globalparam.Λ * cp.Dᵉ * cp.p[end - 1] - cp.balance.debt, 0)
 
     # Check if cost of labor and investment can be financed from liquid assets
     NW_no_prod = (cp.balance.NW + cp.Dᵉ * cp.p[end] + cp.curracc.rev_dep 
@@ -279,7 +262,6 @@ function check_funding_restrictions_cp!(
         if NW_no_prod + max_add_debt < TCLᵉ + TCE
             # Cost of labor exceeds expected liquid assets plus max additional debt. 
             # Decrease production quantity.
-
             poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + pₑ / cp.π_EE)
             poss_L = poss_prod / cp.π_LP
             cp.ΔLᵈ = poss_L - cp.L
@@ -319,20 +301,13 @@ function choose_producer_cp!(
         A_EE = brochure[5]
         A_EF = brochure[6]
 
-        # cop = p_mach + b * (cp.w̄[end] / A_LP 
-        #                     + ((1 + government.τᴱ) * ep.pₑ[t]) / A_EE
-        #                     + government.τᶜ * A_EF)
-
         c = p_mach + b * cop(cp.w̄[end], A_LP, government.τᴱ, ep.pₑ[t], A_EE, government.τᶜ, A_EF)
 
         push!(all_cop, c)
     end
-    # all_cop = map(broch -> broch[2] + b * (cp.w̄[end] / broch[4] + ep.pₑ[t] / broch[5]), cp.brochures)
-    # brochure = cp.brochures[argmin(all_cop)]
 
+    # Choose kp based on brochures
     brochure = sample(cp.brochures, Weights(1 ./ all_cop.^2))
-    # TODO: DESCRIBE IN MODEL
-
     cp.chosen_kp_id = brochure[1]
 
     return brochure
@@ -351,8 +326,8 @@ function plan_replacement_cp!(
     t::Int
     )
 
+    # Get price and cost of production of chosen kp
     p_star = brochure[2]
-    # c_star = cp.w̄[end] / brochure[4] + ep.pₑ[t] / brochure[5]
     c_star = cop(cp.w̄[end], brochure[4], government.τᴱ, ep.pₑ[t], brochure[5], government.τᶜ, brochure[6])
 
     cp.mach_tb_repl = []
@@ -371,7 +346,6 @@ function plan_replacement_cp!(
     # Loop over machine stock, select which machines to replace
     for machine in cp.Ξ
 
-        # c_A = cp.w̄[end] / machine.A_LP + ep.pₑ[t] / machine.A_EE
         c_A = cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF)
 
         if machine.age >= globalparam.η
@@ -662,16 +636,6 @@ function update_Dᵉ_cp!(
     ω::Float64
     )
 
-    # ω = 0.9
-
-    # if cp.age > 2
-    #     # TODO: DESCRIBE IN MODEL 
-    #     # cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * (cp.D[end] + cp.Dᵁ[end]) - (cp.D[end-1] + cp.Dᵁ[end-1]))
-    #     cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (2 * (cp.D[end] + cp.Dᵁ[end]) - (cp.D[end-1] + cp.Dᵁ[end-1]))
-    # elseif cp.age == 2
-    #     cp.Dᵉ = ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end])
-    # end
-
     cp.Dᵉ = cp.age > 1 ? ω * cp.Dᵉ + (1 - ω) * (cp.D[end]) : cp.Dᵉ
 end
 
@@ -735,9 +699,6 @@ Computes the markup rate μ based on the market share f.
 """
 function update_μ_cp!(
     cp::ConsumerGoodProducer,
-    t::Int,
-    ι::Float64,
-    μ_avg::Float64
     )
 
     if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
@@ -746,70 +707,6 @@ function update_μ_cp!(
         new_μ = cp.μ[end] * 0.95
     end
     shift_and_append!(cp.μ, new_μ)
-
-    # b = 0.02
-    # l = 2
-
-    # if cp.age > l && cp.Π[end] != 0
-
-    #     mean_μ = mean(cp.μ)
-    #     Δμ = (cp.μ[end] - mean_μ) / mean_μ
-
-    #     mean_Π = mean(cp.Π)
-    #     ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
-
-    #     # TODO: CHANGE TO TAXED PROFITS??
-
-    #     shock = rand(Uniform(0.0, b))
-    #     new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
-
-    # elseif cp.Π[end] == 0
-    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
-    # else
-    #     new_μ = cp.μ[end] * (1 + rand(Uniform(-b, b)))
-    # end
-
-    # shift_and_append!(cp.μ, new_μ)
-
-    # else
-    #     shift_and_append!(cp.μ, cp.μ[end])
-    # end
-
-    # if cp.age > l 
-        
-    #     if mean(cp.Dᵁ) / mean(cp.D) >= 0.1
-
-    #         # mean_μ = mean(cp.μ)
-    #         # Δμ = (cp.μ[end] - mean_μ) / mean_μ
-
-    #         # mean_Π = mean(cp.Π)
-    #         # ΔΠ = (cp.Π[end] - mean_Π) / mean_Π
-
-    #         # TODO: CHANGE TO TAXED PROFITS??
-
-    #         shock = rand(Uniform(0.0, b))
-    #         # new_μ = max(cp.μ[end] * (1 + sign(Δμ) * sign(ΔΠ) * shock), 0)
-    #     else
-    #         shock = rand(Uniform(-b, 0.0))
-    #     end
-    #     new_μ = cp.μ[end] * (1 + shock)
-    # else
-    #     new_μ = cp.μ[end]
-    # end
-
-    # shift_and_append!(cp.μ, new_μ)
-
-    # if cp.N_goods < cp.Q[end] * ι && cp.μ[end] < μ_avg
-    #     new_μ = cp.μ[end] * (1 + rand(Uniform(0.0, b)))
-    # elseif cp.N_goods > cp.Q[end] * (ι + 0.2) && cp.μ[end] > μ_avg
-    #     new_μ = cp.μ[end] * (1 - rand(Uniform(0.0, b)))
-    # else
-    #     new_μ = cp.μ[end]
-    # end
-
-    # shift_and_append!(cp.μ, new_μ)
-
-    # shift_and_append!(cp.μ, cp.μ[end])
 end
 
 
@@ -824,7 +721,6 @@ function compute_c_cp!(
     )
 
     if cp.L + cp.ΔLᵈ > 0
-        # c = cp.w̄[end] / cp.π_LP + p_f / cp.π_EE + τᴱ * π_EF
         c = cop(cp.w̄[end], cp.π_LP, τᴱ, pₑ, cp.π_EE, τᶜ, cp.π_EF)
         shift_and_append!(cp.c, c)
     else
@@ -845,6 +741,11 @@ function compute_p_cp!(
 end
 
 
+"""
+Computes the desired labor supply Lᵈ and the change in labor supply ΔLᵈ
+    Check desired change in labor stock, also check for capital stock
+    as hiring more than this would not increase production.
+"""
 function update_Lᵈ!(
     cp::ConsumerGoodProducer, 
     λ::Float64
@@ -852,32 +753,6 @@ function update_Lᵈ!(
 
     cp.Lᵈ = λ * cp.L + (1 - λ) * min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
     cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
-
-#     if cp.Lᵈ > cp.L
-#         # cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
-#         ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
-#         cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
-#     else
-#         cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
-#     end
-end
-
-
-"""
-Computes the desired change in labor supply ΔLᵈ
-    Check desired change in labor stock, also check for capital stock
-    as hiring more than this would not increase production.
-"""
-function update_ΔLᵈ_cp!(
-    cp::ConsumerGoodProducer,
-    ω::Float64
-    )
-    
-    # cp.Lᵈ = ω * cp.L + (1 - ω) * min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
-    # cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
-
-    ΔLᵈ = min(cp.Qˢ / cp.π_LP - cp.L, cp.n_machines / cp.π_LP - cp.L)
-    cp.ΔLᵈ = max(ΔLᵈ, -cp.L)
 end
 
 

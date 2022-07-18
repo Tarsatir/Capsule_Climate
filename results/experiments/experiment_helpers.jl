@@ -28,7 +28,10 @@ function convertrunoutput(
     U_1st = mean(runoutput.U[t_warmup:end])
     U_2nd = var(runoutput.U[t_warmup:end])
 
-    dU1st = mean(runoutput.dU[t_warmup:end])
+    dU_1st = mean(runoutput.dU[t_warmup:end])
+    dU_2nd = var(runoutput.dU[t_warmup:end])
+    dU_3rd = skewness(runoutput.dU[t_warmup:end])
+    dU_4th = kurtosis(runoutput.dU[t_warmup:end])
     corr_GDP_dU = cor(runoutput.GDP_growth[t_warmup:end], runoutput.dU[t_warmup:end])
 
     # Write Gini data to dataframe
@@ -70,7 +73,10 @@ function convertrunoutput(
                     :acorr_GDP => acorr_GDP,
                     :U_1st => U_1st,
                     :U_2nd => U_2nd,
-                    :dU1st => dU1st,
+                    :dU_1st => dU_1st,
+                    :dU_2nd => dU_2nd,
+                    :dU_3rd => dU_3rd,
+                    :dU_4th => dU_4th, 
                     :corr_GDP_dU => corr_GDP_dU,
                     :GINI_I_1st => GINI_I_1st,
                     :GINI_I_2nd => GINI_I_2nd,
@@ -91,7 +97,7 @@ function convertrunoutput(
     else
         return [sim_nr,
                 GDP_1st, GDP_2nd, GDP_3rd, GDP_4th, acorr_GDP,
-                U_1st, U_2nd, dU1st, corr_GDP_dU, 
+                U_1st, U_2nd, dU_1st, dU_2nd, dU_3rd, dU_4th, corr_GDP_dU, 
                 GINI_I_1st, GINI_I_2nd, GINI_W_1st, GINI_W_2nd,
                 LP_g_1st, LP_g_2nd, EE_g_1st, EE_g_2nd,
                 EF_g_1st, EF_g_2nd, FGT_1st, FGT_2nd,

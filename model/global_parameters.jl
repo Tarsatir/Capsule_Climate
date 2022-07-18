@@ -14,14 +14,14 @@
     
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
-    r::Float64 = 0.0                # interest rate
+    r::Float64 = 0.0                # Int64erest rate
     ι::Float64 = 0.2                # desired inventories
-    b::Int = 3                      # payback period
-    bₑ::Int = 10                    # payback period energy producer
-    η::Int = 60                     # physical scrapping age
-    ηₑ::Int = 240                   # physical scrapping age energy producer
+    b::Int64 = 3                    # payback period
+    bₑ::Int64 = 10                  # payback period energy producer
+    η::Int64 = 60                   # physical scrapping age
+    ηₑ::Int64 = 240                 # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
-    update_period::Int=3            # time period after which cp update prod plans
+    update_period::Int64=3          # time period after which cp update prod plans
 
     # Determine entrant composition
     φ1::Float64 = 0.1               # 1st Uniform dist support, cp entrant cap
@@ -39,28 +39,29 @@
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.8                # memory parameter adaptive updating rules
-    λ::Float64 = 0.7                # parameter for labor demand smoothing
+    ω::Float64 = 0.85               # memory parameter adaptive updating rules
+    λ::Float64 = 0.3                # parameter for labor demand smoothing
 
     # Determine household consumption
-    α_cp::Float64 = 0.95            # parameter controlling MPC of consumers
+    α_cp::Float64 = 0.8            # parameter controlling MPC of consumers
 
     # Deterime extend of proggesivity of government spending
-    prog::Float64 = -0.25
+    prog::Float64 = 0.
 
     # Determine household switching
     ψ_E::Float64 = 0.15             # chance of employed worker looking for a better paying job
     ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained
     ψ_P::Float64 = 0.05             # chance of household switching to cp with better price
 
-    freq_per_machine::Int = 50      # capital units per machine
-    freq_per_powerplant::Int = 10_000 # capital units per instance
+    freq_per_machine::Int64 = 50    # capital units per machine
+    freq_per_powerplant::Int64 = 10_000 # capital units per instance
 
     p_f::Float64 = 0.221             # price of fossil fuels
 
-    n_cons_market_days::Int = 4     # number of days in the consumer market process
+    n_cons_market_days::Int64 = 4     # number of days in the consumer market process
 
-    t_wait::Int = 4                 # number of time periods producers are not allowed to go bankrupt
+    t_warmup::Int64 = 300           # time period warmup of the model
+    t_wait::Int64 = 4               # number of time periods producers are not allowed to go bankrupt
 end
 
 

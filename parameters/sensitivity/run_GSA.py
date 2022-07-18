@@ -12,6 +12,7 @@ import SAFEpython.plot_functions as pf # module to visualize the results
 from SAFEpython.util import aggregate_boot  # function to aggregate the bootstrap results
 
 import matplotlib.pyplot as plt
+from matplotlib import rc
 
 
 def call_AAT_sampling(samp_strat, X_labels, N):
@@ -44,16 +45,20 @@ def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, n=10, Nboot=3000):
 
     X_labels = [f'${l}$' for l in X_labels]
 
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+
     # Plot bootstrapping results (for instance for KS_max):
     # plt.figure()
     # pf.boxplot1(KS_max_m, S_lb=KS_max_lb, S_ub=KS_max_ub,
     #             X_Labels=X_labels, Y_Label=f'{name_dep_var} (max)')
     # plt.savefig(f'parameters/sensitivity/sensitivity_runs/sa_{type}_max_plot{run_nr}.png')
 
-    plt.figure(figsize=(10, 4))
+    plt.figure(figsize=(8, 3))
     pf.boxplot1(KS_mean_m, S_lb=KS_mean_lb, S_ub=KS_mean_ub,
-                X_Labels=X_labels, Y_Label=f'{name_dep_var} (mean)')
-    plt.savefig(f'parameters/sensitivity/sensitivity_plots/sa_{type}_mean_plot{run_nr}.png')
+                X_Labels=X_labels, Y_Label=f'{name_dep_var}')
+    plt.tight_layout()
+    plt.savefig(f'parameters/sensitivity/sensitivity_plots/sa_{type}_mean_plot{run_nr}.pdf')
 
     # YF, FU, FC, xc = PAWN.pawn_plot_cdf(X, Y, n, cbar=True, n_col=3, labelinput=X_labels)
     # plt.show()

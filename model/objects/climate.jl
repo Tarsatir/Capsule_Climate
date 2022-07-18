@@ -79,8 +79,8 @@ function collect_emissions_cl!(
     all_kp::Vector{Int64},
     ep,
     t::Int64,
-    model::ABM;
-    t_warmup::Int64=100
+    t_warmup::Int64,
+    model::ABM
     )
 
     climate.carbon_emissions_cp[t] = sum(cp_id -> model[cp_id].emissions, all_cp)

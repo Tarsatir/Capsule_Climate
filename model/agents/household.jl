@@ -17,7 +17,6 @@
     labor_I::Float64 = L * skill                # income from labor
     capital_I::Float64 = 0.0                    # income from capital
     UB_I::Float64 = 0.0                         # income from unemployment benefits
-    # I_percentile::Float64 = 50.0                # income percentile
     socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 300                            # wealth or cash on hand
@@ -48,19 +47,6 @@ function select_cp_hh!(
 end
 
 
-function updatesavingsrate!(
-    hh::Household;
-    a::Float64 = 0.10397,
-    # b::Float64 = 0.12551,
-    b::Float64 = -0.2,
-    c::Float64 = 106.86875,
-    d::Float64 = -4.38985
-    )
-
-    hh.s = -a * log(-1 + c / (hh.I_percentile - d)) + b
-end
-
-
 """
 Sets consumption budget based on current wealth level
 """
@@ -71,20 +57,15 @@ function set_consumption_budget_hh!(
     model::ABM
     )
 
-    # hh.I_percentile = scipy.stats.percentileofscore(all_I, hh.total_I)
-
     # Update average price level of bp and lp
     update_average_price_hh!(hh, model)
 
-    # updatesavingsrate!(hh)
-
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, minimum(all_W), maximum(all_W), globalparam.α_cp)
+    compute_consumption_budget_hh!(hh, maximum(all_W), globalparam.α_cp)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
 end
-
 
 
 """
@@ -104,31 +85,26 @@ Computes consumption budget, updates savings rate
 """
 function compute_consumption_budget_hh!(
     hh::Household,
-    W_min,
-    W_max,
-    α_cp::Float64
+    W_max::Float64,
+    α_cp::Float64;
+    W_min::Float64=50.,
     )
 
-    W_min = 0
+    # W_min = 50
     # W_max = 800
 
     if hh.W > 0
         # Scale W between 0 and 100
         W_scaled = 100 * (hh.W - W_min) / (W_max - W_min)
+        hh.C = (hh.W / W_scaled) * min(W_scaled^α_cp, W_scaled)
         # hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
-        hh.C = hh.W * min(hh.P̄[end] * (W_scaled / hh.P̄[end])^α_cp, 100) / 100
-        # hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
-        # hh.s = hh.Iᵀ > 0 ? (hh.Iᵀ - hh.C) / hh.Iᵀ : 0.0
+
+        # Compute savings rate
         hh.s = hh.total_I > 0 ? ((hh.total_I + hh.capital_I + hh.socben_I) - hh.C) / (hh.total_I + hh.capital_I + hh.socben_I) : 0.0 
-        # println("   $(hh.s), $(hh.C), $(hh.W), $((hh.total_I + hh.capital_I))")
     else
         hh.C = 0.0
         hh.s = 0.0
     end
-
-    
-    # hh.C = min((1 - hh.s) * hh.total_I, hh.W)
-    # println("   W: $(hh.W), I: $(hh.total_I), C: $(hh.C), s: $(hh.s)")
 end
 
 

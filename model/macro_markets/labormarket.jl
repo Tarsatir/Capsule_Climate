@@ -272,7 +272,9 @@ function matching_lm(
         # n_sample = min(30, length(jobseeking_hh))
         # @timeit to "sample" Lᵈ .= sample(jobseeking_hh, n_sample, replace=false)
         StatsBase.sample!(labormarket.jobseeking_hh, Lᵈ; replace=false)
-        sort!(Lᵈ, by = hh_id -> model[hh_id].skill, rev=true)
+        # sort!(Lᵈ, by = hh_id -> model[hh_id].skill, rev=true)
+        # w = map(hh_id -> model[hh_id].skill, labormarket.jobseeking_hh)
+        # StatsBase.sample!(Lᵈ, Lᵈ, weights(w); replace=false)
 
         to_be_hired = Vector{Int}()
 

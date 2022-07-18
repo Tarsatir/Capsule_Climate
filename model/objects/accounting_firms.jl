@@ -195,7 +195,8 @@ function compute_Π_p!(
     writeoffs=0.0::Float64
     )
  
-    Π = p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.TCE - p.curracc.int_debt - writeoffs
+    Π = (p.curracc.S + p.curracc.rev_dep - p.curracc.TCL - p.curracc.TCE 
+         - p.curracc.carbontax - p.curracc.energytax - p.curracc.int_debt - writeoffs)
     shift_and_append!(p.Π, Π)
 
     # Compute profit taxes
