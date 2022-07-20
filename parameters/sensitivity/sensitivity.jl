@@ -96,8 +96,6 @@ function generate_simdata(
     run_nr::Int64;
     proc_nr::Union{Int64, Nothing}=nothing
     )
-    
-    # Threads.@threads for _ in 1:n_parl
 
     params = collect(keys(X_labels))
     changedparams = Dict(params .=> 0.0)
@@ -113,8 +111,6 @@ function generate_simdata(
 
         sim_nr = parse(Int64, row.sim_nr)
 
-        
-
         # Fill in changed parameters
         for param in params
             changedparams[param] = parse(Float64, getproperty(row, Symbol(param)))
@@ -126,7 +122,6 @@ function generate_simdata(
             full_output=false;
             threadnr=parl_nr
         )
-        # println("output above is sim nr $sim_nr")
 
         if res == nothing
             res = convertrunoutput(runoutput, sim_nr; return_as_df=true, t_warmup=t_warmup)
@@ -135,12 +130,15 @@ function generate_simdata(
         end
 
         # If end of epoch is reached, write results to output csv
-        if nrow(res) == n_per_epoch || nrow(res) == n_per_parl
+        if nrow(res) == n_per_epoch || i == n_per_parl
             CSV.write(outputfilepath, res; append=i≠n_per_epoch)
             res = nothing
         end
+
+        if i == n_per_parl
+            break
+        end
     end
-    # end
 end
 
 
