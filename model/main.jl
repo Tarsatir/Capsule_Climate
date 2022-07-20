@@ -218,13 +218,13 @@ function model_step!(
     end
 
     # Check if households still have enough bp and lp, otherwise sample more
-    for hh_id in all_hh
+    @timeit to "hh refill" for hh_id in all_hh
         refillsuppliers_hh!(model[hh_id], all_cp, initparam.n_cp_hh, model)
         resetincomes_hh!(model[hh_id])
     end
 
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
-    for cp_id in all_cp
+    @timeit to "clear account cp" for cp_id in all_cp
         model[cp_id].curracc = clear_firm_currentaccount_p!(model[cp_id].curracc)
         reset_brochures_cp!(model[cp_id])
     end
@@ -259,7 +259,7 @@ function model_step!(
     end
 
     # ep innovate
-    innovate_ep!(ep, globalparam, t)
+    @timeit to "inn ep" innovate_ep!(ep, globalparam, t)
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
@@ -310,7 +310,7 @@ function model_step!(
 
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
-    for p_id in all_p
+    @timeit to "pay workers" for p_id in all_p
         pay_workers_p!(
             model[p_id],
             government,
@@ -370,7 +370,7 @@ function model_step!(
     )
 
     # (6) kp deliver goods to cp, kp make up profits
-    for kp_id in all_kp
+    @timeit to "send machines kp" for kp_id in all_kp
         send_ordered_machines_kp!(model[kp_id], ep, globalparam, t, model)
     end
 
@@ -401,7 +401,7 @@ function model_step!(
     update_marketshare_p!(all_kp, model)
     
     # Select producers that will be declared bankrupt and removed
-    bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
+    @timeit to "check br" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
 
     # (7) macro-economic indicators are updated.
     @timeit to "update macro ts" update_macro_timeseries(
@@ -470,7 +470,7 @@ function model_step!(
     )
 
     # Redistrubute remaining stock of dividents to households
-    distribute_dividends_if!(
+    @timeit to "distr div" distribute_dividends_if!(
         indexfund,
         government,
         all_hh,
@@ -550,4 +550,4 @@ function run_simulation(;
     return runoutput
 end
 
-@time run_simulation(savedata=true)
+# @time run_simulation(savedata=true)

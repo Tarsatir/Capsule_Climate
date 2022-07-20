@@ -13,7 +13,7 @@ function convertrunoutput(
     runoutput::RunOutput,
     sim_nr::Int64;
     return_as_df::Bool=false,
-    t_warmup::Int64=100,
+    t_warmup::Int64=300,
     )
 
     # Prepare data to be written to dataframe
@@ -59,9 +59,9 @@ function convertrunoutput(
     FGT_2nd = var(runoutput.FGT[t_warmup:end])
 
     # Write emissions indexes
-    em2030 = runoutput.emissions_index[220]
-    em2040 = runoutput.emissions_index[340]
-    em2050 = runoutput.emissions_index[460]
+    em2030 = runoutput.emissions_index[t_warmup + 120]
+    em2040 = runoutput.emissions_index[t_warmup + 240]
+    em2050 = runoutput.emissions_index[t_warmup + 360]
 
     if return_as_df
         return DataFrame(
@@ -111,7 +111,7 @@ function savefulloutput(
     runoutput::RunOutput,
     sim_nr::Int64;
     return_as_df::Bool=false,
-    t_warmup::Int64=100,
+    t_warmup::Int64=300,
     )
 
     data = vcat(
@@ -125,11 +125,11 @@ function savefulloutput(
 
     if return_as_df
 
-        cols_GDP = map(i -> Symbol("GDP_$i"), t_warmup:460)
-        cols_U = map(i -> Symbol("U_$i"), t_warmup:460)
+        cols_GDP = map(i -> Symbol("GDP_$i"), t_warmup:t_warmup+360)
+        cols_U = map(i -> Symbol("U_$i"), t_warmup:t_warmup+360)
         # cols_GINI_I = map(i -> Symbol("GINI_I_$i"), t_warmup:460)
         # cols_GINI_W = map(i -> Symbol("GINI_W_$i"), t_warmup:460)
-        cols_em = map(i -> Symbol("em_$i"), t_warmup:460)
+        cols_em = map(i -> Symbol("em_$i"), t_warmup:t_warmup+360)
 
         # cols = vcat([Symbol("sim_nr")], cols_GDP, cols_U, cols_GINI_I, cols_GINI_W, cols_em)
 

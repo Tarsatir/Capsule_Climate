@@ -67,12 +67,8 @@ function initialize_kp(
     B_LP=1.0,
     B_EE=1.0,
     B_EF=1.0,
-    p=1.0,
     μ=0.2,
     w̄=1.0,
-    wᴼ=1.0,
-    Q=100,
-    D=100,
     f=1/n_captlgood,
     )
 
@@ -109,8 +105,6 @@ function innovate_kp!(
     ep,
     model::ABM,
     )
-    
-    # TODO include labor demand for researchers
 
     # Determine levels of R&D, and how to divide under IN and IM
     set_RD_kp!(kp, globalparam.ξ, globalparam.ν)
@@ -119,7 +113,6 @@ function innovate_kp!(
     # Determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-globalparam.ζ * kp.IN)
     if rand(Bernoulli(θ_IN))
-        # A_t_in = update_At_kp(kp.A_LP, globalparam)
         A_LP_t_in = update_techparam_p(kp.A_LP, globalparam)
         A_EE_t_in = update_techparam_p(kp.A_EE, globalparam)
         A_EF_t_in = update_techparam_p(kp.A_EF, globalparam; is_EF=true)
@@ -131,13 +124,9 @@ function innovate_kp!(
         push!(tech_choices, (A_LP_t_in, A_EE_t_in, A_EF_t_in, B_LP_t_in, B_EE_t_in, B_EF_t_in))
     end
 
-    # TODO compute real value innovation like rer98
-
     # Determine immitation of competitors
     θ_IM = 1 - exp(-globalparam.ζ * kp.IM)
     if rand(Bernoulli(θ_IM))
-        # A_LP_t_im, A_EE_t_im, A_EF_t_im, B_LP_t_im, B_EE_t_im, B_EF_t_im = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
-        # push!(tech_choices, (A_LP_t_im, A_EE_t_im, A_EF_t_im, B_LP_t_im, B_EE_t_im, B_EF_t_im))
         imitated_tech = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
         push!(tech_choices, imitated_tech)
     end
@@ -159,13 +148,11 @@ function choose_technology_kp!(
     ep
     )
 
-    # TODO: DESCRIBE
     update_μ_kp!(kp)
 
     # Make choice between possible technologies
     if length(tech_choices) > 1
         #   Lamperti et al (2018), eq 1 and 2, augmented for tax rates
-        # c_h_cp = map(tech -> (w̄/tech[1] + ((1 + government.τᴱ) * ep.pₑ[t])/tech[2] + government.τᶜ * tech[3]), tech_choices)
         c_h_cp = map(tech -> cop(w̄, tech[1], government.τᴱ, ep.pₑ[t], tech[2], government.τᶜ, tech[3]), tech_choices)
         c_h_kp = map(tech -> cop(kp.w̄[end], tech[4], government.τᴱ, ep.pₑ[t], tech[5], government.τᶜ,  tech[6]), tech_choices)
  
@@ -248,9 +235,6 @@ function compute_c_kp!(
     pₑ::Float64
     )
 
-    # c_t = kp.Q[end] > 0 ? kp.w̄[end] / kp.B_LP + kp.RD / kp.Q[end] : kp.w̄[end] / kp.B_LP
-    # shift_and_append!(kp.c, c_t)
-
     c_t = cop(kp.w̄[end], kp.B_LP, government.τᴱ, pₑ, kp.B_EE, government.τᶜ, kp.B_EF)
     if kp.Q[end] > 0
         c_t += kp.RD / kp.Q[end]
@@ -280,22 +264,19 @@ function set_RD_kp!(
     ν::Float64
     )
 
-    # Determine total R&D spending at time t, (Dosi et al, 2010; eq. 3)
-    # TODO: describe change of added NW
-    
+    # Determine total R&D spending at time t, 
     if kp.age > 1
+        # Based on sales 
+        #   (Dosi et al, 2010; eq. 3)
         prev_S = kp.p[end] * kp.Q[end]
         kp.RD = prev_S > 0 ? ν * prev_S : ν * max(kp.balance.NW, 0)
     else
+        # Based on liquid assets, given sales are zero
         kp.RD = ν * max(kp.balance.NW, 0)
     end
 
     # Cap R&D to possible innovation based on labor available in company
     kp.RD = min(kp.RD, kp.L * kp.w̄[end])
-
-    # TODO: now based on prev profit to avoid large losses. If kept, describe!
-
-    # kp.curracc.TCI += kp.RD
 
     # Decide fractions innovation (IN) and immitation (IM), 
     #   (Dosi et al, 2010; eq. 3.5)
@@ -341,18 +322,30 @@ function plan_production_kp!(
     model::ABM
     )
 
+    # Update average wage level
     update_w̄_p!(kp, model)
     
     # Determine total amount of capital units to produce and amount of labor to hire
-    # kp.O = length(kp.orders) * globalparam.freq_per_machine
     kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
 
     # Determine amount of labor to hire
     update_Lᵈ!(kp, globalparam.ω)
 
-    # kp.ΔLᵈ = globalparam.ω * kp.ΔLᵈ + (1-globalparam.ω) * (kp.O / kp.B_LP - kp.L)
-
+    # Update maximum offered wage
     update_wᴼ_max_kp!(kp)
+end
+
+
+"""
+Update desired level of labor
+"""
+function update_Lᵈ!(
+    kp::CapitalGoodProducer, 
+    ω::Float64
+    )
+
+    kp.Lᵈ = ω * kp.L + (1 - ω) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L)
+    kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end
 
 
@@ -438,6 +431,9 @@ function update_EU_TCE_kp!(
 end
 
 
+"""
+Update amount of emissions that result from energy usage EU. 
+"""
 function update_emissions_kp!(
     kp::CapitalGoodProducer
     )
@@ -512,7 +508,7 @@ Lets kp update maximum offered wage
 function update_wᴼ_max_kp!(
     kp::CapitalGoodProducer
     )
-    # TODO: DESCRIBE IN MODEL
+    
     kp.wᴼ_max = kp.B_LP * kp.p[end] 
 end
 
@@ -550,50 +546,12 @@ function update_marketshare_kp!(
 end
 
 
-# TRIAL: DESCRIBE
 """
 Updates the markup rate μ
 """
 function update_μ_kp!(
     kp::CapitalGoodProducer
     )
-
-    # b = 0.3
-    # l = 2
-
-    # if length(kp.Π) > l
-    #     # mean_μ = mean(kp.μ[end-l:end-1])
-    #     # Δμ = (cp.μ[end] - cp.μ[end-1]) / cp.μ[end-1]
-    #     # Δμ = (kp.μ[end] - mean_μ) / mean_μ
-
-    #     # mean_Π = mean(kp.Π[end-l:end-1])
-    #     # ΔΠ = (cp.Π[end] - cp.Π[end-1]) / cp.Π[end-1]
-    #     # ΔΠ = (kp.Π[end] - mean_Π) / mean_Π
-    #     shock_sign = 1
-    #     if kp.Π[end] <= kp.Π[end-1]
-    #         shock_sign = -1
-    #     end
-
-    #     # println("$mean_μ, $mean_Π")
-    #     # println("Δμ: $Δμ, $(sign(Δμ)), ΔΠ: $ΔΠ, $(sign(ΔΠ))")
-
-    #     shock = rand(Uniform(0.0, b))
-
-    #     new_μ = max(kp.μ[end] * (1 + shock_sign * shock), 0)
-    #     # push!(kp.μ, new_μ)
-    #     shift_and_append!(kp.μ, new_μ)
-
-    # elseif kp.Π[end] == 0
-    #     # push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, 0.0))))
-    #     new_μ = kp.μ[end] * (1 + rand(Uniform(-b, 0.0)))
-    #     shift_and_append!(kp.μ, new_μ)
-    # else
-    #     # push!(kp.μ, kp.μ[end] * (1 + rand(Uniform(-b, b))))
-    #     new_μ = kp.μ[end] * (1 + rand(Uniform(-b, b)))
-    #     shift_and_append!(kp.μ, new_μ)
-    # end
-
-    # push!(kp.μ, kp.μ[end])
 
     shift_and_append!(kp.μ, kp.μ[end])
 end
@@ -649,7 +607,6 @@ function replace_bankrupt_kp!(
     # Compute share of investments that can be paid from the investment fund                       
     all_req_NW = sum(avg_NW .* NW_coefficients)
     frac_NW_if = decide_investments_if!(indexfund, all_req_NW, t)
-    # println("frac kp: ", frac_NW_if)
 
     # Re-use id of bankrupted company
     for (i, (kp_id, kp_i)) in enumerate(zip(bankrupt_kp, bankrupt_kp_i))
@@ -692,11 +649,4 @@ function replace_bankrupt_kp!(
     end
 end
 
-function update_Lᵈ!(
-    kp::CapitalGoodProducer, 
-    ω::Float64
-    )
 
-    kp.Lᵈ = ω * kp.L + (1 - ω) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L)
-    kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
-end

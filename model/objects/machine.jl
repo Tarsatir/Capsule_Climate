@@ -45,11 +45,13 @@ function initialize_machine_stock(
     A_EF=1.0::Float64
     )::Vector{Machine}
 
-    machines = Vector{Machine}()
-    for _ in 1:n_machines_init
-        machine_struct = initialize_machine(freq_per_machine, η, p, A_LP, A_EE, A_EF)
-        push!(machines, machine_struct)
-    end
+    # machines = Vector{Machine}()
+    # for _ in 1:n_machines_init
+    #     machine_struct = initialize_machine(freq_per_machine, η, p, A_LP, A_EE, A_EF)
+    #     push!(machines, machine_struct)
+    # end
+
+    machines = [initialize_machine(freq_per_machine, η, p, A_LP, A_EE, A_EF) for _ in 1:n_machines_init]
 
     return machines
 end

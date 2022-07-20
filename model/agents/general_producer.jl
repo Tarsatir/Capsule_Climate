@@ -12,12 +12,16 @@ function cop(
 end
 
 
+"""
+Lets producers select employees to fire.
+"""
 function fire_excess_workers_p!(
     p::Union{ConsumerGoodProducer, CapitalGoodProducer}, 
     model::ABM
-    )::Vector{Int}
+    )::Vector{Int64}
 
     if p.ΔLᵈ <= -p.L
+        # Fire all employees if desired decrease in labor exceeds labor stock.
         fired_workers = p.employees
     else
 
@@ -36,15 +40,6 @@ function fire_excess_workers_p!(
         end
 
     end
-
-    # n_to_be_fired = floor(Int, abs(p.ΔLᵈ / 100))
-
-    # if n_to_be_fired >= length(p.employees)
-    #     fired_workers = p.employees
-    # else
-    #     # TODO: find a more sophisticated way to select who is fired
-    #     fired_workers = sample(p.employees, n_to_be_fired, replace=false)
-    # end
 
     # Remove employees from labor stock
     if length(fired_workers) > 0
@@ -71,7 +66,6 @@ function hire_worker_p!(
 
     push!(p.employees, hh.id)
     p.L += hh.L * hh.skill
-    # p.ΔLᵈ = max(0.0, p.ΔLᵈ - hh.L * hh.skill)
 end
 
 
@@ -93,7 +87,6 @@ function remove_worker_p!(
     )
 
     p.L -= hh.L * hh.skill
-    # p.ΔLᵈ += hh.L * hh.skill
     p.employees = filter(hh_id -> hh_id ≠ hh.id, p.employees)
 end
 
@@ -213,15 +206,12 @@ function check_bankrupty_all_p!(
     bankrupt_kp = Vector{Int}()
     bankrupt_kp_i = Vector{Int}()
 
-    # return bankrupt_bp, bankrupt_lp, bankrupt_kp, bankrupt_kp_i
-
     # cp_counter = 0
     kp_counter = 0
 
     for p_id in all_p
         if check_if_bankrupt_p!(model[p_id], globalparam.t_wait)
             if typeof(model[p_id]) == ConsumerGoodProducer
-                # cp_counter += 1
                 push!(bankrupt_cp, p_id)
             else
                 kp_counter += 1
@@ -232,11 +222,6 @@ function check_bankrupty_all_p!(
             end
         end
     end
-
-    # meanage = length(bankrupt_cp) > 0 ? mean(cp_id -> model[cp_id].age, bankrupt_cp) : nothing
-    # meanf = length(bankrupt_cp) > 0 ? mean(cp_id -> model[cp_id].f[end], bankrupt_cp) : nothing
-    # meanN = length(bankrupt_cp) > 0 ? mean(cp_id -> model[cp_id].N_goods, bankrupt_cp) : nothing
-    # println("mean age: $meanage, meanf: $meanf, meanN: $meanN")
 
     return bankrupt_cp, bankrupt_kp, bankrupt_kp_i
 end
@@ -280,15 +265,11 @@ function kill_all_bankrupt_p!(
     total_unpaid_net_debt = 0.0
     for p_id in Iterators.flatten((bankrupt_cp, bankrupt_kp))
 
-
-        # println("   $(typeof(model[p_id])==ConsumerGoodProducer ? "cp" : "kp"), $(model[p_id].L), $(model[p_id].age)")
-
         # Fire remaining workers
         for hh_id in model[p_id].employees
             set_unemployed_hh!(model[hh_id])
         end
 
-        # TODO: TEMP SOLUTION, DESCRIBE IT WORKS
         total_unpaid_net_debt += (model[p_id].balance.debt - model[p_id].balance.NW)
 
         # Remove firm agents from model
@@ -307,13 +288,9 @@ function check_if_bankrupt_p!(
     t_wait::Int
     )::Bool
 
-    # return false
 
     if (typeof(p) == ConsumerGoodProducer && p.age > t_wait 
         && (p.f[end] <= 0.0001 || p.balance.EQ < 0))
-        # println("           $(p.f[end]), $(p.ΔLᵈ), $(p.L)")
-    # if p.age > t_wait && p.f[end] <= 0.0001
-    # if p.age > t_wait && p.balance.EQ < 0
         return true
     elseif (typeof(p) == CapitalGoodProducer && p.age > t_wait 
             &&  p.balance.EQ < 0)

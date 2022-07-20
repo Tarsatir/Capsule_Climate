@@ -187,25 +187,19 @@ function resolve_gov_balance!(
     model::ABM
     )
 
-    # NOTE: now does not apply redistribution between income groups!
-    # NOTE: redist goes both ways!
-
     if government.MS >= 0.0
 
         total_I = sum(hh_id -> model[hh_id].total_I ^ -globalparam.prog, all_hh)
 
         for hh_id in all_hh
-            # socialbenefits = (model[hh_id].total_I / total_I) * government.MS
             share = (model[hh_id].total_I ^ -globalparam.prog) / total_I
             socialbenefits = government.MS * share
             receiveincome_hh!(model[hh_id], socialbenefits; socben=true)
         end
         government.MS = 0.0
     else
-
         issuegovbonds(indexfund, -government.MS)
         government.MS = 0.0
-
     end
 end
 

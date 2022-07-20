@@ -33,6 +33,9 @@ parameters/sensitivity/__pycache__
 # parameters/sensitivity/sensitivity_runs
 parameters/sensitivity/oldruns
 parameters/sensitivity/sensitivity_runs_10000
+parameters/sensitivity/sensitivity_runs/input_data/latest
+parameters/sensitivity/sensitivity_runs/input_data/notlatest
+parameters/sensitivity/sensitivity_runs/output_data/KS_mean_values.csv
 parameters/sensitivity/sensitivity_plots
 parameters/calibration/calibrate_example.py
 
@@ -46,3 +49,5 @@ parameters/calibration/MSE_trial.ipynb
 parameters/calibration/mse_trial.csv
 parameters/calibration/postdists.csv
 parameters/calibration/calibrationdata
+
+testbash.sh

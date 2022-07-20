@@ -181,19 +181,19 @@ function save_climate_data(
         em_d = energy_producer.emᵀ_d,
         c_d = energy_producer.c_d,
 
-        emissions_total = climate.carbon_emissions,
-        emissions_kp = climate.carbon_emissions_kp,
-        emissions_cp = climate.carbon_emissions_cp,
-        emissions_ep = energy_producer.emissions,
+        # emissions_total = climate.carbon_emissions,
+        # emissions_kp = climate.carbon_emissions_kp,
+        # emissions_cp = climate.carbon_emissions_cp,
+        # emissions_ep = energy_producer.emissions,
 
-        C_a = climate.C_a,
-        C_m = climate.C_m,
-        C_d = climate.C_d,
+        # C_a = climate.C_a,
+        # C_m = climate.C_m,
+        # C_d = climate.C_d,
 
-        NPP = climate.NPP,
+        # NPP = climate.NPP,
 
-        dT_m = climate.δT_m,
-        dT_d = climate.δT_d
+        # dT_m = climate.δT_m,
+        # dT_d = climate.δT_d
     )
     CSV.write("results/result_data/climate_and_energy.csv", df)
 end

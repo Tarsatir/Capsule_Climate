@@ -32,7 +32,7 @@ def call_AAT_sampling(samp_strat, X_labels, N):
     return X
 
 
-def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, n=10, Nboot=3000):
+def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, crit, n=10, Nboot=3000):
     """
     Runs code required for PAWN sensitivity analysis.
     """
@@ -57,8 +57,11 @@ def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, n=10, Nboot=3000):
     plt.figure(figsize=(8, 3))
     pf.boxplot1(KS_mean_m, S_lb=KS_mean_lb, S_ub=KS_mean_ub,
                 X_Labels=X_labels, Y_Label=f'{name_dep_var}')
+    plt.hlines(crit, 0, KS_mean_m.shape[0]+1, color='red', linestyle='dotted')
     plt.tight_layout()
     plt.savefig(f'parameters/sensitivity/sensitivity_plots/sa_{type}_mean_plot{run_nr}.pdf')
+
+    return KS_mean_m
 
     # YF, FU, FC, xc = PAWN.pawn_plot_cdf(X, Y, n, cbar=True, n_col=3, labelinput=X_labels)
     # plt.show()

@@ -71,16 +71,10 @@ function close_balance_all_p!(
 
         # If not enough liquid assets available, borrow additional funds.
         if model[p_id].balance.NW < 0
-            # max_add_debt = max(model[p_id].curracc.S * Λ - model[p_id].balance.debt, 0)
-            # add_debt = min(-model[p_id].balance.NW, max_add_debt)
-            # borrow_funds_p!(model[p_id], add_debt)
-            # model[p_id].balance.NW += add_debt
             borrow_funds_p!(model[p_id], -model[p_id].balance.NW, global_param.b)
             model[p_id].balance.NW = 0
         elseif (!check_if_bankrupt_p!(model[p_id],  global_param.t_wait) 
                 && (model[p_id].balance.NW > max_NW) && (t > global_param.t_wait))
-        # elseif (model[p_id].balance.NW > max_NW && t > 1)
-            # indexfund_struct.Assets += (model[p_id].balance.NW - max_NW)
             total_dividends += model[p_id].balance.NW - max_NW
             model[p_id].balance.NW = max_NW
         end
@@ -89,22 +83,11 @@ function close_balance_all_p!(
         tot_assets = model[p_id].balance.N + model[p_id].balance.K + model[p_id].balance.NW
         model[p_id].balance.EQ = tot_assets - model[p_id].balance.debt
 
-        # If NW is negative, maximum debt is reached, and EQ is set to
-        # a negative value so the firm is declared bankrupt
-        # if model[p_id].balance.debt > global_param.Λ * model[p_id].curracc.S
-        #     model[p_id].balance.EQ = -1.0
-        #     model[p_id].f[end] = 0.0
-        # end
-
         if typeof(model[p_id]) == ConsumerGoodProducer
             all_NW += model[p_id].balance.NW
         end
     end
 
-    # println("avg max NW: ", all_max_NW / 200, ", all max NW: ", all_max_NW)
-    # println("avg NW stock: ", all_NW / 200, ", all NW: ", all_NW)
-
-    # println("total dividends: ", total_dividends)
     receive_dividends_if!(indexfund_struct, total_dividends)
 end
 
@@ -119,16 +102,13 @@ function update_K_p!(
 
     # Only cp have capital stock
     if typeof(p) == ConsumerGoodProducer
+        
         # Loop over machines, add current value of machines
         K = 0.0
         writeoffs = 0.0
         for machine in p.Ξ
             newval = machine.p * machine.freq
             K += newval
-            # K += max((η - machine.age) / η, 0) * newval
-            # if machine.age <= η
-            #     writeoffs += (1 / η) * newval
-            # end
         end
 
         p.balance.K = K

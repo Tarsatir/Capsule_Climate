@@ -186,7 +186,6 @@ function plan_investment_cp!(
 
     # See if enough funds available for investments and production, otherwise
     # change investments and production to match funding availability.
-
     check_funding_restrictions_cp!(cp, government, globalparam, ep.pₑ[t])
 
     # Send orders to kp
@@ -294,8 +293,9 @@ function choose_producer_cp!(
     end
 
     # If multiple brochures, find brochure with lowest cost of production
-    all_cop = Float64[]
-    for brochure in cp.brochures
+    # all_cop = Float64[]
+    all_cop = zeros(Float64, length(cp.brochures))
+    for (i, brochure) in enumerate(cp.brochures)
         p_mach = brochure[2]
         A_LP = brochure[4]
         A_EE = brochure[5]
@@ -303,11 +303,13 @@ function choose_producer_cp!(
 
         c = p_mach + b * cop(cp.w̄[end], A_LP, government.τᴱ, ep.pₑ[t], A_EE, government.τᶜ, A_EF)
 
-        push!(all_cop, c)
+        # push!(all_cop, c)
+        all_cop[i] = c
     end
 
     # Choose kp based on brochures
-    brochure = sample(cp.brochures, Weights(1 ./ all_cop.^2))
+    all_cop .= 1 ./ all_cop .^ 2
+    brochure = sample(cp.brochures, Weights(all_cop))
     cp.chosen_kp_id = brochure[1]
 
     return brochure
@@ -506,15 +508,18 @@ function receive_machines_cp!(
         # that were delivered
 
         # Sort machines by cost of production, replace most expensive first
-        sort!(cp.mach_tb_repl , by = machine -> cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
-        filter!(machine -> machine ∉ cp.mach_tb_repl[1:length(new_machines)], cp.Ξ)
+        sort!(cp.mach_tb_repl, by=machine->cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
+        # filter!(machine -> machine ∉ cp.mach_tb_repl[1:length(new_machines)], cp.Ξ)
+        for i in 1:length(new_machines)
+            filter!(machine -> machine ≠ cp.mach_tb_repl[i], cp.Ξ)
+        end
     else
         # All to-be replaced machines were sent, replace all machines and add
         # the additional machines as expansionary investment
         filter!(machine -> machine ∉ cp.mach_tb_repl, cp.Ξ)
     end
 
-    cp.Ξ = vcat(cp.Ξ, new_machines)
+    append!(cp.Ξ, new_machines)
 end
 
 
@@ -674,7 +679,8 @@ function update_n_machines_cp!(
 
     # Retire old machines that are not replaced
     if length(cp.mach_tb_retired) > 0
-        filter!(machine -> machine ∉ cp.mach_tb_retired, cp.Ξ)
+        # filter!(machine -> machine ∉ cp.mach_tb_retired, cp.Ξ)
+        setdiff!(cp.Ξ, cp.mach_tb_retired)
     end
 
     cp.n_machines = length(cp.Ξ) * freq_per_machine
@@ -776,15 +782,8 @@ Updates maximum offered wage wᴼ_max
 function update_wᴼ_max_cp!(
     cp::ConsumerGoodProducer
     )
-    # TODO: DESCRIBE IN MODEL
-    # cp.wᴼ_max = (cp.π_LP * cp.p[end])
-    cp.wᴼ_max = Inf
-    # if cp.ΔLᵈ > 0
-    #     # cp.wᴼ_max = (cp.Dᵉ * cp.p[end] - cp.w̄[end] * cp.L) / cp.ΔLᵈ
-    #     cp.wᴼ_max = cp.p[end]
-    # else
-    #     cp.wᴼ_max = 0
-    # end
+    
+    cp.wᴼ_max = cp.π_LP * cp.p[end]
 end
 
 

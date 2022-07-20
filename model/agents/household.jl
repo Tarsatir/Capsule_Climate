@@ -61,7 +61,7 @@ function set_consumption_budget_hh!(
     update_average_price_hh!(hh, model)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, maximum(all_W), globalparam.α_cp)
+    compute_consumption_budget_hh!(hh, maximum(all_W), minimum(all_W), globalparam.α_cp)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
@@ -86,12 +86,15 @@ Computes consumption budget, updates savings rate
 function compute_consumption_budget_hh!(
     hh::Household,
     W_max::Float64,
-    α_cp::Float64;
-    W_min::Float64=50.,
+    W_min::Float64,
+    α_cp::Float64
     )
 
-    # W_min = 50
-    # W_max = 800
+    # W_max = 800.
+    W_min = 10.
+    if W_max < W_min
+        W_max = 11.
+    end
 
     if hh.W > 0
         # Scale W between 0 and 100
