@@ -25,7 +25,7 @@ function save_macro_data(macroeconomy)
         total_I = macroeconomy.total_I,
         total_w = macroeconomy.total_w,
 
-        C = macroeconomy.C,
+        # C = macroeconomy.C,
 
         unsat_demand = macroeconomy.unsat_demand,
         unspend_C = macroeconomy.unspend_C,
@@ -181,10 +181,10 @@ function save_climate_data(
         em_d = energy_producer.emᵀ_d,
         c_d = energy_producer.c_d,
 
-        # emissions_total = climate.carbon_emissions,
-        # emissions_kp = climate.carbon_emissions_kp,
-        # emissions_cp = climate.carbon_emissions_cp,
-        # emissions_ep = energy_producer.emissions,
+        emissions_total = climate.carbon_emissions,
+        emissions_kp = climate.carbon_emissions_kp,
+        emissions_cp = climate.carbon_emissions_cp,
+        emissions_ep = energy_producer.emissions,
 
         # C_a = climate.C_a,
         # C_m = climate.C_m,

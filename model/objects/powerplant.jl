@@ -8,6 +8,27 @@
     em::Float64                                 # emissions per unit of energy
 end
 
+function init_powerplant(
+    type::String,
+    age::Int64,
+    c::Float64,
+    Aᵀ::Float64,
+    emᵀ::Float64,
+    globalparam::GlobalParam
+    )
+
+    return PowerPlant(
+        type = type,
+        age = age,
+        c = c,
+        freq = globalparam.freq_per_powerplant,
+        capacity = type=="Dirty" ? globalparam.freq_per_powerplant * Aᵀ : globalparam.freq_per_poweplant,
+        Aᵀ = Aᵀ,
+        em = emᵀ
+    )
+
+end
+
 
 """
     update_c_pp(pp::PowerPlant, p_f::Float64)

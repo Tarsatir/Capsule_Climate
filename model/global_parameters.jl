@@ -39,8 +39,8 @@
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.85               # memory parameter adaptive updating rules
-    λ::Float64 = 0.3                # parameter for labor demand smoothing
+    ω::Float64 = 0.8               # memory parameter adaptive updating rules
+    λ::Float64 = 0.5                # parameter for labor demand smoothing
 
     # Determine household consumption
     α_cp::Float64 = 0.8            # parameter controlling MPC of consumers

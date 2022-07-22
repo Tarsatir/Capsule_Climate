@@ -21,7 +21,7 @@
     CPI::Vector{Float64} = zeros(Float64, T)                # price index consumer goods over time
     CPI_kp::Vector{Float64} = zeros(Float64, T)             # price index capital goods over time
 
-    C::Vector{Float64} = zeros(Float64, T)                  # aggregate consumption over time
+    # C::Vector{Float64} = zeros(Float64, T)                  # aggregate consumption over time
     unsat_demand::Vector{Float64} = zeros(Float64, T)       # ratio of unsatisfied demand
     unsat_invest::Vector{Float64} = zeros(Float64, T)       # ratio of unsatisfied investments
     unsat_L_demand::Vector{Float64} = zeros(Float64, T)     # ratio of unsatisfied labor demand
@@ -171,7 +171,7 @@ function update_macro_timeseries(
     end
 
     # Consumption 
-    macroeconomy.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)
+    # macroeconomy.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)
 
     # Compute total amount in system
     compute_M!(all_hh, all_cp, all_kp, ep, government, indexfund, 

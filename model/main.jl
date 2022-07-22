@@ -40,7 +40,7 @@ include("macro_markets/consumermarket.jl")
 
 
 """
-    initialize_model(T::Int, labormarket_is_fordist::Bool, changed_params::Dict)
+    initialize_model(T::Int64, labormarket_is_fordist::Bool, changed_params::Dict)
 
 ## Initializes model.
 Receives:
@@ -56,7 +56,7 @@ Returns:
 * `labormarket`: mutable struct containing variables concerning the labor market
 """
 function initialize_model(
-    T::Int;
+    T::Int64;
     changed_params::Union{Dict, Nothing},
     changedtaxrates::Union{Vector, Nothing}
     )
@@ -195,7 +195,8 @@ end
 
 
 function model_step!(
-    t::Int,
+    t::Int64,
+    t_warmup::Int64,
     to,
     globalparam::GlobalParam, 
     initparam::InitParam,
@@ -258,8 +259,10 @@ function model_step!(
         send_brochures_kp!(model[kp_id], all_cp, globalparam, model)
     end
 
-    # ep innovate
+    # ep innovate, only when warmup period is left
+    # if t >= t_warmup
     @timeit to "inn ep" innovate_ep!(ep, globalparam, t)
+    # end
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
@@ -335,7 +338,18 @@ function model_step!(
     end
 
     # Let energy producer meet energy demand
-    produce_energy_ep!(ep, government, all_cp, all_kp, globalparam, indexfund, t, model)
+    produce_energy_ep!(
+        ep, 
+        government, 
+        all_cp, 
+        all_kp, 
+        globalparam, 
+        indexfund,
+        initparam.frac_green, 
+        t, 
+        t_warmup,
+        model
+    )
     
     # (6) Transactions take place on consumer market
 
@@ -482,7 +496,7 @@ end
 
 
 """
-    run_simulation(T::Int, changed_params::Bool, full_output::Bool)
+    run_simulation(T::Int64, changed_params::Bool, full_output::Bool)
 
 ## Performs a full simulation.
     - Initializes model and agent structs.
@@ -490,7 +504,8 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T=660::Int,
+    T::Int64=660,
+    t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
     changedtaxrates::Union{Vector,Nothing}=nothing,
     full_output::Bool=true,
@@ -505,6 +520,7 @@ function run_simulation(;
 
         @timeit to "step" model_step!(
                                 t,
+                                t_warmup,
                                 to, 
                                 globalparam, 
                                 initparam,
@@ -536,18 +552,25 @@ function run_simulation(;
 
     # Pack output in struct
     @timeit to "save output" runoutput = RunOutput(
+        macroeconomy.GDP,
         macroeconomy.GDP_growth,
         macroeconomy.U,
         macroeconomy.dU,
+        macroeconomy.total_C,
+        macroeconomy.total_I,
+        macroeconomy.p̄,
+        macroeconomy.debt_tot,
+        ep.Dₑ,
         macroeconomy.GINI_I,
         macroeconomy.GINI_W,
         macroeconomy.FGT,
         macroeconomy.avg_π_LP,
         macroeconomy.avg_π_EE,
         macroeconomy.avg_π_EF,
+        climate.carbon_emissions,
         climate.emissions_index
     )
     return runoutput
 end
 
-# @time run_simulation(savedata=true)
+@time run_simulation(savedata=true)

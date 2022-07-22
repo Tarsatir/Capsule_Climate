@@ -222,7 +222,7 @@ def plot_cons_vars(df):
 
 
     # Plot consumption growth rates
-    C_t = 100 * df.C.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    C_t = 100 * df.total_C.to_numpy()[100:] / df.CPI.to_numpy()[100:]
     delta_C = 100 * (C_t[1:] - C_t[:-1]) / C_t[:-1]
 
     ax1.hlines(0, min(T), max(T), linestyle='dashed', color='black')
@@ -461,51 +461,51 @@ def plot_energy(df_climate_energy, df_macro):
     plt.savefig('plots/energy.png')
 
 
-# def plot_climate(df_climate_energy, df_macro):
+def plot_climate(df_climate_energy, df_macro):
 
-#     fig, ax = plt.subplots(2, 2, figsize=(8,6))
+    fig, ax = plt.subplots(2, 2, figsize=(8,6))
 
-#     T = range(len(df_climate_energy.emissions_total))
+    T = range(len(df_climate_energy.emissions_total))
 
-#     ax[0,0].plot(T, df_climate_energy.emissions_total, label='$c^{total}_t$')
-#     ax[0,0].plot(T, df_climate_energy.emissions_kp, label='$c^{kp}_t$')
-#     ax[0,0].plot(T, df_climate_energy.emissions_cp, label='$c^{cp}_t$')
-#     ax[0,0].plot(T, df_climate_energy.emissions_ep, label='$c^{ep}_t$')
-#     ax[0,0].set_title('CO$_2$ emissions')
-#     ax[0,0].set_xlabel('time')
-#     ax[0,0].set_ylabel('total CO$_2$ emission')
-#     ax[0,0].legend()
+    ax[0,0].plot(T, df_climate_energy.emissions_total, label='$c^{total}_t$')
+    ax[0,0].plot(T, df_climate_energy.emissions_kp, label='$c^{kp}_t$')
+    ax[0,0].plot(T, df_climate_energy.emissions_cp, label='$c^{cp}_t$')
+    ax[0,0].plot(T, df_climate_energy.emissions_ep, label='$c^{ep}_t$')
+    ax[0,0].set_title('CO$_2$ emissions')
+    ax[0,0].set_xlabel('time')
+    ax[0,0].set_ylabel('total CO$_2$ emission')
+    ax[0,0].legend()
 
-#     real_GDP = 100 * df_macro.GDP / df_macro.CPI
-#     ax[0,1].plot(T, df_climate_energy.emissions_total / real_GDP, label='total emissions')
-#     ax[0,1].plot(T, df_climate_energy.emissions_kp / real_GDP, label='kp emissions')
-#     ax[0,1].plot(T, df_climate_energy.emissions_cp / real_GDP, label='cp emissions')
-#     ax[0,1].plot(T, df_climate_energy.emissions_ep / real_GDP, label='ep emissions')
-#     ax[0,1].set_title('CO$_2$ emissions per unit of real GDP')
-#     ax[0,1].set_xlabel('time')
-#     ax[0,1].set_ylabel('CO$_2$ / GDP')
-#     ax[0,1].legend()
+    real_GDP = 100 * df_macro.GDP / df_macro.CPI
+    ax[0,1].plot(T, df_climate_energy.emissions_total / real_GDP, label='total emissions')
+    ax[0,1].plot(T, df_climate_energy.emissions_kp / real_GDP, label='kp emissions')
+    ax[0,1].plot(T, df_climate_energy.emissions_cp / real_GDP, label='cp emissions')
+    ax[0,1].plot(T, df_climate_energy.emissions_ep / real_GDP, label='ep emissions')
+    ax[0,1].set_title('CO$_2$ emissions per unit of real GDP')
+    ax[0,1].set_xlabel('time')
+    ax[0,1].set_ylabel('CO$_2$ / GDP')
+    ax[0,1].legend()
 
 
-#     ax[1,0].plot(T, df_climate_energy.C_a, label='CO$_2$ in atmosphere')
-#     ax[1,0].plot(T, df_climate_energy.C_m, label='CO$_2$ in mixed ocean layer')
-#     ax[1,0].plot(T, df_climate_energy.C_d, label='CO$_2$ in deep ocean layer')
-#     # ax[1,0].plot(T, df_climate_energy.NPP, label='NPP$_t$')
-#     ax[1,0].set_title('CO$_2$ concentrations')
-#     ax[1,0].set_xlabel('time')
-#     ax[1,0].set_ylabel('Total CO$_2$ concentration')
-#     # ax[1,0].set_yscale('log')
-#     ax[1,0].legend()
+    # ax[1,0].plot(T, df_climate_energy.C_a, label='CO$_2$ in atmosphere')
+    # ax[1,0].plot(T, df_climate_energy.C_m, label='CO$_2$ in mixed ocean layer')
+    # ax[1,0].plot(T, df_climate_energy.C_d, label='CO$_2$ in deep ocean layer')
+    # # ax[1,0].plot(T, df_climate_energy.NPP, label='NPP$_t$')
+    # ax[1,0].set_title('CO$_2$ concentrations')
+    # ax[1,0].set_xlabel('time')
+    # ax[1,0].set_ylabel('Total CO$_2$ concentration')
+    # # ax[1,0].set_yscale('log')
+    # ax[1,0].legend()
 
-#     ax[1,1].plot(T, df_climate_energy.dT_m, label='$\delta T_{m,t}$')
-#     ax[1,1].plot(T, df_climate_energy.dT_d, label='$\delta T_{d,t}$')
-#     ax[1,1].set_title('Temperatures')
-#     ax[1,1].set_xlabel('time')
-#     ax[1,1].set_ylabel('Temperature anomaly')
-#     ax[1,1].legend()
+    # ax[1,1].plot(T, df_climate_energy.dT_m, label='$\delta T_{m,t}$')
+    # ax[1,1].plot(T, df_climate_energy.dT_d, label='$\delta T_{d,t}$')
+    # ax[1,1].set_title('Temperatures')
+    # ax[1,1].set_xlabel('time')
+    # ax[1,1].set_ylabel('Temperature anomaly')
+    # ax[1,1].legend()
 
-#     plt.tight_layout()
-#     plt.savefig('plots/climate.png')
+    plt.tight_layout()
+    plt.savefig('plots/climate.png')
 
 
 def get_indexnumbers(timeseries):
@@ -515,7 +515,7 @@ def get_share(timeseries, tottimeseries, tot_index):
     return tot_index * timeseries / tottimeseries
 
 
-def plot_emissions(df_climate_energy, df_macro, warmup=100):
+def plot_emissions(df_climate_energy, df_macro, warmup=300):
 
     T = range(len(df_climate_energy.emissions_total))[warmup:]
 
@@ -523,8 +523,14 @@ def plot_emissions(df_climate_energy, df_macro, warmup=100):
 
     em_tot = get_indexnumbers(df_climate_energy.emissions_total[warmup:].to_numpy())
 
-    ax[0].plot(T, em_tot, label='$sim results$')
-    ax[0].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
+    ax[0].plot(T, df_climate_energy.emissions_total[warmup:], label='$c^{total}_t$')
+    ax[0].plot(T, df_climate_energy.emissions_kp[warmup:], label='$c^{kp}_t$')
+    ax[0].plot(T, df_climate_energy.emissions_cp[warmup:], label='$c^{cp}_t$')
+    ax[0].plot(T, df_climate_energy.emissions_ep[warmup:], label='$c^{ep}_t$')
+    ax[0].set_title('CO$_2$ emissions')
+    ax[0].set_xlabel('time')
+    ax[0].set_ylabel('total CO$_2$ emission')
+    ax[0].set_xticks(np.arange(warmup, warmup+361, 60), np.arange(2020, 2051, 5))
     ax[0].legend()
 
 
@@ -545,19 +551,8 @@ def plot_emissions(df_climate_energy, df_macro, warmup=100):
     ax[1].set_title('CO$_2$ emissions')
     ax[1].set_xlabel('time')
     ax[1].set_ylabel('total CO$_2$ emission')
-    ax[1].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
-    ax[1].legend()
-
-    # real_GDP = (100 * df_macro.GDP / df_macro.CPI)[warmup:]
-    # ax[1].plot(T, df_climate_energy.emissions_total[warmup:] / real_GDP, label='total emissions')
-    # ax[1].plot(T, df_climate_energy.emissions_kp[warmup:] / real_GDP, label='kp emissions')
-    # ax[1].plot(T, df_climate_energy.emissions_cp[warmup:] / real_GDP, label='cp emissions')
-    # ax[1].plot(T, df_climate_energy.emissions_ep[warmup:] / real_GDP, label='ep emissions')
-    # ax[1].set_title('CO$_2$ emissions per unit of real GDP')
-    # ax[1].set_xlabel('time')
-    # ax[1].set_ylabel('CO$_2$ / GDP')
     # ax[1].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
-    # ax[1].legend()
+    ax[1].legend()
 
     plt.tight_layout()
     plt.savefig('plots/emissions.png')
@@ -567,14 +562,14 @@ if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    plot_macro_vars(df_macro)
-    plot_cons_vars(df_macro)
+    # plot_macro_vars(df_macro)
+    # plot_cons_vars(df_macro)
 
-    plot_income_dist()
-    plot_inequality(df_macro)
-    plot_sales_dist()
+    # plot_income_dist()
+    # plot_inequality(df_macro)
+    # plot_sales_dist()
 
     df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
     plot_energy(df_climate_energy, df_macro)
     # plot_climate(df_climate_energy, df_macro)
-    # plot_emissions(df_climate_energy, df_macro)
+    plot_emissions(df_climate_energy, df_macro)
