@@ -26,6 +26,8 @@ def plot_macro_vars(df):
     ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI, label='cp share')
     ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI, label='kp share')
     ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI, label='UB exp')
+    ax[0,0].plot(T, 100 * df.total_I / df.CPI, label='I')
+    ax[0,0].plot(T, 100 * df.total_C / df.CPI, label='C')
     ax[0,0].set_title("GDP")
     ax[0,0].legend()
 
@@ -101,12 +103,13 @@ def plot_macro_vars(df):
 
     ax[3,1].plot(range(len(df.debt_tot)), df.debt_tot, label='total')
     ax[3,1].plot(range(len(df.debt_cp)), df.debt_cp, label='cp', color='green')
-    ax[3,1].plot(range(len(df.debt_cp_allowed)), df.debt_cp_allowed, 
-                 label='cp allowed', color='green', linestyle='dashed', alpha=0.5)
+    # ax[3,1].plot(range(len(df.debt_cp_allowed)), df.debt_cp_allowed, 
+    #              label='cp allowed', color='green', linestyle='dashed', alpha=0.5)
     ax[3,1].plot(range(len(df.debt_kp)), df.debt_kp, label='kp', color='red')
-    ax[3,1].plot(range(len(df.debt_kp_allowed)), df.debt_kp_allowed, 
-                label='kp allowed', color='red', linestyle='dashed', alpha=0.5)
+    # ax[3,1].plot(range(len(df.debt_kp_allowed)), df.debt_kp_allowed, 
+    #             label='kp allowed', color='red', linestyle='dashed', alpha=0.5)
     ax[3,1].set_title('Debt levels')
+    # ax[3,1].set_yscale('log')
     ax[3,1].legend()
 
     # ax[4,0].plot(range(len(df.EI_avg)), 100 * df.EI_avg / df.CPI_kp, label='EI')
@@ -383,11 +386,13 @@ def plot_sales_dist():
     ax[3,1].hist(df_kp.all_L_kp, bins=30)
     ax[3,1].set_title("$L$ of kp")
 
-    ax[4,0].scatter(df_cp.all_w_cp, df_cp.all_L_cp)
-    ax[4,0].set_title("$w$ to $L$")
+    ax[4,0].scatter(df_cp.all_p_cp, df_cp.all_profit_cp, s=3)
+    ax[4,0].set_title("$p$ to $\\Pi$")
 
-    ax[4,1].scatter(df_cp.all_p_cp, df_cp.all_L_cp)
-    ax[4,1].set_title("$p$ to $L$")
+    ax[4,1].scatter(df_cp.all_p_cp, df_cp.all_f_cp, s=3)
+    ax[4,1].set_xlabel('p')
+    ax[4,1].set_ylabel('f')
+    ax[4,1].set_title("$p$ to $f$")
 
     plt.tight_layout()
     plt.savefig('plots/final_dist_profit.png')
@@ -562,12 +567,12 @@ if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    # plot_macro_vars(df_macro)
-    # plot_cons_vars(df_macro)
+    plot_macro_vars(df_macro)
+    plot_cons_vars(df_macro)
 
-    # plot_income_dist()
-    # plot_inequality(df_macro)
-    # plot_sales_dist()
+    plot_income_dist()
+    plot_inequality(df_macro)
+    plot_sales_dist()
 
     df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
     plot_energy(df_climate_energy, df_macro)

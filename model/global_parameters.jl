@@ -1,7 +1,7 @@
 @with_kw mutable struct GlobalParam
     # Determine technical innovation process
-    ν::Float64 = 0.04               # R&D inv propensity
-    νₑ::Float64 = 0.01              # R&D inv propensity energy producer
+    ν::Float64 = 0.04               # R&D inv propensity (note this a greek 'nu')
+    νₑ::Float64 = 0.01              # R&D inv propensity energy producer (note this a greek 'nu')
     ξ::Float64 = 0.5                # R&D allocation to IN
     ξₑ::Float64 = 0.4               # R&D allocation to green tech for energy producer
     ζ::Float64 = 0.3                # firm search capabilities
@@ -14,10 +14,11 @@
     
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
+    v::Float64 = 0.04               # 
     r::Float64 = 0.0                # Int64erest rate
     ι::Float64 = 0.2                # desired inventories
-    b::Int64 = 3                    # payback period
-    bₑ::Int64 = 10                  # payback period energy producer
+    b::Int64 = 9                    # payback period
+    bₑ::Int64 = 30                  # payback period energy producer
     η::Int64 = 60                   # physical scrapping age
     ηₑ::Int64 = 240                 # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
@@ -39,7 +40,7 @@
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.8               # memory parameter adaptive updating rules
+    ω::Float64 = 0.7                # memory parameter adaptive updating rules
     λ::Float64 = 0.5                # parameter for labor demand smoothing
 
     # Determine household consumption
@@ -56,9 +57,9 @@
     freq_per_machine::Int64 = 50    # capital units per machine
     freq_per_powerplant::Int64 = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.221             # price of fossil fuels
+    p_f::Float64 = 0.2              # price of fossil fuels
 
-    n_cons_market_days::Int64 = 4     # number of days in the consumer market process
+    n_cons_market_days::Int64 = 4   # number of days in the consumer market process
 
     t_warmup::Int64 = 300           # time period warmup of the model
     t_wait::Int64 = 4               # number of time periods producers are not allowed to go bankrupt

@@ -19,7 +19,7 @@
     UB_I::Float64 = 0.0                         # income from unemployment benefits
     socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
     s::Float64 = 0.0                            # savings rate
-    W::Float64 = 300                            # wealth or cash on hand
+    W::Float64 = 200                            # wealth or cash on hand
 
     # Consumption variables
     C::Float64 = 0.0                           # budget

@@ -41,7 +41,7 @@
     HC::Vector{Int} = []                  # hist clients
     Π::Vector{Float64} = zeros(Float64, 3)# hist profits
     Πᵀ::Vector{Float64} = zeros(Float64, 3)# hist profits after tax
-    debt_installments::Vector{Float64} = zeros(Float64, 4)   # installments of debt repayments
+    debt_installments::Vector{Float64}    # installments of debt repayments
     f::Vector{Float64}                    # market share
     brochure = []                         # brochure
     orders::Dict = Dict{Int64, Int64}()   # orders
@@ -59,7 +59,8 @@ Initializes kp agent, default is the heterogeneous state, otherwise properties a
 function initialize_kp(
     id::Int, 
     kp_i::Int,
-    n_captlgood::Int;
+    n_captlgood::Int,
+    b::Int64;
     NW=1000,
     A_LP=1.0,
     A_EE=1.0,
@@ -80,7 +81,8 @@ function initialize_kp(
         A_EF = A_EF,                        
         B_LP = B_LP,
         B_EE = B_EE,
-        B_EF = B_EF,                       
+        B_EF = B_EF,
+        debt_installments = zeros(Float64, b+1),                       
         μ = fill(μ, 3),
         w̄ = fill(w̄, 3), 
         wᴼ = w̄,
@@ -629,7 +631,8 @@ function replace_bankrupt_kp!(
         new_kp = initialize_kp(
             kp_id, 
             kp_i, 
-            length(all_kp);
+            length(all_kp),
+            globalparam.b;
             NW = NW_stock,
             A_LP = new_A_LP,
             A_EE = new_A_EE,

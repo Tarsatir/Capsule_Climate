@@ -51,8 +51,7 @@ function reset_matrices_cp!(
             j = cp_id - length(all_hh)
 
             cm_dat.all_N[j] = all_N_goods[j] * all_p[j]
-            cm_dat.weights[i,j] = 1 / all_p[j]^2
-
+            cm_dat.weights[i,j] = all_p[j] ^ -1
         end
     end
 
@@ -78,6 +77,7 @@ struct RunOutput
     GINI_I::Vector{Float64}
     GINI_W::Vector{Float64}
     FGT::Vector{Float64}
+    bankrupty_cp::Vector{Float64}
     avg_π_LP::Vector{Float64}
     avg_π_EE::Vector{Float64}
     avg_π_EF::Vector{Float64}

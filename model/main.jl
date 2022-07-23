@@ -125,7 +125,8 @@ function initialize_model(
                 machines,  
                 initparam.n_init_emp_cp, 
                 globalparam.μ1,
-                globalparam.ι;
+                globalparam.ι,
+                globalparam.b;
                 n_consrgood=initparam.n_cp
             )
         update_n_machines_cp!(cp, globalparam.freq_per_machine)
@@ -140,7 +141,8 @@ function initialize_model(
         kp = initialize_kp(
                 id, 
                 kp_i, 
-                initparam.n_kp; 
+                initparam.n_kp,
+                globalparam.b; 
                 A_LP=initparam.A_LP_0,
                 A_EE=initparam.A_EE_0,
                 A_EF=initparam.A_EF_0, 
@@ -413,6 +415,14 @@ function model_step!(
     # Update market shares of cp and kp
     update_marketshare_p!(all_cp, model)
     update_marketshare_p!(all_kp, model)
+
+    # li = []
+    # for cp_id in all_cp
+    #     cp = model[cp_id]
+    #     push!(li, cp.f[end] * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
+    # end
+    # println("sum ", sum(li))
+    # println("mean", mean(li))
     
     # Select producers that will be declared bankrupt and removed
     @timeit to "check br" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
@@ -564,6 +574,7 @@ function run_simulation(;
         macroeconomy.GINI_I,
         macroeconomy.GINI_W,
         macroeconomy.FGT,
+        macroeconomy.bankrupt_cp,
         macroeconomy.avg_π_LP,
         macroeconomy.avg_π_EE,
         macroeconomy.avg_π_EF,
@@ -573,4 +584,4 @@ function run_simulation(;
     return runoutput
 end
 
-@time run_simulation(savedata=true)
+# @time run_simulation(savedata=true)

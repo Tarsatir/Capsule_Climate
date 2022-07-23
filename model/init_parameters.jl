@@ -28,5 +28,5 @@
     μₑ::Float64 = 0.01                    # Markup rate energy producer
     Aᵀ_0::Float64 = 1.0                   # initial thermal efficiency
     emᵀ_0::Float64 = 1.0                  # initial emission level
-    IC_g_0::Float64 = 1.2                 # initial fixed costs of green plant investments
+    IC_g_0::Float64 = 12                  # initial fixed costs of green plant investments
 end

@@ -33,7 +33,7 @@ Defines struct for consumer good producer
     mach_tb_repl::Vector{Machine} = []        # list of to-be replaced machines
     mach_tb_retired::Vector{Machine} = []     # list of to-be retired machines (without replacement)
     chosen_kp_id::Int = 0                     # id of chosen kp
-    debt_installments::Vector{Float64} = zeros(4) # installments of debt repayments
+    debt_installments::Vector{Float64}        # installments of debt repayments
 
     Ξ::Vector{Machine}                        # machines
     n_machines::Float64 = 0                   # total freq of machines # TODO rename
@@ -69,7 +69,8 @@ function initialize_cp(
     machines::Vector{Machine},  
     n_init_emp_cp::Int,
     μ::Float64,
-    ι::Float64;
+    ι::Float64,
+    b::Int64;
     D=1600.0::Float64,
     w=1.0::Float64,
     L=n_init_emp_cp * 100::Int,
@@ -87,7 +88,8 @@ function initialize_cp(
         Nᵈ = ι * D,                
         N_goods = N_goods,          
         Q = fill(D * (1 + ι), 3),   
-        Qᵉ = D * (1 + ι),          
+        Qᵉ = D * (1 + ι),
+        debt_installments = zeros(Float64, b+1),          
         Ξ = machines,                 
         L = L,
         w̄ = fill(w, 3),
@@ -138,7 +140,7 @@ function plan_production_cp!(
     update_w̄_p!(cp, model)
 
     # Update markup μ
-    update_μ_cp!(cp)
+    update_μ_cp!(cp, globalparam.v, globalparam.μ1, t)
 
     # Update cost of production c
     compute_c_cp!(cp, ep.pₑ[t], government.τᴱ, government.τᶜ)
@@ -182,7 +184,7 @@ function plan_investment_cp!(
     plan_expansion_cp!(cp, globalparam, brochure)
 
     # Determine total investments
-    cp.Iᵈ = (cp.EIᵈ + cp.RSᵈ) / globalparam.update_period
+    cp.Iᵈ = cp.EIᵈ + cp.RSᵈ
 
     # See if enough funds available for investments and production, otherwise
     # change investments and production to match funding availability.
@@ -205,7 +207,7 @@ function check_funding_restrictions_cp!(
     )
 
     # Determine expected TCL and TCE
-    TCLᵉ = cp.ΔLᵈ > 0 ? cp.w̄[end] * cp.L + cp.ΔLᵈ * cp.wᴼ : (cp.L + cp.ΔLᵈ) * cp.w̄[end]
+    TCLᵉ = (cp.L + cp.ΔLᵈ) * cp.w̄[end]
     TCE = (1 + government.τᴱ) * pₑ * cp.Qˢ / cp.π_EE + government.τᶜ * cp.Qˢ * cp.π_EF
 
     # Determine how much additional debt can be made
@@ -589,8 +591,9 @@ function replace_bankrupt_cp!(
                     t + 1,
                     Vector{Machine}(),
                     0,
-                    macro_struct.μ_cp[t],     
-                    globalparam.ι;
+                    globalparam.μ1,     
+                    globalparam.ι,
+                    globalparam.b;
                     D=D,
                     w=macro_struct.w̄_avg[t],
                     L=0,
@@ -641,7 +644,7 @@ function update_Dᵉ_cp!(
     ω::Float64
     )
 
-    cp.Dᵉ = cp.age > 1 ? ω * cp.Dᵉ + (1 - ω) * (cp.D[end]) : cp.Dᵉ
+    cp.Dᵉ = cp.age > 1 ? ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end]) : cp.Dᵉ
 end
 
 
@@ -705,13 +708,36 @@ Computes the markup rate μ based on the market share f.
 """
 function update_μ_cp!(
     cp::ConsumerGoodProducer,
+    v::Float64,
+    μ1::Float64,
+    t::Int64;
+    t_warmup::Int64=300
     )
 
-    if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
-        new_μ = cp.μ[end] * min((1 + 0.04 * (cp.f[end] - cp.f[end-1]) / cp.f[end-1]), 1.04)
-    else
-        new_μ = cp.μ[end] * 0.95
+    # if t > t_warmup
+    #     # if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
+    #     #     new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
+    #     # else
+    #     #     new_μ = cp.μ[end] * 0.95
+    #     # end
+    #     new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
+    #     shift_and_append!(cp.μ, new_μ)
+    # end
+
+    new_μ = cp.μ[end]
+    shock = 0.1 * rand()
+
+    if cp.age > 2 && t > t_warmup
+        dp = cp.μ[end] - cp.μ[end - 1]
+        dΠ = cp.Π[end] - cp.Π[end - 1]
+        new_μ *= (1 + shock * sign(dp) * sign(dΠ))
+    # elseif (cp.age == 2 && t > t_warmup) || t == t_warmup - 1
+    #     new_μ *= (1 + shock * sample([-1., 1.]))
+    # end
+    elseif t > t_warmup - 2
+        new_μ *= (1 + shock * sample([-1., 1.]))
     end
+
     shift_and_append!(cp.μ, new_μ)
 end
 
