@@ -345,7 +345,8 @@ function plan_replacement_cp!(
     end
 
     # Sort machines by cost of production
-    sort!(cp.Ξ , by = machine -> cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
+    # sort!(cp.Ξ , by = machine -> cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
+    sort!(cp.Ξ , by = machine -> cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF); rev=true)
 
     # Loop over machine stock, select which machines to replace
     for machine in cp.Ξ
@@ -727,14 +728,14 @@ function update_μ_cp!(
     new_μ = cp.μ[end]
     shock = 0.1 * rand()
 
-    if cp.age > 2 && t > t_warmup
+    if cp.age > 2 && t > t_warmup - 100
         dp = cp.μ[end] - cp.μ[end - 1]
         dΠ = cp.Π[end] - cp.Π[end - 1]
         new_μ *= (1 + shock * sign(dp) * sign(dΠ))
     # elseif (cp.age == 2 && t > t_warmup) || t == t_warmup - 1
     #     new_μ *= (1 + shock * sample([-1., 1.]))
     # end
-    elseif t > t_warmup - 2
+    elseif t > t_warmup - 102
         new_μ *= (1 + shock * sample([-1., 1.]))
     end
 

@@ -119,9 +119,10 @@ function generate_simdata(
         # Run the model with changed parameters
         runoutput = run_simulation(
             changed_params=changedparams,
-            full_output=false;
+            full_output=true;
             threadnr=parl_nr
         )
+        println("above sim is $sim_nr")
 
         if res == nothing
             res = convertrunoutput(runoutput, sim_nr; return_as_df=true, t_warmup=t_warmup)

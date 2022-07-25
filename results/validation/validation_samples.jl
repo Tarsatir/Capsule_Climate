@@ -24,14 +24,17 @@ function runMCreplication(
     # Save output data
     df = DataFrame(
         :GDP => runoutput.GDP[t_warmup:end],
+        :GDP_growth => runoutput.GDP_growth[t_warmup:end],
         :C => runoutput.C[t_warmup:end],
         :I => runoutput.I[t_warmup:end],
         :prices => runoutput.prices[t_warmup:end],
+        :markups => runoutput.markups[t_warmup:end],
         :TotDebt => runoutput.TotDebt[t_warmup:end],
         :EnDem => runoutput.EnDem[t_warmup:end],
         :U => runoutput.U[t_warmup:end],
         :Em => runoutput.emissions_total[t_warmup:end],
-        :EmIndex => runoutput.emissions_index[t_warmup:end]
+        :EmIndex => runoutput.emissions_index[t_warmup:end],
+        :RD => runoutput.RD[t_warmup:end]
     )
 
     filepath = "results/validation/validation_samples/valoutput_$repl_i.csv"
@@ -73,7 +76,7 @@ function main()
 
     n_per_proc = ceil(Int64, n_repl / n_proc)
     start = (proc_i - 1) * n_per_proc + 1
-    finish = (proc_i) * n_per_proc + 1
+    finish = (proc_i) * n_per_proc
 
     for repl_i in start:finish
         runMCreplication(repl_i)

@@ -50,4 +50,6 @@ parameters/calibration/mse_trial.csv
 parameters/calibration/postdists.csv
 parameters/calibration/calibrationdata
 
+results/validation/validation_samples
+
 testbash.sh

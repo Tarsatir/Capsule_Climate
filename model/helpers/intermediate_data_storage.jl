@@ -72,7 +72,9 @@ struct RunOutput
     C::Vector{Float64}
     I::Vector{Float64}
     prices::Vector{Float64}
+    markups::Vector{Float64}
     TotDebt::Vector{Float64}
+    RD::Vector{Float64}
     EnDem::Vector{Float64}
     GINI_I::Vector{Float64}
     GINI_W::Vector{Float64}

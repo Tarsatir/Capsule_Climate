@@ -85,6 +85,7 @@
     ΔL̄_kp_std::Vector{Float64} = zeros(Float64, T)          # std desired labor change for kp
 
     # Investment levels
+    RD_total::Vector{Float64} = zeros(Float64, T)           # total R&D investments
     EI_avg::Vector{Float64}  = zeros(Float64, T)            # average expansion investment
     n_mach_EI_avg::Vector{Float64} = zeros(Float64, T)      # average amount of ordered machines for EI
     RS_avg::Vector{Float64} = zeros(Float64, T)             # average replacement investment
@@ -146,14 +147,14 @@ function update_macro_timeseries(
     to
     )
 
+    # Update CPI
+    compute_price_data!(all_cp, all_kp, t, macroeconomy, model)
+
     # Update total GDP, per sector and GDP growth
     compute_GDP!(all_hh, all_cp, all_kp, macroeconomy, t, model)
 
     # Update spending of different sectors
     compute_spending!(all_hh, all_cp, all_kp, all_p, macroeconomy, t, model)
-
-    # Update CPI
-    compute_price_data!(all_cp, all_kp, t, macroeconomy, model)
 
     # Update average labor demand
     macroeconomy.ΔL̄_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
@@ -187,6 +188,7 @@ function update_macro_timeseries(
     update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, globalparam.Λ, macroeconomy, t, model)
 
     # Investment
+    macroeconomy.RD_total[t] = sum(kp_id -> model[kp_id].RD, all_kp) + ep.RDₑ[t]
     macroeconomy.EI_avg[t] = mean(cp_id -> model[cp_id].EIᵈ, all_cp)
     macroeconomy.n_mach_EI_avg[t] = mean(cp_id -> model[cp_id].n_mach_ordered_EI, all_cp)
     macroeconomy.RS_avg[t] = mean(cp_id -> model[cp_id].RSᵈ, all_cp)
@@ -259,9 +261,11 @@ function compute_GDP!(
     # total GDP
     macroeconomy.GDP[t] = total_I + total_Π_cp + total_Π_kp
 
-    # quarterly GDP growth
+    # quarterly real GDP growth
     if t > 3
-        macroeconomy.GDP_growth[t] = 100 * (macroeconomy.GDP[t] - macroeconomy.GDP[t-3]) / macroeconomy.GDP[t-3]
+        real_GDP_t = macroeconomy.GDP[t] / macroeconomy.CPI[t]
+        real_GDP_t3 = macroeconomy.GDP[t-3] / macroeconomy.CPI[t-3]
+        macroeconomy.GDP_growth[t] = 100 * (real_GDP_t - real_GDP_t3) / real_GDP_t3
     end
 end
 

@@ -57,7 +57,7 @@
     freq_per_machine::Int64 = 50    # capital units per machine
     freq_per_powerplant::Int64 = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.2              # price of fossil fuels
+    p_f::Float64 = 0.25              # price of fossil fuels
 
     n_cons_market_days::Int64 = 4   # number of days in the consumer market process
 
