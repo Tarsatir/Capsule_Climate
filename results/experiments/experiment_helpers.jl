@@ -2,7 +2,13 @@ function compute_growthrates(
     ts::Vector{Float64}
     )
 
-    return 100 .* (ts[1:end-1] .- ts[2:end]) ./ ts[2:end]
+    # Compute growth rates
+    growthrates = 100 .* (ts[1:end-1] .- ts[2:end]) ./ ts[2:end]
+
+    # Make sure no Infs or NaNs in ts before returning
+    filter!(!isnan && !isinf, growthrates)
+
+    return growthrates
 end
 
 
@@ -138,6 +144,8 @@ function savefulloutput(
         [sim_nr],
         runoutput.GDP_growth[t_warmup:end],
         runoutput.U[t_warmup:end],
+        runoutput.C[t_warmup:end],
+        runoutput.I[t_warmup:end],
         # runoutput.GINI_I[t_warmup:end],
         # runoutput.GINI_W[t_warmup:end],
         runoutput.emissions_index[t_warmup:end]
@@ -147,16 +155,17 @@ function savefulloutput(
 
         cols_GDP = map(i -> Symbol("GDP_$i"), t_warmup:t_warmup+360)
         cols_U = map(i -> Symbol("U_$i"), t_warmup:t_warmup+360)
+        cols_C = map(i -> Symbol("C_$i"), t_warmup:t_warmup+360)
+        cols_I = map(i -> Symbol("I_$i"), t_warmup:t_warmup+360)
         # cols_GINI_I = map(i -> Symbol("GINI_I_$i"), t_warmup:460)
         # cols_GINI_W = map(i -> Symbol("GINI_W_$i"), t_warmup:460)
         cols_em = map(i -> Symbol("em_$i"), t_warmup:t_warmup+360)
 
         # cols = vcat([Symbol("sim_nr")], cols_GDP, cols_U, cols_GINI_I, cols_GINI_W, cols_em)
 
-        cols = vcat([Symbol("sim_nr")], cols_GDP, cols_U, cols_em)
+        cols = vcat([Symbol("sim_nr")], cols_GDP, cols_U, cols_C, cols_I, cols_em)
 
         data = map(d -> [d], data)
-        # colsdata = Dict(cols .=> data)
         df = DataFrame(data, cols)
 
         return df

@@ -331,7 +331,7 @@ function plan_production_kp!(
     kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
 
     # Determine amount of labor to hire
-    update_Lᵈ!(kp, globalparam.ω)
+    update_Lᵈ!(kp, globalparam.λ)
 
     # Update maximum offered wage
     update_wᴼ_max_kp!(kp)
@@ -343,10 +343,10 @@ Update desired level of labor
 """
 function update_Lᵈ!(
     kp::CapitalGoodProducer, 
-    ω::Float64
+    λ::Float64
     )
 
-    kp.Lᵈ = ω * kp.L + (1 - ω) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end] - kp.L)
+    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end])
     kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end
 
