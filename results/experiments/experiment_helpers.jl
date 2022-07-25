@@ -6,7 +6,8 @@ function compute_growthrates(
     growthrates = 100 .* (ts[1:end-1] .- ts[2:end]) ./ ts[2:end]
 
     # Make sure no Infs or NaNs in ts before returning
-    filter!(!isnan && !isinf, growthrates)
+    filter!(!isnan, growthrates)
+    filter!(!isinf, growthrates)
 
     return growthrates
 end
