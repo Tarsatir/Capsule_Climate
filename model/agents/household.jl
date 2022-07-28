@@ -91,16 +91,24 @@ function compute_consumption_budget_hh!(
     )
 
     # W_max = 800.
-    W_min = 10.
-    if W_max < W_min
-        W_max = 11.
+    # W_min = 50.
+    if W_max - W_min < 1.
+        W_max = W_min + 1.
     end
+
+    # println(W_max," ", W_min)
 
     if hh.W > 0
         # Scale W between 0 and 100
-        W_scaled = 100 * (hh.W - W_min) / (W_max - W_min)
-        hh.C = (hh.W / W_scaled) * min(W_scaled^α_cp, W_scaled)
+        if hh.W == W_min
+            hh.C = hh.W
+        else
+            W_scaled = 100 * (hh.W - W_min) / (W_max - W_min)
+            hh.C = (hh.W / W_scaled) * min(W_scaled^α_cp, W_scaled)
+        end
         # hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
+
+        # println("   ", hh.W, "  ", hh.C)
 
         # Compute savings rate
         hh.s = hh.total_I > 0 ? ((hh.total_I + hh.capital_I + hh.socben_I) - hh.C) / (hh.total_I + hh.capital_I + hh.socben_I) : 0.0 

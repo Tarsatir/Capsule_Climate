@@ -1,6 +1,6 @@
 @Base.kwdef mutable struct Government <: AbstractAgent
     
-    w_min::Float64 = 0.7
+    w_min::Float64 = 0.5
     UB::Float64 = 100 * 0.7 * w_min        # unemployment benefits
 
     # Tax rates

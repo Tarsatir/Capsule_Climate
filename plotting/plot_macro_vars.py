@@ -2,6 +2,7 @@ from matplotlib.gridspec import GridSpec
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 
 def plot_macro_vars(df):
     """
@@ -83,11 +84,11 @@ def plot_macro_vars(df):
     real_I_UB = 100 * df.I_UB_avg / df.CPI
     real_I_socben = 100 * df.I_socben_avg / df.CPI
 
-    ax[2,1].plot(T, real_I_avg, color='purple', label='total')
-    ax[2,1].plot(T, real_I_labor, color='blue', label='labor')
-    ax[2,1].plot(T, real_I_capital, color='red', label='capital')
-    ax[2,1].plot(T, real_I_UB, color='green', label='UB')
-    ax[2,1].plot(T, real_I_socben, color='orange', label='socben')
+    # ax[2,1].plot(T, real_I_avg, color='purple', label='total')
+    ax[2,1].plot(T, real_I_labor / real_I_avg, color='blue', label='labor')
+    ax[2,1].plot(T, real_I_capital / real_I_avg, color='red', label='capital')
+    ax[2,1].plot(T, real_I_UB / real_I_avg, color='green', label='UB')
+    ax[2,1].plot(T, real_I_socben / real_I_avg, color='orange', label='socben')
     ax[2,1].hlines(0, max(T), 0, linestyle='dashed', color='black')
     ax[2,1].legend()
     ax[2,1].set_title('Real income of households')
@@ -307,44 +308,97 @@ def plot_income_dist():
 
     df = pd.read_csv('../results/result_data/final_income_dists.csv')
 
-    fig, ax = plt.subplots(4, 2, figsize=(8,10))
+    start_60 = round(20/100 * 2500)
+    end_60 = round(80/100 * 2500)
 
-    ax[0,0].hist(df.all_I, bins=100)
-    ax[0,0].set_title('Income ($I_{i,t}$)')
-    ax[0,0].set_xlim(0, max(df.all_I))
+    I_sorted = np.sort(df.all_I.to_numpy())
+    I_share = sum(I_sorted[start_60:end_60]) / sum(I_sorted)
+    print("I share:", I_share)
 
-    ax[0,1].hist(df.all_I, bins=300)
-    ax[0,1].set_title('Income ($I_{i,t}$), log-log')
-    ax[0,1].set_xscale('log')
-    ax[0,1].set_yscale('log')
+    W_sorted = np.sort(df.all_W.to_numpy())
+    W_share = sum(W_sorted[start_60:end_60]) / sum(W_sorted)
+    print("W share:", W_share)
 
-    ax[1,0].hist(df.all_w, bins=100)
-    ax[1,0].set_title('Wages ($w_{i,t}$)')
-    ax[1,0].set_xlim(0, max(df.all_w))
+    fig, [ax1, ax2] = plt.subplots(1,2, figsize=(10, 4))
 
-    ax[1,1].hist(df.all_w, bins=100)
-    ax[1,1].set_title('Wages ($w_{i,t}$), log-log')
-    ax[1,1].set_xscale('log')
-    ax[1,1].set_yscale('log')
+    ax1.hist(df.all_I, bins=50, density=True)
+    ax1.set_title('(a) Income ($I_{i,t}$)')
+    ax1.set_yscale('log')
+    ax1.axvline(I_sorted[start_60], c='red')
+    ax1.axvline(I_sorted[end_60], c='red')
+    ax1.set_ylim(0, 0.1)
+    ax1.set_ylabel('log density')
+    ax1.set_xlabel('income')
+    ax1.fill_between([I_sorted[start_60], I_sorted[end_60]], 0, 1, 
+                     color='red', alpha=0.3, label='middle $60\\%$')
+    ax1.legend()
 
-    ax[2,0].hist(df.all_W, bins=100)
-    ax[2,0].set_title('Wealth ($W_{i,t}$)')
-    ax[2,0].set_xlim(0, max(df.all_W))
+    ax2.hist(df.all_W, bins=50, density=True)
+    ax2.set_yscale('log')
+    ax2.set_title('(b) Wealth ($W_{i,t}$)')
+    ax2.set_xlim(0, max(df.all_W))
+    ax2.set_ylim(0, 0.1)
+    ax2.axvline(W_sorted[start_60], c='red')
+    ax2.axvline(W_sorted[end_60], c='red')
+    ax2.set_ylabel('log density')
+    ax2.set_xlabel('wealth')
+    ax2.fill_between([W_sorted[start_60], W_sorted[end_60]], 0, 1, 
+                     color='red', alpha=0.3, label='middle $60\\%$')
+    ax2.legend()
 
-    ax[2,1].hist(df.all_W, bins=100)
-    ax[2,1].set_title('Wealth ($W_{i,t}$), log-log')
-    ax[2,1].set_xscale('log')
-    ax[2,1].set_yscale('log')
 
-    ax[3,0].scatter(df.skills, df.all_I, s=0.3)
-    ax[3,0].set_title('Income to skills')
-    ax[3,0].set_xlabel('skill')
-    ax[3,0].set_ylabel('income')
+    # fig, ax = plt.subplots(4, 2, figsize=(8,10))
 
-    ax[3,1].scatter(df.skills, df.all_W, s=0.3)
-    ax[3,1].set_title('Wealth to skills')
-    ax[3,1].set_xlabel('skill')
-    ax[3,1].set_ylabel('wealth')
+    # ax[0,0].hist(df.all_I, bins=50)
+    # ax[0,0].set_title('Income ($I_{i,t}$)')
+    # ax[0,0].set_xlim(0, max(df.all_I))
+    # ax[0,0].axvline(I_sorted[start_60], c='red')
+    # ax[0,0].axvline(I_sorted[end_60], c='red')
+
+    # ax[0,1].hist(df.all_I, bins=50, density=True)
+    # ax[0,1].set_title('Income ($I_{i,t}$)')
+    # # ax[0,1].set_xscale('log')
+    # ax[0,1].set_yscale('log')
+    # ax[0,1].axvline(I_sorted[start_60], c='red')
+    # ax[0,1].axvline(I_sorted[end_60], c='red')
+
+    # ax[1,0].hist(df.all_w, bins=100)
+    # ax[1,0].set_title('Wages ($w_{i,t}$)')
+    # ax[1,0].set_xlim(0, max(df.all_w))
+
+    # ax[1,1].hist(df.all_w, bins=100)
+    # ax[1,1].set_title('Wages ($w_{i,t}$)')
+    # # ax[1,1].set_xscale('log')
+    # ax[1,1].set_yscale('log')
+
+    # ax[2,0].hist(df.all_W, bins=100)
+    # ax[2,0].set_title('Wealth ($W_{i,t}$)')
+    # ax[2,0].set_xlim(0, max(df.all_W))
+    # ax[2,0].axvline(W_sorted[start_60], c='red')
+    # ax[2,0].axvline(W_sorted[end_60], c='red')
+
+    # ax[2,1].hist(df.all_W, bins=100)
+    # ax[2,1].set_title('Wealth ($W_{i,t}$), log-log')
+    # # ax[2,1].set_xscale('log')
+    # ax[2,1].set_yscale('log')
+    # ax[2,1].axvline(W_sorted[start_60], c='red')
+    # ax[2,1].axvline(W_sorted[end_60], c='red')
+
+    # ax[3,0].scatter(df.skills, df.all_I, s=0.3)
+    # ax[3,0].set_title('Income to skills')
+    # ax[3,0].set_xlabel('skill')
+    # ax[3,0].set_ylabel('income')
+    # ax[3,0].set_ylim(0, max(df.all_W))
+
+    # ax[3,1].scatter(df.skills, df.all_W, s=0.3)
+    # ax[3,1].set_title('Wealth to skills')
+    # ax[3,1].set_xlabel('skill')
+    # ax[3,1].set_ylabel('wealth')
+    # ax[3,1].set_ylim(0, max(df.all_W))
+
+    # print('I skew:', stats.skew(df.all_I))
+    # print('W skew:', stats.skew(df.all_W))
+
 
     plt.tight_layout()
     plt.savefig('plots/final_income_dist.png')
@@ -360,10 +414,10 @@ def plot_sales_dist():
 
     fig, ax = plt.subplots(5, 2, figsize=(8,12))
 
-    ax[0,0].hist(df_cp.all_S_cp, bins=60)
+    ax[0,0].hist(df_cp.all_S_cp, bins=30)
     ax[0,0].set_title('$S$ of cp')
     
-    ax[1,0].hist(df_cp.all_profit_cp, bins=60)
+    ax[1,0].hist(df_cp.all_profit_cp, bins=30)
     ax[1,0].set_title('$\Pi$ of cp')
 
     ax[2,0].hist(df_cp.all_f_cp, bins=60)
@@ -562,19 +616,38 @@ def plot_emissions(df_climate_energy, df_macro, warmup=300):
     plt.tight_layout()
     plt.savefig('plots/emissions.png')
 
+
+def plot_LIS(df_macro):
+
+    x = np.arange(300, 661, 60)
+    years = np.arange(2020, 2051, 5)
+
+    plt.figure(figsize=(6,4))
+    plt.plot(df_macro.LIS.iloc[300:])
+    plt.xticks(x, years)
+    plt.show()
+
     
 if __name__=="__main__":
 
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
-    plot_macro_vars(df_macro)
-    plot_cons_vars(df_macro)
+    # plt.plot(100 * df_macro.W_min / df_macro.CPI)
+    # plt.plot(100 * df_macro.W_20 / df_macro.CPI)
+    # plt.plot(100 * df_macro.W_80 / df_macro.CPI)
+    # plt.plot(100 * df_macro.W_max / df_macro.CPI)
+    # plt.show()
 
-    plot_income_dist()
-    plot_inequality(df_macro)
-    plot_sales_dist()
+    # plot_macro_vars(df_macro)
+    # plot_cons_vars(df_macro)
 
-    df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
-    plot_energy(df_climate_energy, df_macro)
+    # plot_income_dist()
+    # plot_inequality(df_macro)
+    # plot_sales_dist()
+
+    # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
+    # plot_energy(df_climate_energy, df_macro)
     # plot_climate(df_climate_energy, df_macro)
-    plot_emissions(df_climate_energy, df_macro)
+    # plot_emissions(df_climate_energy, df_macro)
+
+    # plot_LIS(df_macro)

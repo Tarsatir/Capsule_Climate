@@ -9,11 +9,11 @@
     ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
-    κ_upper::Float64 = 0.005        # 2nd beta dist support
+    κ_upper::Float64 = 0.005    # 2nd beta dist support
     κ_lower::Float64 = -κ_upper     # 1st beta dist support
     
     γ::Float64 = 0.5                # new custommer sample parameter
-    μ1::Float64 = 0.2               # kp markup rule
+    μ1::Float64 = 0.2   # kp markup rule
     v::Float64 = 0.04               # 
     r::Float64 = 0.0                # Int64erest rate
     ι::Float64 = 0.2                # desired inventories
@@ -36,28 +36,28 @@
 
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
-    ϵ::Float64 = 0.02               # minimum desired wage increase rate
+    ϵ::Float64 = 0.02   # minimum desired wage increase rate
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.7                # memory parameter adaptive updating rules
-    λ::Float64 = 0.5                # parameter for labor demand smoothing
+    ω::Float64 = 0.8   # memory parameter adaptive updating rules
+    λ::Float64 = 0.4    # parameter for labor demand smoothing
 
     # Determine household consumption
-    α_cp::Float64 = 0.8            # parameter controlling MPC of consumers
+    α_cp::Float64 = 0.7    # parameter controlling MPC of consumers
 
     # Deterime extend of proggesivity of government spending
-    prog::Float64 = 0.
+    prog::Float64 = -0.5
 
     # Determine household switching
-    ψ_E::Float64 = 0.15             # chance of employed worker looking for a better paying job
-    ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained
-    ψ_P::Float64 = 0.05             # chance of household switching to cp with better price
+    ψ_E::Float64 = 0.25    # chance of employed worker looking for a better paying job
+    ψ_Q::Float64 = 0.15    # chance of household switching away from cp when demand constrained
+    ψ_P::Float64 = 0.25     # chance of household switching to cp with better price
 
     freq_per_machine::Int64 = 50    # capital units per machine
     freq_per_powerplant::Int64 = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.25              # price of fossil fuels
+    p_f::Float64 = 0.2    # price of fossil fuels
 
     n_cons_market_days::Int64 = 4   # number of days in the consumer market process
 

@@ -27,11 +27,13 @@ function runMCreplication(
         :GDP_growth => runoutput.GDP_growth[t_warmup:end],
         :C => runoutput.C[t_warmup:end],
         :I => runoutput.I[t_warmup:end],
+        :wages => runoutput.wages[t_warmup:end],
         :prices => runoutput.prices[t_warmup:end],
         :markups => runoutput.markups[t_warmup:end],
         :TotDebt => runoutput.TotDebt[t_warmup:end],
         :EnDem => runoutput.EnDem[t_warmup:end],
         :U => runoutput.U[t_warmup:end],
+        :LIS => runoutput.LIS[t_warmup:end],
         :Em => runoutput.emissions_total[t_warmup:end],
         :EmIndex => runoutput.emissions_index[t_warmup:end],
         :RD => runoutput.RD[t_warmup:end]
@@ -59,7 +61,7 @@ function parse_commandline()
         "--n_repl"
             help="number of replications"
             arg_type=Int64
-            default=10
+            default=1
     end
 
     return parse_args(s)

@@ -14,6 +14,8 @@
     total_I::Vector{Float64} = zeros(Float64, T)            # total actual spending on investments
     total_w::Vector{Float64} = zeros(Float64, T)            # total actual spending on wages
 
+    LIS::Vector{Float64} = zeros(Float64, T)                # labor income share
+
     p̄::Vector{Float64} = zeros(Float64, T)                  # average price of cp goods over time
     p̄_kp::Vector{Float64} = zeros(Float64, T)               # average price of kp goods over time
     μ_cp::Vector{Float64} = zeros(Float64, T)               # average μ for cp
@@ -26,6 +28,7 @@
     unsat_invest::Vector{Float64} = zeros(Float64, T)       # ratio of unsatisfied investments
     unsat_L_demand::Vector{Float64} = zeros(Float64, T)     # ratio of unsatisfied labor demand
     unspend_C::Vector{Float64} = zeros(Float64, T)          # average ratio of unspend C
+    N_goods::Vector{Float64} = zeros(Float64, T)            # total amount of inventories
     avg_N_goods::Vector{Float64} = zeros(Float64, T)        # average number of goods in cp firm inventory
 
     # Division of money over sectors
@@ -122,7 +125,17 @@
 
     GINI_I::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for income
     GINI_W::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for wealth
-    FGT::Vector{Float64} = zeros(Float64, T)                # Foster-Greer-Thorbecke index
+    # FGT::Vector{Float64} = zeros(Float64, T)                # Foster-Greer-Thorbecke index
+
+    I_min::Vector{Float64} = zeros(Float64, T)              # Minimum income in the economy
+    I_20::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 20% of income
+    I_80::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 80% of income
+    I_max::Vector{Float64} = zeros(Float64, T)              # Maximum income in the economy
+
+    W_min::Vector{Float64} = zeros(Float64, T)              # Minimum wealth level in the economy
+    W_20::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 20% of wealth
+    W_80::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 80% of wealth
+    W_max::Vector{Float64} = zeros(Float64, T)              # Maximum wealth level in the economy
 end
 
 
@@ -155,6 +168,9 @@ function update_macro_timeseries(
 
     # Update spending of different sectors
     compute_spending!(all_hh, all_cp, all_kp, all_p, macroeconomy, t, model)
+
+    # Compute the labor share of income
+    macroeconomy.LIS[t] = macroeconomy.total_w[t] / macroeconomy.GDP[t]
 
     # Update average labor demand
     macroeconomy.ΔL̄_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
@@ -220,6 +236,7 @@ function update_macro_timeseries(
 
     compute_unsatisfied_demand(all_cp, all_kp, all_hh, macroeconomy, labormarket, t, model)
 
+    macroeconomy.N_goods[t] = sum(cp_id -> model[cp_id].N_goods, all_cp)
     macroeconomy.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
 
     # Mean rate of capital utilization
@@ -230,6 +247,8 @@ function update_macro_timeseries(
 
     # Compute GINI coefficients
     @timeit to "GINI" compute_GINI(all_hh, macroeconomy, t, model)
+
+    compute_I_W_thresholds(all_hh, macroeconomy, t, model)
 
 end
 
@@ -522,17 +541,51 @@ function compute_GINI(
     end
 
     macroeconomy.GINI_W[t] = sum(all_W_absdiff) / (2 * length(all_hh)^2 * macroeconomy.M_hh[t] / length(all_hh))
+end
 
-    # Compute Foster-Greer-Thorbecke index
-    z = 80
-    H = Float64[]
-    for hh_id in all_hh
-        if model[hh_id].total_I <= z
-            push!(H, ((z - model[hh_id].total_I) / z)^2)
-        end
-    end
 
-    macroeconomy.FGT[t] = sum(H) / length(all_hh)
+# function compute_FGT(
+#     all_hh::Vector{Int64},
+#     model::ABM;
+#     z::Float64=60.
+#     )
+
+#     # Compute Foster-Greer-Thorbecke index
+#     H = Float64[]
+#     for hh_id in all_hh
+#         if model[hh_id].total_I <= z
+#             push!(H, ((z - model[hh_id].total_I) / z)^2)
+#         end
+#     end
+
+#     macroeconomy.FGT[t] = sum(H) / length(all_hh)
+# end
+
+
+function compute_I_W_thresholds(
+    all_hh::Vector{Int64},
+    macroeconomy::MacroEconomy,
+    t::Int64,
+    model::ABM
+    )
+
+    # Establish boundaries of middle 60%
+    start_60 = round(Int64, 0.2 * length(all_hh))
+    end_60 = round(Int64, 0.8 * length(all_hh))
+
+    # Sort incomes and select income at 20th and 80th percent
+    I_sorted = sort(map(hh_id -> model[hh_id].total_I, all_hh))
+    macroeconomy.I_min[t] = I_sorted[begin]
+    macroeconomy.I_20[t] = I_sorted[start_60]
+    macroeconomy.I_80[t] = I_sorted[end_60]
+    macroeconomy.I_max[t] = I_sorted[end]
+
+    # Sort wealths and select wealth at 20th and 80th percent
+    W_sorted = sort(map(hh_id -> model[hh_id].W, all_hh))
+    macroeconomy.W_min[t] = W_sorted[begin]
+    macroeconomy.W_20[t] = W_sorted[start_60]
+    macroeconomy.W_80[t] = W_sorted[end_60]
+    macroeconomy.W_max[t] = W_sorted[end]
 end
 
 

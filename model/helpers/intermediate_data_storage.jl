@@ -67,18 +67,25 @@ end
 struct RunOutput
     GDP::Vector{Float64}
     GDP_growth::Vector{Float64}
+    LIS::Vector{Float64}
     U::Vector{Float64}
     dU::Vector{Float64}
     C::Vector{Float64}
     I::Vector{Float64}
+    wages::Vector{Float64}
     prices::Vector{Float64}
     markups::Vector{Float64}
     TotDebt::Vector{Float64}
     RD::Vector{Float64}
     EnDem::Vector{Float64}
+    inventories::Vector{Float64}
     GINI_I::Vector{Float64}
     GINI_W::Vector{Float64}
-    FGT::Vector{Float64}
+    # FGT::Vector{Float64}
+    I_20::Vector{Float64}
+    I_80::Vector{Float64}
+    W_20::Vector{Float64}
+    W_80::Vector{Float64}
     bankrupty_cp::Vector{Float64}
     avg_π_LP::Vector{Float64}
     avg_π_EE::Vector{Float64}

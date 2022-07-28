@@ -715,31 +715,32 @@ function update_μ_cp!(
     t_warmup::Int64=300
     )
 
-    # if t > t_warmup
-    #     # if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
-    #     #     new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
-    #     # else
-    #     #     new_μ = cp.μ[end] * 0.95
-    #     # end
-    #     new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
-    #     shift_and_append!(cp.μ, new_μ)
+    # if t > t_warmup 
+    if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
+        new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
+        # else
+            # new_μ = cp.μ[end] * 0.95
+        shift_and_append!(cp.μ, new_μ)
+    end
+        # new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
+    # shift_and_append!(cp.μ, new_μ)
     # end
 
-    new_μ = cp.μ[end]
-    shock = 0.1 * rand()
+    # new_μ = cp.μ[end]
+    # shock = 0.1 * rand()
 
-    if cp.age > 2 && t > t_warmup - 100
-        dp = cp.μ[end] - cp.μ[end - 1]
-        dΠ = cp.Π[end] - cp.Π[end - 1]
-        new_μ *= (1 + shock * sign(dp) * sign(dΠ))
-    # elseif (cp.age == 2 && t > t_warmup) || t == t_warmup - 1
+    # if cp.age > 2 && t > t_warmup - 100
+    #     dp = cp.μ[end] - cp.μ[end - 1]
+    #     dΠ = cp.Π[end] - cp.Π[end - 1]
+    #     new_μ *= (1 + shock * sign(dp) * sign(dΠ))
+    # # elseif (cp.age == 2 && t > t_warmup) || t == t_warmup - 1
+    # #     new_μ *= (1 + shock * sample([-1., 1.]))
+    # # end
+    # elseif t > t_warmup - 102
     #     new_μ *= (1 + shock * sample([-1., 1.]))
     # end
-    elseif t > t_warmup - 102
-        new_μ *= (1 + shock * sample([-1., 1.]))
-    end
 
-    shift_and_append!(cp.μ, new_μ)
+    # shift_and_append!(cp.μ, new_μ)
 end
 
 

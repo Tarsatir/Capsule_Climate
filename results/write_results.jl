@@ -25,7 +25,7 @@ function save_macro_data(macroeconomy)
         total_I = macroeconomy.total_I,
         total_w = macroeconomy.total_w,
 
-        # C = macroeconomy.C,
+        LIS = macroeconomy.LIS,
 
         unsat_demand = macroeconomy.unsat_demand,
         unspend_C = macroeconomy.unspend_C,
@@ -113,7 +113,17 @@ function save_macro_data(macroeconomy)
 
         gini_I = macroeconomy.GINI_I,
         gini_W = macroeconomy.GINI_W,
-        FGT = macroeconomy.FGT
+        # FGT = macroeconomy.FGT
+
+        I_min = macroeconomy.I_min,
+        I_20 = macroeconomy.I_20,
+        I_80 = macroeconomy.I_80,
+        I_max = macroeconomy.I_max,
+
+        W_min = macroeconomy.W_min,
+        W_20 = macroeconomy.W_20,
+        W_80 = macroeconomy.W_80,
+        W_max = macroeconomy.W_max
     )
     CSV.write("results/result_data/first.csv", df)
 end

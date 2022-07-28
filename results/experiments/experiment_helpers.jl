@@ -35,11 +35,12 @@ function convertrunoutput(
     U_1st = mean(runoutput.U[t_warmup:end])
     U_2nd = var(runoutput.U[t_warmup:end])
 
-    dU_1st = mean(runoutput.dU[t_warmup:end])
-    dU_2nd = var(runoutput.dU[t_warmup:end])
-    dU_3rd = skewness(runoutput.dU[t_warmup:end])
-    dU_4th = kurtosis(runoutput.dU[t_warmup:end])
-    corr_GDP_dU = cor(runoutput.GDP_growth[t_warmup:end], runoutput.dU[t_warmup:end])
+    dU = compute_growthrates(runoutput.U[t_warmup:end])
+    dU_1st = mean(dU[t_warmup:end])
+    dU_2nd = var(dU[t_warmup:end])
+    dU_3rd = skewness(dU[t_warmup:end])
+    dU_4th = kurtosis(dU[t_warmup:end])
+    # corr_GDP_dU = cor(runoutput.GDP_growth[t_warmup:end], runoutput.dU[t_warmup:end])
 
     dI = compute_growthrates(runoutput.I)
     dI_1st = mean(dI[t_warmup:end])
@@ -57,8 +58,8 @@ function convertrunoutput(
     GINI_W_2nd = var(runoutput.GINI_W[t_warmup:end])
 
     # Write poverty data to dataframe
-    FGT_1st = mean(runoutput.FGT[t_warmup:end])
-    FGT_2nd = var(runoutput.FGT[t_warmup:end])
+    # FGT_1st = mean(runoutput.FGT[t_warmup:end])
+    # FGT_2nd = var(runoutput.FGT[t_warmup:end])
 
     # Write average bankrupcy rate
     bankr_1st = mean(runoutput.bankrupty_cp[t_warmup:end])
@@ -96,7 +97,7 @@ function convertrunoutput(
                     :dU_2nd => dU_2nd,
                     :dU_3rd => dU_3rd,
                     :dU_4th => dU_4th,
-                    :corr_GDP_dU => corr_GDP_dU,
+                    # :corr_GDP_dU => corr_GDP_dU,
                     :dI_1st => dI_1st,
                     :dI_2nd => dI_2nd,
                     :dC_1st => dC_1st,
@@ -113,8 +114,8 @@ function convertrunoutput(
                     :EE_g_2nd => EE_g_2nd,
                     :EF_g_1st => EF_g_1st,
                     :EF_g_2nd => EF_g_2nd,
-                    :FGT_1st => FGT_1st,
-                    :FGT_2nd => FGT_2nd,
+                    # :FGT_1st => FGT_1st,
+                    # :FGT_2nd => FGT_2nd,
                     :em2030 => em2030,
                     :em2040 => em2040,
                     :em2050 => em2050
@@ -122,12 +123,14 @@ function convertrunoutput(
     else
         return [sim_nr,
                 GDP_1st, GDP_2nd, GDP_3rd, GDP_4th, acorr_GDP,
-                U_1st, U_2nd, dU_1st, dU_2nd, dU_3rd, dU_4th, corr_GDP_dU,
+                U_1st, U_2nd, dU_1st, dU_2nd, dU_3rd, dU_4th, 
+                # corr_GDP_dU,
                 dI_1st, dI_2nd, dC_1st, dC_2nd, 
                 GINI_I_1st, GINI_I_2nd, GINI_W_1st, GINI_W_2nd, 
                 bankr_1st, bankr_2nd,
                 LP_g_1st, LP_g_2nd, EE_g_1st, EE_g_2nd,
-                EF_g_1st, EF_g_2nd, FGT_1st, FGT_2nd,
+                EF_g_1st, EF_g_2nd, 
+                # FGT_1st, FGT_2nd,
                 em2030, em2040, em2050
                 ]
     end
