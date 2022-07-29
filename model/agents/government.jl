@@ -5,11 +5,11 @@
 
     # Tax rates
     τᴵ::Float64 = 0.3                      # income tax
-    τᴷ::Float64 = 0.05                     # capital gains tax
-    τˢ::Float64 = 0.0                      # sales tax
+    τᴷ::Float64 = 0.3                      # capital gains tax
+    τˢ::Float64 = 0.                       # sales tax
     τᴾ::Float64 = 0.3                      # profit tax
-    τᴱ::Float64 = 0.0                      # energy tax
-    τᶜ::Float64 = 0.0                      # emission tax
+    τᴱ::Float64 = 0.                       # energy tax
+    τᶜ::Float64 = 0.                       # emission tax
 
     # # Subsidies
     # σᴿ::Float64 = 0.0                      # R&D subsidies
@@ -17,6 +17,7 @@
 
     MS::Float64 = 0.0                      # money stock owned by government
     curracc::GovCurrentAccount             # current account of government spending
+    changedtaxrates::Union{Vector, Nothing} # vector of tax rates that will be changed once warmup period ends
 end
 
 
@@ -26,16 +27,25 @@ function initgovernment(
     )::Government
 
     # Initialize government structure
-    government = Government(curracc = GovCurrentAccount(T=T))
+    government = Government(curracc=GovCurrentAccount(T=T), changedtaxrates=changedtaxrates)
+
+    return government
+end
+
+
+"""
+Instates changed taxes at the end of the warmup period
+"""
+function instatetaxes!(
+    government::Government
+    )
 
     # If changed tax rates passed, change in government struct
-    if changedtaxrates ≠ nothing
-        for (taxtype, taxrate) in changedtaxrates
+    if government.changedtaxrates ≠ nothing
+        for (taxtype, taxrate) in government.changedtaxrates
             setproperty!(government, taxtype, taxrate)
         end
     end
-
-    return government
 end
 
 
@@ -77,7 +87,7 @@ function levy_profit_tax_gov!(
         # Only levy tax when profit is positive
         if p.Π[end] > 0
             total_τᴾ += p.Π[end] * government.τᴾ
-            shift_and_append!(p.Πᵀ, (1 - government.τᴾ))
+            shift_and_append!(p.Πᵀ, p.Π[end] * (1 - government.τᴾ))
         else
             shift_and_append!(p.Πᵀ, 0.0)
         end
@@ -183,9 +193,11 @@ function resolve_gov_balance!(
     government::Government,
     indexfund,
     globalparam::GlobalParam,
-    all_hh::Vector{Int},
+    all_hh::Vector{Int64},
     model::ABM
     )
+
+    # println("gov budget balance is $(government.MS)")
 
     if government.MS >= 0.0
 

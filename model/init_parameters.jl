@@ -25,7 +25,7 @@
     # Init params of ep
     n_powerplants_init::Int = 300_000     # number of unit of power plants in ep
     frac_green::Float64 = 0.1             # fraction of initial power plants that are green
-    μₑ::Float64 = 0.01                    # Markup rate energy producer
+    μₑ::Float64 = 0.01                     # Markup rate energy producer
     Aᵀ_0::Float64 = 1.0                   # initial thermal efficiency
     emᵀ_0::Float64 = 1.0                  # initial emission level
     IC_g_0::Float64 = 12                  # initial fixed costs of green plant investments

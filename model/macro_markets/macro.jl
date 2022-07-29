@@ -108,6 +108,9 @@
     avg_B_EF::Vector{Float64} = zeros(Float64, T)           # average B_EF at kp
 
     # Production
+    total_Q_cp::Vector{Float64} = zeros(Float64, T)         # total units produced by cp
+    total_Q_kp::Vector{Float64} = zeros(Float64, T)         # total units produced by kp
+
     avg_Q_cp::Vector{Float64} = zeros(Float64, T)           # average production of cp
     avg_Qˢ_cp::Vector{Float64} = zeros(Float64, T)          # average desired ST production of cp
     avg_Qᵉ_cp::Vector{Float64} = zeros(Float64, T)          # average desired LT production of cp
@@ -224,6 +227,9 @@ function update_macro_timeseries(
     macroeconomy.avg_B_EF[t] = mean(kp_id -> model[kp_id].B_EF[end], all_kp)
 
     # Production quantity
+    macroeconomy.total_Q_cp[t] = sum(cp_id -> model[cp_id].Q[end], all_cp)
+    macroeconomy.total_Q_kp[t] = sum(kp_id -> model[kp_id].Q[end], all_kp)
+
     macroeconomy.avg_Q_cp[t] = mean(cp_id -> model[cp_id].Q[end], all_cp)
     macroeconomy.avg_Qˢ_cp[t] = mean(cp_id -> model[cp_id].Qˢ, all_cp)
     macroeconomy.avg_Qᵉ_cp[t] = mean(cp_id -> model[cp_id].Qᵉ, all_cp)
@@ -270,11 +276,11 @@ function compute_GDP!(
     macroeconomy.GDP_I[t] = total_I
 
     # cp profits
-    total_Π_cp = sum(cp_id -> model[cp_id].Π[end], all_cp)
+    total_Π_cp = sum(cp_id -> model[cp_id].Πᵀ[end], all_cp)
     macroeconomy.GDP_Π_cp[t] = total_Π_cp
     
     # kp profits
-    total_Π_kp = sum(kp_id -> model[kp_id].Π[end], all_kp)
+    total_Π_kp = sum(kp_id -> model[kp_id].Πᵀ[end], all_kp)
     macroeconomy.GDP_Π_kp[t] = total_Π_kp
 
     # total GDP
@@ -282,8 +288,8 @@ function compute_GDP!(
 
     # quarterly real GDP growth
     if t > 3
-        real_GDP_t = macroeconomy.GDP[t] / macroeconomy.CPI[t]
-        real_GDP_t3 = macroeconomy.GDP[t-3] / macroeconomy.CPI[t-3]
+        real_GDP_t = macroeconomy.GDP[t] / macroeconomy.p̄[t]
+        real_GDP_t3 = macroeconomy.GDP[t-3] / macroeconomy.p̄[t-3]
         macroeconomy.GDP_growth[t] = 100 * (real_GDP_t - real_GDP_t3) / real_GDP_t3
     end
 end
@@ -458,11 +464,10 @@ function compute_price_data!(
     # Compute average price, weighted by market share
     avg_p_t = sum(cp_id -> model[cp_id].p[end] * model[cp_id].f[end], all_cp)
     macroeconomy.p̄[t] = avg_p_t
-
     if t == 1
         macroeconomy.CPI[t] = 100
     else
-        macroeconomy.CPI[t] = 100 / macroeconomy.p̄[1] * avg_p_t
+        macroeconomy.CPI[t] = 100 / macroeconomy.p̄[begin] * avg_p_t
     end
 
     # Compute average price of capital goods
@@ -471,7 +476,7 @@ function compute_price_data!(
     if t == 1
         macroeconomy.CPI_kp[t] = 100
     else
-        macroeconomy.CPI_kp[t] = 100 / macroeconomy.p̄_kp[1] * avg_p_kp_t
+        macroeconomy.CPI_kp[t] = 100 / macroeconomy.p̄_kp[begin] * avg_p_kp_t
     end
 
     # Update markup rates

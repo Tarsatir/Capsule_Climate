@@ -80,7 +80,7 @@ function initialize_model(
     government = initgovernment(T, changedtaxrates)
 
     # Initialize energy producer
-    ep = initialize_energy_producer(T, initparam, globalparam)
+    ep = initialize_energy_producer(T, initparam, government.τᶜ, globalparam)
 
     # Initialize climate struct
     climate = Climate(T=T)
@@ -211,6 +211,11 @@ function model_step!(
     cm_dat::CMData,
     model::ABM
     )
+
+    # If end of warmup period reached, instate changed taxes
+    if t == t_warmup
+        instatetaxes!(government)
+    end
 
     # Update schedulers
     @timeit to "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
@@ -599,4 +604,7 @@ function run_simulation(;
     return runoutput
 end
 
-# @time run_simulation(savedata=true)
+changedtaxrates = [(:τᶜ, 0.2)]
+changedtaxrates = nothing
+
+@time run_simulation(savedata=true, changedtaxrates=changedtaxrates)

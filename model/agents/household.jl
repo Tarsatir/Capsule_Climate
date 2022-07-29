@@ -157,7 +157,8 @@ function update_sat_req_wage_hh!(
     if hh.employed
         hh.wˢ = max(w_min, hh.w[end])
     else
-        hh.wˢ = max(w_min, hh.wˢ * (1 - ϵ))
+        # hh.wˢ = max(w_min, hh.wˢ * (1 - ϵ))
+        hh.wˢ = max(w_min, hh.w[end] * (1 - ϵ * hh.T_unemp))
     end
 
     if hh.employed
@@ -191,6 +192,7 @@ function receiveincome_hh!(
     elseif isUB
         hh.UB_I = amount
         hh.labor_I = 0.0
+        hh.T_unemp += 1
     elseif socben
         # Transfer income can come from unemployment or other social benefits
         hh.socben_I = amount
@@ -287,43 +289,70 @@ function decide_switching_all_hh!(
             filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
 
             # Add new cp if list not already too long
-            if (length(model[hh_id].cp) < n_cp_hh 
-                && length(model[hh_id].cp) < length(all_cp))
+            if (length(model[hh_id].cp) < n_cp_hh && length(model[hh_id].cp) < length(all_cp))
                 
+                # p_id_new = sample(setdiff(all_cp, model[hh_id].cp))
                 p_id_new = sample(all_cp)
+
+                count = 0
                 while p_id_new ∈ model[hh_id].cp
                     p_id_new = sample(all_cp)
+
+                    # Ugly way to avoid inf loop, will change later
+                    count += 1
+                    if count == 100
+                        break
+                    end
                 end
-                push!(model[hh_id].cp, p_id_new)
 
-                delete!(model[hh_id].unsat_dem, p_id_replaced)
-                model[hh_id].unsat_dem[p_id_new] = 0.0
+                if p_id_new ∉ model[hh_id].cp
+                    push!(model[hh_id].cp, p_id_new)
+                    delete!(model[hh_id].unsat_dem, p_id_replaced)
+                    model[hh_id].unsat_dem[p_id_new] = 0.0
+                end
             end
-
         end
 
         # Check if household will look for a better price
         if rand() < globalparam.ψ_P
 
-            # Randomly select a supplier that may be replaced
-            p_id_candidate1 = sample(model[hh_id].cp)
 
-            # Randomly pick another candidate from same type and see if price is lower
-            # Ugly sample to boost performance
-            p_id_candidate2 = sample(all_cp)
-            while (p_id_candidate2 ∈ model[hh_id].cp 
-                   && length(model[hh_id].cp) < length(all_cp))
+            if length(model[hh_id].cp) < length(all_cp)
+
+                # Randomly select a supplier that may be replaced
+                p_id_candidate1 = sample(model[hh_id].cp)
+
+                # Randomly pick another candidate from same type and see if price is lower
+                # Ugly sample to boost performance
+                # p_id_candidate2 = sample(setdiff(all_cp, model[hh_id].cp))
+
                 p_id_candidate2 = sample(all_cp)
-            end
-            
-            # Replace supplier if price of other supplier is lower 
-            if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end]
-                # model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
-                filter!(p_id -> p_id ≠ p_id_candidate1, model[hh_id].cp)
-                push!(model[hh_id].cp, p_id_candidate2)
 
-                delete!(model[hh_id].unsat_dem, p_id_candidate1)
-                model[hh_id].unsat_dem[p_id_candidate2] = 0.0
+                count = 0
+                while p_id_candidate2 ∈ model[hh_id].cp
+                    p_id_candidate2 = sample(all_cp)
+
+                    # Ugly way to avoid inf loop, will change later
+                    count += 1
+                    if count == 100
+                        break
+                    end
+                end
+                
+                # Replace supplier if price of other supplier is lower 
+                if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end] && p_id_candidate2 ∉ model[hh_id].cp
+                    # model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
+                    filter!(p_id -> p_id ≠ p_id_candidate1, model[hh_id].cp)
+                    push!(model[hh_id].cp, p_id_candidate2)
+
+                    delete!(model[hh_id].unsat_dem, p_id_candidate1)
+                    model[hh_id].unsat_dem[p_id_candidate2] = 0.0
+                end
+            else
+                # If all producers known, throw out producer with highest price
+                p_highest_price = maximum(cp_id -> model[cp_id].p[end], model[hh_id].cp)
+                filter!(p_id -> p_id ≠ p_highest_price, model[hh_id].cp)
+                delete!(model[hh_id].unsat_dem, p_highest_price)
             end
         end
     end

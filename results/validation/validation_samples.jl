@@ -36,7 +36,8 @@ function runMCreplication(
         :LIS => runoutput.LIS[t_warmup:end],
         :Em => runoutput.emissions_total[t_warmup:end],
         :EmIndex => runoutput.emissions_index[t_warmup:end],
-        :RD => runoutput.RD[t_warmup:end]
+        :RD => runoutput.RD[t_warmup:end],
+        :inventories => runoutput.inventories[t_warmup:end]
     )
 
     filepath = "results/validation/validation_samples/valoutput_$repl_i.csv"

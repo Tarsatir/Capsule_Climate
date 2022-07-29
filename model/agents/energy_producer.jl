@@ -42,6 +42,7 @@ end
 function initialize_energy_producer(
     T::Int64,
     initparam::InitParam,
+    τᶜ::Float64,
     globalparam::GlobalParam
     )::EnergyProducer
 
@@ -75,7 +76,7 @@ function initialize_energy_producer(
                     initparam.emᵀ_0,
                     globalparam
                    )
-        update_c_pp!(dirty_pp, globalparam.p_f)
+        update_c_pp!(dirty_pp, globalparam.p_f, τᶜ)
         push!(dirty_portfolio, dirty_pp)
     end
 
@@ -120,7 +121,7 @@ function produce_energy_ep!(
         update_age_pp!(pp)
 
         if pp ∈ ep.dirty_portfolio
-            update_c_pp!(pp, globalparam.p_f)
+            update_c_pp!(pp, globalparam.p_f, government.τᶜ)
         end
     end
 
@@ -420,9 +421,16 @@ function compute_pₑ_ep!(
     t::Int64
     )
 
-    c̄ = length(ep.dirty_portfolio) > 0 ? ep.dirty_portfolio[end].c : 0.0
+    # c̄ = length(ep.dirty_portfolio) > 0 ? ep.dirty_portfolio[end].c : 0.0
     # ep.pₑ[t] = t > 1 && ep.Dₑ[t-1] <= ep.green_capacity[t] ? ep.μₑ : c̄ + ep.μₑ
-    ep.pₑ[t] = t > 1 ? ep.μₑ + (1 - ep.green_frac_prod[t-1]) * c̄ : 0.1
+
+    if length(ep.dirty_portfolio) > 0
+        c̄ = maximum(pp -> pp.c, ep.dirty_portfolio)
+    else
+        c̄ = 0.
+    end
+
+    ep.pₑ[t] = t > 1 ? ep.μₑ + (1 - ep.green_frac_prod[t-1]) * c̄ : ep.μₑ
 end
 
 

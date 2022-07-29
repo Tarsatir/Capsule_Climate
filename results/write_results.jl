@@ -33,6 +33,7 @@ function save_macro_data(macroeconomy)
         unsat_L_demand = macroeconomy.unsat_L_demand,
         avg_N_goods = macroeconomy.avg_N_goods,
 
+        p_avg_cp=macroeconomy.p̄,
         CPI=macroeconomy.CPI,
         CPI_kp = macroeconomy.CPI_kp,
 
@@ -96,6 +97,9 @@ function save_macro_data(macroeconomy)
         avg_B_LP = macroeconomy.avg_B_LP,
         avg_B_EE = macroeconomy.avg_B_EE,
         avg_B_EF = macroeconomy.avg_B_EF,
+
+        total_Q_cp = macroeconomy.total_Q_cp,
+        total_Q_kp = macroeconomy.total_Q_kp,
 
         avg_Q_cp = macroeconomy.avg_Q_cp,
         avg_Qs_cp = macroeconomy.avg_Qˢ_cp,

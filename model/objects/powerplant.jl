@@ -39,10 +39,11 @@ Updates the marginal production cost of the power plant based on the type and
 """
 function update_c_pp!(
     pp::PowerPlant, 
-    p_f::Float64
+    p_f::Float64,
+    τᶜ::Float64
     )
 
-    pp.c = pp.type == "Dirty" ? p_f / pp.Aᵀ : 0.0
+    pp.c = pp.type == "Dirty" ? p_f / pp.Aᵀ + pp.em * τᶜ : 0.0
 end
 
 function update_age_pp!(
