@@ -595,6 +595,7 @@ function run_simulation(;
     @timeit to "save output" runoutput = RunOutput(
         macroeconomy.GDP,
         macroeconomy.GDP_growth,
+        macroeconomy.total_Q_growth,
         macroeconomy.total_Q_cp,
         macroeconomy.total_Q_kp,
         macroeconomy.LIS,

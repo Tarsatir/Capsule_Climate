@@ -110,6 +110,7 @@
     # Production
     total_Q_cp::Vector{Float64} = zeros(Float64, T)         # total units produced by cp
     total_Q_kp::Vector{Float64} = zeros(Float64, T)         # total units produced by kp
+    total_Q_growth::Vector{Float64} = zeros(Float64, T)     # growth in total units produced
 
     avg_Q_cp::Vector{Float64} = zeros(Float64, T)           # average production of cp
     avg_Qˢ_cp::Vector{Float64} = zeros(Float64, T)          # average desired ST production of cp
@@ -229,6 +230,11 @@ function update_macro_timeseries(
     # Production quantity
     macroeconomy.total_Q_cp[t] = sum(cp_id -> model[cp_id].Q[end], all_cp)
     macroeconomy.total_Q_kp[t] = sum(kp_id -> model[kp_id].Q[end], all_kp)
+    if t > 3
+        total_Q_t = macroeconomy.total_Q_cp[t] + macroeconomy.total_Q_kp[t]
+        total_Q_t3 = macroeconomy.total_Q_cp[t-3] + macroeconomy.total_Q_kp[t-3]
+        macroeconomy.total_Q_growth[t] = (total_Q_t - total_Q_t3) / total_Q_t3
+    end
 
     macroeconomy.avg_Q_cp[t] = mean(cp_id -> model[cp_id].Q[end], all_cp)
     macroeconomy.avg_Qˢ_cp[t] = mean(cp_id -> model[cp_id].Qˢ, all_cp)

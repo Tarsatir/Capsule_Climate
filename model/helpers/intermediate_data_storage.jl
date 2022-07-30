@@ -67,6 +67,7 @@ end
 struct RunOutput
     GDP::Vector{Float64}
     GDP_growth::Vector{Float64}
+    total_Q_growth::Vector{Float64}
     total_Q_cp::Vector{Float64}
     total_Q_kp::Vector{Float64}
     LIS::Vector{Float64}
