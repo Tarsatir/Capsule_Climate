@@ -38,11 +38,11 @@ function convertrunoutput(
     U_1st = mean(runoutput.U[t_warmup:end])
     U_2nd = var(runoutput.U[t_warmup:end])
 
-    dU = compute_growthrates(runoutput.U[t_warmup:end])
-    dU_1st = mean(dU[t_warmup:end])
-    dU_2nd = var(dU[t_warmup:end])
-    dU_3rd = skewness(dU[t_warmup:end])
-    dU_4th = kurtosis(dU[t_warmup:end])
+    # dU = compute_growthrates(runoutput.U[t_warmup:end])
+    # dU_1st = mean(dU[t_warmup:end])
+    # dU_2nd = var(dU[t_warmup:end])
+    # dU_3rd = skewness(dU[t_warmup:end])
+    # dU_4th = kurtosis(dU[t_warmup:end])
     # corr_GDP_dU = cor(runoutput.GDP_growth[t_warmup:end], runoutput.dU[t_warmup:end])
 
     LIS_1st = mean(runoutput.LIS[t_warmup:end])
@@ -100,10 +100,10 @@ function convertrunoutput(
                     :dQ_2nd => dQ_2nd,
                     :U_1st => U_1st,
                     :U_2nd => U_2nd,
-                    :dU_1st => dU_1st,
-                    :dU_2nd => dU_2nd,
-                    :dU_3rd => dU_3rd,
-                    :dU_4th => dU_4th,
+                    # :dU_1st => dU_1st,
+                    # :dU_2nd => dU_2nd,
+                    # :dU_3rd => dU_3rd,
+                    # :dU_4th => dU_4th,
                     :LIS_1st => LIS_1st,
                     # :corr_GDP_dU => corr_GDP_dU,
                     :dI_1st => dI_1st,
@@ -132,7 +132,8 @@ function convertrunoutput(
         return [sim_nr,
                 GDP_1st, GDP_2nd, GDP_3rd, GDP_4th, acorr_GDP,
                 dQ_1st, dQ_2nd,
-                U_1st, U_2nd, dU_1st, dU_2nd, dU_3rd, dU_4th,
+                U_1st, U_2nd, 
+                # dU_1st, dU_2nd, dU_3rd, dU_4th,
                 LIS_1st, 
                 # corr_GDP_dU,
                 dI_1st, dI_2nd, dC_1st, dC_2nd, 
