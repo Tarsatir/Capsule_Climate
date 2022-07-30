@@ -94,7 +94,8 @@ function generate_simdata(
     inputpath::String,
     outputpath::String,
     run_nr::Int64;
-    proc_nr::Union{Int64, Nothing}=nothing
+    proc_nr::Union{Int64, Nothing}=nothing,
+    sim_nr_only::Int64
     )
 
     params = collect(keys(X_labels))
@@ -109,12 +110,24 @@ function generate_simdata(
 
     for (i, row) in enumerate(CSV.Rows(inputfilepath))
 
+        # Set seed to the same value for each iteration
+        seed = 1234
+        Random.seed!(seed)
+
+        println("   seed: $seed")
+
         sim_nr = parse(Int64, row.sim_nr)
+
+        if sim_nr_only != 0 && sim_nr != sim_nr_only
+            continue
+        end
 
         # Fill in changed parameters
         for param in params
             changedparams[param] = parse(Float64, getproperty(row, Symbol(param)))
         end
+
+        # println("   $changedparams")
 
         # Run the model with changed parameters
         runoutput = run_simulation(
@@ -333,6 +346,10 @@ function parse_commandline(
             help="determines if PAWN indeces are run"
             arg_type=Bool
             default=false
+        "--sim_nr"
+            help="run a single simulation (for testing purposes), sim_nr must correspond with process_id"
+            arg_type=Int64
+            default=0
     end
 
     return parse_args(s)
@@ -375,6 +392,7 @@ function main(;
     geninput = parsed_args["geninput"]
     genoutput = parsed_args["genoutput"]
     runpawn = parsed_args["runpawn"]
+    sim_nr = parsed_args["sim_nr"]
 
     
     if n_processes == 0
@@ -421,7 +439,8 @@ function main(;
                 inputpath,
                 outputpath, 
                 run_nr;
-                proc_nr=process_id
+                proc_nr=process_id,
+                sim_nr_only=sim_nr
             )
         end
     end

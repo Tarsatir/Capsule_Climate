@@ -9,6 +9,7 @@ using DataStructures
 using Parameters
 using SparseArrays
 using PyCall
+using Dates
 
 
 # Include files
@@ -60,6 +61,8 @@ function initialize_model(
     changed_params::Union{Dict, Nothing},
     changedtaxrates::Union{Vector, Nothing}
     )
+
+    # println("   start init $(Dates.format(now(), "HH:MM"))")
 
     # Initialise model struct
     scheduler = Agents.Schedulers.by_type(true, true)
@@ -192,6 +195,8 @@ function initialize_model(
 
     cm_dat = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
 
+    # println("   end init $(Dates.format(now(), "HH:MM"))")
+
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat
 end
 
@@ -211,6 +216,8 @@ function model_step!(
     cm_dat::CMData,
     model::ABM
     )
+
+    # println("   $t 1 start $(Dates.format(now(), "HH:MM"))")
 
     # If end of warmup period reached, instate changed taxes
     if t == t_warmup
@@ -238,6 +245,8 @@ function model_step!(
     end
 
     # (1) kp and ep innovate, and kp send brochures
+
+    # println("   $t 2 start $(Dates.format(now(), "HH:MM"))")
 
     # Determine distance matrix between kp
     @timeit to "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
@@ -271,6 +280,8 @@ function model_step!(
     @timeit to "inn ep" innovate_ep!(ep, globalparam, t)
     # end
 
+    # println("   $t 3 start $(Dates.format(now(), "HH:MM"))")
+
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
     @timeit to "plan prod inv cp" for cp_id in all_cp
@@ -300,6 +311,8 @@ function model_step!(
     @timeit to "plan prod kp"  for kp_id in all_kp
         plan_production_kp!(model[kp_id], globalparam, model)
     end
+
+    # println("   $t 4 start $(Dates.format(now(), "HH:MM"))")
 
     # (3) labor market matching process
     @timeit to "labormarket" labormarket_process!(
@@ -333,6 +346,8 @@ function model_step!(
 
     # (5) Production takes place for cp and kp
 
+    # println("   $t 5 start $(Dates.format(now(), "HH:MM"))")
+
     # Update energy prices
     compute_pₑ_ep!(ep, t)
 
@@ -362,6 +377,8 @@ function model_step!(
 
     all_W = map(hh_id -> model[hh_id].W, all_hh)
 
+    # println("   $t 6 start $(Dates.format(now(), "HH:MM"))")
+
     # Households set consumption budget
     @timeit to "set budget" @inbounds for hh_id in all_hh
         set_consumption_budget_hh!(model[hh_id], all_W, globalparam, model)
@@ -390,6 +407,8 @@ function model_step!(
         to
     )
 
+    # println("   $t 7 start $(Dates.format(now(), "HH:MM"))")
+
     # (6) kp deliver goods to cp, kp make up profits
     @timeit to "send machines kp" for kp_id in all_kp
         send_ordered_machines_kp!(model[kp_id], ep, globalparam, t, model)
@@ -411,6 +430,8 @@ function model_step!(
                                 t, 
                                 model
                             )
+
+    # println("   $t 7 start $(Dates.format(now(), "HH:MM"))")
 
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(government, all_p, t, model)
@@ -456,6 +477,8 @@ function model_step!(
 
     # NOTE: climate process no longer tracked
     # carbon_equilibrium_tempchange_cl!(climate, t)
+
+    # println("   $t 8 start $(Dates.format(now(), "HH:MM"))")
 
     # Remove bankrupt companies.
     @timeit to "kill bankr p" kill_all_bankrupt_p!(
@@ -529,7 +552,7 @@ function run_simulation(;
     savedata::Bool=false
     )
 
-    println("thread $threadnr, sim $sim_nr has started...")
+    println("thread $threadnr, sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
 
     to = TimerOutput()
 
@@ -572,6 +595,8 @@ function run_simulation(;
     @timeit to "save output" runoutput = RunOutput(
         macroeconomy.GDP,
         macroeconomy.GDP_growth,
+        macroeconomy.total_Q_cp,
+        macroeconomy.total_Q_kp,
         macroeconomy.LIS,
         macroeconomy.U,
         macroeconomy.dU,
@@ -599,7 +624,7 @@ function run_simulation(;
         climate.emissions_index
     )
 
-    println("thread $threadnr, sim $sim_nr has finished...")
+    println("thread $threadnr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
 
     return runoutput
 end

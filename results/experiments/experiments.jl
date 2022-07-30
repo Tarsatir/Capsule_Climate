@@ -74,10 +74,10 @@ function OFAT_taxrates(
 
                 # Save results of run
                 if results == nothing
-                    results = convertrunoutput(runoutput, i; return_as_df=true)
+                    results = savefulloutput(runoutput, i; return_as_df=true)
                     results[!, "taxrate"] = [taxrate]
                 else
-                    push!(results, vcat(convertrunoutput(runoutput, i), [taxrate]))
+                    push!(results, vcat(savefulloutput(runoutput, i), [taxrate]))
                 end
             end
 
