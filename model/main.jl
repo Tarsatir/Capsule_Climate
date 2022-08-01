@@ -10,13 +10,14 @@ using Parameters
 using SparseArrays
 using PyCall
 using Dates
+using UnPack
 
 
 # Include files
 include("../results/write_results.jl")
 include("helpers/custom_schedulers.jl")
 include("helpers/dist_matrix.jl")
-include("helpers/intermediate_data_storage.jl")
+include("helpers/tmpdata_storage.jl")
 include("helpers/update.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
@@ -38,6 +39,8 @@ include("agents/energy_producer.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
+
+include("helpers/modeldata_storage.jl")
 
 
 """
@@ -193,11 +196,26 @@ function initialize_model(
     close_balance_all_p!(all_p, globalparam, government,
                          indexfund, 0, model)
 
-    cm_dat = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
+    cmdata = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
 
     # println("   end init $(Dates.format(now(), "HH:MM"))")
 
-    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat
+    simdata =  gensimdata(
+                    model,
+                    globalparam,
+                    initparam,
+                    macroeconomy,
+                    government,
+                    ep,
+                    labormarket,
+                    indexfund,
+                    climate,
+                    cmdata
+                )
+                
+    return simdata
+
+    # return model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cmdata
 end
 
 
@@ -205,17 +223,21 @@ function model_step!(
     t::Int64,
     t_warmup::Int64,
     to,
-    globalparam::GlobalParam, 
-    initparam::InitParam,
-    macroeconomy::MacroEconomy, 
-    government::Government,
-    ep::EnergyProducer, 
-    labormarket::LaborMarket,
-    indexfund::IndexFund,
-    climate::Climate,
-    cm_dat::CMData,
-    model::ABM
+    simdata
+    # globalparam::GlobalParam, 
+    # initparam::InitParam,
+    # macroeconomy::MacroEconomy, 
+    # government::Government,
+    # ep::EnergyProducer, 
+    # labormarket::LaborMarket,
+    # indexfund::IndexFund,
+    # climate::Climate,
+    # cmdata::CMData,
+    # model::ABM
     )
+
+    @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
+            indexfund, climate, ep, cmdata, firmdata = simdata
 
     # println("   $t 1 start $(Dates.format(now(), "HH:MM"))")
 
@@ -390,7 +412,7 @@ function model_step!(
         all_cp,
         government,
         globalparam,
-        cm_dat,
+        cmdata,
         t,
         model,
         to
@@ -441,14 +463,6 @@ function model_step!(
     # Update market shares of cp and kp
     update_marketshare_p!(all_cp, model)
     update_marketshare_p!(all_kp, model)
-
-    # li = []
-    # for cp_id in all_cp
-    #     cp = model[cp_id]
-    #     push!(li, cp.f[end] * (cp.f[end] - cp.f[end-1]) / cp.f[end-1])
-    # end
-    # println("sum ", sum(li))
-    # println("mean", mean(li))
     
     # Select producers that will be declared bankrupt and removed
     @timeit to "check br" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
@@ -530,6 +544,11 @@ function model_step!(
         t,
         model
     )
+
+    @pack! simdata = model, globalparam, initparam, macroeconomy, government, ep, 
+                     labormarket, indexfund, climate, ep, cmdata, firmdata
+
+    return simdata
 end
 
 
@@ -557,25 +576,39 @@ function run_simulation(;
 
     to = TimerOutput()
 
-    @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat = initialize_model(T; changed_params=changed_params, changedtaxrates=changedtaxrates)
+    # @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cmdata = initialize_model(T; changed_params=changed_params, changedtaxrates=changedtaxrates)
+    @timeit to "init" simdata = initialize_model(
+        T; 
+        changed_params=changed_params, 
+        changedtaxrates=changedtaxrates
+    )
     
     @time for t in 1:T
+        # @timeit to "step" model_step!(
+        #                         t,
+        #                         t_warmup,
+        #                         to, 
+        #                         globalparam, 
+        #                         initparam,
+        #                         macroeconomy, 
+        #                         government,
+        #                         ep,
+        #                         labormarket, 
+        #                         indexfund,
+        #                         climate,
+        #                         cmdata, 
+        #                         model
+        #                     )
         @timeit to "step" model_step!(
                                 t,
                                 t_warmup,
                                 to, 
-                                globalparam, 
-                                initparam,
-                                macroeconomy, 
-                                government,
-                                ep,
-                                labormarket, 
-                                indexfund,
-                                climate,
-                                cm_dat, 
-                                model
+                                simdata
                             )
     end
+
+    @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
+            indexfund, climate, ep, cmdata, firmdata = simdata
 
     if savedata
         @timeit to "save macro" save_macro_data(macroeconomy)
@@ -607,4 +640,4 @@ end
 changedtaxrates = [(:τᶜ, 0.2)]
 changedtaxrates = nothing
 
-# @time run_simulation(savedata=true, changedtaxrates=changedtaxrates)
+@time run_simulation(savedata=true, changedtaxrates=changedtaxrates)

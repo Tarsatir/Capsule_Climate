@@ -3,19 +3,19 @@ function consumermarket_process!(
     all_cp::Vector{Int}, 
     government::Government,
     globalparam::GlobalParam,
-    cm_dat::CMData,
+    cmdata::CMData,
     t::Int,
     model::ABM,
     to
     )
 
     # Reset cm data 
-    @timeit to "reset matrices" reset_matrices_cp!(cm_dat, all_hh, all_cp, model)
+    @timeit to "reset matrices" reset_matrices_cp!(cmdata, all_hh, all_cp, model)
 
     # Market clearing process
-    @timeit to "market clearing" cpmarket_matching_cp!(cm_dat)
+    @timeit to "market clearing" cpmarket_matching_cp!(cmdata)
 
-    @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cm_dat, government, model, t, to)
+    @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cmdata, government, model, t, to)
 
 end
 
@@ -23,7 +23,7 @@ end
 function process_transactions_cm!(
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
-    cm_dat::CMData,
+    cmdata::CMData,
     government::Government,
     model::ABM,
     t::Int64,
@@ -36,16 +36,16 @@ function process_transactions_cm!(
     # Process transactions for hh
     for (i, hh_id) in enumerate(minimum(all_hh):maximum(all_hh))
 
-        hh_D .= @view cm_dat.true_D[i,:]
+        hh_D .= @view cmdata.true_D[i,:]
 
         # Compute unsatisfied demand
-        unsat_demand .= @view cm_dat.true_D[i,:]
-        unsat_demand .-= @view cm_dat.transactions[i,:]
+        unsat_demand .= @view cmdata.true_D[i,:]
+        unsat_demand .-= @view cmdata.transactions[i,:]
         unsat_demand .= max.(unsat_demand, 0.0)
 
         receive_ordered_goods_hh!(
             model[hh_id], 
-            sum(@view cm_dat.transactions[i,:]), 
+            sum(@view cmdata.transactions[i,:]), 
             unsat_demand, 
             hh_D, 
             all_cp,
@@ -60,13 +60,13 @@ function process_transactions_cm!(
     for (i, cp_id) in enumerate(minimum(all_cp):maximum(all_cp))
 
         # Compute unsat_demand
-        unsat_demand = @view cm_dat.true_D[:,i]
-        unsat_demand .-= @view cm_dat.transactions[:,i]
+        unsat_demand = @view cmdata.true_D[:,i]
+        unsat_demand .-= @view cmdata.transactions[:,i]
         unsat_demand .= max.(unsat_demand, 0.0)
 
         # TODO decide whether it makes sense if producers know unsatisfied demand
 
-        model[cp_id].curracc.S = sum(@view cm_dat.transactions[:,i])
+        model[cp_id].curracc.S = sum(@view cmdata.transactions[:,i])
 
         total_salestax += model[cp_id].curracc.S * (government.τˢ / (1 + government.τˢ))
         model[cp_id].curracc.S = model[cp_id].curracc.S * (1 / (1 + government.τˢ))
@@ -86,60 +86,60 @@ end
 Market matching process for consumer market.
 """
 function cpmarket_matching_cp!(
-    cm_dat::CMData
+    cmdata::CMData
     )
 
     # Normalize weights
-    sum!(cm_dat.weights_sum, cm_dat.weights)
-    cm_dat.weights ./= cm_dat.weights_sum
+    sum!(cmdata.weights_sum, cmdata.weights)
+    cmdata.weights ./= cmdata.weights_sum
     sold_out = Int64[]
 
     for i in 1:3
 
         # Spread consumption budget according to weights (no allocs)
-        cm_dat.C_spread .= cm_dat.all_C 
-        cm_dat.C_spread .*= cm_dat.weights
+        cmdata.C_spread .= cmdata.all_C 
+        cmdata.C_spread .*= cmdata.weights
 
         # Compute the first choice of hh for the products (2 allocs)
         if i == 1
-            cm_dat.true_D .= cm_dat.C_spread
+            cmdata.true_D .= cmdata.C_spread
         end
 
         # Compute demand per cp and find which cp is sold out
-        sum!(cm_dat.demand_per_cp, cm_dat.C_spread')
-        cm_dat.demand_per_cp .= max.(floor.(cm_dat.demand_per_cp, digits=8), 0.0)
+        sum!(cmdata.demand_per_cp, cmdata.C_spread')
+        cmdata.demand_per_cp .= max.(floor.(cmdata.demand_per_cp, digits=8), 0.0)
 
-        sold_out = findall(cm_dat.all_N .<= cm_dat.demand_per_cp)
+        sold_out = findall(cmdata.all_N .<= cmdata.demand_per_cp)
 
         # Sell goods
-        cm_dat.frac_sellable .= min.(cm_dat.all_N ./ cm_dat.demand_per_cp, 1.0)
-        replace!(cm_dat.frac_sellable, -Inf=>0.0, NaN=>0.0)
+        cmdata.frac_sellable .= min.(cmdata.all_N ./ cmdata.demand_per_cp, 1.0)
+        replace!(cmdata.frac_sellable, -Inf=>0.0, NaN=>0.0)
 
-        cm_dat.C_spread .*= cm_dat.frac_sellable'
-        cm_dat.transactions .+= cm_dat.C_spread
+        cmdata.C_spread .*= cmdata.frac_sellable'
+        cmdata.transactions .+= cmdata.C_spread
 
         # Update how much was sold per hh and cp
-        sum!(cm_dat.sold_per_hh_round, cm_dat.C_spread)
-        sum!(cm_dat.sold_per_cp_round, cm_dat.C_spread')
+        sum!(cmdata.sold_per_hh_round, cmdata.C_spread)
+        sum!(cmdata.sold_per_cp_round, cmdata.C_spread')
 
         # Update consumption budget C and inventory N
-        cm_dat.all_C .-= cm_dat.sold_per_hh_round
-        cm_dat.all_C[cm_dat.all_C .<= 1e-1] .= 0.0
+        cmdata.all_C .-= cmdata.sold_per_hh_round
+        cmdata.all_C[cmdata.all_C .<= 1e-1] .= 0.0
 
-        cm_dat.all_N .-= cm_dat.sold_per_cp_round
-        cm_dat.all_N[cm_dat.all_N .<= 1e-1] .= 0.0
+        cmdata.all_N .-= cmdata.sold_per_cp_round
+        cmdata.all_N[cmdata.all_N .<= 1e-1] .= 0.0
 
         # Set weights of sold-out producers to zero
-        cm_dat.weights[:,sold_out] .= 0.0
+        cmdata.weights[:,sold_out] .= 0.0
 
         # Renormalize weights
-        sum!(cm_dat.weights_sum, cm_dat.weights)
+        sum!(cmdata.weights_sum, cmdata.weights)
 
-        cm_dat.weights ./= cm_dat.weights_sum
-        replace!(cm_dat.weights, NaN=>0.0)
+        cmdata.weights ./= cmdata.weights_sum
+        replace!(cmdata.weights, NaN=>0.0)
 
-        cm_dat.sold_per_hh_round .= 0.0
-        cm_dat.sold_per_cp_round .= 0.0
+        cmdata.sold_per_hh_round .= 0.0
+        cmdata.sold_per_cp_round .= 0.0
     end
 end
 
@@ -181,7 +181,7 @@ end
 
 
 function fill_in_weights_cm!(
-    cm_dat::CMData, 
+    cmdata::CMData, 
     all_cp::Vector{Int}, 
     all_hh::Vector{Int},
     model::ABM
