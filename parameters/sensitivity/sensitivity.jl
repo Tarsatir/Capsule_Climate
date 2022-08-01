@@ -195,7 +195,12 @@ function run_PAWN(
     labels = collect(keys(X_labels))
     # labelnames = ["ψ_E", "μ_1", "κ_{upper}", "ω", "ϵ", "α_{cp}", "p_f", "prog"]
 
-    labelnames = ["\\psi_E", "\\mu_1", "\\chi_{upper}", "\\lambda", "\\omega", "\\epsilon", "\\alpha_{cp}", "p_f", "prog"]
+    println(labels)
+
+    # labelnames = ["\\psi_E", "\\mu_1", "\\chi_{upper}", "\\lambda", "\\omega", "\\epsilon", "\\alpha_{cp}", "p_f", "prog"]
+    labelnames = ["\\alpha_{cp}", "\\omega", "\\lambda", "\\chi_{upper}", "prog", "\\mu_1", "\\epsilon", "p_f", "\\psi_P", "\\psi_Q", "\\psi_E"]
+    labels = ["α_cp", "ω", "λ", "κ_upper", "prog", "μ1", "ϵ", "p_f", "ψ_P", "ψ_Q", "ψ_E"]
+
     X = zeros(nrow(df), length(labels))
     X .= df[:, labels]
 
@@ -206,51 +211,92 @@ function run_PAWN(
     KS_labels = vcat(["y"], labels)
     df_KS = DataFrame(vcat([String[]], [Float64[] for _ in KS_labels[2:end]]), KS_labels)
 
+    Y = [
+        ["GDP_1st", "mean \$\\Delta GDP\$"],
+        ["GDP_2nd", "var \$\\Delta GDP\$"],
+        ["GDP_3rd", "skew \$\\Delta GDP\$"],
+        ["GDP_4th", "kurtosis \$\\Delta GDP\$"],
+        ["dQ_1st", "mean \$\\Delta Q\$"],
+        ["dQ_2nd", "var \$\\Delta Q\$"],
+        ["LIS_1st", "mean LIS"],
+        ["GINI_I_1st", "mean income GINI"],
+        ["GINI_I_2nd", "var income GINI"],
+        ["GINI_W_1st", "mean wealth GINI"],
+        ["GINI_W_2nd", "var wealth GINI"],
+        ["U_1st", "mean U"],
+        ["U_2nd", "var U"],
+        ["dI_1st", "mean \$\\Delta I\$"],
+        ["dC_1st", "mean \$\\Delta C\$"],
+        ["bankr_1st", "mean bankr"],
+        ["LP_g_1st", "mean \$\\Delta LP\$"],
+        ["EE_g_1st", "mean \$\\Delta EE\$"],
+        ["EF_g_1st", "mean \$\\Delta LP\$"],
+        ["em2030", "\$CO_2\$ index 2030"],
+        ["em2040", "\$CO_2\$ index 2040"],
+        ["em2050", "\$CO_2\$ index 2050"]
+    ]
+
+    # Write results to csv
+    outputfilepath = outputpath * "KS_mean_values.csv"
+
+    for (y, y_title) in Y
+        ts = df[!, Symbol(y)]
+        ts_KS = py"run_PAWN"(labelnames, X, ts, y, run_nr, y_title, crit)
+        push!(df_KS, vcat([y], ts_KS))
+        CSV.write(outputfilepath, df_KS, append=true)
+    end
+
     # GDP
-    GDP_1st = 100 .* df[!, Symbol("GDP_1st")]
-    GDP_1_KS = py"run_PAWN"(labelnames, X, GDP_1st, "GDP_1", run_nr, "mean \$\\Delta GDP\$", crit)
-    push!(df_KS, vcat(["GDP_1st"], GDP_1_KS))
+    # GDP_1st = 100 .* df[!, Symbol("GDP_1st")]
+    # GDP_1_KS = py"run_PAWN"(labelnames, X, GDP_1st, "GDP_1", run_nr, "mean \$\\Delta GDP\$", crit)
+    # push!(df_KS, vcat(["GDP_1st"], GDP_1_KS))
 
-    GDP_2nd = 100 .* df[!, Symbol("GDP_2nd")]
-    GDP_2_KS = py"run_PAWN"(labelnames, X, GDP_2nd, "GDP_2", run_nr, "var \$\\Delta GDP\$", crit)
-    push!(df_KS, vcat(["GDP_2nd"], GDP_2_KS))
+    # GDP_2nd = 100 .* df[!, Symbol("GDP_2nd")]
+    # GDP_2_KS = py"run_PAWN"(labelnames, X, GDP_2nd, "GDP_2", run_nr, "var \$\\Delta GDP\$", crit)
+    # push!(df_KS, vcat(["GDP_2nd"], GDP_2_KS))
 
-    GDP_3rd = 100 .* df[!, Symbol("GDP_3rd")]
-    GDP_3_KS = py"run_PAWN"(labelnames, X, GDP_3rd, "GDP_3", run_nr, "skew \$\\Delta GDP\$", crit)
-    push!(df_KS, vcat(["GDP_3rd"], GDP_3_KS))
+    # GDP_3rd = 100 .* df[!, Symbol("GDP_3rd")]
+    # GDP_3_KS = py"run_PAWN"(labelnames, X, GDP_3rd, "GDP_3", run_nr, "skew \$\\Delta GDP\$", crit)
+    # push!(df_KS, vcat(["GDP_3rd"], GDP_3_KS))
 
-    GDP_4th = 100 .* df[!, Symbol("GDP_4th")]
-    GDP_4_KS = py"run_PAWN"(labelnames, X, GDP_4th, "GDP_4", run_nr, "kurtosis \$\\Delta GDP\$", crit)
-    push!(df_KS, vcat(["GDP_4th"], GDP_4_KS))
+    # GDP_4th = 100 .* df[!, Symbol("GDP_4th")]
+    # GDP_4_KS = py"run_PAWN"(labelnames, X, GDP_4th, "GDP_4", run_nr, "kurtosis \$\\Delta GDP\$", crit)
+    # push!(df_KS, vcat(["GDP_4th"], GDP_4_KS))
 
-    GDP_acorr = df[!, Symbol("acorr_GDP")]
-    GDP_ac_KS = py"run_PAWN"(labelnames, X, GDP_acorr, "acorr_GDP", run_nr, "\$\\Delta GDP\$ autocorrelation", crit)
-    push!(df_KS, vcat(["GDP_ac"], GDP_ac_KS))
+    # GDP_acorr = df[!, Symbol("acorr_GDP")]
+    # GDP_ac_KS = py"run_PAWN"(labelnames, X, GDP_acorr, "acorr_GDP", run_nr, "\$\\Delta GDP\$ autocorrelation", crit)
+    # push!(df_KS, vcat(["GDP_ac"], GDP_ac_KS))
+
+    # dQ_1st = 100 .* df[!, Symbol("dQ_1st")]
+    # dQ_1_KS = py"run_PAWN"(labelnames, X, dQ_1st, "dQ_1", run_nr, "mean \$\\Delta Q\$", crit)
+    # push!(df_KS, vcat(["dQ_1st"], dQ_1_KS))
+
+    # LIS_1st = df[!, Symbol("LIS")]
 
     # GINI coefficients
-    GINI_I_1st = df[!, Symbol("GINI_I_1st")]
-    GINI_I_1_KS = py"run_PAWN"(labelnames, X, GINI_I_1st, "GINI_I_1", run_nr, "mean income GINI", crit)
-    push!(df_KS, vcat(["GINI_I_1"], GINI_I_1_KS))
+    # GINI_I_1st = df[!, Symbol("GINI_I_1st")]
+    # GINI_I_1_KS = py"run_PAWN"(labelnames, X, GINI_I_1st, "GINI_I_1", run_nr, "mean income GINI", crit)
+    # push!(df_KS, vcat(["GINI_I_1"], GINI_I_1_KS))
 
     # GINI_I_2nd = df[!, Symbol("GINI_I_2nd")]
     # GINI_I_2_KS = py"run_PAWN"(labelnames, X, GINI_I_2nd, "GINI_I_2", run_nr, "var income GINI", crit)
     # push!(df_KS, vcat(["GINI_I_2"], GINI_I_2_KS))
 
-    GINI_W_1st = df[!, Symbol("GINI_W_1st")]
-    GINI_W_1_KS = py"run_PAWN"(labelnames, X, GINI_W_1st, "GINI_W_1", run_nr, "mean wealth GINI", crit)
-    push!(df_KS, vcat(["GINI_W_1"], GINI_W_1_KS))
+    # GINI_W_1st = df[!, Symbol("GINI_W_1st")]
+    # GINI_W_1_KS = py"run_PAWN"(labelnames, X, GINI_W_1st, "GINI_W_1", run_nr, "mean wealth GINI", crit)
+    # push!(df_KS, vcat(["GINI_W_1"], GINI_W_1_KS))
 
     # GINI_W_2nd = df[!, Symbol("GINI_W_2nd")]
     # py"run_PAWN"(labelnames, X, GINI_W_2nd, "GINI_W_2nd", run_nr, "var wealth GINI", crit)
     
     # Unemployment
-    U_1st = df[!, Symbol("U_1st")]
-    U_1_KS = py"run_PAWN"(labelnames, X, U_1st, "U_1", run_nr, "mean U", crit)
-    push!(df_KS, vcat(["U_1"], U_1_KS))
+    # U_1st = df[!, Symbol("U_1st")]
+    # U_1_KS = py"run_PAWN"(labelnames, X, U_1st, "U_1", run_nr, "mean U", crit)
+    # push!(df_KS, vcat(["U_1"], U_1_KS))
 
-    U_2nd = df[!, Symbol("U_2nd")]
-    U_2_KS = py"run_PAWN"(labelnames, X, U_2nd, "U_2", run_nr, "var U", crit)
-    push!(df_KS, vcat(["U_2"], U_2_KS))
+    # U_2nd = df[!, Symbol("U_2nd")]
+    # U_2_KS = py"run_PAWN"(labelnames, X, U_2nd, "U_2", run_nr, "var U", crit)
+    # push!(df_KS, vcat(["U_2"], U_2_KS))
 
     # dU_1st = df[!, Symbol("dU1st")]
     # py"run_PAWN"(labelnames, X, dU_1st, "dU_1", run_nr, "\$\\Delta U\$")
@@ -259,42 +305,40 @@ function run_PAWN(
     # py"run_PAWN"(labelnames, X, corr_GDP_dU, "corr_GDP_dU", run_nr, "corr \$\\Delta GDP\$ and \$\\Delta U\$")
 
     # Poverty
-    FGT_1st = df[!, Symbol("FGT_1st")]
-    FGT_1_KS = py"run_PAWN"(labelnames, X, FGT_1st, "FGT_1", run_nr, "mean FGT", crit)
-    push!(df_KS, vcat(["FTG_1"], FGT_1_KS))
+    # FGT_1st = df[!, Symbol("FGT_1st")]
+    # FGT_1_KS = py"run_PAWN"(labelnames, X, FGT_1st, "FGT_1", run_nr, "mean FGT", crit)
+    # push!(df_KS, vcat(["FTG_1"], FGT_1_KS))
 
     # FGT_2nd = df[!, Symbol("FGT_2nd")]
     # py"run_PAWN"(labelnames, X, FGT_2nd, "FGT_2", run_nr, "var FGT")
 
     # Carbon emissions
-    em2030 = df[!, Symbol("em2030")]
-    em2030_KS = py"run_PAWN"(labelnames, X, em2030, "em2030", run_nr, "\$CO_2\$ em 2030", crit)
-    push!(df_KS, vcat(["em2030"], em2030_KS))
+    # em2030 = df[!, Symbol("em2030")]
+    # em2030_KS = py"run_PAWN"(labelnames, X, em2030, "em2030", run_nr, "\$CO_2\$ em 2030", crit)
+    # push!(df_KS, vcat(["em2030"], em2030_KS))
 
-    em2040 = df[!, Symbol("em2040")]
-    em2040_KS = py"run_PAWN"(labelnames, X, em2040, "em2040", run_nr, "\$CO_2\$ em 2040", crit)
-    push!(df_KS, vcat(["em2040"], em2040_KS))
+    # em2040 = df[!, Symbol("em2040")]
+    # em2040_KS = py"run_PAWN"(labelnames, X, em2040, "em2040", run_nr, "\$CO_2\$ em 2040", crit)
+    # push!(df_KS, vcat(["em2040"], em2040_KS))
 
-    em2050 = df[!, Symbol("em2050")]
-    em2050_KS = py"run_PAWN"(labelnames, X, em2050, "em2050", run_nr, "\$CO_2\$ em 2050", crit)
-    push!(df_KS, vcat(["em2050"], em2050_KS))
+    # em2050 = df[!, Symbol("em2050")]
+    # em2050_KS = py"run_PAWN"(labelnames, X, em2050, "em2050", run_nr, "\$CO_2\$ em 2050", crit)
+    # push!(df_KS, vcat(["em2050"], em2050_KS))
 
-    # # Productivity
-    LP_g_1st = df[!, Symbol("LP_g_1st")]
-    LP_1_KS = py"run_PAWN"(labelnames, X, LP_g_1st, "LP_g", run_nr, "mean LP growth", crit)
-    push!(df_KS, vcat(["LP_1"], LP_1_KS))
+    # # # Productivity
+    # LP_g_1st = df[!, Symbol("LP_g_1st")]
+    # LP_1_KS = py"run_PAWN"(labelnames, X, LP_g_1st, "LP_g", run_nr, "mean LP growth", crit)
+    # push!(df_KS, vcat(["LP_1"], LP_1_KS))
 
-    EE_g_1st = df[!, Symbol("EE_g_1st")]
-    EE_1_KS = py"run_PAWN"(labelnames, X, EE_g_1st, "EE_g", run_nr, "mean EE growth", crit)
-    push!(df_KS, vcat(["EE_1"], EE_1_KS))
+    # EE_g_1st = df[!, Symbol("EE_g_1st")]
+    # EE_1_KS = py"run_PAWN"(labelnames, X, EE_g_1st, "EE_g", run_nr, "mean EE growth", crit)
+    # push!(df_KS, vcat(["EE_1"], EE_1_KS))
 
-    EF_g_1st = df[!, Symbol("EF_g_1st")]
-    EF_1_KS = py"run_PAWN"(labelnames, X, EF_g_1st, "EF_g", run_nr, "mean EF growth", crit)
-    push!(df_KS, vcat(["EF_1"], EF_1_KS))
+    # EF_g_1st = df[!, Symbol("EF_g_1st")]
+    # EF_1_KS = py"run_PAWN"(labelnames, X, EF_g_1st, "EF_g", run_nr, "mean EF growth", crit)
+    # push!(df_KS, vcat(["EF_1"], EF_1_KS))
 
-    # Write results to csv
-    outputfilepath = outputpath * "KS_mean_values.csv"
-    CSV.write(outputfilepath, df_KS)
+
 
 end
 

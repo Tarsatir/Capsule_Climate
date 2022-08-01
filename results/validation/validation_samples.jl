@@ -62,7 +62,7 @@ function parse_commandline()
         "--n_repl"
             help="number of replications"
             arg_type=Int64
-            default=1
+            default=10
     end
 
     return parse_args(s)

@@ -549,7 +549,8 @@ function run_simulation(;
     full_output::Bool=true,
     threadnr::Int64=1,
     sim_nr::Int64=0,
-    savedata::Bool=false
+    savedata::Bool=false,
+    individualoutput::Bool=false
     )
 
     println("thread $threadnr, sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
@@ -557,8 +558,8 @@ function run_simulation(;
     to = TimerOutput()
 
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cm_dat = initialize_model(T; changed_params=changed_params, changedtaxrates=changedtaxrates)
+    
     @time for t in 1:T
-
         @timeit to "step" model_step!(
                                 t,
                                 t_warmup,
@@ -592,42 +593,15 @@ function run_simulation(;
     end
 
     # Pack output in struct
-    @timeit to "save output" runoutput = RunOutput(
-        macroeconomy.GDP,
-        macroeconomy.GDP_growth,
-        macroeconomy.total_Q_growth,
-        macroeconomy.total_Q_cp,
-        macroeconomy.total_Q_kp,
-        macroeconomy.LIS,
-        macroeconomy.U,
-        macroeconomy.dU,
-        macroeconomy.total_C,
-        macroeconomy.total_I,
-        macroeconomy.w̄_avg,
-        macroeconomy.p̄,
-        macroeconomy.μ_cp,
-        macroeconomy.debt_tot,
-        macroeconomy.RD_total,
-        ep.Dₑ,
-        macroeconomy.N_goods,
-        macroeconomy.GINI_I,
-        macroeconomy.GINI_W,
-        # macroeconomy.FGT,
-        macroeconomy.I_20,
-        macroeconomy.I_80,
-        macroeconomy.W_20,
-        macroeconomy.W_80,
-        macroeconomy.bankrupt_cp,
-        macroeconomy.avg_π_LP,
-        macroeconomy.avg_π_EE,
-        macroeconomy.avg_π_EF,
-        climate.carbon_emissions,
-        climate.emissions_index
-    )
 
     println("thread $threadnr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
+    if !individualoutput
+        return genrunoutput(macroeconomy, ep, climate)
+    else
+        runoutput = genrunoutput(macroeconomy, ep, climate)
+        return runoutput
+    end
 
-    return runoutput
 end
 
 changedtaxrates = [(:τᶜ, 0.2)]

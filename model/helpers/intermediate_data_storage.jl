@@ -96,3 +96,37 @@ struct RunOutput
     emissions_total::Vector{Float64}
     emissions_index::Vector{Float64}
 end
+
+function genrunoutput(macroeconomy, ep, climate)
+    return RunOutput(
+        macroeconomy.GDP,
+        macroeconomy.GDP_growth,
+        macroeconomy.total_Q_growth,
+        macroeconomy.total_Q_cp,
+        macroeconomy.total_Q_kp,
+        macroeconomy.LIS,
+        macroeconomy.U,
+        macroeconomy.dU,
+        macroeconomy.total_C,
+        macroeconomy.total_I,
+        macroeconomy.w̄_avg,
+        macroeconomy.p̄,
+        macroeconomy.μ_cp,
+        macroeconomy.debt_tot,
+        macroeconomy.RD_total,
+        ep.Dₑ,
+        macroeconomy.N_goods,
+        macroeconomy.GINI_I,
+        macroeconomy.GINI_W,
+        macroeconomy.I_20,
+        macroeconomy.I_80,
+        macroeconomy.W_20,
+        macroeconomy.W_80,
+        macroeconomy.bankrupt_cp,
+        macroeconomy.avg_π_LP,
+        macroeconomy.avg_π_EE,
+        macroeconomy.avg_π_EF,
+        climate.carbon_emissions,
+        climate.emissions_index
+    )
+end
