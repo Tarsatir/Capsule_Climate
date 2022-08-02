@@ -10,7 +10,7 @@ using Parameters
 using SparseArrays
 using PyCall
 using Dates
-using UnPack
+# using UnPack
 
 
 # Include files
@@ -62,7 +62,8 @@ Returns:
 function initialize_model(
     T::Int64;
     changed_params::Union{Dict, Nothing},
-    changedtaxrates::Union{Vector, Nothing}
+    changedtaxrates::Union{Vector, Nothing},
+    track_firmdata::Bool=false
     )
 
     # println("   start init $(Dates.format(now(), "HH:MM"))")
@@ -198,24 +199,30 @@ function initialize_model(
 
     cmdata = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
 
+    if track_firmdata
+        firmdata = genfirmdata(all_cp, all_kp)
+    else
+        firmdata = nothing
+    end
+
     # println("   end init $(Dates.format(now(), "HH:MM"))")
 
-    simdata =  gensimdata(
-                    model,
-                    globalparam,
-                    initparam,
-                    macroeconomy,
-                    government,
-                    ep,
-                    labormarket,
-                    indexfund,
-                    climate,
-                    cmdata
-                )
+    # simdata =  gensimdata(
+    #                 model,
+    #                 globalparam,
+    #                 initparam,
+    #                 macroeconomy,
+    #                 government,
+    #                 ep,
+    #                 labormarket,
+    #                 indexfund,
+    #                 climate,
+    #                 cmdata
+    #             )
                 
-    return simdata
+    # return simdata
 
-    # return model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cmdata
+    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cmdata, firmdata
 end
 
 
@@ -223,21 +230,22 @@ function model_step!(
     t::Int64,
     t_warmup::Int64,
     to,
-    simdata
-    # globalparam::GlobalParam, 
-    # initparam::InitParam,
-    # macroeconomy::MacroEconomy, 
-    # government::Government,
-    # ep::EnergyProducer, 
-    # labormarket::LaborMarket,
-    # indexfund::IndexFund,
-    # climate::Climate,
-    # cmdata::CMData,
-    # model::ABM
+    # simdata
+    globalparam::GlobalParam, 
+    initparam::InitParam,
+    macroeconomy::MacroEconomy, 
+    government::Government,
+    ep::EnergyProducer, 
+    labormarket::LaborMarket,
+    indexfund::IndexFund,
+    climate::Climate,
+    cmdata::CMData,
+    firmdata::Union{Nothing, DataFrame},
+    model::ABM
     )
 
-    @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
-            indexfund, climate, ep, cmdata, firmdata = simdata
+    # @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
+    #         indexfund, climate, ep, cmdata, firmdata = simdata
 
     # println("   $t 1 start $(Dates.format(now(), "HH:MM"))")
 
@@ -458,7 +466,6 @@ function model_step!(
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(government, all_p, t, model)
     compute_budget_balance(government, t)
-    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
 
     # Update market shares of cp and kp
     update_marketshare_p!(all_cp, model)
@@ -485,6 +492,10 @@ function model_step!(
         model,
         to
     )
+
+    if firmdata ≠ nothing
+        appendfirmdata!(firmdata, all_cp, all_kp, t, model)
+    end
 
     # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
@@ -535,6 +546,9 @@ function model_step!(
         model
     )
 
+    # Redistribute goverment balance
+    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
+
     # Redistrubute remaining stock of dividents to households
     @timeit to "distr div" distribute_dividends_if!(
         indexfund,
@@ -545,10 +559,13 @@ function model_step!(
         model
     )
 
-    @pack! simdata = model, globalparam, initparam, macroeconomy, government, ep, 
-                     labormarket, indexfund, climate, ep, cmdata, firmdata
+    # @pack! simdata = model, globalparam, initparam, macroeconomy, government, ep, 
+    #                  labormarket, indexfund, climate, ep, cmdata, firmdata
 
-    return simdata
+    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
+            indexfund, climate, ep, cmdata, firmdata
+
+    # return simdata
 end
 
 
@@ -569,46 +586,53 @@ function run_simulation(;
     threadnr::Int64=1,
     sim_nr::Int64=0,
     savedata::Bool=false,
-    individualoutput::Bool=false
+    individualoutput::Bool=false,
+    track_firmdata::Bool=false,
+    seed::Int64=Random.rand(1000:9999)
     )
 
-    println("thread $threadnr, sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
+    # Set seed of simulation
+    Random.seed!(seed)
+
+    println("thread $(Threads.threadid()), sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
 
     to = TimerOutput()
 
-    # @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cmdata = initialize_model(T; changed_params=changed_params, changedtaxrates=changedtaxrates)
-    @timeit to "init" simdata = initialize_model(
-        T; 
-        changed_params=changed_params, 
-        changedtaxrates=changedtaxrates
-    )
+    @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
+                      indexfund, climate, cmdata, firmdata = initialize_model(T; changed_params=changed_params, changedtaxrates=changedtaxrates, track_firmdata=track_firmdata)
+    # @timeit to "init" simdata = initialize_model(
+    #     T; 
+    #     changed_params=changed_params, 
+    #     changedtaxrates=changedtaxrates
+    # )
     
     @time for t in 1:T
-        # @timeit to "step" model_step!(
-        #                         t,
-        #                         t_warmup,
-        #                         to, 
-        #                         globalparam, 
-        #                         initparam,
-        #                         macroeconomy, 
-        #                         government,
-        #                         ep,
-        #                         labormarket, 
-        #                         indexfund,
-        #                         climate,
-        #                         cmdata, 
-        #                         model
-        #                     )
         @timeit to "step" model_step!(
                                 t,
                                 t_warmup,
                                 to, 
-                                simdata
+                                globalparam, 
+                                initparam,
+                                macroeconomy, 
+                                government,
+                                ep,
+                                labormarket, 
+                                indexfund,
+                                climate,
+                                cmdata,
+                                firmdata, 
+                                model
                             )
+        # @timeit to "step" model_step!(
+        #                         t,
+        #                         t_warmup,
+        #                         to, 
+        #                         simdata
+        #                     )
     end
 
-    @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
-            indexfund, climate, ep, cmdata, firmdata = simdata
+    # @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
+    #         indexfund, climate, ep, cmdata, firmdata = simdata
 
     if savedata
         @timeit to "save macro" save_macro_data(macroeconomy)
@@ -618,6 +642,10 @@ function run_simulation(;
         @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
 
         @timeit to "save climate" save_climate_data(ep, climate, model)
+
+        # if firmdata ≠ nothing
+        #     CSV.write("results/result_data/firmdata.csv", firmdata)
+        # end
     end
 
     if full_output
@@ -628,16 +656,20 @@ function run_simulation(;
     # Pack output in struct
 
     println("thread $threadnr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
-    if !individualoutput
+
+    if !track_firmdata
         return genrunoutput(macroeconomy, ep, climate)
     else
-        runoutput = genrunoutput(macroeconomy, ep, climate)
-        return runoutput
+        return genrunoutput(macroeconomy, ep, climate), firmdata
     end
 
 end
 
-changedtaxrates = [(:τᶜ, 0.2)]
-changedtaxrates = nothing
+# changedtaxrates = [(:τᶜ, 0.2)]
+# changedtaxrates = nothing
 
-@time run_simulation(savedata=true, changedtaxrates=changedtaxrates)
+# @time run_simulation(
+#     savedata=true, 
+#     changedtaxrates=changedtaxrates,
+#     track_firmdata=true    
+# )

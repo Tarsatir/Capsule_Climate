@@ -282,11 +282,11 @@ function compute_GDP!(
     macroeconomy.GDP_I[t] = total_I
 
     # cp profits
-    total_Π_cp = sum(cp_id -> model[cp_id].Πᵀ[end], all_cp)
+    total_Π_cp = sum(cp_id -> model[cp_id].Π[end], all_cp)
     macroeconomy.GDP_Π_cp[t] = total_Π_cp
     
     # kp profits
-    total_Π_kp = sum(kp_id -> model[kp_id].Πᵀ[end], all_kp)
+    total_Π_kp = sum(kp_id -> model[kp_id].Π[end], all_kp)
     macroeconomy.GDP_Π_kp[t] = total_Π_kp
 
     # total GDP

@@ -104,7 +104,10 @@ function compute_consumption_budget_hh!(
             hh.C = hh.W
         else
             W_scaled = 100 * (hh.W - W_min) / (W_max - W_min)
-            hh.C = (hh.W / W_scaled) * min(W_scaled^α_cp, W_scaled)
+            # hh.C = (hh.W / W_scaled) * min(W_scaled^α_cp, W_scaled)
+
+            hh.C = hh.P̄ * (hh.W / W_scaled) * min((W_scaled / hh.P̄)^α_cp, W_scaled / hh.P̄)
+            hh.C = min(hh.C, hh.W)
         end
         # hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
 

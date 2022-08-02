@@ -13,7 +13,7 @@
     κ_lower::Float64 = -κ_upper     # 1st beta dist support
     
     γ::Float64 = 0.5                # new custommer sample parameter
-    μ1::Float64 = 0.2   # kp markup rule
+    μ1::Float64 = 0.2               # kp markup rule
     v::Float64 = 0.04               # 
     r::Float64 = 0.0                # Int64erest rate
     ι::Float64 = 0.2                # desired inventories

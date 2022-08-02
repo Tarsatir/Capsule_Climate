@@ -192,14 +192,9 @@ function run_PAWN(
     # Merge input and output dataframes
     df = innerjoin(input_df, output_df, on=:sim_nr)
 
-    labels = collect(keys(X_labels))
-    # labelnames = ["ψ_E", "μ_1", "κ_{upper}", "ω", "ϵ", "α_{cp}", "p_f", "prog"]
-
-    println(labels)
-
-    # labelnames = ["\\psi_E", "\\mu_1", "\\chi_{upper}", "\\lambda", "\\omega", "\\epsilon", "\\alpha_{cp}", "p_f", "prog"]
-    labelnames = ["\\alpha_{cp}", "\\omega", "\\lambda", "\\chi_{upper}", "prog", "\\mu_1", "\\epsilon", "p_f", "\\psi_P", "\\psi_Q", "\\psi_E"]
+    # Define labels and label names
     labels = ["α_cp", "ω", "λ", "κ_upper", "prog", "μ1", "ϵ", "p_f", "ψ_P", "ψ_Q", "ψ_E"]
+    labelnames = ["\\alpha_{cp}", "\\omega", "\\lambda", "\\chi_{upper}", "prog", "\\mu_1", "\\epsilon", "p_f", "\\psi_P", "\\psi_Q", "\\psi_E"]
 
     X = zeros(nrow(df), length(labels))
     X .= df[:, labels]
@@ -243,7 +238,7 @@ function run_PAWN(
         ts = df[!, Symbol(y)]
         ts_KS = py"run_PAWN"(labelnames, X, ts, y, run_nr, y_title, crit)
         push!(df_KS, vcat([y], ts_KS))
-        CSV.write(outputfilepath, df_KS, append=true)
+        CSV.write(outputfilepath, df_KS)
     end
 
     # GDP

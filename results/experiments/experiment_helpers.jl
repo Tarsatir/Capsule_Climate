@@ -155,53 +155,54 @@ end
 function savefulloutput(
     runoutput::RunOutput,
     sim_nr::Int64;
-    return_as_df::Bool=false,
-    t_warmup::Int64=300,
+    return_as_df::Bool=false
+    # t_warmup::Int64=300,
     )
 
+    return DataFrame(Dict(l => getfield(runoutput, l) for l ∈ fieldnames(typeof(runoutput))))
+
+    # Labels of metrics that are saved
     labels = [
-                :GDP, 
-                :prices, 
+                :GDP,
+                :GDP_growth,
+                :C,
+                :I,
+                :wages, 
+                :prices,
+                :markups,
+                :TotDebt,
+                :EnDem,
+                :U,
+                :LIS,
+                :GINI_I,
+                :GINI_W,
+                :I_min,
+                :I_20,
+                :I_80,
+                :W_min,
+                :W_20,
+                :W_80,
+                :Em,
+                :EmIndex,
+                :RD,
+                :bankrupty_cp,
+                :inventories,
                 :total_Q_cp, 
                 :total_Q_kp,
-                :LIS,
-                :emissions_index
+                :total_Q_growth
             ]
 
-    # data = vcat(
-    #     [sim_nr],
-    #     runoutput.GDP,
-    #     runoutput.prices,
-    #     runoutput.total_Q_cp,
-    #     runoutput.total_Q_kp,
-    #     runoutput.LIS,
-    #     runoutput.I_min,
-    #     runoutput.I_20,
-    #     runoutput.I_80,
-    #     runoutput.I_max,
-    #     runoutput.W_min,
-    #     runoutput.W_max,
-    #     runoutput.U,
-    #     runoutput.C,
-    #     runoutput.I,
-    #     runoutput.GINI_I,
-    #     runoutput.GINI_W,
-    #     runoutput.emissions_index
-    # )
-
-    data = [[sim_nr]]
-    for label in labels
-        # append!(data, getfield(runoutput, label))
-        for d in getfield(runoutput, label)
-            push!(data, [d])
-        end
-    end
-
-    # data = vcat(
-    #     [sim_nr], map(label -> getfield(runoutput, label), labels)
-    # )
+    # data = [[sim_nr]]
+    # for label in labels
+    #     for d in getfield(runoutput, label)
+    #         push!(data, [d])
+    #     end
+    # end
 
     if return_as_df
+
+        data = Dict(label => getfield(runoutput, label) for label ∈ labels)
+        return DataFrame(data)
 
         # cols_GDP = map(i -> Symbol("GDP_$i"), 1:length(runoutput.GDP))
         # cols_U = map(i -> Symbol("U_$i"), t_warmup:t_warmup+360)
@@ -211,15 +212,15 @@ function savefulloutput(
         # cols_GINI_W = map(i -> Symbol("GINI_W_$i"), t_warmup:460)
         # cols_em = map(i -> Symbol("em_$i"), t_warmup:t_warmup+360)
 
-        genlabel(label::Symbol, i::Int64) = Symbol(string(label) * "_" * string(i))
+        # genlabel(label::Symbol, i::Int64) = Symbol(string(label) * "_" * string(i))
 
-        # col_labels = vcat(map(label -> map(i -> genlabel(label, i), 1:length(runoutput.GDP)), labels))
-        col_labels = Symbol[:sim_nr]
-        for label in labels
-            for i in 1:length(1:length(runoutput.GDP))
-                push!(col_labels, genlabel(label, i))
-            end
-        end
+        # # col_labels = vcat(map(label -> map(i -> genlabel(label, i), 1:length(runoutput.GDP)), labels))
+        # col_labels = Symbol[:sim_nr]
+        # for label in labels
+        #     for i in 1:length(1:length(runoutput.GDP))
+        #         push!(col_labels, genlabel(label, i))
+        #     end
+        # end
 
         # cols = vcat([Symbol("sim_nr")], cols_GDP, cols_U, cols_GINI_I, cols_GINI_W, cols_em)
 
@@ -227,12 +228,13 @@ function savefulloutput(
         # col_labels = vcat([:sim_nr], col_labels)
 
         # data = map(d -> [d], data)
-        println(data)
-        println(col_labels)
-        df = DataFrame(data, col_labels)
+        # println(data)
+        # println(col_labels)
+        # df = DataFrame(data, col_labels)
 
-        return df
+        # return df
     end
 
-    return data
+    # If no df, only return the data as array of arrays
+    return map(label -> getfield(runoutput, label), labels)
 end

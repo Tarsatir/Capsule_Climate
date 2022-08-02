@@ -6,22 +6,26 @@ include("experiment_helpers.jl")
 
 function getfilepath(
     folderpath::String,
-    taxtype::Symbol
+    taxtype::Symbol,
+    taxrate::Float64,
+    sim_nr::Int64
     )
 
     if taxtype == :τᴵ
-        return folderpath * "incometax.csv"
+        folderpath *= "incometax"
     elseif taxtype == :τᴷ
-        return folderpath * "capitaltax.csv"
+        folderpath *= "capitaltax"
     elseif taxtype == :τˢ
-        return folderpath * "salestax.csv"
+        folderpath *= "salestax"
     elseif taxtype == :τᴾ
-        return folderpath * "profittax.csv"
+        folderpath *= "profittax"
     elseif taxtype == :τᴱ
-        return folderpath * "energytax.csv"
+        folderpath *= "energytax"
     else
-        return folderpath * "carbontax.csv"
+        folderpath *= "carbontax"
     end
+
+    return folderpath * "_$(taxrate)_$(sim_nr).csv"
 end
 
 
@@ -44,50 +48,65 @@ function OFAT_taxrates(
         # :τˢ => (0.0, 0.5),
         # :τᴾ => (0.0, 0.8),
         # :τᴱ => (0.0, 1.0),
-        :τᶜ => (0.0, 0.5)
+        :τᶜ => (0.1, 0.5)
     )
 
-    lk = Threads.ReentrantLock()
+    # lk = Threads.ReentrantLock()
 
-    for (i, (taxtype, raterange)) in enumerate(taxrates)
+    for (taxtype, raterange) in taxrates
 
-        firstsave = true
-        outputfilepath = getfilepath(folderpath, taxtype)
+        # firstsave = true
 
         println("type $taxtype, range $raterange")
 
         Threads.@threads for taxrate in LinRange(raterange[1], raterange[2], n_per_taxtype)
+
+            taxrate = round(taxrate, digits=2)
+            
+            # Set up array with changed tax rate, to be introduced in period t_warmup
             changedtaxrates = [(taxtype, taxrate)]
 
-            results = nothing
+            # results = nothing
 
-            for i in 1:n_per_taxrate
+            for sim_nr in 1:n_per_taxrate
 
-                println("   thr $(Threads.threadid()), tr $(taxrate), i $(i)")
+                seed = 1000+sim_nr
+
+                println("   thr $(Threads.threadid()), tr $(taxrate), sim_nr $(sim_nr)")
 
                 # Run the model with changed tax rate
                 runoutput = run_simulation(
                     changedtaxrates=changedtaxrates,
                     full_output=false,
-                    threadnr=Threads.threadid()
+                    threadnr=Threads.threadid(),
+                    seed=seed
                 )
 
                 # Save results of run
-                if results == nothing
-                    results = savefulloutput(runoutput, i; return_as_df=true)
-                    results[!, "taxrate"] = [taxrate]
-                else
-                    push!(results, vcat(savefulloutput(runoutput, i), [taxrate]))
-                end
+                # if results == nothing
+                #     results = savefulloutput(runoutput, sim_nr; return_as_df=true)
+                #     results[!, "taxrate"] = [taxrate]
+                # else
+                #     push!(results, vcat(savefulloutput(runoutput, sim_nr), [taxrate]))
+                # end
+
+                # Process output data and save to file
+                results = savefulloutput(runoutput, sim_nr; return_as_df=true)
+                outputfilepath = getfilepath(folderpath, taxtype, taxrate, sim_nr)
+                CSV.write(outputfilepath, results)
             end
 
             # Save simulation data, wait for other threads already
             # augmenting the file.
-            lock(lk) do
-                println("$(Threads.threadid()) is saving...")
-                CSV.write(outputfilepath, results; append=!firstsave)
-                firstsave = false
-            end
+
+            # outputfilepath = getfilepath(folderpath, taxtype, run_nr, seed)
+            # CSV.write(outputfilepath, results; append=!firstsave)
+
+            # lock(lk) do
+            #     println("$(Threads.threadid()) is saving...")
+            #     CSV.write(outputfilepath, results; append=!firstsave)
+            #     firstsave = false
+            # end
         end
     end
 end
@@ -101,7 +120,7 @@ function parse_commandline()
         "--n_per_taxtype"
             help="number of simulations per tax type"
             arg_type=Int64
-            default=10
+            default=5
         "--n_per_taxrate"
             help="number of simulations per tax rate"
             arg_type=Int64
