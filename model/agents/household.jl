@@ -150,8 +150,8 @@ Updates satisfying wage wˢ and requested wage wʳ
 """
 function update_sat_req_wage_hh!(
     hh::Household, 
-    ϵ::Float64,
-    ω::Float64, 
+    ϵ_w::Float64,
+    # ω::Float64, 
     w_min::Float64
     )
 
@@ -161,11 +161,11 @@ function update_sat_req_wage_hh!(
         hh.wˢ = max(w_min, hh.w[end])
     else
         # hh.wˢ = max(w_min, hh.wˢ * (1 - ϵ))
-        hh.wˢ = max(w_min, hh.w[end] * (1 - ϵ * hh.T_unemp))
+        hh.wˢ = max(w_min, hh.w[end] * (1 - ϵ_w * hh.T_unemp))
     end
 
     if hh.employed
-        hh.wʳ = max(w_min, hh.w[end] * (1 + ϵ))
+        hh.wʳ = max(w_min, hh.w[end] * (1 + ϵ_w))
     else
         hh.wʳ = max(w_min, hh.wˢ)
     end
@@ -423,8 +423,6 @@ function resetincomes_hh!(
     hh::Household
     )
 
-    hh.total_I = 0.0
-    # hh.labor_I = 0.0
-    # hh.capital_I = 0.0
-    # hh.transfer_I = 0.0
+    # Capital income and social benefits from end of last period are counted in this period
+    hh.total_I = hh.capital_I + hh.socben_I
 end

@@ -140,7 +140,7 @@ function plan_production_cp!(
     update_w̄_p!(cp, model)
 
     # Update markup μ
-    update_μ_cp!(cp, globalparam.v, globalparam.μ1, t)
+    update_μ_cp!(cp, globalparam.ϵ_μ, t)
 
     # Update cost of production c
     compute_c_cp!(cp, ep.pₑ[t], government.τᴱ, government.τᶜ)
@@ -709,10 +709,11 @@ Computes the markup rate μ based on the market share f.
 """
 function update_μ_cp!(
     cp::ConsumerGoodProducer,
-    v::Float64,
-    μ1::Float64,
-    t::Int64;
-    t_warmup::Int64=300
+    # v::Float64,
+    # μ1::Float64,
+    ϵ_μ::Float64,
+    t::Int64
+    # t_warmup::Int64=300
     )
 
     # if t > t_warmup 
@@ -728,8 +729,10 @@ function update_μ_cp!(
     #     shift_and_append!(cp.μ, new_μ)
     # end
 
+    # ϵ_firm = 0.01
+
     new_μ = cp.μ[end]
-    shock = 0.05 * rand()
+    shock = ϵ_μ * rand()
 
     if cp.age > 2 && t > 2
         dp = cp.μ[end] - cp.μ[end - 1]

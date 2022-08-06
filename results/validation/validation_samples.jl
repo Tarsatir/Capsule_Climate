@@ -19,32 +19,11 @@ function runMCreplication(
     seed = repl_i + 1000
 
     # Run simulation with default (calibrated) parameters
-    runoutput, firmdata = run_simulation(
+    runoutput, firmdata, householddata = run_simulation(
         full_output=false,
         seed=seed,
-        track_firmdata=true
+        track_firms_households=true
     )
-
-    # Save output data
-    # df = DataFrame(
-    #     :GDP => runoutput.GDP[t_warmup:end],
-    #     :GDP_growth => runoutput.GDP_growth[t_warmup:end],
-    #     :C => runoutput.C[t_warmup:end],
-    #     :I => runoutput.I[t_warmup:end],
-    #     :wages => runoutput.wages[t_warmup:end],
-    #     :prices => runoutput.prices[t_warmup:end],
-    #     :markups => runoutput.markups[t_warmup:end],
-    #     :TotDebt => runoutput.TotDebt[t_warmup:end],
-    #     :EnDem => runoutput.EnDem[t_warmup:end],
-    #     :U => runoutput.U[t_warmup:end],
-    #     :LIS => runoutput.LIS[t_warmup:end],
-    #     :Em => runoutput.emissions_total[t_warmup:end],
-    #     :EmIndex => runoutput.emissions_index[t_warmup:end],
-    #     :RD => runoutput.RD[t_warmup:end],
-    #     :inventories => runoutput.inventories[t_warmup:end]
-    #     :total_Q_cp => runoutput.total, 
-    #     :total_Q_kp,
-    # )
 
     df = savefulloutput(runoutput, repl_i; return_as_df=true)
 
@@ -53,6 +32,9 @@ function runMCreplication(
 
     filepath_firmdata = "results/validation/validation_samples/valfirmdata_$(repl_i).csv"
     CSV.write(filepath_firmdata, firmdata)
+
+    filepath_householddata = "results/validation/validation_samples/householddata_$(repl_i).csv"
+    CSV.write(filepath_householddata, householddata[2])
 end
 
 

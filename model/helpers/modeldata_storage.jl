@@ -86,6 +86,7 @@ struct RunOutput
     avg_π_EF::Vector{Float64}
     Em::Vector{Float64}
     EmIndex::Vector{Float64}
+    EnPerc::Vector{Float64}
 end
 
 function genrunoutput(macroeconomy, ep, climate)
@@ -120,7 +121,8 @@ function genrunoutput(macroeconomy, ep, climate)
         macroeconomy.avg_π_EE,
         macroeconomy.avg_π_EF,
         climate.carbon_emissions,
-        climate.emissions_index
+        climate.emissions_index,
+        climate.energy_percentage
     )
 end
 
@@ -169,7 +171,6 @@ function genfirmdata(
         EF_cp,
         EF_kp,
         I_cp,
-        # I_kp
         K_cp
     )
 
@@ -223,10 +224,114 @@ function appendfirmdata!(
         EF_cp,
         EF_kp,
         I_cp,
-        # I_kp
         K_cp
     )
 
     push!(firmdata, columnvalues)
     return firmdata
+end
+
+
+function genhouseholddata()::Array
+
+    Y_percentile_ids = Dict(
+        :lower_I => [],
+        :middle_I => [],
+        :upper_I => [],
+        :lower_W => [], 
+        :middle_W => [],
+        :upper_W => [],
+    )
+
+    df = DataFrame(
+        # :I_med_20 => [],
+        :I_mean_20 => [],
+        # :I_med_80 => [],
+        :I_mean_80 => [],
+        :I_mean_100 => [],
+        # :W_med_20 => [],
+        :W_mean_20 => [],
+        # :W_med_80 => [],
+        :W_mean_80 => [],
+        :W_mean_100 => []
+    )
+
+    return [Y_percentile_ids, df]
+end
+
+
+function appendhouseholddata!(
+    householddata::Array,
+    all_hh::Vector{Int64},
+    t::Int64,
+    t_warmup::Int64,
+    model::ABM
+    )::Array
+
+    if t < t_warmup - 1
+        # No data has to be gathered
+        return householddata
+    elseif t == t_warmup - 1
+        # Determine which households are in the 0-20 and 20-80 percentiles
+
+        # Get indeces of percentiles
+        # start_20 = 1
+        end_20 = round(Int64, 0.2 * length(all_hh))
+        start_80 = end_20 + 1
+        end_80 = round(Int64, 0.8 * length(all_hh))
+
+        # Sort households by income level
+        all_I = map(hh_id -> model[hh_id].total_I, all_hh)
+        all_hh_sorted = all_hh[sortperm(all_I)]
+
+        # Add houshold indeces to dictionary
+        householddata[1][:lower_I] = all_hh_sorted[begin:end_20]
+        householddata[1][:middle_I] = all_hh_sorted[start_80:end_80]
+        householddata[1][:upper_I] = all_hh_sorted[end_80:end]
+
+        # Sort households by wealth level
+        all_W = map(hh_id -> model[hh_id].W, all_hh)
+        all_hh_sorted = all_hh[sortperm(all_W)]
+
+        householddata[1][:lower_W] = all_hh_sorted[begin:end_20]
+        householddata[1][:middle_W] = all_hh_sorted[start_80:end_80]
+        householddata[1][:upper_W] = all_hh_sorted[end_80:end]
+    end
+
+    # Gather median income and wealth levels for percentiles
+    I_lower = map(hh_id -> model[hh_id].total_I, householddata[1][:lower_I])
+    I_middle = map(hh_id -> model[hh_id].total_I, householddata[1][:middle_I])
+    I_upper = map(hh_id -> model[hh_id].total_I, householddata[1][:upper_I])
+    W_lower = map(hh_id -> model[hh_id].W, householddata[1][:lower_W])
+    W_middle = map(hh_id -> model[hh_id].W, householddata[1][:middle_W])
+    W_upper = map(hh_id -> model[hh_id].W, householddata[1][:upper_W])
+
+    I_mean_20 = mean(I_lower)
+    # I_median_20 = median(I_lower)
+    I_mean_80 = mean(I_middle)
+    # I_median_80 = median(I_middle)
+    I_mean_100 = mean(I_upper)
+
+    W_mean_20 = mean(W_lower)
+    # W_median_20 = median(W_lower)
+    W_mean_80 = mean(W_middle)
+    # W_median_80 = median(W_middle)
+    W_mean_100 = mean(W_upper)
+
+    push!(householddata[2], 
+        [
+            # I_median_20,
+            I_mean_20,
+            # I_median_80,
+            I_mean_80,
+            I_mean_100,
+            # W_median_20, 
+            W_mean_20,
+            # W_median_80,
+            W_mean_80,
+            W_mean_100
+        ]
+    )
+
+    return householddata
 end

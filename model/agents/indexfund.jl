@@ -69,18 +69,28 @@ function distribute_dividends_if!(
     )
 
     # Distribute proportional to wealth
-    total_wealth = sum(hh_id -> model[hh_id].W, all_hh)
+    all_W = map(hh_id -> model[hh_id].W, all_hh)
+    total_wealth = sum(all_W)
 
     total_capgains_tax = 0
 
     for hh_id in all_hh
-        dividend_share = (model[hh_id].W / total_wealth) * indexfund.Assets
+        # Do not award to most wealthy household to avoid one household
+        # taking over all wealth
+        if t < 10 
+            dividend_share = (model[hh_id].W / total_wealth) * indexfund.Assets
+        elseif model[hh_id].W ≠ maximum(all_W)
+            dividend_share = (model[hh_id].W / (total_wealth - maximum(all_W))) * indexfund.Assets
+        else
+            dividend_share = 0.
+        end
+
         total_capgains_tax += τᴷ * dividend_share
         receiveincome_hh!(model[hh_id], dividend_share * (1 - τᴷ); capgains=true)
     end
 
     # Reset assets back to zero
-    indexfund.Assets = 0.0
+    indexfund.Assets = 0.
 
     receive_capgains_tax_gov!(government, total_capgains_tax, t)
 end

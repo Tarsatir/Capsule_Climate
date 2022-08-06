@@ -62,8 +62,9 @@ Returns:
 function initialize_model(
     T::Int64;
     changed_params::Union{Dict, Nothing},
+    changedparams_ofat::Union{Dict, Nothing},
     changedtaxrates::Union{Vector, Nothing},
-    track_firmdata::Bool=false
+    track_firms_households::Bool=false
     )
 
     # println("   start init $(Dates.format(now(), "HH:MM"))")
@@ -74,7 +75,7 @@ function initialize_model(
                 scheduler=scheduler, warn=false)
 
     # Initialize struct that holds global params and initial parameters
-    globalparam  = initialize_global_params(changed_params)
+    globalparam  = initialize_global_params(changed_params, changedparams_ofat)
     initparam = InitParam()
 
     # Initialize struct that holds macro variables
@@ -199,30 +200,16 @@ function initialize_model(
 
     cmdata = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
 
-    if track_firmdata
+    if track_firms_households
         firmdata = genfirmdata(all_cp, all_kp)
+        householddata = genhouseholddata()
     else
         firmdata = nothing
+        householddata = nothing
     end
 
-    # println("   end init $(Dates.format(now(), "HH:MM"))")
-
-    # simdata =  gensimdata(
-    #                 model,
-    #                 globalparam,
-    #                 initparam,
-    #                 macroeconomy,
-    #                 government,
-    #                 ep,
-    #                 labormarket,
-    #                 indexfund,
-    #                 climate,
-    #                 cmdata
-    #             )
-                
-    # return simdata
-
-    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, indexfund, climate, cmdata, firmdata
+    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
+           indexfund, climate, cmdata, firmdata, householddata
 end
 
 
@@ -241,13 +228,14 @@ function model_step!(
     climate::Climate,
     cmdata::CMData,
     firmdata::Union{Nothing, DataFrame},
+    householddata::Union{Nothing, Array},
     model::ABM
     )
 
-    # @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
-    #         indexfund, climate, ep, cmdata, firmdata = simdata
-
     # println("   $t 1 start $(Dates.format(now(), "HH:MM"))")
+
+    # Check if any global params are changed in ofat experiment
+    check_changed_ofatparams(globalparam, t)
 
     # If end of warmup period reached, instate changed taxes
     if t == t_warmup
@@ -497,6 +485,10 @@ function model_step!(
         appendfirmdata!(firmdata, all_cp, all_kp, t, model)
     end
 
+    if householddata ≠ nothing
+        appendhouseholddata!(householddata, all_hh, t, t_warmup, model)
+    end
+
     # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
 
@@ -546,9 +538,6 @@ function model_step!(
         model
     )
 
-    # Redistribute goverment balance
-    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
-
     # Redistrubute remaining stock of dividents to households
     @timeit to "distr div" distribute_dividends_if!(
         indexfund,
@@ -559,11 +548,14 @@ function model_step!(
         model
     )
 
+    # Redistribute goverment balance
+    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
+
     # @pack! simdata = model, globalparam, initparam, macroeconomy, government, ep, 
     #                  labormarket, indexfund, climate, ep, cmdata, firmdata
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-            indexfund, climate, ep, cmdata, firmdata
+            indexfund, climate, ep, cmdata, firmdata, householddata
 
     # return simdata
 end
@@ -581,13 +573,13 @@ function run_simulation(;
     T::Int64=660,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
+    changedparams_ofat::Union{Dict, Nothing}=nothing,
     changedtaxrates::Union{Vector,Nothing}=nothing,
     full_output::Bool=true,
     threadnr::Int64=1,
     sim_nr::Int64=0,
     savedata::Bool=false,
-    individualoutput::Bool=false,
-    track_firmdata::Bool=false,
+    track_firms_households::Bool=false,
     seed::Int64=Random.rand(1000:9999)
     )
 
@@ -599,12 +591,13 @@ function run_simulation(;
     to = TimerOutput()
 
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-                      indexfund, climate, cmdata, firmdata = initialize_model(T; changed_params=changed_params, changedtaxrates=changedtaxrates, track_firmdata=track_firmdata)
-    # @timeit to "init" simdata = initialize_model(
-    #     T; 
-    #     changed_params=changed_params, 
-    #     changedtaxrates=changedtaxrates
-    # )
+                      indexfund, climate, cmdata, firmdata, householddata = initialize_model(
+                            T; 
+                            changed_params=changed_params,
+                            changedparams_ofat=changedparams_ofat, 
+                            changedtaxrates=changedtaxrates, 
+                            track_firms_households=track_firms_households
+                    )
     
     @time for t in 1:T
         @timeit to "step" model_step!(
@@ -620,7 +613,8 @@ function run_simulation(;
                                 indexfund,
                                 climate,
                                 cmdata,
-                                firmdata, 
+                                firmdata,
+                                householddata, 
                                 model
                             )
         # @timeit to "step" model_step!(
@@ -657,19 +651,18 @@ function run_simulation(;
 
     println("thread $threadnr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
 
-    if !track_firmdata
+    if !track_firms_households
         return genrunoutput(macroeconomy, ep, climate)
     else
-        return genrunoutput(macroeconomy, ep, climate), firmdata
+        return genrunoutput(macroeconomy, ep, climate), firmdata, householddata
     end
 
 end
 
-# changedtaxrates = [(:τᶜ, 0.2)]
-# changedtaxrates = nothing
+@time run_simulation(
+    savedata=true, 
+    track_firms_households=false,
+    seed=1234    
+)
 
-# @time run_simulation(
-#     savedata=true, 
-#     changedtaxrates=changedtaxrates,
-#     track_firmdata=true    
-# )
+nothing

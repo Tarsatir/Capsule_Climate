@@ -11,10 +11,6 @@
     τᴱ::Float64 = 0.                       # energy tax
     τᶜ::Float64 = 0.                       # emission tax
 
-    # # Subsidies
-    # σᴿ::Float64 = 0.0                      # R&D subsidies
-    # σ ::Float64
-
     MS::Float64 = 0.0                      # money stock owned by government
     curracc::GovCurrentAccount             # current account of government spending
     changedtaxrates::Union{Vector, Nothing} # vector of tax rates that will be changed once warmup period ends

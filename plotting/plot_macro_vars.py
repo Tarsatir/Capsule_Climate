@@ -639,9 +639,9 @@ if __name__=="__main__":
     plot_inequality(df_macro)
     plot_sales_dist()
 
-    # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
+    df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
     # plot_energy(df_climate_energy, df_macro)
     # plot_climate(df_climate_energy, df_macro)
-    # plot_emissions(df_climate_energy, df_macro)
+    plot_emissions(df_climate_energy, df_macro)
 
     # plot_LIS(df_macro)

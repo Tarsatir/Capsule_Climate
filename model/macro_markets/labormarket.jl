@@ -98,27 +98,21 @@ function labormarket_process!(
     # Update which producers want to hire or fire workers
     update_hiring_firing_producers(labormarket, all_p, model)
 
-    
-    # L_fired_kp = 0
-    # L_fired_cp = 0
-    # for p_id in labormarket.firing_producers
-    #     if typeof(model[p_id]) == CapitalGoodProducer
-    #         L_fired_kp += model[p_id].ΔLᵈ
-    #     else
-    #         L_fired_cp += model[p_id].ΔLᵈ
-    #     end
-    # end
-    
-
     # Let producers fire excess workers
     fire_workers_lm!(labormarket, model)
 
     # Update wage parameters households
     for hh_id in all_hh
+        # update_sat_req_wage_hh!(
+        #     model[hh_id], 
+        #     globalparam.ϵ, 
+        #     globalparam.ω, 
+        #     government.w_min
+        # )
+
         update_sat_req_wage_hh!(
             model[hh_id], 
-            globalparam.ϵ, 
-            globalparam.ω, 
+            globalparam.ϵ_w,
             government.w_min
         )
     end
@@ -128,14 +122,6 @@ function labormarket_process!(
 
     # Update jobseeking households
     labormarket.jobseeking_hh = vcat(employed_jobseekers, labormarket.unemployed)
-
-    # if length(labormarket.jobseeking_hh) > 0 && length(labormarket.unemployed) > 0
-    #     println("   L available $(sum(hh_id -> model[hh_id].L * model[hh_id].skill, labormarket.jobseeking_hh))")
-    #     println("       L switch $(length(employed_jobseekers) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employed_jobseekers) : 0.0)")
-    #     println("       L unemp $(sum(hh_id -> model[hh_id].L * model[hh_id].skill, labormarket.unemployed))")
-    # else
-    #     println("   L available 0")
-    # end
 
     # Labor market matching process
     @timeit to "matching" matching_lm(
@@ -152,13 +138,6 @@ function labormarket_process!(
         model[p_id].L = length(model[p_id].employees) == 0 ? 0.0 : model[p_id].L
         update_L!(model[p_id], model)
     end
-
-    # println("   L demanded $(labormarket.L_demanded)")
-    # println("   L hired $(labormarket.L_hired)")
-    # println("   L fired $(labormarket.L_fired)")
-    # println("       L fired kp $(L_fired_kp)")
-    # println("       L fired cp $(L_fired_cp)")
-    # println()
 end
 
 

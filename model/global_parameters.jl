@@ -36,23 +36,24 @@
 
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
-    ϵ::Float64 = 0.02   # minimum desired wage increase rate
+    ϵ_w::Float64 = 0.02             # minimum desired wage increase rate
+    ϵ_μ::Float64 = 0.05             # upper limit of markup sgock
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
     ω::Float64 = 0.8   # memory parameter adaptive updating rules
-    λ::Float64 = 0.4    # parameter for labor demand smoothing
+    λ::Float64 = 0.7    # parameter for labor demand smoothing
 
     # Determine household consumption
-    α_cp::Float64 = 0.7    # parameter controlling MPC of consumers
+    α_cp::Float64 = 0.75     # parameter controlling MPC of consumers
 
     # Deterime extend of proggesivity of government spending
-    prog::Float64 = -0.5
+    prog::Float64 = -0.55
 
     # Determine household switching
-    ψ_E::Float64 = 0.25    # chance of employed worker looking for a better paying job
-    ψ_Q::Float64 = 0.15    # chance of household switching away from cp when demand constrained
-    ψ_P::Float64 = 0.25     # chance of household switching to cp with better price
+    ψ_E::Float64 = 0.15             # chance of employed worker looking for a better paying job
+    ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained
+    ψ_P::Float64 = 0.05             # chance of household switching to cp with better price
 
     freq_per_machine::Int64 = 50    # capital units per machine
     freq_per_powerplant::Int64 = 10_000 # capital units per instance
@@ -63,25 +64,55 @@
 
     t_warmup::Int64 = 300           # time period warmup of the model
     t_wait::Int64 = 4               # number of time periods producers are not allowed to go bankrupt
+
+    changedparams_ofat::Union{Nothing, Dict} # Parameters that are changed at the end of the warmup period
 end
 
 
 function initialize_global_params(
-    changed_params
+    changedparams::Union{Nothing, Dict},
+    changedparams_ofat::Union{Nothing, Dict}
     )
 
-    global_param = GlobalParam()
+    globalparam = GlobalParam(changedparams_ofat=changedparams_ofat)
 
     # Change parameters if needed before returning.
-    if changed_params ≠ nothing
-        for (key, new_param) in changed_params
-            setproperty!(global_param, Symbol(key), new_param)
+    if changedparams ≠ nothing
+        for (key, new_param) in changedparams
+            setproperty!(globalparam, Symbol(key), new_param)
         end
 
-        if haskey(changed_params, "κ_upper")
-            setproperty!(global_param, Symbol("κ_lower"), -changed_params["κ_upper"])
+        if haskey(changedparams, "κ_upper")
+            setproperty!(globalparam, Symbol("κ_lower"), -changedparams["κ_upper"])
         end
     end
 
-    return global_param
+    return globalparam
+end
+
+
+"""
+Checks if parameters are changed during the simulation. If they are, checks if time of
+    introduction has been reached. If time reached, changes parameter value.
+"""
+function check_changed_ofatparams(
+    globalparam::GlobalParam,
+    t::Int64
+    )
+
+    if globalparam.changedparams_ofat ≠ nothing
+        for (paramtype, (newparamval, oldparamval, t_introduction, t_duration)) in globalparam.changedparams_ofat
+            if t == t_introduction
+                # Set old value to current value of parameter
+                # println(globalparam.changedparams_ofat[paramtype])
+                globalparam.changedparams_ofat[paramtype][2] = getfield(globalparam, paramtype)
+
+                # Set parameter to new value
+                setproperty!(globalparam, paramtype, newparamval)
+            elseif t == t_introduction + t_duration
+                # Set parameter value back to old value
+                setproperty!(globalparam, paramtype, oldparamval)
+            end
+        end
+    end
 end

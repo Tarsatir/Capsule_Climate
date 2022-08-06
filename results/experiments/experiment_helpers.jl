@@ -184,6 +184,7 @@ function savefulloutput(
                 :W_80,
                 :Em,
                 :EmIndex,
+                :energy_percentage,
                 :RD,
                 :bankrupty_cp,
                 :inventories,

@@ -16,6 +16,7 @@ Parameters and parameter values all follow from table 9 in Lamperti et al. (2018
     carbon_emissions_kp::Vector{Float64} = zeros(Float64, T)   # carbon emissions of cp
     carbon_emissions_cp::Vector{Float64} = zeros(Float64, T)   # carbon emissions of kp
     emissions_index::Vector{Float64} = fill(100.0, T)          # index of carbon emissions
+    energy_percentage::Vector{Float64} = zeros(Float64, T)     # percentage of emissions coming from energy
 
     # # Carbon Cycle
     # C_a::Vector{Float64} = fill(830.0, T)                      # atmospheric carbon levels
@@ -92,6 +93,7 @@ function collect_emissions_cl!(
     # Start saving emission indeces from warmup time
     if t > t_warmup
         climate.emissions_index[t] = 100 * climate.carbon_emissions[t] / climate.carbon_emissions[t_warmup]
+        climate.energy_percentage[t] = 1 - (climate.carbon_emissions_cp[t] + climate.carbon_emissions_kp[t]) / climate.carbon_emissions[t]
     end
 end
 
