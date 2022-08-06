@@ -659,10 +659,10 @@ function run_simulation(;
 
 end
 
-@time run_simulation(
-    savedata=true, 
-    track_firms_households=false,
-    seed=1234    
-)
+# @time run_simulation(
+#     savedata=true, 
+#     track_firms_households=false,
+#     seed=1234    
+# )
 
-nothing
+# nothing

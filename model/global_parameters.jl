@@ -104,7 +104,6 @@ function check_changed_ofatparams(
         for (paramtype, (newparamval, oldparamval, t_introduction, t_duration)) in globalparam.changedparams_ofat
             if t == t_introduction
                 # Set old value to current value of parameter
-                # println(globalparam.changedparams_ofat[paramtype])
                 globalparam.changedparams_ofat[paramtype][2] = getfield(globalparam, paramtype)
 
                 # Set parameter to new value
