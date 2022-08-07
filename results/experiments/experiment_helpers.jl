@@ -84,9 +84,9 @@ function convertrunoutput(
     # EF_g_2nd = var(EF_g[t_warmup:end])
 
     # Write emissions indexes
-    em2030 = runoutput.emissions_index[t_warmup + 120]
-    em2040 = runoutput.emissions_index[t_warmup + 240]
-    em2050 = runoutput.emissions_index[t_warmup + 360]
+    em2030 = runoutput.EmIndex[t_warmup + 120]
+    em2040 = runoutput.EmIndex[t_warmup + 240]
+    em2050 = runoutput.EmIndex[t_warmup + 360]
 
     if return_as_df
         return DataFrame(
