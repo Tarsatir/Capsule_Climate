@@ -197,10 +197,10 @@ function resolve_gov_balance!(
 
     if government.MS >= 0.0
 
-        total_I = sum(hh_id -> model[hh_id].total_I ^ -globalparam.prog, all_hh)
+        total_I = sum(hh_id -> model[hh_id].total_I > 0 ? model[hh_id].total_I ^ -globalparam.prog : 0., all_hh)
 
         for hh_id in all_hh
-            share = (model[hh_id].total_I ^ -globalparam.prog) / total_I
+            share = model[hh_id].total_I > 0 ? (model[hh_id].total_I ^ -globalparam.prog) / total_I : 0.
             socialbenefits = government.MS * share
             receiveincome_hh!(model[hh_id], socialbenefits; socben=true)
         end
