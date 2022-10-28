@@ -2,6 +2,7 @@ Base.@kwdef mutable struct IndexFund
     T::Int=T 
     Assets::Float64 = 0.0                           # Total amount of assets alocated in the fund
     funds_inv::Vector{Float64} = zeros(Float64, T)  # Amount of funds used for investment in last period
+    returns_investments::Float64 = 0.               # Return rates of investments over last period
 end
 
 
@@ -72,6 +73,9 @@ function distribute_dividends_if!(
     all_W = map(hh_id -> model[hh_id].W, all_hh)
     total_wealth = sum(all_W)
 
+    # Compute return rates:
+    indexfund.returns_investments = ((1 - τᴷ) * indexfund.Assets) / total_wealth
+
     total_capgains_tax = 0
 
     for hh_id in all_hh
@@ -88,6 +92,8 @@ function distribute_dividends_if!(
         total_capgains_tax += τᴷ * dividend_share
         receiveincome_hh!(model[hh_id], dividend_share * (1 - τᴷ); capgains=true)
     end
+
+    # println(model[1].capital_I / model[1].W)
 
     # Reset assets back to zero
     indexfund.Assets = 0.

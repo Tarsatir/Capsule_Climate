@@ -207,7 +207,7 @@ function pay_energytax_p!(
     t::Int64
     )
 
-    p.curracc.energytax = government.τᴱ * p.curracc.TCE
+    p.curracc.energytax = government.τᴱ * p.EU
     receive_energytax_gov!(government, p.curracc.energytax, t)
 end
 

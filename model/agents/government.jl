@@ -8,7 +8,7 @@
     τᴷ::Float64 = 0.3                      # capital gains tax
     τˢ::Float64 = 0.                       # sales tax
     τᴾ::Float64 = 0.3                      # profit tax
-    τᴱ::Float64 = 0.                       # energy tax
+    τᴱ::Float64 = 0.1                       # energy tax
     τᶜ::Float64 = 0.                       # emission tax
 
     MS::Float64 = 0.0                      # money stock owned by government

@@ -36,19 +36,20 @@
 
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
-    ϵ_w::Float64 = 0.02             # minimum desired wage increase rate
-    ϵ_μ::Float64 = 0.05             # upper limit of markup sgock
+    ϵ_w::Float64 = 0.05             # minimum desired wage increase rate
+    ϵ_μ::Float64 = 0.15              # upper limit of markup shock
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.8   # memory parameter adaptive updating rules
-    λ::Float64 = 0.7    # parameter for labor demand smoothing
+    ω::Float64 = 0.8                # memory parameter adaptive updating rules
+    λ::Float64 = 0.7                # parameter for labor demand smoothing
+    p_rigid_time::Int64 = 3         # number of periods producer's price remains stable
 
     # Determine household consumption
-    α_cp::Float64 = 0.75     # parameter controlling MPC of consumers
+    α_cp::Float64 = 0.75            # parameter controlling MPC of consumers
 
-    # Deterime extend of proggesivity of government spending
-    prog::Float64 = -0.55
+    # Deterime extend of progresivity of government spending
+    prog::Float64 = -0.5
 
     # Determine household switching
     ψ_E::Float64 = 0.15             # chance of employed worker looking for a better paying job
@@ -58,7 +59,7 @@
     freq_per_machine::Int64 = 50    # capital units per machine
     freq_per_powerplant::Int64 = 10_000 # capital units per instance
 
-    p_f::Float64 = 0.2    # price of fossil fuels
+    p_f::Float64 = 0.2              # price of fossil fuels
 
     n_cons_market_days::Int64 = 4   # number of days in the consumer market process
 

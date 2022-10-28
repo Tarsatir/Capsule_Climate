@@ -50,11 +50,11 @@ function OFAT_taxrates(
 
     # Define ranges of tax rates
     taxrates = Dict(
-        # :τᴵ => (0.0, 0.8),
-        # :τᴷ => (0.0, 0.5),
+        # :τᴵ => (0.1, 0.6),
+        # :τᴷ => (0.1, 0.6),
         # :τˢ => (0.0, 0.5),
-        # :τᴾ => (0.0, 0.8),
-        :τᴱ => (0.1, 0.7),
+        # :τᴾ => (0.1, 0.6),
+        :τᴱ => (0.1, 0.5),
         # :τᶜ => (0.1, 0.5)
     )
 
@@ -64,7 +64,7 @@ function OFAT_taxrates(
 
         println("type $taxtype, range $raterange")
 
-        Threads.@threads for taxrate in LinRange(raterange[1], raterange[2], n_per_taxtype)
+        for taxrate in LinRange(raterange[1], raterange[2], n_per_taxtype)
 
             taxrate = round(taxrate, digits=2)
             
@@ -73,7 +73,7 @@ function OFAT_taxrates(
 
             # results = nothing
 
-            for sim_nr in 1:n_per_taxrate
+            Threads.@threads for sim_nr in 1:n_per_taxrate
 
                 seed = 1000+sim_nr
 
@@ -93,8 +93,8 @@ function OFAT_taxrates(
                 outputfilepath = getfilepath_tax(folderpath, taxtype, taxrate, sim_nr)
                 CSV.write(outputfilepath, results)
 
-                outputfilepath = getfilepath_tax(folderpath, taxtype, taxrate, sim_nr, isfirmdata=true)
-                CSV.write(outputfilepath, firmdata)
+                # outputfilepath = getfilepath_tax(folderpath, taxtype, taxrate, sim_nr, isfirmdata=true)
+                # CSV.write(outputfilepath, firmdata)
 
                 outputfilepath = getfilepath_tax(folderpath, taxtype, taxrate, sim_nr, ishouseholddata=true)
                 CSV.write(outputfilepath, householddata[2])
@@ -137,21 +137,22 @@ function OFAT_globalparam(
 
     # Define ranges of tax rates, contains the range and the time step of introduction and duration
     globalparams = [
-        [:p_f, [0.1, 0.3], 420, 12]
+        # [:p_f, [0.1, 0.3], 420, 12]
+        [:prog, [-1.0, 0.0], 300, Inf]
     ]
 
     for (paramtype, paramrange, t_introduction, t_duration) in globalparams
 
         println("type $paramtype, range $paramrange")
 
-        Threads.@threads for newparamval in repeat(paramrange, n_per_paramtype)
+        for newparamval in paramrange
 
             newparamval = round(newparamval, digits=2)
             
             # Set up array with changed parameter value, to be introduced in period t_warmup
             changedparams_ofat = Dict(paramtype => [newparamval, 0., t_introduction, t_duration])
 
-            for sim_nr in 1:n_per_paramval
+            Threads.@threads for sim_nr in 1:n_per_paramval
 
                 seed = 1000+sim_nr
 
@@ -175,6 +176,114 @@ function OFAT_globalparam(
                 CSV.write(outputfilepath, firmdata)
 
                 outputfilepath = getfilepath_gp(folderpath, paramtype, newparamval, t_introduction, sim_nr, ishouseholddata=true)
+                CSV.write(outputfilepath, householddata[2])
+            end
+        end
+    end
+end
+
+
+function getfilepath_gp_tax(
+    folderpath::String,
+    taxtype::Symbol,
+    taxrate::Float64,
+    paramtype::Symbol,
+    paramval::Float64,
+    t_introduction::Int64,
+    sim_nr::Int64;
+    isfirmdata::Bool=false,
+    ishouseholddata::Bool=false
+    )
+
+    if taxtype == :τᴵ
+        folderpath *= "incometax"
+    elseif taxtype == :τᴷ
+        folderpath *= "capitaltax"
+    elseif taxtype == :τˢ
+        folderpath *= "salestax"
+    elseif taxtype == :τᴾ
+        folderpath *= "profittax"
+    elseif taxtype == :τᴱ
+        folderpath *= "energytax"
+    else
+        folderpath *= "carbontax"
+    end
+
+    folderpath *= "_$(taxrate)_$(string(paramtype))_$(paramval)_$(t_introduction)"
+
+    if isfirmdata
+        folderpath *= "_firmdata"
+    elseif ishouseholddata
+        folderpath *= "_householddata"
+    end
+
+    return folderpath *= "_$(sim_nr).csv"
+end
+
+
+"""
+Runs OFAT experiment on global parameters and tax rates simulataneously
+"""
+function OFAT_globalparam_taxrates(
+    folderpath::String;
+    n_per_paramtype::Int64=10,
+    n_per_paramval::Int64=10
+    )
+
+    # Define ranges of tax rates, contains the range and the time step of introduction and duration
+
+    # taxrates = Dict(
+    #     :τᶜ => (0.3, 0.3)
+    # )
+
+    globalparams = [
+        [:prog, [-1.0, 0.0], 300, Inf],
+        # [:p_f, [0.3], 420, 12]
+    ]
+
+    # Define tax rate used for tax experiment
+    taxtype = :τᶜ
+    taxrate = 0.3
+
+    for (paramtype, paramrange, t_introduction, t_duration) in globalparams
+
+        for newparamval in paramrange
+
+            newparamval = round(newparamval, digits=2)
+            
+            # Set up array with changed parameter value, to be introduced in period t_warmup
+            changedtaxrates = [(taxtype, taxrate)]
+            changedparams_ofat = Dict(paramtype => [newparamval, 0., t_introduction, t_duration])
+
+            Threads.@threads for sim_nr in 1:n_per_paramval
+
+                seed = 1000+sim_nr
+
+                println("   thr $(Threads.threadid()), param $(paramtype)=$(newparamval), sim_nr $(sim_nr)")
+
+                # Run the model with changed tax rate
+                runoutput, firmdata, householddata = run_simulation(
+                    changedparams_ofat=changedparams_ofat,
+                    changedtaxrates=changedtaxrates,
+                    full_output=false,
+                    threadnr=Threads.threadid(),
+                    track_firms_households=true,
+                    seed=seed
+                )
+
+                # Process output data and save to file
+
+                results = savefulloutput(runoutput, sim_nr; return_as_df=true)
+                outputfilepath = getfilepath_gp_tax(folderpath, taxtype, taxrate, paramtype, 
+                                                    newparamval, t_introduction, sim_nr)
+                CSV.write(outputfilepath, results)
+
+                # outputfilepath = getfilepath_gp_tax(folderpath, taxtype, taxrate, paramtype, 
+                #                                     newparamval, t_introduction, sim_nr, isfirmdata=true)
+                # CSV.write(outputfilepath, firmdata)
+
+                outputfilepath = getfilepath_gp_tax(folderpath, taxtype, taxrate, paramtype, 
+                                                    newparamval, t_introduction, sim_nr, ishouseholddata=true)
                 CSV.write(outputfilepath, householddata[2])
             end
         end
@@ -216,6 +325,8 @@ function main()
     OFAT_taxrates(folderpath; n_per_taxtype=n_per_type, n_per_taxrate=n_per_val)
 
     # OFAT_globalparam(folderpath, n_per_paramtype=n_per_type, n_per_paramval=n_per_val)
+
+    # OFAT_globalparam_taxrates(folderpath, n_per_paramtype=n_per_type, n_per_paramval=n_per_val)
 end
 
 main()

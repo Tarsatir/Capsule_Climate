@@ -19,7 +19,15 @@
     UB_I::Float64 = 0.0                         # income from unemployment benefits
     socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
     s::Float64 = 0.0                            # savings rate
-    W::Float64 = 200                            # wealth or cash on hand
+    W::Float64 = 200.                           # wealth or cash on hand
+
+    α::Float64 = 0.8                            # Household's consumption fraction of wealth
+
+    # Expected income sources
+    EYL_t::Float64 = L * skill                  # expected labor income
+    EYS_t::Float64 = 0.0                        # expected social benefits income
+    EY_t::Float64 = EYL_t + EYS_t               # expected income from labor and social benefits
+    ER_t::Float64 = 0.05                        # expected returns on capital
 
     # Consumption variables
     C::Float64 = 0.0                           # budget
@@ -52,19 +60,126 @@ Sets consumption budget based on current wealth level
 """
 function set_consumption_budget_hh!(
     hh::Household,
-    all_W::Vector{Float64},
+    UB::Float64,
     globalparam::GlobalParam,
+    ERt::Float64,
+    P_getunemployed::Float64,
+    P_getemployed::Float64,
+    Wmin::Float64,
+    Wmax::Float64,
+    Wmedian::Float64,
     model::ABM
     )
+
+    # Update expected income levels
+    update_expected_incomes_hh!(hh, globalparam.ω, UB, P_getunemployed, P_getemployed)
 
     # Update average price level of bp and lp
     update_average_price_hh!(hh, model)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, maximum(all_W), minimum(all_W), globalparam.α_cp)
+    compute_consumption_budget_hh!(hh, Wmax, Wmin, Wmedian, ERt, globalparam.α_cp)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
+end
+
+
+"""
+Updates expected labor income and social benefits income
+"""
+function update_expected_incomes_hh!(
+    hh::Household,
+    ω::Float64,
+    UB::Float64,
+    P_getunemployed::Float64,
+    P_getemployed::Float64
+)
+
+    # Update expected labor income
+    hh.EYL_t = ω * hh.EYL_t + (1 - ω) * hh.labor_I
+
+    # Update expected social benefits income
+    hh.EYS_t = ω * hh.EYS_t + (1 - ω) * hh.socben_I
+
+    # Update total expected income from labor and social benefits
+    if hh.employed
+        hh.EY_t = P_getunemployed * UB + (1 - P_getunemployed) * hh.EYL_t + hh.EYS_t
+    else
+        hh.EY_t = P_getemployed * hh.EYL_t + (1 - P_getemployed) * UB + hh.EYS_t
+    end
+end
+
+
+function utility(
+    C::Float64,
+    ρ::Float64
+    )   
+
+    return (C ^ (1 - ρ)) / (1 - ρ)
+end
+
+
+function computeβ(
+    W::Float64,
+    Wmedian::Float64; 
+    Wmin::Float64=0., 
+    Wmax::Float64=750.,
+    βmin::Float64=0.1,
+    βmax::Float64=0.9,
+    δmin::Float64=0.1,
+    δmax::Float64=2.0,
+    γ::Float64 = 0.01
+    )
+
+    # Compute discount rate δ
+    # δ = δmin + (δmax - δmin) / (1 + exp(γ * (W - (Wmin + Wmax) / 2)))
+    δ = δmin + (δmax - δmin) / (1 + exp(γ * (W - Wmedian)))
+
+    # Compute discount factor β
+    β = 1 / (1 + δ)
+
+    return β
+end
+
+
+function computeU(
+    α::Float64,
+    P̄::Float64,
+    ERt::Float64,
+    EYt::Float64,
+    Wt::Float64,
+    T::Int64,
+    β::Float64;
+    ρ::Float64=0.4
+    )
+
+    U = 0.
+
+    for k in 0:T
+        Y_discounted = sum(m -> ((1 + ERt) * (1 - α)) ^ (k - m) * EYt, 0:k)
+        W_discounted = ((1 + ERt) * (1 - α)) ^ k * Wt
+        C = max(α * (W_discounted + Y_discounted), 0)
+        U += β ^ k * utility(C / P̄, ρ)
+    end
+
+    return U
+end
+
+
+function αopt(
+    hh::Household,
+    ERt::Float64,
+    Wmedian::Float64,
+    W_scaled;
+    T::Int64=6,
+    maxdev=0.05::Float64
+    )
+
+    αrange = (LinRange(-maxdev, maxdev, 5)) .+ hh.α
+    αmax = argmax(αstar -> αstar <= 1. && αstar >= 0. ? computeU(αstar, hh.P̄, ERt, hh.EY_t, hh.W, T, computeβ(hh.W[end], Wmedian)) : -1., αrange)
+    # println(hh.W[end], " ", αmax)
+    return αmax
 end
 
 
@@ -87,16 +202,15 @@ function compute_consumption_budget_hh!(
     hh::Household,
     W_max::Float64,
     W_min::Float64,
+    Wmedian::Float64,
+    ERt::Float64,
     α_cp::Float64
     )
 
-    # W_max = 800.
-    # W_min = 50.
+
     if W_max - W_min < 1.
         W_max = W_min + 1.
     end
-
-    # println(W_max," ", W_min)
 
     if hh.W > 0
         # Scale W between 0 and 100
@@ -104,14 +218,14 @@ function compute_consumption_budget_hh!(
             hh.C = hh.W
         else
             W_scaled = 100 * (hh.W - W_min) / (W_max - W_min)
-            # hh.C = (hh.W / W_scaled) * min(W_scaled^α_cp, W_scaled)
 
-            hh.C = hh.P̄ * (hh.W / W_scaled) * min((W_scaled / hh.P̄)^α_cp, W_scaled / hh.P̄)
-            hh.C = min(hh.C, hh.W)
+            hh.α = αopt(hh, ERt, Wmedian, W_scaled)
+
+            hh.C = max(min(hh.α * hh.W, hh.W), 0)
+
+            # hh.C = hh.P̄ * (hh.W / W_scaled) * min((W_scaled / hh.P̄)^α_cp, W_scaled / hh.P̄)
+            # hh.C = min(hh.C, hh.W)
         end
-        # hh.C = min(hh.P̄[end] * (hh.W / hh.P̄[end])^α_cp, hh.W)
-
-        # println("   ", hh.W, "  ", hh.C)
 
         # Compute savings rate
         hh.s = hh.total_I > 0 ? ((hh.total_I + hh.capital_I + hh.socben_I) - hh.C) / (hh.total_I + hh.capital_I + hh.socben_I) : 0.0 

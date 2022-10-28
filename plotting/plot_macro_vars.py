@@ -98,9 +98,10 @@ def plot_macro_vars(df):
     ax[3,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
     ax[3,0].plot(T, df.s_emp, color='red', label='employed')
     ax[3,0].plot(T, df.s_unemp, color='blue', label='unemployed')
+    ax[3,0].plot(T, df.returns_investments, color='green', label='$r_t$')
     ax[3,0].set_title("Savings rate")
+    ax[3,0].set_ylim(-0.5, 0.5)
     ax[3,0].legend()
-
 
     ax[3,1].plot(range(len(df.debt_tot)), df.debt_tot, label='total')
     ax[3,1].plot(range(len(df.debt_cp)), df.debt_cp, label='cp', color='green')
@@ -347,59 +348,6 @@ def plot_income_dist():
     ax2.legend()
 
 
-    # fig, ax = plt.subplots(4, 2, figsize=(8,10))
-
-    # ax[0,0].hist(df.all_I, bins=50)
-    # ax[0,0].set_title('Income ($I_{i,t}$)')
-    # ax[0,0].set_xlim(0, max(df.all_I))
-    # ax[0,0].axvline(I_sorted[start_60], c='red')
-    # ax[0,0].axvline(I_sorted[end_60], c='red')
-
-    # ax[0,1].hist(df.all_I, bins=50, density=True)
-    # ax[0,1].set_title('Income ($I_{i,t}$)')
-    # # ax[0,1].set_xscale('log')
-    # ax[0,1].set_yscale('log')
-    # ax[0,1].axvline(I_sorted[start_60], c='red')
-    # ax[0,1].axvline(I_sorted[end_60], c='red')
-
-    # ax[1,0].hist(df.all_w, bins=100)
-    # ax[1,0].set_title('Wages ($w_{i,t}$)')
-    # ax[1,0].set_xlim(0, max(df.all_w))
-
-    # ax[1,1].hist(df.all_w, bins=100)
-    # ax[1,1].set_title('Wages ($w_{i,t}$)')
-    # # ax[1,1].set_xscale('log')
-    # ax[1,1].set_yscale('log')
-
-    # ax[2,0].hist(df.all_W, bins=100)
-    # ax[2,0].set_title('Wealth ($W_{i,t}$)')
-    # ax[2,0].set_xlim(0, max(df.all_W))
-    # ax[2,0].axvline(W_sorted[start_60], c='red')
-    # ax[2,0].axvline(W_sorted[end_60], c='red')
-
-    # ax[2,1].hist(df.all_W, bins=100)
-    # ax[2,1].set_title('Wealth ($W_{i,t}$), log-log')
-    # # ax[2,1].set_xscale('log')
-    # ax[2,1].set_yscale('log')
-    # ax[2,1].axvline(W_sorted[start_60], c='red')
-    # ax[2,1].axvline(W_sorted[end_60], c='red')
-
-    # ax[3,0].scatter(df.skills, df.all_I, s=0.3)
-    # ax[3,0].set_title('Income to skills')
-    # ax[3,0].set_xlabel('skill')
-    # ax[3,0].set_ylabel('income')
-    # ax[3,0].set_ylim(0, max(df.all_W))
-
-    # ax[3,1].scatter(df.skills, df.all_W, s=0.3)
-    # ax[3,1].set_title('Wealth to skills')
-    # ax[3,1].set_xlabel('skill')
-    # ax[3,1].set_ylabel('wealth')
-    # ax[3,1].set_ylim(0, max(df.all_W))
-
-    # print('I skew:', stats.skew(df.all_I))
-    # print('W skew:', stats.skew(df.all_W))
-
-
     plt.tight_layout()
     plt.savefig('plots/final_income_dist.png')
 
@@ -636,12 +584,12 @@ if __name__=="__main__":
     # plot_cons_vars(df_macro)
 
     plot_income_dist()
-    plot_inequality(df_macro)
-    plot_sales_dist()
+    # plot_inequality(df_macro)
+    # plot_sales_dist()
 
-    df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
+    # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
     # plot_energy(df_climate_energy, df_macro)
     # plot_climate(df_climate_energy, df_macro)
-    plot_emissions(df_climate_energy, df_macro)
+    # plot_emissions(df_climate_energy, df_macro)
 
     # plot_LIS(df_macro)

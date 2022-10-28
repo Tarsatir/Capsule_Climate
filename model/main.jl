@@ -111,7 +111,8 @@ function initialize_model(
     for i in 1:initparam.n_cp
 
         # Initialize capital good stock
-        machines = initialize_machine_stock(globalparam.freq_per_machine, 
+        machines = initialize_machine_stock(
+                        globalparam.freq_per_machine, 
                         initparam.n_machines_init,
                         η=globalparam.η; 
                         A_LP = initparam.A_LP_0,
@@ -245,6 +246,19 @@ function model_step!(
     # Update schedulers
     @timeit to "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
+    # Redistrubute remaining stock of dividents to households
+    @timeit to "distr div" distribute_dividends_if!(
+        indexfund,
+        government,
+        all_hh,
+        government.τᴷ,
+        t,
+        model
+    )
+
+    # Redistribute goverment balance
+    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
+
     # Update firm age
     for p_id in all_p
         model[p_id].age += 1
@@ -311,8 +325,9 @@ function model_step!(
             government, 
             ep,
             globalparam, 
-            μ_avg, 
-            government.τˢ, 
+            government.τˢ,
+            length(all_hh),
+            length(all_cp),
             t, 
             model
         )
@@ -395,11 +410,26 @@ function model_step!(
 
     all_W = map(hh_id -> model[hh_id].W, all_hh)
 
-    # println("   $t 6 start $(Dates.format(now(), "HH:MM"))")
+    # TODO: change to actual expected returns
+    ERt = t == 1 ? 0.07 : macroeconomy.returns_investments[t-1]
 
     # Households set consumption budget
+    Wmin = minimum(all_W)
+    Wmax = maximum(all_W)
+    Wmedian = median(all_W)
     @timeit to "set budget" @inbounds for hh_id in all_hh
-        set_consumption_budget_hh!(model[hh_id], all_W, globalparam, model)
+        set_consumption_budget_hh!(
+            model[hh_id], 
+            government.UB, 
+            globalparam,
+            ERt,
+            labormarket.P_getunemployed,
+            labormarket.P_getemployed,
+            Wmin,
+            Wmax,
+            Wmedian,
+            model
+        )
     end
 
     # Consumer market process
@@ -538,18 +568,18 @@ function model_step!(
         model
     )
 
-    # Redistrubute remaining stock of dividents to households
-    @timeit to "distr div" distribute_dividends_if!(
-        indexfund,
-        government,
-        all_hh,
-        government.τᴷ,
-        t,
-        model
-    )
+    # # Redistrubute remaining stock of dividents to households
+    # @timeit to "distr div" distribute_dividends_if!(
+    #     indexfund,
+    #     government,
+    #     all_hh,
+    #     government.τᴷ,
+    #     t,
+    #     model
+    # )
 
-    # Redistribute goverment balance
-    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
+    # # Redistribute goverment balance
+    # resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
 
     # @pack! simdata = model, globalparam, initparam, macroeconomy, government, ep, 
     #                  labormarket, indexfund, climate, ep, cmdata, firmdata
@@ -636,10 +666,6 @@ function run_simulation(;
         @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
 
         @timeit to "save climate" save_climate_data(ep, climate, model)
-
-        # if firmdata ≠ nothing
-        #     CSV.write("results/result_data/firmdata.csv", firmdata)
-        # end
     end
 
     if full_output
@@ -659,10 +685,12 @@ function run_simulation(;
 
 end
 
-# @time run_simulation(
-#     savedata=true, 
-#     track_firms_households=false,
-#     seed=1234    
-# )
+# changedtaxrates = [(:τᴱ, 2.0)]
 
-# nothing
+@time run_simulation(
+    savedata=true,
+    track_firms_households=false,
+    seed=1234    
+)
+
+nothing

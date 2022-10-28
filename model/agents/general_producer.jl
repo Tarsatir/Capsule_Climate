@@ -8,7 +8,7 @@ function cop(
     π_EF::Float64
     )
 
-    return w / π_LP + (1 + τᴱ) * pₑ / π_EE + τᶜ * π_EF
+    return w / π_LP + (τᴱ + pₑ) / π_EE + τᶜ * π_EF
 end
 
 

@@ -193,8 +193,9 @@ function run_PAWN(
     df = innerjoin(input_df, output_df, on=:sim_nr)
 
     # Define labels and label names
-    labels = ["α_cp", "ω", "λ", "κ_upper", "prog", "μ1", "ϵ", "p_f", "ψ_P", "ψ_Q", "ψ_E"]
-    labelnames = ["\\alpha_{cp}", "\\omega", "\\lambda", "\\chi_{upper}", "prog", "\\mu_1", "\\epsilon", "p_f", "\\psi_P", "\\psi_Q", "\\psi_E"]
+    labels = ["α_cp", "ω", "λ", "κ_upper", "prog", "μ1", "ϵ_w", "ϵ_μ", "p_f", "ψ_P", "ψ_Q", "ψ_E"]
+    labelnames = ["\\alpha_{cp}", "\\omega", "\\lambda", "\\chi_{upper}", "prog", "\\mu_1", 
+                  "\\epsilon_w", "\\bar{\\epsilon}_\\mu", "p_f", "\\psi_P", "\\psi_Q", "\\psi_E"]
 
     X = zeros(nrow(df), length(labels))
     X .= df[:, labels]
@@ -307,7 +308,7 @@ function run_PAWN(
     # FGT_2nd = df[!, Symbol("FGT_2nd")]
     # py"run_PAWN"(labelnames, X, FGT_2nd, "FGT_2", run_nr, "var FGT")
 
-    # Carbon emissions
+    # # Carbon emissions
     # em2030 = df[!, Symbol("em2030")]
     # em2030_KS = py"run_PAWN"(labelnames, X, em2030, "em2030", run_nr, "\$CO_2\$ em 2030", crit)
     # push!(df_KS, vcat(["em2030"], em2030_KS))
@@ -332,9 +333,6 @@ function run_PAWN(
     # EF_g_1st = df[!, Symbol("EF_g_1st")]
     # EF_1_KS = py"run_PAWN"(labelnames, X, EF_g_1st, "EF_g", run_nr, "mean EF growth", crit)
     # push!(df_KS, vcat(["EF_1"], EF_1_KS))
-
-
-
 end
 
 

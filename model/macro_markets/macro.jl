@@ -16,6 +16,8 @@
 
     LIS::Vector{Float64} = zeros(Float64, T)                # labor income share
 
+    returns_investments::Vector{Float64} = zeros(Float64, T)# returns to investments
+
     p̄::Vector{Float64} = zeros(Float64, T)                  # average price of cp goods over time
     p̄_kp::Vector{Float64} = zeros(Float64, T)               # average price of kp goods over time
     μ_cp::Vector{Float64} = zeros(Float64, T)               # average μ for cp
@@ -129,7 +131,6 @@
 
     GINI_I::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for income
     GINI_W::Vector{Float64} = zeros(Float64, T)             # Gini coefficient for wealth
-    # FGT::Vector{Float64} = zeros(Float64, T)                # Foster-Greer-Thorbecke index
 
     I_min::Vector{Float64} = zeros(Float64, T)              # Minimum income in the economy
     I_20::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 20% of income
@@ -140,6 +141,8 @@
     W_20::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 20% of wealth
     W_80::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 80% of wealth
     W_max::Vector{Float64} = zeros(Float64, T)              # Maximum wealth level in the economy
+
+    α_W_quantiles::Matrix{Float64} = zeros(Float64, 5, T)   # Matrix containing average α for different wealth quintiles
 end
 
 
@@ -175,6 +178,9 @@ function update_macro_timeseries(
 
     # Compute the labor share of income
     macroeconomy.LIS[t] = macroeconomy.total_w[t] / macroeconomy.GDP[t]
+
+    # Update returns to investments
+    macroeconomy.returns_investments[t] = indexfund.returns_investments
 
     # Update average labor demand
     macroeconomy.ΔL̄_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
@@ -261,6 +267,8 @@ function update_macro_timeseries(
     @timeit to "GINI" compute_GINI(all_hh, macroeconomy, t, model)
 
     compute_I_W_thresholds(all_hh, macroeconomy, t, model)
+
+    compute_α_W_quantiles(all_hh, macroeconomy, t, model)
 
 end
 
@@ -601,7 +609,7 @@ end
 
 
 function compute_savings_macro!(
-    all_hh::Vector{Int}, 
+    all_hh::Vector{Int64}, 
     macroeconomy::MacroEconomy, 
     t::Int,
     model::ABM
@@ -620,4 +628,16 @@ function compute_savings_macro!(
 
     macroeconomy.s̄_emp[t] = length(all_s_emp) > 1 ? mean(all_s_emp) : NaN
     macroeconomy.s̄_unemp[t] = length(all_s_unemp) > 1 ? mean(all_s_unemp) : NaN
+end
+
+
+function compute_α_W_quantiles(
+    all_hh::Vector{Int64},
+    macroeconomy::MacroEconomy, 
+    t::Int64,
+    model::ABM
+)
+
+    all_α = map(hh_id -> model[hh_id].α, all_hh)
+    macroeconomy.α_W_quantiles[:, t] .= Statistics.quantile(all_α, [0.1, 0.25, 0.5, 0.75, 0.9])
 end

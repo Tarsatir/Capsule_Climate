@@ -27,6 +27,8 @@ function save_macro_data(macroeconomy)
 
         LIS = macroeconomy.LIS,
 
+        returns_investments = macroeconomy.returns_investments,
+
         unsat_demand = macroeconomy.unsat_demand,
         unspend_C = macroeconomy.unspend_C,
         unsat_invest = macroeconomy.unsat_invest,
@@ -37,8 +39,6 @@ function save_macro_data(macroeconomy)
         CPI=macroeconomy.CPI,
         CPI_kp = macroeconomy.CPI_kp,
 
-        # mu_bp = macroeconomy.μ_bp,
-        # mu_lp = macroeconomy.μ_lp,
         mu_cp = macroeconomy.μ_cp,
         mu_kp = macroeconomy.μ_kp,
 
@@ -117,7 +117,6 @@ function save_macro_data(macroeconomy)
 
         gini_I = macroeconomy.GINI_I,
         gini_W = macroeconomy.GINI_W,
-        # FGT = macroeconomy.FGT
 
         I_min = macroeconomy.I_min,
         I_20 = macroeconomy.I_20,
@@ -130,6 +129,8 @@ function save_macro_data(macroeconomy)
         W_max = macroeconomy.W_max
     )
     CSV.write("results/result_data/first.csv", df)
+
+    CSV.write("results/result_data/alpha_W_quantiles.csv", DataFrame(macroeconomy.α_W_quantiles, :auto))
 end
 
 

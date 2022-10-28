@@ -114,8 +114,9 @@ function plan_production_cp!(
     government::Government,
     ep,
     globalparam::GlobalParam,
-    μ_avg::Float64,
     τˢ::Float64,
+    n_hh::Int64,
+    n_cp::Int64,
     t::Int,
     model::ABM
     )
@@ -139,14 +140,17 @@ function plan_production_cp!(
     # Update average wage w̄
     update_w̄_p!(cp, model)
 
-    # Update markup μ
-    update_μ_cp!(cp, globalparam.ϵ_μ, t)
-
     # Update cost of production c
     compute_c_cp!(cp, ep.pₑ[t], government.τᴱ, government.τᶜ)
 
-    # Compute price
-    compute_p_cp!(cp, τˢ)
+    if checkupdateprice(cp.id, t, n_hh, n_cp, globalparam.p_rigid_time)
+
+        # Update markup μ
+        update_μ_cp!(cp, globalparam.ϵ_μ, t)
+
+        # Compute price
+        compute_p_cp!(cp, τˢ)
+    end
 end
 
 
@@ -208,7 +212,8 @@ function check_funding_restrictions_cp!(
 
     # Determine expected TCL and TCE
     TCLᵉ = (cp.L + cp.ΔLᵈ) * cp.w̄[end]
-    TCE = (1 + government.τᴱ) * pₑ * cp.Qˢ / cp.π_EE + government.τᶜ * cp.Qˢ * cp.π_EF
+    # TCE = (government.τᴱ) * pₑ * cp.Qˢ / cp.π_EE + government.τᶜ * cp.Qˢ * cp.π_EF
+    TCE = cp.Qˢ * ((pₑ + government.τᴱ) / cp.π_EE + government.τᶜ * cp.π_EF)
 
     # Determine how much additional debt can be made
     max_add_debt = max(globalparam.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
@@ -260,10 +265,11 @@ function check_funding_restrictions_cp!(
         cp.n_mach_ordered_RS = 0
         cp.mach_tb_repl = Vector{Machine}()
 
-        if NW_no_prod + max_add_debt < TCLᵉ + TCE
+        if (NW_no_prod + max_add_debt) < (TCLᵉ + TCE)
             # Cost of labor exceeds expected liquid assets plus max additional debt. 
             # Decrease production quantity.
-            poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + pₑ / cp.π_EE)
+            # poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + pₑ / cp.π_EE)
+            poss_prod = (NW_no_prod + max_add_debt) / cop(cp.w̄[end], cp.π_LP, government.τᴱ, pₑ, cp.π_EE, government.τᶜ, cp.π_EF)
             poss_L = poss_prod / cp.π_LP
             cp.ΔLᵈ = poss_L - cp.L
         end
@@ -304,13 +310,11 @@ function choose_producer_cp!(
         A_EF = brochure[6]
 
         c = p_mach + b * cop(cp.w̄[end], A_LP, government.τᴱ, ep.pₑ[t], A_EE, government.τᶜ, A_EF)
-
-        # push!(all_cop, c)
         all_cop[i] = c
     end
 
     # Choose kp based on brochures
-    all_cop .= 1 ./ all_cop .^ 2
+    all_cop .= (1 ./ all_cop .^ 2)
     brochure = sample(cp.brochures, Weights(all_cop))
     cp.chosen_kp_id = brochure[1]
 
@@ -683,7 +687,6 @@ function update_n_machines_cp!(
 
     # Retire old machines that are not replaced
     if length(cp.mach_tb_retired) > 0
-        # filter!(machine -> machine ∉ cp.mach_tb_retired, cp.Ξ)
         setdiff!(cp.Ξ, cp.mach_tb_retired)
     end
 
@@ -709,27 +712,9 @@ Computes the markup rate μ based on the market share f.
 """
 function update_μ_cp!(
     cp::ConsumerGoodProducer,
-    # v::Float64,
-    # μ1::Float64,
     ϵ_μ::Float64,
     t::Int64
-    # t_warmup::Int64=300
     )
-
-    # if t > t_warmup 
-    # if cp.f[end] != 0.0 && cp.f[end-1] != 0.0
-    #     new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
-    # else
-    #     new_μ = cp.μ[end] * (1 - v)
-    # end
-    # shift_and_append!(cp.μ, new_μ)
-
-    # else
-    #     new_μ = cp.μ[end] * (1 + min(v * (cp.f[end] - cp.f[end-1]) / cp.f[end-1], v))
-    #     shift_and_append!(cp.μ, new_μ)
-    # end
-
-    # ϵ_firm = 0.01
 
     new_μ = cp.μ[end]
     shock = ϵ_μ * rand()
@@ -738,9 +723,6 @@ function update_μ_cp!(
         dp = cp.μ[end] - cp.μ[end - 1]
         dΠ = cp.Π[end] - cp.Π[end - 1]
         new_μ *= (1 + shock * sign(dp) * sign(dΠ))
-    # elseif (cp.age == 2 && t > t_warmup) || t == t_warmup - 1
-    #     new_μ *= (1 + shock * sample([-1., 1.]))
-    # end
     else
         new_μ *= (1 + shock * sample([-1., 1.]))
     end
@@ -843,4 +825,19 @@ function update_emissions_cp!(
     )
 
     cp.emissions = actual_em * cp.EU
+end
+
+
+function checkupdateprice(
+    cp_id::Int64, 
+    t::Int64,
+    n_hh::Int64, 
+    n_cp::Int64,
+    p_time_rigid::Int64
+)
+
+    id_rescaled = (cp_id - n_hh) ÷ (n_cp / p_time_rigid) + 1
+    t_rescaled = t % p_time_rigid
+
+    return id_rescaled == t_rescaled
 end

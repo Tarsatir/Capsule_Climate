@@ -11,6 +11,9 @@
     L_fired::Float64 = 0.0                    # total labor fired
     E::Float64 = 0.0                          # unemployment rate
     switch_rate::Float64 = 0.0                # rate by which employed employees switch employer
+
+    P_getunemployed::Float64 = 0.                # probability of an employed household getting unemployed
+    P_getemployed::Float64 = 0.                  # probability of an unemployed household getting employed
 end
 
 
@@ -103,13 +106,6 @@ function labormarket_process!(
 
     # Update wage parameters households
     for hh_id in all_hh
-        # update_sat_req_wage_hh!(
-        #     model[hh_id], 
-        #     globalparam.ϵ, 
-        #     globalparam.ω, 
-        #     government.w_min
-        # )
-
         update_sat_req_wage_hh!(
             model[hh_id], 
             globalparam.ϵ_w,
