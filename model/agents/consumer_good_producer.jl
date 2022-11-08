@@ -10,34 +10,34 @@ Defines struct for consumer good producer
     μ::Vector{Float64}                        # markup rate
     p::Vector{Float64} = fill(1+μ[end], 3)    # hist prices
     c::Vector{Float64} = ones(Float64, 3)     # hist cost
-    true_c::Float64 = 0.0                     # true unit cost
+    true_c::Float64 = 0.                      # true unit cost
 
     # Production and demand
     D::Vector{Float64}                        # hist demand
-    Dᵁ::Vector{Float64} = zeros(3)            # unsatisfied demand in last period
+    Dᵁ::Vector{Float64} = zeros(Float64, 3)   # unsatisfied demand in last period
     Dᵉ::Float64                               # exp demand
     order_queue::Vector = Vector()            # vector containing orders of demanding households
     Nᵈ::Float64                               # desired inventory
     N_goods::Float64                          # inventory in good units
     Q::Vector{Float64}                        # hist production
     Qᵉ::Float64                               # exp production
-    Qˢ::Float64 = 0.0                         # desired short-term production
-    EU::Float64 = 0.0                         # energy use in the last period
+    Qˢ::Float64 = 0.                          # desired short-term production
+    EU::Float64 = 0.                          # energy use in the last period
 
     # Investments
-    Iᵈ::Float64 = 0                           # desired total investments
-    EIᵈ::Float64 = 0                          # desired expansionary investments
-    RSᵈ::Float64 = 0                          # desired replacement investments
+    Iᵈ::Float64 = 0.                          # desired total investments
+    EIᵈ::Float64 = 0.                         # desired expansionary investments
+    RSᵈ::Float64 = 0.                         # desired replacement investments
     n_mach_ordered_EI::Int = 0                # number of machines ordered for expansion
     n_mach_ordered_RS::Int = 0                # number of machines ordered for replacement
     mach_tb_repl::Vector{Machine} = []        # list of to-be replaced machines
     mach_tb_retired::Vector{Machine} = []     # list of to-be retired machines (without replacement)
-    chosen_kp_id::Int = 0                     # id of chosen kp
+    kp_ids::Vector{Int64} = zeros(Int64, 0)   # ids of known kp
     debt_installments::Vector{Float64}        # installments of debt repayments
 
     Ξ::Vector{Machine}                        # machines
-    n_machines::Float64 = 0                   # total freq of machines # TODO rename
-    cu::Float64 = 0                           # capital utilizataion
+    n_machines::Float64 = 0.                  # total freq of machines # TODO rename
+    cu::Float64 = 0.                          # capital utilizataion
     employees::Vector{Int} = []               # employees list
     L::Float64                                # labor units
     Lᵈ::Float64 = L                           # desired labor units
@@ -45,7 +45,7 @@ Defines struct for consumer good producer
     w̄::Vector{Float64}                        # wage level
     wᴼ::Float64 = 1.0                         # offered wage
     wᴼ_max::Float64 = 1.0                     # maximum offered wage
-    brochures::Vector = []                    # brochures from kp
+    # brochures::Vector = []                    # brochures from kp
 
     π_LP::Float64 = 1.0                       # labor productivity of total capital stock
     π_EE::Float64 = 1.0                       # productivity per energy unit of total capital stock
@@ -64,20 +64,20 @@ end
 
 
 function initialize_cp(
-    id::Int,
-    t_next_update::Int, 
+    id::Int64,
+    t_next_update::Int64, 
     machines::Vector{Machine},  
-    n_init_emp_cp::Int,
+    n_init_emp_cp::Int64,
     μ::Float64,
     ι::Float64,
     b::Int64;
-    D=1600.0::Float64,
-    w=1.0::Float64,
-    L=n_init_emp_cp * 100::Int,
+    D=1600.::Float64,
+    w=1.::Float64,
+    L=n_init_emp_cp * 100::Int64,
     N_goods=D*ι::Float64,
-    n_consrgood=200::Int,
-    f=2/n_consrgood,
-    )
+    n_consrgood=200::Int64,
+    f::Float64=2/n_consrgood,
+)
 
     cp = ConsumerGoodProducer(
         id = id,
@@ -96,8 +96,8 @@ function initialize_cp(
         f = fill(f, 3)
     )
 
-    cp.balance.NW = 1500
-    cp.balance.EQ = 1500
+    cp.balance.NW = 1500.
+    cp.balance.EQ = 1500.
 
     return cp
 end
@@ -146,7 +146,7 @@ function plan_production_cp!(
     if checkupdateprice(cp.id, t, n_hh, n_cp, globalparam.p_rigid_time)
 
         # Update markup μ
-        update_μ_cp!(cp, globalparam.ϵ_μ, t)
+        update_μ_p!(cp, globalparam.ϵ_μ, t)
 
         # Compute price
         compute_p_cp!(cp, τˢ)
@@ -176,16 +176,16 @@ function plan_investment_cp!(
     cp.n_mach_ordered_RS = 0
 
     # Choose kp
-    brochure = choose_producer_cp!(cp, government, globalparam.b, all_kp, ep, t, model)
+    choose_producer_cp!(cp, government, globalparam.b, all_kp, ep, t, model)
 
     # Update LT production
     update_Qᵉ_cp!(cp, globalparam.ω, globalparam.ι)
 
     # Plan replacement investments
-    plan_replacement_cp!(cp, government, globalparam, ep, brochure, t)
+    plan_replacement_cp!(cp, government, globalparam, ep, t, model)
 
     # Plan expansion investments
-    plan_expansion_cp!(cp, globalparam, brochure)
+    plan_expansion_cp!(cp, globalparam, model)
 
     # Determine total investments
     cp.Iᵈ = cp.EIᵈ + cp.RSᵈ
@@ -288,37 +288,85 @@ function choose_producer_cp!(
     government::Government, 
     b::Int, 
     all_kp::Vector{Int},
-    ep,
+    ep::AbstractAgent,
     t::Int,
     model::ABM
     )
 
     # In case of no brochures, pick a random kp
-    if length(cp.brochures) == 0
-        brochure = model[sample(all_kp)].brochure
-        cp.chosen_kp_id = brochure[1]
-        return brochure
+    if length(cp.kp_ids) == 0
+        # brochure = model[sample(all_kp)].brochure
+        # cp.kp_ranking = [brochure[:kp_id]]
+        # return brochure
+        
+        # Sample random kp id to add to known kp
+        push!(cp.kp_ids, sample(all_kp))
+        # cp.kp_ids[1]
     end
 
     # If multiple brochures, find brochure with lowest cost of production
-    # all_cop = Float64[]
-    all_cop = zeros(Float64, length(cp.brochures))
-    for (i, brochure) in enumerate(cp.brochures)
-        p_mach = brochure[2]
-        A_LP = brochure[4]
-        A_EE = brochure[5]
-        A_EF = brochure[6]
+    # all_kp_id = zeros(Int64, length(cp.brochures))
+    # all_cop = zeros(Float64, length(cp.brochures))
+    # for (i, brochure) in enumerate(cp.brochures)
+    #     all_kp_id[i] = brochure[:kp_id]
+    #     p_mach = brochure[:price]
+    #     A_LP = brochure[:A_LP]
+    #     A_EE = brochure[:A_EE]
+    #     A_EF = brochure[:A_EF]
 
-        c = p_mach + b * cop(cp.w̄[end], A_LP, government.τᴱ, ep.pₑ[t], A_EE, government.τᶜ, A_EF)
-        all_cop[i] = c
+    #     c = p_mach + b * cop(cp.w̄[end], A_LP, government.τᴱ, ep.pₑ[t], A_EE, government.τᶜ, A_EF)
+    #     all_cop[i] = c
+    # end
+
+
+    # Only check the best 5 kp
+    # n_kp_tocheck = min(length(cp.kp_ids), 5)
+
+
+    all_cop = zeros(Float64, length(cp.kp_ids))
+    for (i, kp_id) in enumerate(cp.kp_ids)
+
+        brochure = get(model.kp_brochures, Symbol(kp_id), nothing)
+        # p_mach = brochure[:price]
+        # A_LP = brochure[:A_LP]
+        # A_EE = brochure[:A_EE]
+        # A_EF = brochure[:A_EF]
+        # brochure = model.kp_brochures[Symbol(kp_id)]
+        # A_LP = model.kp_brochures[Symbol(kp_id)][:A_LP]
+        # A_EE = model.kp_brochures[Symbol(kp_id)][:A_EE]
+        # A_EF = model.kp_brochures[Symbol(kp_id)][:A_EF]
+
+        p_mach = get(brochure, :price, nothing)
+        # A_LP = get(brochure, :A_LP, nothing)
+        # A_EE = get(brochure, :A_EE, nothing)
+        # A_EF = get(brochure, :A_EF, nothing)
+
+        all_cop[i] = p_mach + b * cop(
+                                cp.w̄[end], 
+                                get(brochure, :A_LP, nothing), 
+                                government.τᴱ, 
+                                ep.pₑ[t], 
+                                get(brochure, :A_EE, nothing), 
+                                government.τᶜ, 
+                                get(brochure, :A_EF, nothing)
+                            )
     end
 
-    # Choose kp based on brochures
-    all_cop .= (1 ./ all_cop .^ 2)
-    brochure = sample(cp.brochures, Weights(all_cop))
-    cp.chosen_kp_id = brochure[1]
 
-    return brochure
+    # Sort kp ids based on cop
+    cp.kp_ids .= cp.kp_ids[sortperm(all_cop)]
+
+    # Choose kp based on brochures
+    # all_cop .= (1 ./ all_cop .^ 2)
+    # brochure = sample(cp.brochures, Weights(all_cop))
+    # cp.kp_ranking[1] = brochure[:kp_id]
+    # cp.kp_ranking = 
+
+    # chosen_kp_id = cp.kp_ids[1]
+
+    # brochure = model.kp_brochures[Symbol(chosen_kp_id)]
+
+    # return brochure
 end
 
 
@@ -329,27 +377,44 @@ function plan_replacement_cp!(
     cp::ConsumerGoodProducer,
     government::Government,
     globalparam::GlobalParam,
-    ep,
-    brochure,
-    t::Int
+    ep::AbstractAgent,
+    t::Int,
+    model::ABM
     )
 
     # Get price and cost of production of chosen kp
-    p_star = brochure[2]
-    c_star = cop(cp.w̄[end], brochure[4], government.τᴱ, ep.pₑ[t], brochure[5], government.τᶜ, brochure[6])
+
+    # println("yeet")
+    # println(brochure)
+
+    brochure = get(model.kp_brochures, Symbol(cp.kp_ids[1]), nothing)
+
+    p_star = brochure[:price]
+
+    # println(brochure)
+
+    c_star = cop(
+                    cp.w̄[end], 
+                    get(brochure, :A_LP, nothing), 
+                    government.τᴱ, 
+                    ep.pₑ[t], 
+                    get(brochure, :A_EE, nothing), 
+                    government.τᶜ, 
+                    get(brochure, :A_EF, nothing)
+                 )
 
     cp.mach_tb_repl = []
     cp.mach_tb_retired = []
 
+    # println("yeet")
+
     # See if machine stock too large in order to decide if need to be replaced
+    n_machines_too_many = 0.0
     if cp.n_machines > cp.Qᵉ
         n_machines_too_many = cp.n_machines - cp.Qᵉ
-    else
-        n_machines_too_many = 0.0
     end
 
     # Sort machines by cost of production
-    # sort!(cp.Ξ , by = machine -> cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
     sort!(cp.Ξ , by = machine -> cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF); rev=true)
 
     # Loop over machine stock, select which machines to replace
@@ -375,7 +440,7 @@ function plan_replacement_cp!(
         end
     end
 
-    # Sort to-be-replaces machines from least to most productive
+    # Sort to-be-replaced machines from least to most productive
     sort!(cp.mach_tb_repl, by=machine->machine.A_LP)
 
     # Update total amount of to-be-replaces machines
@@ -392,12 +457,14 @@ Plans expansion investments based on expected production.
 function plan_expansion_cp!(
     cp::ConsumerGoodProducer,
     globalparam::GlobalParam,
-    brochure
+    model::ABM
     )
+
+    brochure = model.kp_brochures[Symbol(cp.kp_ids[1])]
 
     if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
         cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
-        cp.EIᵈ = brochure[2] * cp.n_mach_ordered_EI * globalparam.freq_per_machine
+        cp.EIᵈ = brochure[:price] * cp.n_mach_ordered_EI * globalparam.freq_per_machine
     else
         cp.n_mach_ordered_EI = 0
         cp.EIᵈ = 0.0
@@ -410,7 +477,7 @@ Produces goods based on planned production and actual amount of hired workers
 """
 function produce_goods_cp!(
     cp::ConsumerGoodProducer,
-    ep,
+    ep::AbstractAgent,
     globalparam::GlobalParam,
     t::Int
     )
@@ -464,18 +531,18 @@ function order_machines_cp!(
     total_n_machines = cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
 
     # Send orders for machines to kp
-    if total_n_machines > 0 && hascapacity(model[cp.chosen_kp_id])
-        receive_order_kp!(model[cp.chosen_kp_id], cp.id, total_n_machines)
+    if total_n_machines > 0 && hascapacity(model[cp.kp_ids[1]])
+        receive_order_kp!(model[cp.kp_ids[1]], cp.id, total_n_machines)
     end
 end
 
 
-function reset_brochures_cp!(
-    cp::ConsumerGoodProducer
-    )
+# function reset_brochures_cp!(
+#     cp::ConsumerGoodProducer
+#     )
 
-    cp.brochures = []
-end
+#     cp.brochures = []
+# end
 
 
 function reset_queue_cp!(
@@ -607,7 +674,7 @@ function replace_bankrupt_cp!(
                 )
 
         # Order machines at kp of choice
-        new_cp.chosen_kp_id = kp_choice_ids[i]
+        new_cp.kp_ids = [kp_choice_ids[i]]
         new_cp.n_mach_ordered_EI = all_n_machines[i]
         order_machines_cp!(new_cp, model)
 
@@ -707,28 +774,28 @@ function update_π_cp!(
 end
 
 
-"""
-Computes the markup rate μ based on the market share f.
-"""
-function update_μ_cp!(
-    cp::ConsumerGoodProducer,
-    ϵ_μ::Float64,
-    t::Int64
-    )
+# """
+# Computes the markup rate μ based on the market share f.
+# """
+# function update_μ_cp!(
+#     cp::ConsumerGoodProducer,
+#     ϵ_μ::Float64,
+#     t::Int64
+#     )
 
-    new_μ = cp.μ[end]
-    shock = ϵ_μ * rand()
+#     new_μ = cp.μ[end]
+#     shock = ϵ_μ * rand()
 
-    if cp.age > 2 && t > 2
-        dp = cp.μ[end] - cp.μ[end - 1]
-        dΠ = cp.Π[end] - cp.Π[end - 1]
-        new_μ *= (1 + shock * sign(dp) * sign(dΠ))
-    else
-        new_μ *= (1 + shock * sample([-1., 1.]))
-    end
+#     if cp.age > 2 && t > 2
+#         dp = cp.μ[end] - cp.μ[end - 1]
+#         dΠ = cp.Π[end] - cp.Π[end - 1]
+#         new_μ *= (1 + shock * sign(dp) * sign(dΠ))
+#     else
+#         new_μ *= (1 + shock * sample([-1., 1.]))
+#     end
 
-    shift_and_append!(cp.μ, new_μ)
-end
+#     shift_and_append!(cp.μ, new_μ)
+# end
 
 
 """
@@ -840,4 +907,15 @@ function checkupdateprice(
     t_rescaled = t % p_time_rigid
 
     return id_rescaled == t_rescaled
+end
+
+
+function add_kp_cp!(
+    cp::ConsumerGoodProducer, 
+    kp_id::Int64
+)
+
+    if kp_id ∉ cp.kp_ids
+        push!(cp.kp_ids, kp_id)
+    end
 end

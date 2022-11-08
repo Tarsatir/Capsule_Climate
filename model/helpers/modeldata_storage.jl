@@ -154,7 +154,6 @@ function genfirmdata(
     EF_kp = [Symbol("EFkp_$i") for i in start_kp:end_kp]
 
     I_cp = [Symbol("Icp_$i") for i in start_cp:end_cp]
-    # I_kp = [Symbol("Ikp_$i") for i in start_kp:end_kp]
 
     K_cp = [Symbol("Kcp_$i") for i in start_cp:end_cp]
 
@@ -244,16 +243,18 @@ function genhouseholddata()::Array
     )
 
     df = DataFrame(
-        # :I_med_20 => [],
         :I_mean_20 => [],
-        # :I_med_80 => [],
         :I_mean_80 => [],
         :I_mean_100 => [],
-        # :W_med_20 => [],
         :W_mean_20 => [],
-        # :W_med_80 => [],
         :W_mean_80 => [],
-        :W_mean_100 => []
+        :W_mean_100 => [],
+        :α_Y_mean_20 => [],
+        :α_Y_mean_80 => [],
+        :α_Y_mean_100 => [],
+        :α_W_mean_20 => [],
+        :α_W_mean_80 => [],
+        :α_W_mean_100 => []
     )
 
     return [Y_percentile_ids, df]
@@ -302,34 +303,49 @@ function appendhouseholddata!(
     I_lower = map(hh_id -> model[hh_id].total_I, householddata[1][:lower_I])
     I_middle = map(hh_id -> model[hh_id].total_I, householddata[1][:middle_I])
     I_upper = map(hh_id -> model[hh_id].total_I, householddata[1][:upper_I])
+
     W_lower = map(hh_id -> model[hh_id].W, householddata[1][:lower_W])
     W_middle = map(hh_id -> model[hh_id].W, householddata[1][:middle_W])
     W_upper = map(hh_id -> model[hh_id].W, householddata[1][:upper_W])
 
+    α_Y_lower = map(hh_id -> model[hh_id].α, householddata[1][:lower_I])
+    α_Y_middle = map(hh_id -> model[hh_id].α, householddata[1][:middle_I])
+    α_Y_upper = map(hh_id -> model[hh_id].α, householddata[1][:upper_I])
+
+    α_W_lower = map(hh_id -> model[hh_id].α, householddata[1][:lower_W])
+    α_W_middle = map(hh_id -> model[hh_id].α, householddata[1][:middle_W])
+    α_W_upper = map(hh_id -> model[hh_id].α, householddata[1][:upper_W])
+
     I_mean_20 = mean(I_lower)
-    # I_median_20 = median(I_lower)
     I_mean_80 = mean(I_middle)
-    # I_median_80 = median(I_middle)
     I_mean_100 = mean(I_upper)
 
     W_mean_20 = mean(W_lower)
-    # W_median_20 = median(W_lower)
     W_mean_80 = mean(W_middle)
-    # W_median_80 = median(W_middle)
     W_mean_100 = mean(W_upper)
+
+    α_Y_mean_20 = mean(α_Y_lower)
+    α_Y_mean_80 = mean(α_Y_middle)
+    α_Y_mean_100 = mean(α_Y_upper)
+
+    α_W_mean_20 = mean(α_W_lower)
+    α_W_mean_80 = mean(α_W_middle)
+    α_W_mean_100 = mean(α_W_upper)
 
     push!(householddata[2], 
         [
-            # I_median_20,
             I_mean_20,
-            # I_median_80,
             I_mean_80,
             I_mean_100,
-            # W_median_20, 
             W_mean_20,
-            # W_median_80,
             W_mean_80,
-            W_mean_100
+            W_mean_100,
+            α_Y_mean_20,
+            α_Y_mean_80,
+            α_Y_mean_100,
+            α_W_mean_20,
+            α_W_mean_80,
+            α_W_mean_100
         ]
     )
 

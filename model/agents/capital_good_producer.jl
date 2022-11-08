@@ -43,7 +43,13 @@
     Πᵀ::Vector{Float64} = zeros(Float64, 3)# hist profits after tax
     debt_installments::Vector{Float64}    # installments of debt repayments
     f::Vector{Float64}                    # market share
-    brochure = []                         # brochure
+    brochure::Dict{Symbol, Real} = Dict(
+                                            :kp_id => id,
+                                            :price => p[end],
+                                            :A_LP => A_LP,
+                                            :A_EE => A_EE,
+                                            :A_EF => A_EF
+                                        )
     orders::Dict = Dict{Int64, Int64}()   # orders
     balance::Balance                      # balance sheet
     curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
@@ -150,7 +156,7 @@ function choose_technology_kp!(
     ep
     )
 
-    update_μ_kp!(kp)
+    update_μ_p!(kp, globalparam.ϵ_μ, t)
 
     # Make choice between possible technologies
     if length(tech_choices) > 1
@@ -158,7 +164,7 @@ function choose_technology_kp!(
         c_h_cp = map(tech -> cop(w̄, tech[1], government.τᴱ, ep.pₑ[t], tech[2], government.τᶜ, tech[3]), tech_choices)
         c_h_kp = map(tech -> cop(kp.w̄[end], tech[4], government.τᴱ, ep.pₑ[t], tech[5], government.τᶜ,  tech[6]), tech_choices)
  
-        p_h = map(c -> (1 + kp.μ[end])*c, c_h_kp)
+        p_h = map(c -> (1 + kp.μ[end]) * c, c_h_kp)
         r_h = c_h_cp .* globalparam.b .+ p_h
         idx = argmin(r_h)
 
@@ -185,13 +191,22 @@ function send_brochures_kp!(
     )
 
     # Set up brochure
-    brochure = (kp.id, kp.p[end], kp.c[end], kp.A_LP, kp.A_EE, kp.A_EF)
-    kp.brochure = brochure
+    # brochure = (kp.id, kp.p[end], kp.c[end], kp.A_LP, kp.A_EE, kp.A_EF)
+    # brochure = Dict("kp_id" => kp.id,
+    #                 "price" => kp.p[end],
+    #                 "A_LP" => kp.A_LP,
+    #                 "A_EE" => kp.A_EE,
+    #                 "A_EF" => kp.A_EF)
+    # kp.brochure = brochure
+
+    # Update brochure
+    update_brochure!(kp, model)
 
     # Send brochure to historical clients
-    for cp_id in kp.HC
-        push!(model[cp_id].brochures, brochure)
-    end
+    # NO LONGER NEEDED, CP REMEMBER KP
+    # for cp_id in kp.HC
+    #     push!(model[cp_id].brochures, kp.brochure)
+    # end
 
     # Select new clients, send brochure
     NC_potential = setdiff(all_cp, kp.HC)
@@ -205,9 +220,43 @@ function send_brochures_kp!(
     # Send brochures to new clients
     NC = sample(NC_potential, min(n_choices, length(NC_potential)); replace=false)
     for cp_id in NC
-        push!(model[cp_id].brochures, brochure)
+        # push!(model[cp_id].brochures, kp.brochure)
+        add_kp_cp!(model[cp_id], kp.id)
     end 
+end
 
+
+"""
+Initializes kp brochure and adds to model properties
+"""
+function init_brochure!(
+    kp::CapitalGoodProducer,
+    model::ABM
+)
+
+    brochure =  Dict(
+                        :price => kp.p[end],
+                        :A_LP => kp.A_LP,
+                        :A_EE => kp.A_EE,
+                        :A_EF => kp.A_EF
+                    )
+
+    model.kp_brochures[Symbol(kp.id)] = brochure
+end
+
+
+"""
+Updates kp brochure in model properties
+"""
+function update_brochure!(
+    kp::CapitalGoodProducer,
+    model::ABM
+)
+
+    model.kp_brochures[Symbol(kp.id)][:price] = kp.p[end]
+    model.kp_brochures[Symbol(kp.id)][:A_LP] = kp.A_LP
+    model.kp_brochures[Symbol(kp.id)][:A_EE] = kp.A_EE
+    model.kp_brochures[Symbol(kp.id)][:A_EF] = kp.A_EF
 end
 
 
@@ -548,15 +597,15 @@ function update_marketshare_kp!(
 end
 
 
-"""
-Updates the markup rate μ
-"""
-function update_μ_kp!(
-    kp::CapitalGoodProducer
-    )
+# """
+# Updates the markup rate μ
+# """
+# function update_μ_kp!(
+#     kp::CapitalGoodProducer
+#     )
 
-    shift_and_append!(kp.μ, kp.μ[end])
-end
+#     shift_and_append!(kp.μ, kp.μ[end])
+# end
 
 
 """
@@ -644,6 +693,9 @@ function replace_bankrupt_kp!(
             w̄ = macro_struct.w̄_avg[t],
             f = 0.0
         )
+
+        # Reset brochure
+        update_brochure!(new_kp, model)
 
         # Borrow the remaining funds
         borrow_funds_p!(new_kp, (1 - frac_NW_if) * NW_stock, globalparam.b)

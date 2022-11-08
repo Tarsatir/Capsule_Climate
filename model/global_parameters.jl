@@ -22,7 +22,7 @@
     η::Int64 = 60                   # physical scrapping age
     ηₑ::Int64 = 240                 # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
-    update_period::Int64=3          # time period after which cp update prod plans
+    update_period::Int64 = 3        # time period after which cp update prod plans
 
     # Determine entrant composition
     φ1::Float64 = 0.1               # 1st Uniform dist support, cp entrant cap
@@ -37,7 +37,7 @@
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
     ϵ_w::Float64 = 0.05             # minimum desired wage increase rate
-    ϵ_μ::Float64 = 0.15              # upper limit of markup shock
+    ϵ_μ::Float64 = 0.15             # upper limit of markup shock
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp

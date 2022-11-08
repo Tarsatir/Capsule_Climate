@@ -175,7 +175,7 @@ end
 """
 Adds to-be-repaid amount as an outgoing cashflow to current account.
 """
-function payback_debt_p!(
+function monthly_debt_payback_p!(
     p::AbstractAgent,
     b::Int64
     )
@@ -188,6 +188,30 @@ function payback_debt_p!(
     p.debt_installments[b+1] = 0.0
 
     p.balance.debt = sum(p.debt_installments)
+end
+
+
+"""
+Pays back additional amount of debt.
+"""
+function singular_debt_payback_p!(
+    p::AbstractAgent,
+    excess_NW::Float64
+)
+
+    # return excess_NW
+
+    b = count(x -> x > 0, p.debt_installments)
+
+    payoff_debt = min(p.balance.debt, excess_NW)
+    # println(payoff_debt)
+    # println(p.debt_installments)
+    p.debt_installments[1:b] .-= (payoff_debt / b)
+    # println(p.debt_installments)
+    p.balance.debt = sum(p.debt_installments)
+    p.curracc.rep_debt += payoff_debt
+
+    return excess_NW - payoff_debt
 end
 
 
@@ -206,19 +230,20 @@ function check_bankrupty_all_p!(
     bankrupt_kp = Vector{Int}()
     bankrupt_kp_i = Vector{Int}()
 
-    # cp_counter = 0
+    cp_counter = 0
     kp_counter = 0
+
+    n_cp = length(all_p) - length(all_kp)
 
     for p_id in all_p
         if check_if_bankrupt_p!(model[p_id], globalparam.t_wait)
-            if typeof(model[p_id]) == ConsumerGoodProducer
+            if typeof(model[p_id]) == ConsumerGoodProducer && cp_counter < n_cp - 1
                 push!(bankrupt_cp, p_id)
-            else
+                cp_counter += 1
+            elseif kp_counter < length(all_kp) - 1
+                push!(bankrupt_kp, p_id)
+                push!(bankrupt_kp_i, model[p_id].kp_i)
                 kp_counter += 1
-                if kp_counter < 4
-                    push!(bankrupt_kp, p_id)
-                    push!(bankrupt_kp_i, model[p_id].kp_i)
-                end
             end
         end
     end
@@ -325,4 +350,28 @@ function update_mean_skill_p!(
     )
 
     p.mean_skill = length(p.employees) > 0 ? mean(hh_id -> model[hh_id].skill, p.employees) : 0.0
+end
+
+
+"""
+Computes the markup rate μ based on the market share f.
+"""
+function update_μ_p!(
+    p::AbstractAgent,
+    ϵ_μ::Float64,
+    t::Int64
+    )
+
+    new_μ = p.μ[end]
+    shock = ϵ_μ * rand()
+
+    if p.age > 2 && t > 2
+        dp = p.μ[end] - p.μ[end - 1]
+        dΠ = p.Π[end] - p.Π[end - 1]
+        new_μ *= (1 + shock * sign(dp) * sign(dΠ))
+    else
+        new_μ *= (1 + shock * sample([-1., 1.]))
+    end
+
+    shift_and_append!(p.μ, new_μ)
 end

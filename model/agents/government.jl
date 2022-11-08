@@ -4,11 +4,11 @@
     UB::Float64 = 100 * 0.7 * w_min        # unemployment benefits
 
     # Tax rates
-    τᴵ::Float64 = 0.3                      # income tax
-    τᴷ::Float64 = 0.3                      # capital gains tax
+    τᴵ::Float64 = 0.25                     # income tax
+    τᴷ::Float64 = 0.25                     # capital gains tax
     τˢ::Float64 = 0.                       # sales tax
-    τᴾ::Float64 = 0.3                      # profit tax
-    τᴱ::Float64 = 0.1                       # energy tax
+    τᴾ::Float64 = 0.25                     # profit tax
+    τᴱ::Float64 = 0.1                      # energy tax
     τᶜ::Float64 = 0.                       # emission tax
 
     MS::Float64 = 0.0                      # money stock owned by government

@@ -1,4 +1,4 @@
-@with_kw mutable struct EnergyProducer
+@with_kw mutable struct EnergyProducer <: AbstractAgent
     T::Int64=T                                    # Total number of iterations
 
     Dₑ::Vector{Float64} = zeros(Float64, T)     # Demand for energy units over time

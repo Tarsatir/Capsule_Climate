@@ -200,15 +200,14 @@ function save_climate_data(
         emissions_kp = climate.carbon_emissions_kp,
         emissions_cp = climate.carbon_emissions_cp,
         emissions_ep = energy_producer.emissions,
-
-        # C_a = climate.C_a,
-        # C_m = climate.C_m,
-        # C_d = climate.C_d,
-
-        # NPP = climate.NPP,
-
-        # dT_m = climate.δT_m,
-        # dT_d = climate.δT_d
     )
     CSV.write("results/result_data/climate_and_energy.csv", df)
+end
+
+
+function save_household_quartiles(
+    householddata::Array
+)
+
+    CSV.write("results/result_data/household_quantiles.csv", householddata[2])
 end

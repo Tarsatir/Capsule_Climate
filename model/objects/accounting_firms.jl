@@ -19,7 +19,7 @@ If firm is insolvent, liquidate firm.
 """
 function close_balance_all_p!(
     all_p::Vector{Int},
-    global_param::GlobalParam,
+    globalparam::GlobalParam,
     government,
     indexfund_struct,
     t::Int,
@@ -36,13 +36,13 @@ function close_balance_all_p!(
         model[p_id].balance.debt = max(0.0, model[p_id].balance.debt)
 
         # Compute interest payment
-        update_interest_payment_p!(model[p_id], global_param.r)
+        update_interest_payment_p!(model[p_id], globalparam.r)
 
         # Repay debts of period
-        payback_debt_p!(model[p_id], global_param.b)
+        monthly_debt_payback_p!(model[p_id], globalparam.b)
 
         # Update valuation of capital stock
-        writeoffs = update_K_p!(model[p_id], global_param.η)
+        writeoffs = update_K_p!(model[p_id], globalparam.η)
 
         # Compute profits
         compute_Π_p!(model[p_id], government; writeoffs)
@@ -62,21 +62,32 @@ function close_balance_all_p!(
         end
 
         # Determine how much the firm can have as NW at most
-        max_NW = global_param.max_NW_ratio * (model[p_id].curracc.TCL + model[p_id].curracc.TCI + 
+        max_NW = globalparam.max_NW_ratio * (model[p_id].curracc.TCL + model[p_id].curracc.TCI + 
                       model[p_id].curracc.int_debt + model[p_id].debt_installments[2])
 
         if typeof(model[p_id]) == ConsumerGoodProducer
             all_max_NW += max_NW
         end
 
-        # If not enough liquid assets available, borrow additional funds.
+        
         if model[p_id].balance.NW < 0
-            borrow_funds_p!(model[p_id], -model[p_id].balance.NW, global_param.b)
+
+            # If not enough liquid assets available, borrow additional funds.
+            borrow_funds_p!(model[p_id], -model[p_id].balance.NW, globalparam.b)
             model[p_id].balance.NW = 0
-        elseif (!check_if_bankrupt_p!(model[p_id],  global_param.t_wait) 
-                && (model[p_id].balance.NW > max_NW) && (t > global_param.t_wait))
-            total_dividends += model[p_id].balance.NW - max_NW
+
+        elseif (!check_if_bankrupt_p!(model[p_id],  globalparam.t_wait) 
+                && (model[p_id].balance.NW > max_NW) && (t > globalparam.t_wait))
+            
+            # If enough liquid assets available, first pay off debts and then pay out dividends
+            excess_NW = model[p_id].balance.NW - max_NW
+
+            # First pay off debts with excess funds, excess dividends are paid out
+            firm_dividends = singular_debt_payback_p!(model[p_id], excess_NW)
+            total_dividends += firm_dividends
+
             model[p_id].balance.NW = max_NW
+            
         end
 
         # Compute Equity

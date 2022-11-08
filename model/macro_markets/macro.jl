@@ -563,24 +563,6 @@ function compute_GINI(
 end
 
 
-# function compute_FGT(
-#     all_hh::Vector{Int64},
-#     model::ABM;
-#     z::Float64=60.
-#     )
-
-#     # Compute Foster-Greer-Thorbecke index
-#     H = Float64[]
-#     for hh_id in all_hh
-#         if model[hh_id].total_I <= z
-#             push!(H, ((z - model[hh_id].total_I) / z)^2)
-#         end
-#     end
-
-#     macroeconomy.FGT[t] = sum(H) / length(all_hh)
-# end
-
-
 function compute_I_W_thresholds(
     all_hh::Vector{Int64},
     macroeconomy::MacroEconomy,

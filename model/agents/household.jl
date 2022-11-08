@@ -123,13 +123,13 @@ end
 function computeβ(
     W::Float64,
     Wmedian::Float64; 
-    Wmin::Float64=0., 
-    Wmax::Float64=750.,
-    βmin::Float64=0.1,
-    βmax::Float64=0.9,
-    δmin::Float64=0.1,
-    δmax::Float64=2.0,
-    γ::Float64 = 0.01
+    # Wmin::Float64=0., 
+    # Wmax::Float64=750.,
+    # βmin::Float64=0.1,
+    # βmax::Float64=0.9,
+    δmin::Float64=0.,
+    δmax::Float64=0.1,
+    γ::Float64 = 0.5
     )
 
     # Compute discount rate δ
@@ -138,6 +138,8 @@ function computeβ(
 
     # Compute discount factor β
     β = 1 / (1 + δ)
+
+    # return 0.8
 
     return β
 end
@@ -151,7 +153,7 @@ function computeU(
     Wt::Float64,
     T::Int64,
     β::Float64;
-    ρ::Float64=0.4
+    ρ::Float64=0.9
     )
 
     U = 0.
@@ -173,12 +175,12 @@ function αopt(
     Wmedian::Float64,
     W_scaled;
     T::Int64=6,
-    maxdev=0.05::Float64
+    maxdev=0.01::Float64
     )
 
     αrange = (LinRange(-maxdev, maxdev, 5)) .+ hh.α
     αmax = argmax(αstar -> αstar <= 1. && αstar >= 0. ? computeU(αstar, hh.P̄, ERt, hh.EY_t, hh.W, T, computeβ(hh.W[end], Wmedian)) : -1., αrange)
-    # println(hh.W[end], " ", αmax)
+
     return αmax
 end
 

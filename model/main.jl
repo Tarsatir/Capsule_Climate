@@ -67,12 +67,8 @@ function initialize_model(
     track_firms_households::Bool=false
     )
 
-    # println("   start init $(Dates.format(now(), "HH:MM"))")
-
-    # Initialise model struct
+    # Initialize scheduler
     scheduler = Agents.Schedulers.by_type(true, true)
-    model = ABM(Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
-                scheduler=scheduler, warn=false)
 
     # Initialize struct that holds global params and initial parameters
     globalparam  = initialize_global_params(changed_params, changedparams_ofat)
@@ -92,6 +88,18 @@ function initialize_model(
 
     # Initialize climate struct
     climate = Climate(T=T)
+
+    modelproperties = Dict(
+                            :kp_brochures => Dict()
+                          )
+
+    # Initialize model struct
+    model = ABM(
+                    Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
+                    properties=modelproperties,
+                    scheduler=scheduler, 
+                    warn=false
+                )
 
     # Global id
     id = 1
@@ -161,6 +169,9 @@ function initialize_model(
              )
         add_agent!(kp, model)
 
+        # Initialize brochure of kp goods
+        init_brochure!(kp, model)
+
         id += 1
     end
 
@@ -218,7 +229,6 @@ function model_step!(
     t::Int64,
     t_warmup::Int64,
     to,
-    # simdata
     globalparam::GlobalParam, 
     initparam::InitParam,
     macroeconomy::MacroEconomy, 
@@ -273,7 +283,7 @@ function model_step!(
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
     @timeit to "clear account cp" for cp_id in all_cp
         model[cp_id].curracc = clear_firm_currentaccount_p!(model[cp_id].curracc)
-        reset_brochures_cp!(model[cp_id])
+        # reset_brochures_cp!(model[cp_id])
     end
 
     # (1) kp and ep innovate, and kp send brochures
@@ -378,8 +388,6 @@ function model_step!(
 
 
     # (5) Production takes place for cp and kp
-
-    # println("   $t 5 start $(Dates.format(now(), "HH:MM"))")
 
     # Update energy prices
     compute_pₑ_ep!(ep, t)
@@ -522,11 +530,6 @@ function model_step!(
     # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
 
-    # NOTE: climate process no longer tracked
-    # carbon_equilibrium_tempchange_cl!(climate, t)
-
-    # println("   $t 8 start $(Dates.format(now(), "HH:MM"))")
-
     # Remove bankrupt companies.
     @timeit to "kill bankr p" kill_all_bankrupt_p!(
         bankrupt_cp,
@@ -568,26 +571,8 @@ function model_step!(
         model
     )
 
-    # # Redistrubute remaining stock of dividents to households
-    # @timeit to "distr div" distribute_dividends_if!(
-    #     indexfund,
-    #     government,
-    #     all_hh,
-    #     government.τᴷ,
-    #     t,
-    #     model
-    # )
-
-    # # Redistribute goverment balance
-    # resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
-
-    # @pack! simdata = model, globalparam, initparam, macroeconomy, government, ep, 
-    #                  labormarket, indexfund, climate, ep, cmdata, firmdata
-
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
             indexfund, climate, ep, cmdata, firmdata, householddata
-
-    # return simdata
 end
 
 
@@ -647,16 +632,7 @@ function run_simulation(;
                                 householddata, 
                                 model
                             )
-        # @timeit to "step" model_step!(
-        #                         t,
-        #                         t_warmup,
-        #                         to, 
-        #                         simdata
-        #                     )
     end
-
-    # @unpack model, globalparam, initparam, macroeconomy, government, ep, labormarket,
-    #         indexfund, climate, ep, cmdata, firmdata = simdata
 
     if savedata
         @timeit to "save macro" save_macro_data(macroeconomy)
@@ -666,6 +642,10 @@ function run_simulation(;
         @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
 
         @timeit to "save climate" save_climate_data(ep, climate, model)
+
+        if track_firms_households
+            save_household_quartiles(householddata)
+        end
     end
 
     if full_output
@@ -685,11 +665,9 @@ function run_simulation(;
 
 end
 
-# changedtaxrates = [(:τᴱ, 2.0)]
-
 @time run_simulation(
     savedata=true,
-    track_firms_households=false,
+    track_firms_households=true,
     seed=1234    
 )
 
