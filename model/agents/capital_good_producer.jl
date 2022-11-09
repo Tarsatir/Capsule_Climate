@@ -32,24 +32,25 @@
     wᴼ::Float64 = w̄[end]                  # offered wage
     wᴼ_max::Float64 = 0.0                 # maximum offered wage
 
-    O::Float64 = 0.0                      # total amount of machines ordered
+    O::Float64 = 0.                       # total amount of machines ordered
+    prod_cap::Int64 = 0                   # total production capacity
     prod_queue::Dict = Dict{Int64, Int64}() # production queue of machines
     Q::Vector{Float64} = zeros(Float64, 3)# production quantities
     D::Vector{Float64} = zeros(Float64, 3)# hist demand
-    EU::Float64 = 0.0                     # energy use in the last period
+    EU::Float64 = 0.                      # energy use in the last period
 
     HC::Vector{Int} = []                  # hist clients
     Π::Vector{Float64} = zeros(Float64, 3)# hist profits
     Πᵀ::Vector{Float64} = zeros(Float64, 3)# hist profits after tax
     debt_installments::Vector{Float64}    # installments of debt repayments
     f::Vector{Float64}                    # market share
-    brochure::Dict{Symbol, Real} = Dict(
-                                            :kp_id => id,
-                                            :price => p[end],
-                                            :A_LP => A_LP,
-                                            :A_EE => A_EE,
-                                            :A_EF => A_EF
-                                        )
+    # brochure::Dict{Symbol, Real} = Dict(
+    #                                         :kp_id => id,
+    #                                         :price => p[end],
+    #                                         :A_LP => A_LP,
+    #                                         :A_EE => A_EE,
+    #                                         :A_EF => A_EF
+    #                                     )
     orders::Dict = Dict{Int64, Int64}()   # orders
     balance::Balance                      # balance sheet
     curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
@@ -190,15 +191,6 @@ function send_brochures_kp!(
     n_hist_clients=50::Int
     )
 
-    # Set up brochure
-    # brochure = (kp.id, kp.p[end], kp.c[end], kp.A_LP, kp.A_EE, kp.A_EF)
-    # brochure = Dict("kp_id" => kp.id,
-    #                 "price" => kp.p[end],
-    #                 "A_LP" => kp.A_LP,
-    #                 "A_EE" => kp.A_EE,
-    #                 "A_EF" => kp.A_EF)
-    # kp.brochure = brochure
-
     # Update brochure
     update_brochure!(kp, model)
 
@@ -220,7 +212,6 @@ function send_brochures_kp!(
     # Send brochures to new clients
     NC = sample(NC_potential, min(n_choices, length(NC_potential)); replace=false)
     for cp_id in NC
-        # push!(model[cp_id].brochures, kp.brochure)
         add_kp_cp!(model[cp_id], kp.id)
     end 
 end
@@ -302,6 +293,19 @@ function compute_p_kp!(
     )
 
     shift_and_append!(kp.p, (1 + kp.μ[end]) * kp.c[end])
+end
+
+
+"""
+Lets kp compute the production capacity
+"""
+function update_prod_cap_kp!(
+    kp::CapitalGoodProducer,
+    globalparam::GlobalParam
+)
+
+    kp.prod_cap = ceil(Int64, (kp.L * kp.B_LP) / globalparam.freq_per_machine)
+    # println(kp.L, " ", kp.prod_cap)
 end
 
 

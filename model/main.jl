@@ -39,6 +39,7 @@ include("agents/energy_producer.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
+include("macro_markets/capitalmarket.jl")
 
 include("helpers/modeldata_storage.jl")
 
@@ -89,8 +90,23 @@ function initialize_model(
     # Initialize climate struct
     climate = Climate(T=T)
 
+
+    # Initialize data structures for consumer- and capital market
+    cmdata = CMData(
+        n_hh=initparam.n_hh, 
+        n_cp=initparam.n_cp
+    )
+    
+    kmdata = KMData(
+            zeros(Int64, initparam.n_kp, initparam.n_cp),
+            zeros(Int64, initparam.n_kp, initparam.n_cp),
+            zeros(Int64, initparam.n_kp)  
+        )
+
     modelproperties = Dict(
-                            :kp_brochures => Dict()
+                            :kp_brochures => Dict(),
+                            :cmdata => cmdata,
+                            :kmdata => kmdata
                           )
 
     # Initialize model struct
@@ -210,8 +226,6 @@ function initialize_model(
     close_balance_all_p!(all_p, globalparam, government,
                          indexfund, 0, model)
 
-    cmdata = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
-
     if track_firms_households
         firmdata = genfirmdata(all_cp, all_kp)
         householddata = genhouseholddata()
@@ -221,7 +235,7 @@ function initialize_model(
     end
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-           indexfund, climate, cmdata, firmdata, householddata
+           indexfund, climate, firmdata, householddata
 end
 
 
@@ -237,7 +251,7 @@ function model_step!(
     labormarket::LaborMarket,
     indexfund::IndexFund,
     climate::Climate,
-    cmdata::CMData,
+    # cmdata::CMData,
     firmdata::Union{Nothing, DataFrame},
     householddata::Union{Nothing, Array},
     model::ABM
@@ -355,8 +369,6 @@ function model_step!(
         plan_production_kp!(model[kp_id], globalparam, model)
     end
 
-    # println("   $t 4 start $(Dates.format(now(), "HH:MM"))")
-
     # (3) labor market matching process
     @timeit to "labormarket" labormarket_process!(
         labormarket,
@@ -373,6 +385,14 @@ function model_step!(
     for p_id in all_p
         update_mean_skill_p!(model[p_id], model)
     end
+
+    # Update kp production capacitity
+    for kp_id in all_kp
+        update_prod_cap_kp!(model[kp_id], globalparam)
+    end
+
+
+    @timeit to "capitalmarket" capitalmarket_process!(all_cp, all_kp, model)
 
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
@@ -446,7 +466,7 @@ function model_step!(
         all_cp,
         government,
         globalparam,
-        cmdata,
+        # cmdata,
         t,
         model,
         to
@@ -572,7 +592,7 @@ function model_step!(
     )
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-            indexfund, climate, ep, cmdata, firmdata, householddata
+            indexfund, climate, ep, firmdata, householddata
 end
 
 
@@ -585,7 +605,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T::Int64=660,
+    T::Int64=60,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
     changedparams_ofat::Union{Dict, Nothing}=nothing,
@@ -606,7 +626,7 @@ function run_simulation(;
     to = TimerOutput()
 
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-                      indexfund, climate, cmdata, firmdata, householddata = initialize_model(
+                      indexfund, climate, firmdata, householddata = initialize_model(
                             T; 
                             changed_params=changed_params,
                             changedparams_ofat=changedparams_ofat, 
@@ -627,7 +647,7 @@ function run_simulation(;
                                 labormarket, 
                                 indexfund,
                                 climate,
-                                cmdata,
+                                # cmdata,
                                 firmdata,
                                 householddata, 
                                 model

@@ -35,7 +35,7 @@ end
 Resets fields in cm data struct before cm market process is initiated
 """
 function reset_matrices_cp!(
-    cm_dat::CMData,
+    # model.cmdata::CMData,
     all_hh::Vector{Int},
     all_cp::Vector{Int},
     model::ABM
@@ -47,8 +47,8 @@ function reset_matrices_cp!(
 
     @inbounds for (i,hh_id) ∈ enumerate(minimum(all_hh):maximum(all_hh))
 
-        cm_dat.all_C[i] = model[hh_id].C
-        cm_dat.weights[i,:] .= 0.0
+        model.cmdata.all_C[i] = model[hh_id].C
+        model.cmdata.weights[i,:] .= 0.0
 
         for cp_id in model[hh_id].cp
 
@@ -56,12 +56,12 @@ function reset_matrices_cp!(
             # so subtract len(hh) to get index
             j = cp_id - length(all_hh)
 
-            cm_dat.all_N[j] = all_N_goods[j] * all_p[j]
-            cm_dat.weights[i,j] = all_p[j] ^ -1
+            model.cmdata.all_N[j] = all_N_goods[j] * all_p[j]
+            model.cmdata.weights[i,j] = all_p[j] ^ -1
         end
     end
 
-    cm_dat.transactions .= 0.0
+    model.cmdata.transactions .= 0.0
 end
 
 
