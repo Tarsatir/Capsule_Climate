@@ -1,7 +1,6 @@
 @with_kw mutable struct CapitalGoodProducer <: AbstractAgent
-    # T::Int
     id::Int                               # global id
-    kp_i::Int                             # kp id, used for distance matrix
+    kp_i::Int                             # kp index
     age::Int = 0                          # firm age
     
     # Technology and innovation
@@ -32,7 +31,9 @@
     wᴼ::Float64 = w̄[end]                  # offered wage
     wᴼ_max::Float64 = 0.0                 # maximum offered wage
 
-    O::Float64 = 0.                       # total amount of machines ordered
+    Oᵉ::Float64 = 200.                    # total amount of machine units expected to be ordered
+    O::Float64 = 0.                       # total amount of machines units ordered
+    O_unmet::Float64 = 0.                 # total amount of machines ordered in first round that could not be made
     prod_cap::Int64 = 0                   # total production capacity
     prod_queue::Dict = Dict{Int64, Int64}() # production queue of machines
     Q::Vector{Float64} = zeros(Float64, 3)# production quantities
@@ -356,10 +357,12 @@ Lets kp receive orders, adds client as historical clients if it is not yet.
 function receive_order_kp!(
     kp::CapitalGoodProducer,
     cp_id::Int,
-    order_size::Int
+    order_size::Int64,
+    freq_per_machine::Int64
     )
 
     kp.orders[cp_id] = order_size
+    kp.O += order_size * freq_per_machine
 
     # If cp not in HC yet, add as a historical client
     if cp_id ∉ kp.HC
@@ -368,8 +371,30 @@ function receive_order_kp!(
 end
 
 
+# """
+# Based on received orders, sets labor demand to fulfill production.
+# """
+# function plan_production_kp!(
+#     kp::CapitalGoodProducer,
+#     globalparam::GlobalParam,
+#     model::ABM
+#     )
+
+#     # Update average wage level
+#     update_w̄_p!(kp, model)
+    
+#     # Determine total amount of capital units to produce and amount of labor to hire
+#     kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
+
+#     # Determine amount of labor to hire
+#     update_Lᵈ!(kp, globalparam.λ)
+
+#     # Update maximum offered wage
+#     update_wᴼ_max_kp!(kp)
+# end
+
 """
-Based on received orders, sets labor demand to fulfill production.
+Based on expected demand, sets labor demand to fulfill production.
 """
 function plan_production_kp!(
     kp::CapitalGoodProducer,
@@ -379,15 +404,32 @@ function plan_production_kp!(
 
     # Update average wage level
     update_w̄_p!(kp, model)
+
+    # Update expected orders
+    update_Oᵉ_kp!(kp, globalparam.ω)
     
     # Determine total amount of capital units to produce and amount of labor to hire
-    kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
+    # kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
 
     # Determine amount of labor to hire
     update_Lᵈ!(kp, globalparam.λ)
 
     # Update maximum offered wage
     update_wᴼ_max_kp!(kp)
+end
+
+
+"""
+Update expected amount of orders
+"""
+function update_Oᵉ_kp!(
+    kp::CapitalGoodProducer, 
+    ω::Float64
+)
+
+    kp.Oᵉ = ω * (kp.O + kp.O_unmet) + (1 - ω) * kp.Oᵉ
+    println(kp.O, " ", kp.Oᵉ)
+    kp.O = 0.
 end
 
 
@@ -399,7 +441,7 @@ function update_Lᵈ!(
     λ::Float64
     )
 
-    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end])
+    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end])
     kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end
 
