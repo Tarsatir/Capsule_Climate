@@ -16,7 +16,7 @@ function capitalmarket_process!(
     ep::EnergyProducer,
     t::Int64,
     model::ABM;
-    total_n_rounds::Int64=1
+    total_n_rounds::Int64=3
 )
 
     for cp_id in all_cp
@@ -31,9 +31,6 @@ function capitalmarket_process!(
     kp_ids = gather_producing_kp(all_kp, model)
     kp_capacity = gather_capacities_kp!(kp_ids, model)
 
-    # println(cp_ids)
-    # println(kp_capacity)
-
     faced_demand = nothing
 
     # Empty orders data struct 
@@ -47,12 +44,12 @@ function capitalmarket_process!(
         if roundnr == 1
             # Gather total faced demand for all kp
             faced_demand = Dict(kp_id => sum(model.kmdata.choices[model[kp_id].kp_i, :]) for kp_id ∈ kp_ids)
-            println("FACED DEMAND")
-            println(faced_demand)
+            # println("FACED DEMAND")
+            # println(faced_demand)
         end
 
-        println("CAPACITY")
-        println(kp_capacity)
+        # println("CAPACITY")
+        # println(kp_capacity)
 
         for kp_id in kp_ids
 
@@ -90,16 +87,27 @@ function capitalmarket_process!(
             end
         end
 
+        @assert length(Set(cp_ids)) == length(cp_ids)
+
         # Recompute next choices based on now placed orders
         if roundnr != total_n_rounds
             for cp_id in cp_ids
-                plan_replacement_cp!(model[cp_id], government, globalparam, ep, 1, t, model)
-                plan_expansion_cp!(model[cp_id], globalparam, 1, model)
+                # println(t)
+                plan_replacement_cp!(model[cp_id], government, globalparam, ep, roundnr + 1, t, model)
+                plan_expansion_cp!(model[cp_id], globalparam, roundnr + 1, model)
             end
         end
     end
 
     # display(model.kmdata.orders)
+
+    # for cp_id in all_cp
+    #     cp = model[cp_id]
+    #     if cp.age == 1
+    #         println(t)
+    #         println(sum(model.kmdata.orders[:, cp.cp_i]), " ", cp.n_mach_desired_EI + cp.n_mach_desired_RS)
+    #     end
+    # end
 
     process_machine_orders!(model, globalparam.freq_per_machine, faced_demand)
 end
@@ -164,10 +172,14 @@ function fill_in_cp_choices!(
     for cp_id in cp_ids
 
         cp = model[cp_id]
-        kp_i = model[cp.kp_ids[roundnr]].kp_i
 
-        # Fill in total number of desired machines of nth choice producer
-        model.kmdata.choices[kp_i, cp.cp_i] = cp.n_mach_desired_EI + cp.n_mach_desired_RS 
+        if length(cp.kp_ids) >= roundnr
+
+            kp_i = model[cp.kp_ids[roundnr]].kp_i
+
+            # Fill in total number of desired machines of nth choice producer
+            model.kmdata.choices[kp_i, cp.cp_i] = cp.n_mach_desired_EI + cp.n_mach_desired_RS 
+        end
     end
 end
 
@@ -186,9 +198,9 @@ function process_machine_orders!(
         kp_id = get(get(model.i_to_id, "kp", nothing), kp_i, nothing)
         cp_id = get(get(model.i_to_id, "cp", nothing), cp_i, nothing)
 
-        order_machines_cp!(
-                            model[cp_id], 
+        receive_order_kp!(
                             model[kp_id], 
+                            cp_id, 
                             model.kmdata.orders[kp_i, cp_i],
                             freq_per_machine
                           )

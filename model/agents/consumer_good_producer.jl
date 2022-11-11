@@ -396,6 +396,12 @@ function plan_replacement_cp!(
     model::ABM
     )
 
+    # If no more known capital producers, no orders possible
+    if roundnr > length(cp.kp_ids)
+        cp.n_mach_desired_RS = 0
+        return
+    end
+
     # Get price and cost of production of chosen kp
     brochure = get(model.kp_brochures, Symbol(cp.kp_ids[roundnr]), nothing)
     p_star = brochure[:price]
@@ -410,12 +416,15 @@ function plan_replacement_cp!(
                  )
 
     # See if machine stock too large in order to decide if need to be replaced
-    n_machines_too_many = 0
-    if cp.n_machines > cp.Qᵉ && roundnr == 1
-        n_machines_too_many = cp.n_machines - cp.Qᵉ
-    end
+    # n_machines_too_many = 0
+    # if cp.n_machines > cp.Qᵉ
+    #     n_machines_too_many = cp.n_machines - cp.Qᵉ
+    # end
+
+    n_machines_too_many = cp.n_machines > cp.Qᵉ ? cp.n_machines - cp.Qᵉ : 0
 
     # Sort machines by cost of production
+    # TODO: NOW COMPUTE COP DOUBLE, DO THIS ONLY ONCE
     sort!(cp.Ξ , by = machine -> cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF); rev=true)
 
     # Loop over machine stock, select which machines to replace
@@ -442,7 +451,7 @@ function plan_replacement_cp!(
                 # No machines planned to be written off, replace old machine
                 push!(cp.mach_tb_repl, machine)
             else
-                # Do not replace machine
+                # Do not replace machine, let it be written off
                 push!(cp.mach_tb_retired, machine)
                 n_machines_too_many -= machine.freq
             end
@@ -465,10 +474,11 @@ function plan_replacement_cp!(
 
     # Sort to-be-replaced machines from lowest to highest production costs
     sort!(cp.mach_tb_repl, by=machine->cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], 
-                                           machine.A_EE, government.τᶜ, machine.A_EF))
+                                           machine.A_EE, government.τᶜ, machine.A_EF), rev=true)
 
     # Update total amount of to-be-replaces machines
     add_mach_desired = length(cp.mach_tb_repl) - cp.n_mach_ordered_RS
+    # println(cp.mach_tb_repl, " ", add_mach_desired, " ", max_mach_poss)
     cp.n_mach_desired_RS = min(max_mach_poss, add_mach_desired)
 
     @assert cp.n_mach_desired_RS >= 0
@@ -489,6 +499,12 @@ function plan_expansion_cp!(
     model::ABM
     )
 
+    # If no more known capital producers, no orders possible
+    if roundnr > length(cp.kp_ids)
+        cp.n_mach_desired_EI = 0
+        return
+    end
+
     brochure = get(model.kp_brochures, Symbol(cp.kp_ids[roundnr]), nothing)
     if cp.possible_I < brochure[:price]
         cp.n_mach_desired_EI = 0
@@ -503,7 +519,9 @@ function plan_expansion_cp!(
 
         total_mach_desired = round(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
         add_mach_desired = total_mach_desired - cp.n_mach_ordered_EI
-        cp.n_mach_desired_EI = min(max_mach_poss, add_mach_desired)
+        cp.n_mach_desired_EI = max(min(max_mach_poss, add_mach_desired), 0)
+        # println(cp.id, " ", roundnr, " ", add_mach_desired, " ", max_mach_poss, " ", total_mach_desired, " ", cp.n_mach_desired_RS, " ", cp.n_mach_ordered_EI, " ", cp.n_mach_ordered_RS)
+
         @assert cp.n_mach_desired_EI >= 0
 
         # cp.EIᵈ = brochure[:price] * cp.n_mach_ordered_EI * globalparam.freq_per_machine
@@ -579,22 +597,22 @@ end
 #     end
 # end
 
-"""
-    order_machines_cp!(cp::ConsumerGoodProducer, model::ABM)
+# """
+#     order_machines_cp!(cp::ConsumerGoodProducer, model::ABM)
 
-Lets cp order machines from kp of choice.
-"""
-function order_machines_cp!(
-    cp::ConsumerGoodProducer,
-    kp,
-    n_machines::Int64,
-    freq_per_machine::Int64
-    )
+# Lets cp order machines from kp of choice.
+# """
+# function order_machines_cp!(
+#     cp::ConsumerGoodProducer,
+#     kp,
+#     n_machines::Int64,
+#     freq_per_machine::Int64
+#     )
 
-    receive_order_kp!(kp, cp.id, n_machines, freq_per_machine)
-    # cp.n_mach_ordered_RS = min(n_machines, cp.n_mach_desired_RS)
-    # cp.n_mach_ordered_EI = n_machines - cp.n_mach_ordered_RS
-end
+#     receive_order_kp!(kp, cp.id, n_machines, freq_per_machine)
+#     # cp.n_mach_ordered_RS = min(n_machines, cp.n_mach_desired_RS)
+#     # cp.n_mach_ordered_EI = n_machines - cp.n_mach_ordered_RS
+# end
 
 
 # function reset_brochures_cp!(
@@ -677,13 +695,14 @@ function replace_bankrupt_cp!(
     nonbankrupt_cp = setdiff(all_cp, bankrupt_cp)
     nonbankrupt_kp = setdiff(all_kp, bankrupt_kp)
 
+    # Compute average number of machines and NW for non-bankrupt cp
     avg_n_machines = mean(cp_id -> model[cp_id].n_machines, nonbankrupt_cp)
     avg_NW = mean(cp_id -> model[cp_id].balance.NW, nonbankrupt_cp)
 
     # Make weights for allocating cp to hh
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
     weights_hh_cp = map(hh_id -> min(1, 1 / length(model[hh_id].cp)), all_hh)
-    weights_kp = map(kp_id -> model[kp_id].f[end], nonbankrupt_kp)
+    weights_kp = map(kp_id -> max(model[kp_id].f[end], 0.0001), nonbankrupt_kp)
 
     n_bankrupt_cp = length(bankrupt_cp)
 
@@ -691,12 +710,13 @@ function replace_bankrupt_cp!(
     capital_coefficients = rand(Uniform(globalparam.φ1, globalparam.φ2), n_bankrupt_cp)
     NW_coefficients = rand(Uniform(globalparam.φ3, globalparam.φ4), n_bankrupt_cp)
 
-    # New cp receive a advanced type of machine, first select kp proportional
+    # New cp receive an advanced type of machine, first select kp ids proportional
     # to their market share. cp can also select kp ids that went bankrupt in this 
     # period, as these producers have already been replaced with new companies
     kp_choice_ids = zeros(Int, n_bankrupt_cp)
     kp_choice_ps = zeros(Float64, n_bankrupt_cp)
     all_n_machines = zeros(Int, n_bankrupt_cp)
+
     for i in 1:n_bankrupt_cp
         # Decide from which kp to buy
         kp_choice_ids[i] = sample(all_kp, Weights(weights_kp))
@@ -710,6 +730,8 @@ function replace_bankrupt_cp!(
     req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps .* globalparam.freq_per_machine))
     all_req_NW = sum(req_NW)
     frac_NW_if = decide_investments_if!(indexfund, all_req_NW, t)
+
+    n_kp_sample = min(length(weights_kp), 3)
 
     for (cp_i, cp_id) in enumerate(bankrupt_cp)
 
@@ -735,9 +757,9 @@ function replace_bankrupt_cp!(
                 )
 
         # Order machines at kp of choice
-        new_cp.kp_ids = [kp_choice_ids[cp_i]]
-        new_cp.n_mach_ordered_EI = all_n_machines[cp_i]
-        # order_machines_cp!(new_cp, model)
+        # new_cp.kp_ids = [kp_choice_ids[cp_i]]
+        new_cp.kp_ids = sample(nonbankrupt_kp, Weights(weights_kp), n_kp_sample; replace=false)
+        new_cp.n_mach_desired_EI = all_n_machines[cp_i]
 
         update_wᴼ_max_cp!(new_cp)
 
@@ -1013,8 +1035,16 @@ function process_machine_order_cp!(
     cp.mach_tb_repl = cp.mach_tb_repl[1:cp.n_mach_ordered_RS]
 
     # Secondly satisfy expansions
-    cp.n_mach_ordered_EI += order - cp.n_mach_ordered_RS
+    cp.n_mach_ordered_EI += max(order - cp.n_mach_desired_RS, 0)
+
+    # println(cp.n_mach_ordered_EI, " ", order, " ", cp.n_mach_ordered_RS)
+
+    @assert cp.n_mach_ordered_EI >= 0
 
     # Decrease possible investments
     cp.possible_I -= price * order
+
+    # Set desired number of machines back to zero for next round
+    cp.n_mach_desired_RS = 0
+    cp.n_mach_desired_EI = 0
 end

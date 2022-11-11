@@ -252,7 +252,8 @@ function update_macro_timeseries(
 
     compute_bankrupties(all_cp, all_kp, bankrupt_cp, bankrupt_kp, macroeconomy, t)
 
-    compute_unsatisfied_demand(all_cp, all_kp, all_hh, macroeconomy, labormarket, t, model)
+    compute_unsatisfied_demand(all_cp, all_kp, all_hh, macroeconomy, labormarket, 
+                               globalparam.freq_per_machine, t, model)
 
     macroeconomy.N_goods[t] = sum(cp_id -> model[cp_id].N_goods, all_cp)
     macroeconomy.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
@@ -508,6 +509,7 @@ function compute_unsatisfied_demand(
     all_hh::Vector{Int},
     macroeconomy::MacroEconomy,
     labormarket,
+    freq_per_machine::Int64,
     t::Int,
     model::ABM
     )
@@ -517,7 +519,7 @@ function compute_unsatisfied_demand(
     macroeconomy.unspend_C[t] = 1 - sum(hh_id -> model[hh_id].C_actual, all_hh) / sum(hh_id -> model[hh_id].C, all_hh)
 
     macroeconomy.unsat_invest[t] =  1 - (sum(kp_id -> model[kp_id].Q[end], all_kp) / 
-                                    (sum(cp_id -> 50 * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
+                                    (sum(cp_id -> freq_per_machine * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
 
     macroeconomy.unsat_L_demand[t] = 1 - labormarket.L_hired / labormarket.L_demanded
 end

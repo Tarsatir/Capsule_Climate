@@ -237,10 +237,13 @@ function check_bankrupty_all_p!(
 
     for p_id in all_p
         if check_if_bankrupt_p!(model[p_id], globalparam.t_wait)
-            if typeof(model[p_id]) == ConsumerGoodProducer && cp_counter < n_cp - 1
+            if (typeof(model[p_id]) == ConsumerGoodProducer 
+                && cp_counter < n_cp - 1 
+                && length(model[p_id].Ξ) > 0)
                 push!(bankrupt_cp, p_id)
                 cp_counter += 1
-            elseif kp_counter < length(all_kp) - 1
+            elseif (typeof(model[p_id]) == CapitalGoodProducer
+                && kp_counter < length(all_kp) - 1)
                 push!(bankrupt_kp, p_id)
                 push!(bankrupt_kp_i, model[p_id].kp_i)
                 kp_counter += 1
@@ -289,6 +292,10 @@ function kill_all_bankrupt_p!(
     # Fire all workers still remaining in the firm, remove firm
     total_unpaid_net_debt = 0.0
     for p_id in Iterators.flatten((bankrupt_cp, bankrupt_kp))
+
+        # if p_id ∈ bankrupt_cp
+        #     println(length(model[p_id].Ξ))
+        # end
 
         # Fire remaining workers
         for hh_id in model[p_id].employees

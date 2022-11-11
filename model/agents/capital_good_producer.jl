@@ -428,7 +428,7 @@ function update_Oᵉ_kp!(
 )
 
     kp.Oᵉ = ω * (kp.O + kp.O_unmet) + (1 - ω) * kp.Oᵉ
-    println(kp.O, " ", kp.Oᵉ)
+    # println(kp.O, " ", kp.Oᵉ)
     kp.O = 0.
 end
 

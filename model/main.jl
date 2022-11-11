@@ -625,7 +625,7 @@ function run_simulation(;
     T::Int64=660,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
-    changedparams_ofat::Union{Dict, Nothing}=nothing,
+    changedparams_ofat::Union{Dict,Nothing}=nothing,
     changedtaxrates::Union{Vector,Nothing}=nothing,
     full_output::Bool=true,
     threadnr::Int64=1,
