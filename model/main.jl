@@ -103,17 +103,17 @@ function initialize_model(
             # zeros(Int64, initparam.n_kp)  
         )
 
-    modelproperties = Dict(
-                            :kp_brochures => Dict(),
-                            :cmdata => cmdata,
-                            :kmdata => kmdata,
-                            :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
-                          )
+    properties = Dict(
+                        :kp_brochures => Dict(),
+                        :cmdata => cmdata,
+                        :kmdata => kmdata,
+                        :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
+                     )
 
     # Initialize model struct
     model = ABM(
                     Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
-                    properties=modelproperties,
+                    properties=properties,
                     scheduler=scheduler, 
                     warn=false
                 )

@@ -34,9 +34,11 @@ Defines struct for consumer good producer
     n_mach_ordered_EI::Int64 = 0              # number of machines ordered for expansion
     n_mach_desired_RS::Int64 = 0              # number of machines desired for replacement
     n_mach_ordered_RS::Int64 = 0              # number of machines ordered for replacement
+    n_mach_desired_total::Int64 = 0           # number of total machines desired
     mach_tb_repl::Vector{Machine} = []        # list of to-be replaced machines
     mach_tb_retired::Vector{Machine} = []     # list of to-be retired machines (without replacement)
     kp_ids::Vector{Int64} = zeros(Int64, 0)   # ids of known kp
+    mach_desired_per_kp::SortedDict{Int64, Tuple{Int64, Int64}} = SortedDict()
     debt_installments::Vector{Float64}        # installments of debt repayments
 
     Ξ::Vector{Machine}                        # machines
@@ -199,6 +201,32 @@ end
 #     # Send orders to kp
 #     order_machines_cp!(cp, model)
 # end
+
+
+function plan_investment_cp!(
+    cp::ConsumerGoodProducer,
+    government::Government,
+    globalparam::GlobalParam,
+    ep::AbstractAgent,
+    roundnr::Int64,
+    t::Int64,
+    model::ABM
+)
+
+    # Rank producers
+    # TODO: move here
+
+    cp.mach_desired_per_kp = SortedDict(kp_id => (plan_replacement_cp!(), plan_expansion_cp!()) for kp_id in cp.kp_ids)
+
+    # Plan replacements and expansions
+    plan_replacement_cp!(cp, government, globalparam, ep, roundnr, t, model)
+    plan_expansion_cp!(cp, globalparam, roundnr, model)
+
+    # Save the original total amount of desired machines
+    if roundnr == 1
+        cp.n_mach_desired_total = cp.n_mach_desired_RS + cp.n_mach_desired_EI
+    end
+end
 
 
 """
@@ -702,7 +730,7 @@ function replace_bankrupt_cp!(
     # Make weights for allocating cp to hh
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
     weights_hh_cp = map(hh_id -> min(1, 1 / length(model[hh_id].cp)), all_hh)
-    weights_kp = map(kp_id -> max(model[kp_id].f[end], 0.0001), nonbankrupt_kp)
+    weights_kp = map(kp_id -> max(model[kp_id].f[end], 0.01), nonbankrupt_kp)
 
     n_bankrupt_cp = length(bankrupt_cp)
 
@@ -731,7 +759,7 @@ function replace_bankrupt_cp!(
     all_req_NW = sum(req_NW)
     frac_NW_if = decide_investments_if!(indexfund, all_req_NW, t)
 
-    n_kp_sample = min(length(weights_kp), 3)
+    n_kp_sample = min(length(weights_kp), 10)
 
     for (cp_i, cp_id) in enumerate(bankrupt_cp)
 
@@ -823,7 +851,9 @@ function update_Qᵉ_cp!(
     ι::Float64
     )
 
-    cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * ((1 + ι) * cp.Dᵉ)
+    if length(cp.Ξ) > 0
+        cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * ((1 + ι) * cp.Dᵉ)
+    end
 end
 
 

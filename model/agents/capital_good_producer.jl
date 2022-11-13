@@ -31,7 +31,7 @@
     wᴼ::Float64 = w̄[end]                  # offered wage
     wᴼ_max::Float64 = 0.0                 # maximum offered wage
 
-    Oᵉ::Float64 = 200.                    # total amount of machine units expected to be ordered
+    Oᵉ::Float64 = 250.                    # total amount of machine units expected to be ordered
     O::Float64 = 0.                       # total amount of machines units ordered
     O_unmet::Float64 = 0.                 # total amount of machines ordered in first round that could not be made
     prod_cap::Int64 = 0                   # total production capacity
@@ -45,17 +45,10 @@
     Πᵀ::Vector{Float64} = zeros(Float64, 3)# hist profits after tax
     debt_installments::Vector{Float64}    # installments of debt repayments
     f::Vector{Float64}                    # market share
-    # brochure::Dict{Symbol, Real} = Dict(
-    #                                         :kp_id => id,
-    #                                         :price => p[end],
-    #                                         :A_LP => A_LP,
-    #                                         :A_EE => A_EE,
-    #                                         :A_EF => A_EF
-    #                                     )
     orders::Dict = Dict{Int64, Int64}()   # orders
     balance::Balance                      # balance sheet
     curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
-
+    
     emissions::Float64 = 0.0              # carbon emissions in last period                    
 end
 
@@ -428,7 +421,8 @@ function update_Oᵉ_kp!(
 )
 
     kp.Oᵉ = ω * (kp.O + kp.O_unmet) + (1 - ω) * kp.Oᵉ
-    # println(kp.O, " ", kp.Oᵉ)
+    # kp.Oᵉ = ω * (kp.O * 1.1) + (1 - ω) * kp.Oᵉ
+    # println("   ", kp.O / 25, " ", kp.O_unmet / 25, " ", kp.Oᵉ / 25)
     kp.O = 0.
 end
 
@@ -442,6 +436,7 @@ function update_Lᵈ!(
     )
 
     kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end])
+    # kp.Lᵈ = kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end]
     kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end
 
@@ -746,6 +741,7 @@ function replace_bankrupt_kp!(
         # Borrow the remaining funds
         borrow_funds_p!(new_kp, (1 - frac_NW_if) * NW_stock, globalparam.b)
 
+        # Add agent to model
         add_agent!(new_kp, model)
     end
 end
