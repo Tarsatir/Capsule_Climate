@@ -19,21 +19,6 @@ function capitalmarket_process!(
     total_n_rounds::Int64=3
 )
 
-    for cp_id in all_cp
-        # plan_replacement_cp!(model[cp_id], government, globalparam, ep, 1, t, model)
-        # plan_expansion_cp!(model[cp_id], globalparam, 1, model)
-
-        plan_investment_cp!(
-            model[cp_id],
-            government,
-            globalparam,
-            ep,
-            1,
-            t,
-            model
-        )
-    end
-
     # First gather all cp ids of cp that want to buy capital goods
     cp_ids = gather_expansionary_cp(all_cp, model)
 
@@ -41,6 +26,21 @@ function capitalmarket_process!(
     kp_ids = gather_producing_kp(all_kp, model)
     all_kp_ids = deepcopy(kp_ids)
     kp_capacity = gather_capacities_kp!(kp_ids, model)
+
+    for cp_id in all_cp
+        plan_replacement_cp!(model[cp_id], government, globalparam, ep, 1, t, model)
+        plan_expansion_cp!(model[cp_id], globalparam, 1, model)
+
+        # plan_investment_cp!(
+        #     model[cp_id],
+        #     government,
+        #     globalparam,
+        #     ep,
+        #     all_kp,
+        #     t,
+        #     model
+        # )
+    end
 
     faced_demand = nothing
 
@@ -106,15 +106,18 @@ function capitalmarket_process!(
         # Recompute next choices based on now placed orders
         if roundnr != total_n_rounds
             for cp_id in cp_ids
-                plan_investment_cp!(
-                                        model[cp_id],
-                                        government,
-                                        globalparam,
-                                        ep,
-                                        roundnr + 1,
-                                        t,
-                                        model
-                                    )
+                plan_replacement_cp!(model[cp_id], government, globalparam, ep, 1, t, model)
+                plan_expansion_cp!(model[cp_id], globalparam, 1, model)
+                
+                # plan_investment_cp!(
+                #                         model[cp_id],
+                #                         government,
+                #                         globalparam,
+                #                         ep,
+                #                         all_kp,
+                #                         t,
+                #                         model
+                #                     )
             end
         end
     end

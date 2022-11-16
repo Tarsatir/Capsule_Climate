@@ -41,7 +41,7 @@
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.2                # memory parameter adaptive updating rules
+    ω::Float64 = 0.8                # memory parameter adaptive updating rules
     λ::Float64 = 0.7                # parameter for labor demand smoothing
     p_rigid_time::Int64 = 3         # number of periods producer's price remains stable
 

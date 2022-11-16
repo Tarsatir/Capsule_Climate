@@ -356,15 +356,19 @@ function model_step!(
             model[cp_id].t_next_update += globalparam.update_period
         end
 
-
         # Reset desired and ordered machines
         reset_desired_ordered_machines_cp!(model[cp_id])
 
+        # Update machine cost of production
+        update_cop_machines_cp!(model[cp_id], government, ep, t)
+
         # Plan investments for this period
-        # plan_investment_cp!(model[cp_id], government, all_kp, globalparam, ep, t, model)
+        # plan_investment_cp!(model[cp_id], government, globalparam, ep, all_kp, t, model)
 
         # Rank producers based on cost of acquiring machines
         rank_producers_cp!(model[cp_id], government, globalparam.b, all_kp, ep, t, model)
+
+        rank_machines_cp!(model[cp_id])
 
         # Update expected long-term production
         update_Qᵉ_cp!(model[cp_id], globalparam.ω, globalparam.ι)

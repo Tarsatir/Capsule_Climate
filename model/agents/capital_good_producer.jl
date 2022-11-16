@@ -420,7 +420,7 @@ function update_Oᵉ_kp!(
     ω::Float64
 )
 
-    kp.Oᵉ = ω * (kp.O + kp.O_unmet) + (1 - ω) * kp.Oᵉ
+    kp.Oᵉ = ω * kp.Oᵉ + (1 - ω) * (kp.O + kp.O_unmet)
     # kp.Oᵉ = ω * (kp.O * 1.1) + (1 - ω) * kp.Oᵉ
     # println("   ", kp.O / 25, " ", kp.O_unmet / 25, " ", kp.Oᵉ / 25)
     kp.O = 0.

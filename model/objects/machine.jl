@@ -4,7 +4,8 @@
     A_EF::Float64             # Environmental friendliness machine
     freq::Float64             # Freq machine owned by cp
     age::Float64              # Age of machine
-    p::Float64                # Price for which the machine was bought
+    p::Float64                # Price at which machine was bought
+    cop::Float64              # Current cost of production of machine
 end
 
 
@@ -26,7 +27,8 @@ function initialize_machine(
         A_EF=A_EF,
         freq=freq,
         age=sample(0:η),
-        p=p        
+        p=p,
+        cop=0.0        
     )
     return machine_struct
 end
@@ -54,4 +56,16 @@ function initialize_machine_stock(
     machines = [initialize_machine(freq_per_machine, η, p, A_LP, A_EE, A_EF) for _ in 1:n_machines_init]
 
     return machines
+end
+
+
+function update_cop_machine!(
+    machine::Machine,
+    cp::AbstractAgent,
+    government,
+    ep::AbstractAgent,
+    t::Int64
+)
+
+    machine.cop = cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF)
 end

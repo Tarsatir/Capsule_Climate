@@ -208,24 +208,19 @@ function plan_investment_cp!(
     government::Government,
     globalparam::GlobalParam,
     ep::AbstractAgent,
-    roundnr::Int64,
+    all_kp::Vector{Int64},
     t::Int64,
     model::ABM
 )
 
+    # Rank machines based on cop
+    rank_machines_cp!(cp)
+
     # Rank producers
-    # TODO: move here
+    rank_producers_cp!(cp, government, globalparam.b, all_kp, ep, t, model)
 
-    cp.mach_desired_per_kp = SortedDict(kp_id => (plan_replacement_cp!(), plan_expansion_cp!()) for kp_id in cp.kp_ids)
-
-    # Plan replacements and expansions
-    plan_replacement_cp!(cp, government, globalparam, ep, roundnr, t, model)
-    plan_expansion_cp!(cp, globalparam, roundnr, model)
-
-    # Save the original total amount of desired machines
-    if roundnr == 1
-        cp.n_mach_desired_total = cp.n_mach_desired_RS + cp.n_mach_desired_EI
-    end
+    # Determine how many machines are desired per known capital good producer
+    # cp.mach_desired_per_kp = SortedDict(kp_id => (plan_replacement_cp!(), plan_expansion_cp!()) for kp_id in cp.kp_ids)
 end
 
 
@@ -336,51 +331,17 @@ function rank_producers_cp!(
 
     # In case of no brochures, pick a random kp
     if length(cp.kp_ids) == 0
-        # brochure = model[sample(all_kp)].brochure
-        # cp.kp_ranking = [brochure[:kp_id]]
-        # return brochure
         
         # Sample random kp id to add to known kp
         push!(cp.kp_ids, sample(all_kp))
-        # cp.kp_ids[1]
     end
-
-    # If multiple brochures, find brochure with lowest cost of production
-    # all_kp_id = zeros(Int64, length(cp.brochures))
-    # all_cop = zeros(Float64, length(cp.brochures))
-    # for (i, brochure) in enumerate(cp.brochures)
-    #     all_kp_id[i] = brochure[:kp_id]
-    #     p_mach = brochure[:price]
-    #     A_LP = brochure[:A_LP]
-    #     A_EE = brochure[:A_EE]
-    #     A_EF = brochure[:A_EF]
-
-    #     c = p_mach + b * cop(cp.w̄[end], A_LP, government.τᴱ, ep.pₑ[t], A_EE, government.τᶜ, A_EF)
-    #     all_cop[i] = c
-    # end
-
-
-    # Only check the best 5 kp
-    # n_kp_tocheck = min(length(cp.kp_ids), 5)
-
 
     all_cop = zeros(Float64, length(cp.kp_ids))
     for (i, kp_id) in enumerate(cp.kp_ids)
 
         brochure = get(model.kp_brochures, Symbol(kp_id), nothing)
-        # p_mach = brochure[:price]
-        # A_LP = brochure[:A_LP]
-        # A_EE = brochure[:A_EE]
-        # A_EF = brochure[:A_EF]
-        # brochure = model.kp_brochures[Symbol(kp_id)]
-        # A_LP = model.kp_brochures[Symbol(kp_id)][:A_LP]
-        # A_EE = model.kp_brochures[Symbol(kp_id)][:A_EE]
-        # A_EF = model.kp_brochures[Symbol(kp_id)][:A_EF]
 
         p_mach = get(brochure, :price, nothing)
-        # A_LP = get(brochure, :A_LP, nothing)
-        # A_EE = get(brochure, :A_EE, nothing)
-        # A_EF = get(brochure, :A_EF, nothing)
 
         all_cop[i] = p_mach + b * cop(
                                 cp.w̄[end], 
@@ -396,19 +357,145 @@ function rank_producers_cp!(
 
     # Sort kp ids based on cop
     cp.kp_ids .= cp.kp_ids[sortperm(all_cop)]
-
-    # Choose kp based on brochures
-    # all_cop .= (1 ./ all_cop .^ 2)
-    # brochure = sample(cp.brochures, Weights(all_cop))
-    # cp.kp_ranking[1] = brochure[:kp_id]
-    # cp.kp_ranking = 
-
-    # chosen_kp_id = cp.kp_ids[1]
-
-    # brochure = model.kp_brochures[Symbol(chosen_kp_id)]
-
-    # return brochure
 end
+
+
+"""
+Sort machines by cost of production
+"""
+function rank_machines_cp!(
+    cp::ConsumerGoodProducer
+)
+
+    sort!(cp.Ξ , by = machine -> machine.cop; rev=true)
+end
+
+
+# """
+# Plans replacement investment based on age machines and available new machines
+# """
+# function plan_replacement_cp!(
+#     cp::ConsumerGoodProducer,
+#     kp_id::Int64,
+#     government::Government,
+#     globalparam::GlobalParam,
+#     ep::AbstractAgent,
+#     t::Int,
+#     model::ABM
+#     )
+
+#     desired_n_mach_replaced = 0
+#     desired_n_mach_retired = 0
+#     n_machines_too_many = cp.n_machines > cp.Qᵉ ? cp.n_machines - cp.Qᵉ : 0
+
+#     # Get price and cost of production of chosen kp
+#     brochure = get(model.kp_brochures, Symbol(kp_id), nothing)
+#     p_star = brochure[:price]
+#     c_star = cop(
+#                     cp.w̄[end], 
+#                     get(brochure, :A_LP, nothing), 
+#                     government.τᴱ, 
+#                     ep.pₑ[t], 
+#                     get(brochure, :A_EE, nothing), 
+#                     government.τᶜ, 
+#                     get(brochure, :A_EF, nothing)
+#                  )
+
+#     # Loop over machine stock, select which machines to replace
+#     for machine in cp.Ξ
+
+#         if machine.age >= globalparam.η
+#             # Machine has reached max age, decide if replaced or not
+#             if n_machines_too_many < machine.freq
+#                 # No machines planned to be written off, replace old machine
+#                 # push!(cp.mach_tb_repl, machine)
+#                 desired_n_mach_replaced += 1
+#             else
+#                 # Do not replace machine, let it be written off
+#                 # push!(cp.mach_tb_retired, machine)
+#                 desired_n_mach_retired == 1
+#                 n_machines_too_many -= machine.freq
+#             end
+
+#         elseif (machine.cop != c_star && p_star / (machine.cop - c_star) <= globalparam.b 
+#                 && machine.age > globalparam.b)
+#             # New machine cheaper to operate, replace old machine
+#             # push!(cp.mach_tb_repl, machine)
+#             desired_n_mach_replaced += 1
+#         end
+#     end
+
+#     return (min(max_mach_poss, desired_n_mach_replaced), desired_n_mach_retired)
+
+
+#     # If no new machines too expensive, no machines replaced
+#     # if cp.possible_I < p_star
+#     #     return (0, desired_n_mach_retired)
+#     # end
+
+#     # max_mach_poss = floor(Int64, cp.possible_I / p_star)
+
+#     # Sort to-be-replaced machines from lowest to highest production costs
+#     # sort!(cp.mach_tb_repl, by=machine->cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], 
+#     #                                        machine.A_EE, government.τᶜ, machine.A_EF), rev=true)
+
+#     # Update total amount of to-be-replaces machines
+#     # add_mach_desired = length(cp.mach_tb_repl) - cp.n_mach_ordered_RS
+#     # println(cp.mach_tb_repl, " ", add_mach_desired, " ", max_mach_poss)
+#     # cp.n_mach_desired_RS = min(max_mach_poss, add_mach_desired)
+
+#     # @assert cp.n_mach_desired_RS >= 0
+
+#     # return (min(max_mach_poss, desired_n_mach_replaced), desired_n_mach_retired)
+
+#     # Compute investment amount corresponding to replacement investments
+#     # cp.RSᵈ = p_star * cp.n_mach_ordered_RS * globalparam.freq_per_machine
+#     # TODO replace with new computation
+# end
+
+
+# """
+# Plans expansion investments based on expected production.
+# """
+# function plan_expansion_cp!(
+#     cp::ConsumerGoodProducer,
+#     globalparam::GlobalParam,
+#     roundnr::Int64,
+#     model::ABM
+#     )
+
+#     # If no more known capital producers, no orders possible
+#     if roundnr > length(cp.kp_ids)
+#         cp.n_mach_desired_EI = 0
+#         return
+#     end
+
+#     brochure = get(model.kp_brochures, Symbol(cp.kp_ids[roundnr]), nothing)
+#     if cp.possible_I < brochure[:price]
+#         cp.n_mach_desired_EI = 0
+#         # cp.EIᵈ = 0.0
+#     end
+
+#     max_mach_poss = floor(Int64, cp.possible_I / brochure[:price])
+
+#     # if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
+#     if cp.Qᵉ > cp.n_machines
+#         # cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
+
+#         total_mach_desired = round(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
+#         add_mach_desired = total_mach_desired - cp.n_mach_ordered_EI
+#         cp.n_mach_desired_EI = max(min(max_mach_poss, add_mach_desired), 0)
+#         # println(cp.id, " ", roundnr, " ", add_mach_desired, " ", max_mach_poss, " ", total_mach_desired, " ", cp.n_mach_desired_RS, " ", cp.n_mach_ordered_EI, " ", cp.n_mach_ordered_RS)
+
+#         @assert cp.n_mach_desired_EI >= 0
+
+#         # cp.EIᵈ = brochure[:price] * cp.n_mach_ordered_EI * globalparam.freq_per_machine
+#         # TODO: Find a new way to compute this
+#     else
+#         cp.n_mach_desired_EI = 0
+#         # cp.EIᵈ = 0.0
+#     end
+# end
 
 
 """
@@ -451,10 +538,6 @@ function plan_replacement_cp!(
 
     n_machines_too_many = cp.n_machines > cp.Qᵉ ? cp.n_machines - cp.Qᵉ : 0
 
-    # Sort machines by cost of production
-    # TODO: NOW COMPUTE COP DOUBLE, DO THIS ONLY ONCE
-    sort!(cp.Ξ , by = machine -> cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF); rev=true)
-
     # Loop over machine stock, select which machines to replace
     for machine in cp.Ξ
 
@@ -462,16 +545,6 @@ function plan_replacement_cp!(
         if machine ∈ cp.mach_tb_repl || machine ∈ cp.mach_tb_retired
             continue
         end
-
-        c_A = cop(
-                    cp.w̄[end], 
-                    machine.A_LP, 
-                    government.τᴱ, 
-                    ep.pₑ[t], 
-                    machine.A_EE, 
-                    government.τᶜ, 
-                    machine.A_EF
-                )
 
         if machine.age >= globalparam.η
             # Machine has reached max age, decide if replaced or not
@@ -484,7 +557,7 @@ function plan_replacement_cp!(
                 n_machines_too_many -= machine.freq
             end
 
-        elseif (c_A != c_star && p_star / (c_A - c_star) <= globalparam.b 
+        elseif (machine.cop != c_star && p_star / (machine.cop - c_star) <= globalparam.b 
                 && machine.age > globalparam.b)
             # New machine cheaper to operate, replace old machine
             push!(cp.mach_tb_repl, machine)
@@ -1077,4 +1150,17 @@ function process_machine_order_cp!(
     # Set desired number of machines back to zero for next round
     cp.n_mach_desired_RS = 0
     cp.n_mach_desired_EI = 0
+end
+
+
+function update_cop_machines_cp!(
+    cp::ConsumerGoodProducer, 
+    government::Government, 
+    ep::AbstractAgent,
+    t::Int64
+)
+
+    for machine in cp.Ξ
+        update_cop_machine!(machine, cp, government, ep, t)
+    end
 end
