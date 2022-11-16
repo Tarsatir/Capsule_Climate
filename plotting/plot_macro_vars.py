@@ -9,17 +9,9 @@ def plot_macro_vars(df):
     Plots macro statistics
     """
     
-    fig, ax = plt.subplots(8,2, figsize=(10,25), sharex=True)
+    _, ax = plt.subplots(3, 2, figsize=(10,10), sharex=True)
 
     T = range(len(df.GDP))
-
-    # ax[0,0].plot(range(len(df.GDP)), df.GDP, label='total GDP')
-    # ax[0,0].plot(range(len(df.GDP_I)), df.GDP_I, label='income share')
-    # ax[0,0].plot(range(len(df.GDP_cp)), df.GDP_cp, label='cp share')
-    # ax[0,0].plot(range(len(df.GDP_kp)), df.GDP_kp, label='kp share')
-    # ax[0,0].plot(range(len(df.GDP)), df.Exp_UB, label='UB exp')
-    # ax[0,0].set_title("GDP")
-    # ax[0,0].legend()
 
     # Plot real GDP
     ax[0,0].plot(T, 100 * df.GDP / df.CPI, label='total GDP')
@@ -32,159 +24,179 @@ def plot_macro_vars(df):
     ax[0,0].set_title("GDP")
     ax[0,0].legend()
 
-    # ax[0,0].plot(T, df.GDP, label='total GDP')
-    # ax[0,0].plot(T, df.GDP_I, label='income share')
-    # ax[0,0].plot(T, df.GDP_cp, label='cp share')
-    # ax[0,0].plot(T, df.GDP_kp, label='kp share')
-    # ax[0,0].plot(T, df.Exp_UB, label='UB exp')
-    # ax[0,0].set_title("GDP")
-    # ax[0,0].legend()
-
-    # Plot unemployment rate
-    ax[0,1].plot(range(len(df.UR)), df.UR, label='unemployment rate')
-    ax[0,1].plot(range(len(df.switch_rate)), df.switch_rate, label='switching rate')
+    # Unemployment rate
+    ax[0,1].plot(T, df.UR, label='unemployment rate')
+    ax[0,1].plot(T, df.switch_rate, label='switching rate')
     ax[0,1].set_title("Unemployment rate")
     ax[0,1].set_ylim(0,1)
     ax[0,1].legend()
 
-    ax[1,0].plot(range(len(df.M)), df.M - df.debt_tot, 
+    # Money Supply 
+    ax[1,0].plot(T, df.M - df.debt_tot, 
                  label='total', zorder=5, linestyle='dashed')
-    ax[1,0].plot(range(len(df.M)), df.M_hh, label='hh')
-    ax[1,0].plot(range(len(df.M)), df.M_cp, label='cp')
-    ax[1,0].plot(range(len(df.M)), df.M_kp, label='kp')
-    ax[1,0].plot(range(len(df.M)), df.M_ep, label='ep')
-    ax[1,0].plot(range(len(df.M)), df.M_gov, label='gov')
-    ax[1,0].plot(range(len(df.M)), df.debt_tot, label='total debts')
+    ax[1,0].plot(T, df.M_hh, label='hh')
+    ax[1,0].plot(T, df.M_cp, label='cp')
+    ax[1,0].plot(T, df.M_kp, label='kp')
+    ax[1,0].plot(T, df.M_ep, label='ep')
+    ax[1,0].plot(T, df.M_gov, label='gov')
+    ax[1,0].plot(T, df.debt_tot, label='total debts')
     ax[1,0].hlines(df.M[0], 0, len(df.M), linestyle='dotted', alpha=0.5, color='black')
-    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_cp.to_numpy()), label='unpaid cp debt')
-    # ax[3,0].plot(range(len(df.M)), -np.cumsum(df.debt_unpaid_kp.to_numpy()), label='unpaid kp debt')
-    ax[1,0].plot(range(len(df.M)), df.M_if, label='if')
+    ax[1,0].plot(T, df.M_if, label='if')
     ax[1,0].set_title('Money supply')
     ax[1,0].legend()
 
-    # Plot wage levels
-    real_w_avg = 100 * df.w_avg / df.CPI
-    # real_w_avg = 100 * df.w_avg
-    ax[1,1].plot(range(len(real_w_avg)), real_w_avg, color='green', label='real $\\bar{w}$')
-    ax[1,1].plot(range(len(df.w_avg)), df.w_avg, color='blue', label='$\\bar{w}$')
-    ax[1,1].set_title('Real wage level')
+    # Inflation
+    ax[1,1].plot(T, df.CPI, label='cp')
+    ax[1,1].plot(T, df.CPI_kp, label='kp')
+    ax[1,1].set_title('CPI')
     ax[1,1].legend()
 
-    ax[2,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
-    ax[2,0].plot(range(len(df.dL_avg)), df.dL_avg, color='red', label='all')
-    ax[2,0].fill_between(range(len(df.dL_avg)), df.dL_avg + df.dL_std, df.dL_avg - df.dL_std, color='red', alpha=0.4)
-    ax[2,0].plot(range(len(df.dL_cp_avg)), df.dL_cp_avg, color='green', label='cp')
-    ax[2,0].plot(range(len(df.dL_kp_avg)), df.dL_kp_avg, color='orange', label='kp')
-    ax[2,0].set_title('$\Delta L^d$')
+    # Aggregate consumption and investments
+    ax[2,0].plot(T, df.total_C, label="$C$")
+    ax[2,0].plot(T, df.total_C_actual, label="$C$ actual")
+    ax[2,0].plot(T, df.total_I, label="$I$")
+    ax[2,0].plot(T, df.total_w, label="$w$")
+    ax[2,0].set_title('Aggregate C and I')
     ax[2,0].legend()
 
+    plt.tight_layout()
+    plt.savefig('plots/macro_ts.png', bbox_inches='tight')
+
+
+def plot_household_vars(df):
+    """
+    Plots household variables
+
+    Args:
+        df (DataFrame): _description_
+    """
+
+    _, ax = plt.subplots(2, 2, figsize=(10, 8))
+
+    T = range(len(df.GDP))
+
+    # Wage levels
+    real_w_avg = 100 * df.w_avg / df.CPI
+    ax[0,0].plot(T, real_w_avg, color='green', label='real $\\bar{w}$')
+    ax[0,0].plot(T, df.w_avg, color='blue', label='$\\bar{w}$')
+    ax[0,0].set_title('Real wage level')
+    ax[0,0].legend()
+
+    # Real income
     real_I_avg = 100 * df.I_avg / df.CPI
     real_I_labor = 100 * df.I_labor_avg / df.CPI
     real_I_capital = 100 * df.I_capital_avg / df.CPI
     real_I_UB = 100 * df.I_UB_avg / df.CPI
     real_I_socben = 100 * df.I_socben_avg / df.CPI
 
-    # ax[2,1].plot(T, real_I_avg, color='purple', label='total')
-    ax[2,1].plot(T, real_I_labor / real_I_avg, color='blue', label='labor')
-    ax[2,1].plot(T, real_I_capital / real_I_avg, color='red', label='capital')
-    ax[2,1].plot(T, real_I_UB / real_I_avg, color='green', label='UB')
-    ax[2,1].plot(T, real_I_socben / real_I_avg, color='orange', label='socben')
-    ax[2,1].hlines(0, max(T), 0, linestyle='dashed', color='black')
-    ax[2,1].legend()
-    ax[2,1].set_title('Real income of households')
-    
+    ax[0,1].plot(T, real_I_labor / real_I_avg, color='blue', label='labor')
+    ax[0,1].plot(T, real_I_capital / real_I_avg, color='red', label='capital')
+    ax[0,1].plot(T, real_I_UB / real_I_avg, color='green', label='UB')
+    ax[0,1].plot(T, real_I_socben / real_I_avg, color='orange', label='socben')
+    ax[0,1].hlines(0, max(T), 0, linestyle='dashed', color='black')
+    ax[0,1].legend()
+    ax[0,1].set_title('Real income of households')
 
-    # Plot savings rate of households
-    ax[3,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
-    ax[3,0].plot(T, df.s_emp, color='red', label='employed')
-    ax[3,0].plot(T, df.s_unemp, color='blue', label='unemployed')
-    ax[3,0].plot(T, df.returns_investments, color='green', label='$r_t$')
-    ax[3,0].set_title("Savings rate")
-    ax[3,0].set_ylim(-0.5, 0.5)
-    ax[3,0].legend()
+    # Savings rate
+    ax[1,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
+    ax[1,0].plot(T, df.s_emp, color='red', label='employed')
+    ax[1,0].plot(T, df.s_unemp, color='blue', label='unemployed')
+    ax[1,0].plot(T, df.returns_investments, color='green', label='$r_t$')
+    ax[1,0].set_title("Savings rate")
+    ax[1,0].set_ylim(-0.5, 0.5)
+    ax[1,0].legend()
 
-    ax[3,1].plot(range(len(df.debt_tot)), df.debt_tot, label='total')
-    ax[3,1].plot(range(len(df.debt_cp)), df.debt_cp, label='cp', color='green')
-    # ax[3,1].plot(range(len(df.debt_cp_allowed)), df.debt_cp_allowed, 
-    #              label='cp allowed', color='green', linestyle='dashed', alpha=0.5)
-    ax[3,1].plot(range(len(df.debt_kp)), df.debt_kp, label='kp', color='red')
-    # ax[3,1].plot(range(len(df.debt_kp_allowed)), df.debt_kp_allowed, 
-    #             label='kp allowed', color='red', linestyle='dashed', alpha=0.5)
-    ax[3,1].set_title('Debt levels')
-    # ax[3,1].set_yscale('log')
-    ax[3,1].legend()
-
-    # ax[4,0].plot(range(len(df.EI_avg)), 100 * df.EI_avg / df.CPI_kp, label='EI')
-    # ax[4,0].plot(range(len(df.RS_avg)), 100 * df.RS_avg / df.CPI_kp, label='RS')
-    # ax[4,0].set_title('Real investments')
-    ax[4,0].plot(range(len(df.n_mach_EI)), df.n_mach_EI, label='n EI')
-    ax[4,0].plot(range(len(df.n_mach_RS)), df.n_mach_RS, label='n RS')
-    ax[4,0].legend()
-
-    ax[4,1].plot(T, df.avg_pi_LP, label='$\\bar{\pi}_{LP}$')
-    ax[4,1].plot(T, df.avg_pi_EE, label='$\\bar{\pi}_{EE}$')
-    ax[4,1].plot(T, df.avg_pi_EF, label='$\\bar{\pi}_{EF}$')
-    ax[4,1].plot(T, df.avg_A_LP, label='$\\bar{A}_{LP}$')
-    ax[4,1].plot(T, df.avg_A_EE, label='$\\bar{A}_{EE}$')
-    ax[4,1].plot(T, df.avg_A_EF, label='$\\bar{A}_{EF}$')
-    ax[4,1].plot(T, df.avg_B_LP, label='$\\bar{B}_{LP}}$')
-    ax[4,1].plot(T, df.avg_B_EE, label='$\\bar{B}_{EE}}$')
-    ax[4,1].plot(T, df.avg_B_EF, label='$\\bar{B}_{EF}}$')
-    ax[4,1].set_title('Productivity')
-    ax[4,1].legend()
-
-
-    ax[5,0].plot(T, df.avg_Q_kp, label='kp Q')
-    ax[5,0].plot(T, df.avg_Q_cp, label='cp Q', color='green')
-    ax[5,0].plot(T, df.avg_Qs_cp, label='cp $Q^s$', color='green', linestyle='dashed')
-    ax[5,0].plot(T, df.avg_Qe_cp, label='cp $Q^e$', color='green', linestyle='dotted')
-    ax[5,0].plot(T, df.avg_n_machines_cp, 
-                 label='cp n machines', color='blue', linestyle='dashed')
-    ax[5,0].plot(T, df.avg_D_cp, label='cp $D$', color='red')
-    ax[5,0].plot(T, df.avg_De_cp, label='cp $D^e$', color='red', linestyle='dashed')
-    ax[5,0].plot(T, df.avg_Du_cp, label='cp $D^U$', color='red', linestyle='dotted', alpha=0.7)
-    # ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_Q_lp, label='lp', color='red')
-    # ax[5,0].plot(range(len(df.avg_Q_lp)), df.avg_n_machines_lp, 
-    #              label='lp n machines', color='red', linestyle='dashed')
-    ax[5,0].plot(T, df.avg_N_goods, label='avg $N$', color='orange')
-    ax[5,0].set_title('Average production quantity')
-    ax[5,0].legend()
-
-    ax[5,1].plot(range(len(df.CPI)), df.CPI, label='cp')
-    ax[5,1].plot(range(len(df.CPI_kp)), df.CPI_kp, label='kp')
-    ax[5,1].set_title('CPI')
-    ax[5,1].legend()
-
-
-    ax[6,0].plot(T, df.bankrupt_kp, label='kp')
-    ax[6,0].plot(T, df.bankrupt_cp, label='cp')
-    ax[6,0].legend()
-    ax[6,0].set_title('Bankrupty rate')
-
-    ax[6,1].plot(range(len(df.mu_cp)), df.mu_cp, label='cp')
-    # ax[6,1].plot(range(len(df.mu_lp)), df.mu_lp, label='lp')
-    ax[6,1].plot(range(len(df.mu_kp)), df.mu_kp, label='kp')
-    ax[6,1].legend()
-    ax[6,1].set_title('Markup rates $\mu$')
-
-    ax[7,0].plot(T, df.unsat_demand, label='unsatisfied D')
-    ax[7,0].plot(T, df.unspend_C, label='unspend C')
-    ax[7,0].plot(T, df.unsat_invest, label='unsatisfied I')
-    ax[7,0].plot(T, df.unsat_L_demand, label='unsatisfied L')
-    ax[7,0].plot(T, df.cu, label='cu')
-    ax[7,0].set_title('Unsatisfied demand and unspend C')
-    ax[7,0].set_ylim(0, 1)
-    ax[7,0].legend()
-
-    ax[7,1].plot(T, df.total_C, label="$C$")
-    ax[7,1].plot(T, df.total_C_actual, label="$C$ actual")
-    ax[7,1].plot(T, df.total_I, label="$I$")
-    ax[7,1].plot(T, df.total_w, label="$w$")
-    ax[7,1].set_title('Spending')
-    ax[7,1].legend()
+    # Unsatisfied demand
+    ax[1,1].plot(T, df.unsat_demand, label='unsatisfied D')
+    ax[1,1].plot(T, df.unspend_C, label='unspend C')
+    ax[1,1].legend()
 
     plt.tight_layout()
-    plt.savefig('plots/macro_ts.png', bbox_inches='tight')
+    plt.savefig('plots/household_ts.png', bbox_inches='tight')
+
+
+def plot_producer_vars(df):
+    """
+    Plots producer variables
+
+    Args:
+        df_macro (DataFrame): _description_
+    """
+
+    _, ax = plt.subplots(4, 2, figsize=(10, 15))
+
+    T = range(len(df.GDP))
+
+    # Labor demand
+    ax[0,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
+    # ax[0,0].plot(T, df.dL_avg, color='red', label='all')
+    # ax[0,0].fill_between(range(len(df.dL_avg)), df.dL_avg + df.dL_std, df.dL_avg - df.dL_std, color='red', alpha=0.4)
+    ax[0,0].plot(T, df.dL_cp_avg, color='green', label='cp')
+    ax[0,0].plot(T, df.dL_kp_avg, color='orange', label='kp')
+    ax[0,0].set_title('$\Delta L^d$')
+    ax[0,0].legend()
+
+    # Producer debt
+    ax[0,1].plot(T, df.debt_tot, label='total')
+    ax[0,1].plot(T, df.debt_cp, label='cp', color='green')
+    ax[0,1].plot(T, df.debt_kp, label='kp', color='red')
+    ax[0,1].set_title('Debt levels')
+    ax[0,1].legend()
+
+    # Number of ordered machines
+    ax[1,0].plot(T, df.n_mach_EI, label='n EI')
+    ax[1,0].plot(T, df.n_mach_RS, label='n RS')
+    ax[1,0].legend()
+
+    # Production quantities
+    ax[1,1].plot(T, df.avg_Q_kp, label='kp Q')
+    ax[1,1].plot(T, df.avg_Q_cp, label='cp Q', color='green')
+    ax[1,1].plot(T, df.avg_Qs_cp, label='cp $Q^s$', color='green', linestyle='dashed')
+    ax[1,1].plot(T, df.avg_Qe_cp, label='cp $Q^e$', color='green', linestyle='dotted')
+    ax[1,1].plot(T, df.avg_n_machines_cp, 
+                 label='cp n machines', color='blue', linestyle='dashed')
+    ax[1,1].plot(T, df.avg_D_cp, label='cp $D$', color='red')
+    ax[1,1].plot(T, df.avg_De_cp, label='cp $D^e$', color='red', linestyle='dashed')
+    ax[1,1].plot(T, df.avg_Du_cp, label='cp $D^U$', color='red', linestyle='dotted', alpha=0.7)
+    ax[1,1].plot(T, df.avg_N_goods, label='avg $N$', color='orange')
+    ax[1,1].set_title('Average production quantity')
+    ax[1,1].legend()
+
+    # Bankrupties
+    ax[2,0].plot(T, df.bankrupt_kp, label='kp')
+    ax[2,0].plot(T, df.bankrupt_cp, label='cp')
+    ax[2,0].legend()
+    ax[2,0].set_title('Bankrupty rate')
+
+    # Markup rates
+    ax[2,1].plot(range(len(df.mu_cp)), df.mu_cp, label='cp')
+    ax[2,1].plot(range(len(df.mu_kp)), df.mu_kp, label='kp')
+    ax[2,1].legend()
+    ax[2,1].set_title('Markup rates $\mu$')
+
+    # Technology levels
+    ax[3,0].plot(T, df.avg_pi_LP, label='$\\bar{\pi}_{LP}$')
+    ax[3,0].plot(T, df.avg_pi_EE, label='$\\bar{\pi}_{EE}$')
+    ax[3,0].plot(T, df.avg_pi_EF, label='$\\bar{\pi}_{EF}$')
+    ax[3,0].plot(T, df.avg_A_LP, label='$\\bar{A}_{LP}$')
+    ax[3,0].plot(T, df.avg_A_EE, label='$\\bar{A}_{EE}$')
+    ax[3,0].plot(T, df.avg_A_EF, label='$\\bar{A}_{EF}$')
+    ax[3,0].plot(T, df.avg_B_LP, label='$\\bar{B}_{LP}}$')
+    ax[3,0].plot(T, df.avg_B_EE, label='$\\bar{B}_{EE}}$')
+    ax[3,0].plot(T, df.avg_B_EF, label='$\\bar{B}_{EF}}$')
+    ax[3,0].set_title('Productivity')
+    ax[3,0].legend()
+
+    # Unsatisfied labor and investments demand
+    ax[3,1].plot(T, df.unsat_invest, label='unsatisfied I')
+    ax[3,1].plot(T, df.unsat_L_demand, label='unsatisfied L')
+    ax[3,1].plot(T, df.cu, label='cu')
+    ax[3,1].set_title('Unsatisfied demand and unspend C')
+    ax[3,1].set_ylim(0, 1)
+    ax[3,1].legend()
+
+    plt.tight_layout()
+    plt.savefig('plots/producer_ts.png', bbox_inches='tight')
 
 
 def plot_cons_vars(df):
@@ -470,7 +482,7 @@ def plot_energy(df_climate_energy, df_macro):
 
 def plot_climate(df_climate_energy, df_macro):
 
-    fig, ax = plt.subplots(2, 2, figsize=(8,6))
+    _, ax = plt.subplots(2, 2, figsize=(8,6))
 
     T = range(len(df_climate_energy.emissions_total))
 
@@ -581,6 +593,8 @@ if __name__=="__main__":
     df_macro = pd.read_csv('../results/result_data/first.csv')
 
     plot_macro_vars(df_macro)
+    plot_household_vars(df_macro)
+    plot_producer_vars(df_macro)
     # plot_cons_vars(df_macro)
 
     plot_income_dist()

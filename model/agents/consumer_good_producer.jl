@@ -354,7 +354,9 @@ function choose_producer_cp!(
 
 
     # Sort kp ids based on cop
-    cp.kp_ids .= cp.kp_ids[sortperm(all_cop)]
+    # cp.kp_ids .= cp.kp_ids[sortperm(all_cop)]
+
+    cp.kp_ids .= sample(cp.kp_ids, Weights(1 ./ all_cop), length(cp.kp_ids); replace=false)
 
     # Choose kp based on brochures
     # all_cop .= (1 ./ all_cop .^ 2)
