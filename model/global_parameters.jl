@@ -1,15 +1,15 @@
 @with_kw mutable struct GlobalParam
     # Determine technical innovation process
-    ν::Float64 = 0.04               # R&D inv propensity (note this a greek 'nu')
+    ν::Float64 = 0.05               # R&D inv propensity (note this a greek 'nu')
     νₑ::Float64 = 0.01              # R&D inv propensity energy producer (note this a greek 'nu')
-    ξ::Float64 = 0.5                # R&D allocation to IN
+    ξ::Float64 = 0.3                # R&D allocation to IN
     ξₑ::Float64 = 0.4               # R&D allocation to green tech for energy producer
     ζ::Float64 = 0.3                # firm search capabilities
     ζ_ge::Float64 = 0.3             # ep search capabilities for green tech
     ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
-    κ_upper::Float64 = 0.005    # 2nd beta dist support
+    κ_upper::Float64 = 0.005         # 2nd beta dist support
     κ_lower::Float64 = -κ_upper     # 1st beta dist support
     
     γ::Float64 = 0.5                # new custommer sample parameter

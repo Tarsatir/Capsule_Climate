@@ -9,7 +9,7 @@ def plot_macro_vars(df):
     Plots macro statistics
     """
     
-    _, ax = plt.subplots(3, 2, figsize=(10,10), sharex=True)
+    _, ax = plt.subplots(3, 2, figsize=(10,10))
 
     T = range(len(df.GDP))
 
@@ -131,8 +131,8 @@ def plot_producer_vars(df):
     ax[0,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
     # ax[0,0].plot(T, df.dL_avg, color='red', label='all')
     # ax[0,0].fill_between(range(len(df.dL_avg)), df.dL_avg + df.dL_std, df.dL_avg - df.dL_std, color='red', alpha=0.4)
-    ax[0,0].plot(T, df.dL_cp_avg, color='green', label='cp')
-    ax[0,0].plot(T, df.dL_kp_avg, color='orange', label='kp')
+    ax[0,0].plot(T, df.dL_cp_avg, color='green', label='cp', alpha=0.5)
+    ax[0,0].plot(T, df.dL_kp_avg, color='orange', label='kp', alpha=0.5)
     ax[0,0].set_title('$\Delta L^d$')
     ax[0,0].legend()
 
