@@ -119,18 +119,23 @@ function initialize_model(
                 )
 
     # Global id
-    id = 1
+    # id = 1
 
     # Initialize households
-    hh_skills = sample_skills_hh(initparam)
-    for hh_i in 1:initparam.n_hh
+    # hh_skills = sample_skills_hh(initparam)
+    for i in 1:initparam.n_hh
 
-        hh = Household(id=id, skill=hh_skills[hh_i])
+        hh = Household(
+                        id=nextid(model), 
+                        # skill=hh_skills[i],
+                        skill = rand(LogNormal(0, 0.75)),
+                        β = rand(Uniform(0.7, 1.))
+                      )
         hh.wʳ = max(government.w_min, hh.wʳ)
         add_agent!(hh, model)
         model.i_to_id["hh"][hh_i] = id
 
-        id += 1
+        # id += 1
     end
 
     # Initialize consumer good producers
@@ -155,8 +160,7 @@ function initialize_model(
         end
 
         cp = initialize_cp(
-                id,
-                cp_i,
+                nextid(model),
                 t_next_update,
                 machines,  
                 initparam.n_init_emp_cp, 
@@ -169,14 +173,14 @@ function initialize_model(
         add_agent!(cp, model)
         model.i_to_id["cp"][cp_i] = id
 
-        id += 1
+        # id += 1
     end
 
     # Initialize capital good producers
     for kp_i in 1:initparam.n_kp
 
         kp = initialize_kp(
-                id, 
+                nextid(model), 
                 kp_i, 
                 initparam.n_kp,
                 globalparam.b; 
@@ -193,7 +197,7 @@ function initialize_model(
         # Initialize brochure of kp goods
         init_brochure!(kp, model)
 
-        id += 1
+        # id += 1
     end
 
     # Initialize schedulers
@@ -460,9 +464,16 @@ function model_step!(
     ERt = t == 1 ? 0.07 : macroeconomy.returns_investments[t-1]
 
     # Households set consumption budget
-    Wmin = minimum(all_W)
-    Wmax = maximum(all_W)
-    Wmedian = median(all_W)
+    
+    for hh_id in all_hh
+        # Update average price level of cp
+        update_average_price_hh!(model[hh_id], globalparam.ω, model)
+    end
+
+
+    W̃min = minimum(hh_id -> model[hh_id].W̃, all_hh)
+    W̃max = maximum(hh_id -> model[hh_id].W̃, all_hh)
+
     @timeit to "set budget" @inbounds for hh_id in all_hh
         set_consumption_budget_hh!(
             model[hh_id], 
@@ -471,9 +482,9 @@ function model_step!(
             ERt,
             labormarket.P_getunemployed,
             labormarket.P_getemployed,
-            Wmin,
-            Wmax,
-            Wmedian,
+            # scale_W̃,
+            W̃min,
+            W̃max,
             model
         )
     end
@@ -635,7 +646,19 @@ function run_simulation(;
     seed::Int64=Random.rand(1000:9999)
     )
 
-    # Set seed of simulation
+    # TODO: REWRITING TO AGENTS RUN ENVIRONMENT
+    # model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
+    # indexfund, climate, cmdata, firmdata, householddata = initialize_model(
+    #     T; 
+    #     changed_params=changed_params,
+    #     changedparams_ofat=changedparams_ofat, 
+    #     changedtaxrates=changedtaxrates, 
+    #     track_firms_households=track_firms_households
+    # )
+
+    # @time agent_df, model_df = run!(model, dummystep, model_step!, 60)
+
+    # # Set seed of simulation
     Random.seed!(seed)
 
     println("thread $(Threads.threadid()), sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
@@ -652,6 +675,7 @@ function run_simulation(;
                     )
     
     @time for t in 1:T
+        println(t)
         @timeit to "step" model_step!(
                                 t,
                                 t_warmup,
@@ -705,7 +729,7 @@ end
 @time run_simulation(
     savedata=true,
     track_firms_households=true,
-    seed=1234    
+    seed=1233    
 )
 
 nothing
