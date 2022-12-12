@@ -9,13 +9,14 @@
     ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
-    κ_upper::Float64 = 0.005         # 2nd beta dist support
+
+    κ_upper::Float64 = 0.005        # 2nd beta dist support
     κ_lower::Float64 = -κ_upper     # 1st beta dist support
     
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
     v::Float64 = 0.04               # 
-    r::Float64 = 0.0                # Int64erest rate
+    r::Float64 = 0.0                # interest rate
     ι::Float64 = 0.2                # desired inventories
     b::Int64 = 9                    # payback period
     bₑ::Int64 = 30                  # payback period energy producer
@@ -36,17 +37,17 @@
 
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
-    ϵ_w::Float64 = 0.05             # minimum desired wage increase rate
-    ϵ_μ::Float64 = 0.15             # upper limit of markup shock
+    ϵ_w::Float64 = 0.03             # minimum desired wage increase rate
+    ϵ_μ::Float64 = 0.01             # upper limit of markup shock
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp
-    ω::Float64 = 0.8                # memory parameter adaptive updating rules
+    ω::Float64 = 0.2                # memory parameter adaptive updating rules
     λ::Float64 = 0.7                # parameter for labor demand smoothing
     p_rigid_time::Int64 = 3         # number of periods producer's price remains stable
 
     # Determine household consumption
-    α_cp::Float64 = 0.75            # parameter controlling MPC of consumers
+    α_cp::Float64 = 0.75            # parameter controlling APC of consumers
 
     # Deterime extend of progresivity of government spending
     prog::Float64 = -0.5
@@ -56,7 +57,7 @@
     ψ_Q::Float64 = 0.05             # chance of household switching away from cp when demand constrained
     ψ_P::Float64 = 0.05             # chance of household switching to cp with better price
 
-    freq_per_machine::Int64 = 50    # capital units per machine
+    freq_per_machine::Int64 = 25    # capital units per machine
     freq_per_powerplant::Int64 = 10_000 # capital units per instance
 
     p_f::Float64 = 0.2              # price of fossil fuels

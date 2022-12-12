@@ -39,6 +39,7 @@ include("agents/energy_producer.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
+include("macro_markets/capitalmarket.jl")
 
 include("helpers/modeldata_storage.jl")
 
@@ -89,14 +90,30 @@ function initialize_model(
     # Initialize climate struct
     climate = Climate(T=T)
 
-    modelproperties = Dict(
-                            :kp_brochures => Dict()
-                          )
+
+    # Initialize data structures for consumer- and capital market
+    cmdata = CMData(
+        n_hh=initparam.n_hh, 
+        n_cp=initparam.n_cp
+    )
+    
+    kmdata = KMData(
+            zeros(Int64, initparam.n_kp, initparam.n_cp),
+            zeros(Int64, initparam.n_kp, initparam.n_cp),
+            # zeros(Int64, initparam.n_kp)  
+        )
+
+    properties = Dict(
+                        :kp_brochures => Dict(),
+                        :cmdata => cmdata,
+                        :kmdata => kmdata,
+                        :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
+                     )
 
     # Initialize model struct
     model = ABM(
                     Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
-                    properties=modelproperties,
+                    properties=properties,
                     scheduler=scheduler, 
                     warn=false
                 )
@@ -116,12 +133,13 @@ function initialize_model(
                       )
         hh.wʳ = max(government.w_min, hh.wʳ)
         add_agent!(hh, model)
+        model.i_to_id["hh"][hh_i] = id
 
         # id += 1
     end
 
     # Initialize consumer good producers
-    for i in 1:initparam.n_cp
+    for cp_i in 1:initparam.n_cp
 
         # Initialize capital good stock
         machines = initialize_machine_stock(
@@ -134,10 +152,10 @@ function initialize_model(
                    )
 
         t_next_update = 1
-        if i > 66
+        if cp_i > 66
             t_next_update += 1
         end
-        if i > 132
+        if cp_i > 132
             t_next_update += 1
         end
 
@@ -153,6 +171,7 @@ function initialize_model(
             )
         update_n_machines_cp!(cp, globalparam.freq_per_machine)
         add_agent!(cp, model)
+        model.i_to_id["cp"][cp_i] = id
 
         # id += 1
     end
@@ -173,6 +192,7 @@ function initialize_model(
                 B_EF=initparam.B_EF_0
              )
         add_agent!(kp, model)
+        model.i_to_id["kp"][kp_i] = id
 
         # Initialize brochure of kp goods
         init_brochure!(kp, model)
@@ -215,8 +235,6 @@ function initialize_model(
     close_balance_all_p!(all_p, globalparam, government,
                          indexfund, 0, model)
 
-    cmdata = CMData(n_hh=initparam.n_hh, n_cp=initparam.n_cp)
-
     if track_firms_households
         firmdata = genfirmdata(all_cp, all_kp)
         householddata = genhouseholddata()
@@ -226,7 +244,7 @@ function initialize_model(
     end
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-           indexfund, climate, cmdata, firmdata, householddata
+           indexfund, climate, firmdata, householddata
 end
 
 
@@ -242,13 +260,10 @@ function model_step!(
     labormarket::LaborMarket,
     indexfund::IndexFund,
     climate::Climate,
-    cmdata::CMData,
     firmdata::Union{Nothing, DataFrame},
     householddata::Union{Nothing, Array},
     model::ABM
     )
-
-    # println("   $t 1 start $(Dates.format(now(), "HH:MM"))")
 
     # Check if any global params are changed in ofat experiment
     check_changed_ofatparams(globalparam, t)
@@ -293,8 +308,6 @@ function model_step!(
 
     # (1) kp and ep innovate, and kp send brochures
 
-    # println("   $t 2 start $(Dates.format(now(), "HH:MM"))")
-
     # Determine distance matrix between kp
     @timeit to "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
@@ -323,18 +336,14 @@ function model_step!(
     end
 
     # ep innovate, only when warmup period is left
-    # if t >= t_warmup
     @timeit to "inn ep" innovate_ep!(ep, globalparam, t)
-    # end
-
-    # println("   $t 3 start $(Dates.format(now(), "HH:MM"))")
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
-    @timeit to "plan prod inv cp" for cp_id in all_cp
+    @timeit to "plan prod cp" for cp_id in all_cp
       
         # Plan production for this period
-        μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
+        # μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
         plan_production_cp!(
             model[cp_id],
             government, 
@@ -351,16 +360,24 @@ function model_step!(
             model[cp_id].t_next_update += globalparam.update_period
         end
 
+
+        # Reset desired and ordered machines
+        reset_desired_ordered_machines_cp!(model[cp_id])
+
         # Plan investments for this period
-        plan_investment_cp!(model[cp_id], government, all_kp, globalparam, ep, t, model)
+        # plan_investment_cp!(model[cp_id], government, all_kp, globalparam, ep, t, model)
+
+        # Rank producers based on cost of acquiring machines
+        rank_producers_cp!(model[cp_id], government, globalparam.b, all_kp, ep, t, model)
+
+        # Update expected long-term production
+        update_Qᵉ_cp!(model[cp_id], globalparam.ω, globalparam.ι)
     end
 
-    # (2) capital good producers set labor demand based on ordered machines
+    # (2) capital good producers set labor demand based on expected ordered machines
     @timeit to "plan prod kp"  for kp_id in all_kp
         plan_production_kp!(model[kp_id], globalparam, model)
     end
-
-    # println("   $t 4 start $(Dates.format(now(), "HH:MM"))")
 
     # (3) labor market matching process
     @timeit to "labormarket" labormarket_process!(
@@ -378,6 +395,26 @@ function model_step!(
     for p_id in all_p
         update_mean_skill_p!(model[p_id], model)
     end
+
+    # Update kp production capacitity
+    for kp_id in all_kp
+        update_prod_cap_kp!(model[kp_id], globalparam)
+    end
+
+    for cp_id in all_cp
+        check_funding_restrictions_cp!(model[cp_id], government, globalparam, ep.pₑ[t])
+    end
+
+    # Let cp order capital goods from kp
+    @timeit to "capitalmarket" capitalmarket_process!(
+                all_cp, 
+                all_kp,
+                government,
+                globalparam,
+                ep,
+                t, 
+                model
+            )
 
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
@@ -458,7 +495,6 @@ function model_step!(
         all_cp,
         government,
         globalparam,
-        cmdata,
         t,
         model,
         to
@@ -584,7 +620,7 @@ function model_step!(
     )
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-            indexfund, climate, ep, cmdata, firmdata, householddata
+            indexfund, climate, ep, firmdata, householddata
 end
 
 
@@ -600,7 +636,7 @@ function run_simulation(;
     T::Int64=660,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
-    changedparams_ofat::Union{Dict, Nothing}=nothing,
+    changedparams_ofat::Union{Dict,Nothing}=nothing,
     changedtaxrates::Union{Vector,Nothing}=nothing,
     full_output::Bool=true,
     threadnr::Int64=1,
@@ -630,7 +666,7 @@ function run_simulation(;
     to = TimerOutput()
 
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-                      indexfund, climate, cmdata, firmdata, householddata = initialize_model(
+                      indexfund, climate, firmdata, householddata = initialize_model(
                             T; 
                             changed_params=changed_params,
                             changedparams_ofat=changedparams_ofat, 
@@ -652,7 +688,7 @@ function run_simulation(;
                                 labormarket, 
                                 indexfund,
                                 climate,
-                                cmdata,
+                                # cmdata,
                                 firmdata,
                                 householddata, 
                                 model

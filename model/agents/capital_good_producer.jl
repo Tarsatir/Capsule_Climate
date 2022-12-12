@@ -1,7 +1,6 @@
 @with_kw mutable struct CapitalGoodProducer <: AbstractAgent
-    # T::Int
     id::Int                               # global id
-    kp_i::Int                             # kp id, used for distance matrix
+    kp_i::Int                             # kp index
     age::Int = 0                          # firm age
     
     # Technology and innovation
@@ -32,28 +31,24 @@
     wᴼ::Float64 = w̄[end]                  # offered wage
     wᴼ_max::Float64 = 0.0                 # maximum offered wage
 
-    O::Float64 = 0.0                      # total amount of machines ordered
+    Oᵉ::Float64 = 250.                    # total amount of machine units expected to be ordered
+    O::Float64 = 0.                       # total amount of machines units ordered
+    O_unmet::Float64 = 0.                 # total amount of machines ordered in first round that could not be made
+    prod_cap::Int64 = 0                   # total production capacity
     prod_queue::Dict = Dict{Int64, Int64}() # production queue of machines
     Q::Vector{Float64} = zeros(Float64, 3)# production quantities
     D::Vector{Float64} = zeros(Float64, 3)# hist demand
-    EU::Float64 = 0.0                     # energy use in the last period
+    EU::Float64 = 0.                      # energy use in the last period
 
     HC::Vector{Int} = []                  # hist clients
     Π::Vector{Float64} = zeros(Float64, 3)# hist profits
     Πᵀ::Vector{Float64} = zeros(Float64, 3)# hist profits after tax
     debt_installments::Vector{Float64}    # installments of debt repayments
     f::Vector{Float64}                    # market share
-    brochure::Dict{Symbol, Real} = Dict(
-                                            :kp_id => id,
-                                            :price => p[end],
-                                            :A_LP => A_LP,
-                                            :A_EE => A_EE,
-                                            :A_EF => A_EF
-                                        )
     orders::Dict = Dict{Int64, Int64}()   # orders
     balance::Balance                      # balance sheet
     curracc::FirmCurrentAccount = FirmCurrentAccount() # current account
-
+    
     emissions::Float64 = 0.0              # carbon emissions in last period                    
 end
 
@@ -190,15 +185,6 @@ function send_brochures_kp!(
     n_hist_clients=50::Int
     )
 
-    # Set up brochure
-    # brochure = (kp.id, kp.p[end], kp.c[end], kp.A_LP, kp.A_EE, kp.A_EF)
-    # brochure = Dict("kp_id" => kp.id,
-    #                 "price" => kp.p[end],
-    #                 "A_LP" => kp.A_LP,
-    #                 "A_EE" => kp.A_EE,
-    #                 "A_EF" => kp.A_EF)
-    # kp.brochure = brochure
-
     # Update brochure
     update_brochure!(kp, model)
 
@@ -220,7 +206,6 @@ function send_brochures_kp!(
     # Send brochures to new clients
     NC = sample(NC_potential, min(n_choices, length(NC_potential)); replace=false)
     for cp_id in NC
-        # push!(model[cp_id].brochures, kp.brochure)
         add_kp_cp!(model[cp_id], kp.id)
     end 
 end
@@ -306,6 +291,19 @@ end
 
 
 """
+Lets kp compute the production capacity
+"""
+function update_prod_cap_kp!(
+    kp::CapitalGoodProducer,
+    globalparam::GlobalParam
+)
+
+    kp.prod_cap = ceil(Int64, (kp.L * kp.B_LP) / globalparam.freq_per_machine)
+    # println(kp.L, " ", kp.prod_cap)
+end
+
+
+"""
 Determines the level of R&D, and how it is divided under innovation (IN) 
 and immitation (IM). based on Dosi et al (2010)
 """
@@ -352,10 +350,12 @@ Lets kp receive orders, adds client as historical clients if it is not yet.
 function receive_order_kp!(
     kp::CapitalGoodProducer,
     cp_id::Int,
-    order_size::Int
+    order_size::Int64,
+    freq_per_machine::Int64
     )
 
     kp.orders[cp_id] = order_size
+    kp.O += order_size * freq_per_machine
 
     # If cp not in HC yet, add as a historical client
     if cp_id ∉ kp.HC
@@ -364,8 +364,30 @@ function receive_order_kp!(
 end
 
 
+# """
+# Based on received orders, sets labor demand to fulfill production.
+# """
+# function plan_production_kp!(
+#     kp::CapitalGoodProducer,
+#     globalparam::GlobalParam,
+#     model::ABM
+#     )
+
+#     # Update average wage level
+#     update_w̄_p!(kp, model)
+    
+#     # Determine total amount of capital units to produce and amount of labor to hire
+#     kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
+
+#     # Determine amount of labor to hire
+#     update_Lᵈ!(kp, globalparam.λ)
+
+#     # Update maximum offered wage
+#     update_wᴼ_max_kp!(kp)
+# end
+
 """
-Based on received orders, sets labor demand to fulfill production.
+Based on expected demand, sets labor demand to fulfill production.
 """
 function plan_production_kp!(
     kp::CapitalGoodProducer,
@@ -375,15 +397,33 @@ function plan_production_kp!(
 
     # Update average wage level
     update_w̄_p!(kp, model)
+
+    # Update expected orders
+    update_Oᵉ_kp!(kp, globalparam.ω)
     
     # Determine total amount of capital units to produce and amount of labor to hire
-    kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
+    # kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
 
     # Determine amount of labor to hire
     update_Lᵈ!(kp, globalparam.λ)
 
     # Update maximum offered wage
     update_wᴼ_max_kp!(kp)
+end
+
+
+"""
+Update expected amount of orders
+"""
+function update_Oᵉ_kp!(
+    kp::CapitalGoodProducer, 
+    ω::Float64
+)
+
+    kp.Oᵉ = ω * (kp.O + kp.O_unmet) + (1 - ω) * kp.Oᵉ
+    # kp.Oᵉ = ω * (kp.O * 1.1) + (1 - ω) * kp.Oᵉ
+    # println("   ", kp.O / 25, " ", kp.O_unmet / 25, " ", kp.Oᵉ / 25)
+    kp.O = 0.
 end
 
 
@@ -395,7 +435,8 @@ function update_Lᵈ!(
     λ::Float64
     )
 
-    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end])
+    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end])
+    # kp.Lᵈ = kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end]
     kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end
 
@@ -700,6 +741,7 @@ function replace_bankrupt_kp!(
         # Borrow the remaining funds
         borrow_funds_p!(new_kp, (1 - frac_NW_if) * NW_stock, globalparam.b)
 
+        # Add agent to model
         add_agent!(new_kp, model)
     end
 end
