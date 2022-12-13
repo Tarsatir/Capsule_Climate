@@ -180,7 +180,7 @@ function plan_investment_cp!(
 )
 
     # Rank producers
-    # TODO: move here
+    rank_producers_cp!(cp, government, globalparam.b, all_kp, ep, t, model)
 
     # Update LT production
     update_Qᵉ_cp!(cp, globalparam.ω, globalparam.ι)
@@ -199,7 +199,7 @@ function plan_investment_cp!(
     check_funding_restrictions_cp!(cp, government, globalparam, ep.pₑ[t])
 
     # Send orders to kp
-    order_machines_cp!(cp, model)
+    order_machines_cp!(cp, globalparam.freq_per_machine, model)
 end
 
 
@@ -691,6 +691,7 @@ Lets cp order machines from kp of choice.
 """
 function order_machines_cp!(
     cp::ConsumerGoodProducer,
+    freq_per_machine::Int64,
     model::ABM
     )
 
@@ -698,7 +699,7 @@ function order_machines_cp!(
 
     # Send orders for machines to kp
     if total_n_machines > 0 && hascapacity(model[cp.kp_ids[1]])
-        receive_order_kp!(model[cp.kp_ids[1]], cp.id, total_n_machines)
+        receive_order_kp!(model[cp.kp_ids[1]], cp.id, total_n_machines, freq_per_machine)
     end
 end
 
