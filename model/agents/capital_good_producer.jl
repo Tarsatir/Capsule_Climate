@@ -423,7 +423,7 @@ function update_Oᵉ_kp!(
     kp.Oᵉ = ω * kp.Oᵉ + (1 - ω) * (kp.O + kp.O_unmet)
     # kp.Oᵉ = ω * (kp.O * 1.1) + (1 - ω) * kp.Oᵉ
     # println("   ", kp.O / 25, " ", kp.O_unmet / 25, " ", kp.Oᵉ / 25)
-    kp.O = 0.
+    # kp.O = 0.
 end
 
 
@@ -435,7 +435,8 @@ function update_Lᵈ!(
     λ::Float64
     )
 
-    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end])
+    # kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end])
+    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end])
     # kp.Lᵈ = kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end]
     kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end

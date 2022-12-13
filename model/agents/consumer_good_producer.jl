@@ -429,6 +429,8 @@ function plan_replacement_cp!(
         end
     end
 
+    cp.n_mach_ordered_RS = length(cp.mach_tb_repl)
+
     # return (min(max_mach_poss, desired_n_mach_replaced), desired_n_mach_retired)
 
 
@@ -447,6 +449,7 @@ function plan_replacement_cp!(
     # add_mach_desired = length(cp.mach_tb_repl) - cp.n_mach_ordered_RS
     # println(cp.mach_tb_repl, " ", add_mach_desired, " ", max_mach_poss)
     # cp.n_mach_desired_RS = min(max_mach_poss, add_mach_desired)
+    # c
 
     # @assert cp.n_mach_desired_RS >= 0
 
@@ -489,6 +492,9 @@ function plan_expansion_cp!(
         total_mach_desired = round(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
         add_mach_desired = total_mach_desired - cp.n_mach_ordered_EI
         cp.n_mach_desired_EI = max(min(max_mach_poss, add_mach_desired), 0)
+        cp.n_mach_ordered_EI = cp.n_mach_desired_EI
+        # TODO: CHANGE BACK THE DOUBLE VARS
+
         # println(cp.id, " ", roundnr, " ", add_mach_desired, " ", max_mach_poss, " ", total_mach_desired, " ", cp.n_mach_desired_RS, " ", cp.n_mach_ordered_EI, " ", cp.n_mach_ordered_RS)
 
         @assert cp.n_mach_desired_EI >= 0

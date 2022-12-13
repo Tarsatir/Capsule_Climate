@@ -250,23 +250,21 @@ end
 """
 Clears firms current account for next period.
 """
-function clear_firm_currentaccount_p!( 
-    ca::FirmCurrentAccount
-    )::FirmCurrentAccount
+function clear_firm_currentaccount_p!(
+    p::AbstractAgent, 
+)
 
-    ca.S = 0.0
-    ca.add_debt = 0.0             
-    ca.rev_dep = 0.0
+    p.curracc.S = 0.0
+    p.curracc.add_debt = 0.0             
+    p.curracc.rev_dep = 0.0
 
-    ca.TCL = 0.0
-    ca.TCI = 0.0
-    ca.TCE = 0.0
-    ca.int_debt = 0.0
-    ca.rep_debt = 0.0
+    p.curracc.TCL = 0.0
+    p.curracc.TCI = 0.0
+    p.curracc.TCE = 0.0
+    p.curracc.int_debt = 0.0
+    p.curracc.rep_debt = 0.0
 
-    ca.profittax = 0.0
-    ca.carbontax = 0.0
-    ca.energytax = 0.0
-
-    return ca
+    p.curracc.profittax = 0.0
+    p.curracc.carbontax = 0.0
+    p.curracc.energytax = 0.0
 end

@@ -517,20 +517,20 @@ function compute_unsatisfied_demand(
 
     macroeconomy.unspend_C[t] = 1 - sum(hh_id -> model[hh_id].C_actual, all_hh) / sum(hh_id -> model[hh_id].C, all_hh)
 
-    # macroeconomy.unsat_invest[t] =  1 - (sum(kp_id -> model[kp_id].Q[end], all_kp) / 
-    #                                 (sum(cp_id -> freq_per_machine * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
+    macroeconomy.unsat_invest[t] =  1 - (sum(kp_id -> model[kp_id].Q[end], all_kp) / 
+                                    (sum(cp_id -> freq_per_machine * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
     # macroeconomy.unsat_invest[t] = mean(cp_id -> model[cp_id].n_mach_desired_total > 0 ? (1 - (model[cp_id].n_mach_ordered_RS + model[cp_id].n_mach_ordered_EI) 
     #                                               / model[cp_id].n_mach_desired_total) : 0, all_cp)
-    total_mach_desired = 0
-    total_mach_ordered = 0
-    for cp_id in all_cp
-        if model[cp_id].n_mach_desired_total > 0
-            total_mach_desired += model[cp_id].n_mach_desired_total
-            total_mach_ordered += model[cp_id].n_mach_ordered_RS + model[cp_id].n_mach_ordered_EI
-        end
-    end
-    println(total_mach_desired, " ", total_mach_ordered)
-    macroeconomy.unsat_invest[t] = 1 - total_mach_ordered / total_mach_desired
+    # total_mach_desired = 0
+    # total_mach_ordered = 0
+    # for cp_id in all_cp
+    #     if model[cp_id].n_mach_desired_total > 0
+    #         total_mach_desired += model[cp_id].n_mach_desired_total
+    #         total_mach_ordered += model[cp_id].n_mach_ordered_RS + model[cp_id].n_mach_ordered_EI
+    #     end
+    # end
+    # println(total_mach_desired, " ", total_mach_ordered)
+    # macroeconomy.unsat_invest[t] = 1 - total_mach_ordered / total_mach_desired
 
     macroeconomy.unsat_L_demand[t] = 1 - labormarket.L_hired / labormarket.L_demanded
 end

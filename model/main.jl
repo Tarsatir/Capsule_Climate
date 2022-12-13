@@ -302,8 +302,7 @@ function model_step!(
 
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
     @timeit to "clear account cp" for cp_id in all_cp
-        model[cp_id].curracc = clear_firm_currentaccount_p!(model[cp_id].curracc)
-        # reset_brochures_cp!(model[cp_id])
+        clear_firm_currentaccount_p!(model[cp_id])
     end
 
     # (1) kp and ep innovate, and kp send brochures
@@ -313,7 +312,7 @@ function model_step!(
 
     @timeit to "kp innov" for kp_id in all_kp
 
-        model[kp_id].curracc = clear_firm_currentaccount_p!(model[kp_id].curracc)
+        clear_firm_currentaccount_p!(model[kp_id])
 
         innovate_kp!(
             model[kp_id],
@@ -408,18 +407,6 @@ function model_step!(
     for cp_id in all_cp
         check_funding_restrictions_cp!(model[cp_id], government, globalparam, ep.pₑ[t])
     end
-
-    # # Let cp order capital goods from kp
-    # @timeit to "capitalmarket" capitalmarket_process!(
-    #             all_cp, 
-    #             all_kp,
-    #             government,
-    #             globalparam,
-    #             ep,
-    #             t, 
-    #             model
-    #         )
-
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
     @timeit to "pay workers" for p_id in all_p
@@ -735,7 +722,7 @@ end
 @time run_simulation(
     savedata=true,
     track_firms_households=true,
-    seed=1233    
+    seed=1234    
 )
 
 nothing
