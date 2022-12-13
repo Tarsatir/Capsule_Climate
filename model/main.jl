@@ -41,6 +41,7 @@ include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
 # include("macro_markets/capitalmarket.jl")
 
+include("helpers/properties.jl")
 include("helpers/modeldata_storage.jl")
 
 
@@ -84,6 +85,9 @@ function initialize_model(
     # Initialize government struct
     government = initgovernment(T, changedtaxrates)
 
+    # Initialize index fund struct
+    indexfund = IndexFund(T=T)
+
     # Initialize energy producer
     ep = initialize_energy_producer(T, initparam, government.τᶜ, globalparam)
 
@@ -103,12 +107,39 @@ function initialize_model(
     #         # zeros(Int64, initparam.n_kp)  
     #     )
 
-    properties = Dict(
-                        :kp_brochures => Dict(),
-                        # :cmdata => cmdata,
-                        # :kmdata => kmdata,
-                        # :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
-                     )
+    # Make empty dict for kp_brochures
+    kp_brochures = Dict()
+
+    all_hh = collect(1:initparam.n_hh)
+    all_cp = collect(all_hh[end] + 1: all_hh[end] + initparam.n_cp)
+    all_kp = collect(all_cp[end] + 1: all_cp[end] + initparam.n_kp)
+    all_p = vcat(all_cp, all_kp)
+
+    properties = Properties(
+                                initparam,
+                                globalparam,
+
+                                government,
+                                ep,
+                                indexfund,
+                                
+                                all_hh,
+                                all_cp, 
+                                all_kp,
+                                all_p,
+
+                                macroeconomy,
+                                # firmdata,
+                                # householddata,
+                                kp_brochures
+                           )
+
+    # properties = Dict(
+    #                     :kp_brochures => Dict(),
+    #                     # :cmdata => cmdata,
+    #                     # :kmdata => kmdata,
+    #                     # :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
+    #                  )
 
     # Initialize model struct
     model = ABM(
@@ -118,37 +149,29 @@ function initialize_model(
                     warn=false
                 )
 
-    # Global id
-    # id = 1
-
     # Initialize households
-    # hh_skills = sample_skills_hh(initparam)
-    for _ in 1:initparam.n_hh
+    for _ in 1:model.i_param.n_hh
 
         hh = Household(
                         id=nextid(model), 
-                        # skill=hh_skills[i],
                         skill = rand(LogNormal(0, 0.75)),
                         β = rand(Uniform(0.7, 1.))
                       )
-        hh.wʳ = max(government.w_min, hh.wʳ)
+        hh.wʳ = max(model.gov.w_min, hh.wʳ)
         add_agent!(hh, model)
-        # model.i_to_id["hh"][hh_i] = id
-
-        # id += 1
     end
 
     # Initialize consumer good producers
-    for cp_i in 1:initparam.n_cp
+    for cp_i in 1:model.i_param.n_cp
 
         # Initialize capital good stock
         machines = initialize_machine_stock(
-                        globalparam.freq_per_machine, 
-                        initparam.n_machines_init,
-                        η=globalparam.η; 
-                        A_LP = initparam.A_LP_0,
-                        A_EE = initparam.A_EE_0,
-                        A_EF = initparam.A_EF_0
+                        model.g_param.freq_per_machine, 
+                        model.i_param.n_machines_init,
+                        η=model.g_param.η; 
+                        A_LP = model.i_param.A_LP_0,
+                        A_EE = model.i_param.A_EE_0,
+                        A_EF = model.i_param.A_EF_0
                    )
 
         t_next_update = 1
@@ -163,12 +186,14 @@ function initialize_model(
                 nextid(model),
                 cp_i,
                 t_next_update,
-                machines,  
-                initparam.n_init_emp_cp, 
-                globalparam.μ1,
-                globalparam.ι,
-                globalparam.b;
-                n_consrgood=initparam.n_cp
+                machines,
+                model  
+                # model.i_param.n_init_emp_cp, 
+                # model.g_param.μ1,
+                # model.g_param.ι,
+                # model.g_param.b;
+                # n_consrgood=initparam.n_cp,
+                # model
             )
         update_n_machines_cp!(cp, globalparam.freq_per_machine)
         add_agent!(cp, model)
@@ -178,19 +203,19 @@ function initialize_model(
     end
 
     # Initialize capital good producers
-    for kp_i in 1:initparam.n_kp
+    for kp_i in 1:model.i_param.n_kp
 
         kp = initialize_kp(
                 nextid(model), 
                 kp_i, 
-                initparam.n_kp,
+                model.i_param.n_kp,
                 globalparam.b; 
-                A_LP=initparam.A_LP_0,
-                A_EE=initparam.A_EE_0,
-                A_EF=initparam.A_EF_0, 
-                B_LP=initparam.B_LP_0,
-                B_EE=initparam.B_EE_0,
-                B_EF=initparam.B_EF_0
+                A_LP=model.i_param.A_LP_0,
+                A_EE=model.i_param.A_EE_0,
+                A_EF=model.i_param.A_EF_0, 
+                B_LP=model.i_param.B_LP_0,
+                B_EE=model.i_param.B_EE_0,
+                B_EF=model.i_param.B_EF_0
              )
         add_agent!(kp, model)
         # model.i_to_id["kp"][kp_i] = id
@@ -202,17 +227,14 @@ function initialize_model(
     # Initialize schedulers
     all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
-    # Initialize index fund struct
-    indexfund = IndexFund(T=T)
-
     # Let all capital good producers select historical clients
-    for kp_id in all_kp
-        select_HC_kp!(model[kp_id], all_cp)
+    for kp_id in model.all_kp
+        select_HC_kp!(model[kp_id], model.all_cp)
     end
 
     # Let all households select cp of both types for trading network
-    for hh_id in all_hh
-        select_cp_hh!(model[hh_id], all_cp, initparam.n_cp_hh)
+    for hh_id in model.all_hh
+        select_cp_hh!(model[hh_id], all_cp, model.i_param.n_cp_hh)
     end
 
     # Spread employed households over producerss
@@ -222,8 +244,8 @@ function initialize_model(
         all_hh, 
         all_cp, 
         all_kp,
-        initparam.n_init_emp_cp,
-        initparam.n_init_emp_kp,
+        model.i_param.n_init_emp_cp,
+        model.i_param.n_init_emp_kp,
         model
     )
 
@@ -234,16 +256,16 @@ function initialize_model(
     close_balance_all_p!(all_p, globalparam, government,
                          indexfund, 0, model)
 
-    if track_firms_households
-        firmdata = genfirmdata(all_cp, all_kp)
-        householddata = genhouseholddata()
-    else
-        firmdata = nothing
-        householddata = nothing
-    end
+    # if track_firms_households
+    #     firmdata = genfirmdata(all_cp, all_kp)
+    #     householddata = genhouseholddata()
+    # else
+    #     firmdata = nothing
+    #     householddata = nothing
+    # end
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-           indexfund, climate, firmdata, householddata, cmdata
+           indexfund, climate, cmdata
 end
 
 
@@ -259,8 +281,8 @@ function model_step!(
     labormarket::LaborMarket,
     indexfund::IndexFund,
     climate::Climate,
-    firmdata::Union{Nothing, DataFrame},
-    householddata::Union{Nothing, Array},
+    # firmdata::Union{Nothing, DataFrame},
+    # householddata::Union{Nothing, Array},
     cmdata::CMData,
     model::ABM
     )
@@ -559,13 +581,13 @@ function model_step!(
         to
     )
 
-    if firmdata ≠ nothing
-        appendfirmdata!(firmdata, all_cp, all_kp, t, model)
-    end
+    # if firmdata ≠ nothing
+    #     appendfirmdata!(firmdata, all_cp, all_kp, t, model)
+    # end
 
-    if householddata ≠ nothing
-        appendhouseholddata!(householddata, all_hh, t, t_warmup, model)
-    end
+    # if householddata ≠ nothing
+    #     appendhouseholddata!(householddata, all_hh, t, t_warmup, model)
+    # end
 
     # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
@@ -612,7 +634,7 @@ function model_step!(
     )
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-            indexfund, climate, ep, firmdata, householddata, cmdata
+            indexfund, climate, ep, cmdata
 end
 
 
@@ -625,7 +647,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T::Int64=660,
+    T::Int64=1,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
     changedparams_ofat::Union{Dict,Nothing}=nothing,
@@ -658,7 +680,7 @@ function run_simulation(;
     to = TimerOutput()
 
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-                      indexfund, climate, firmdata, householddata, cmdata = initialize_model(
+                      indexfund, climate, cmdata = initialize_model(
                             T; 
                             changed_params=changed_params,
                             changedparams_ofat=changedparams_ofat, 
@@ -681,8 +703,8 @@ function run_simulation(;
                                 indexfund,
                                 climate,
                                 # cmdata,
-                                firmdata,
-                                householddata,
+                                # firmdata,
+                                # householddata,
                                 cmdata, 
                                 model
                             )
@@ -697,9 +719,9 @@ function run_simulation(;
 
         @timeit to "save climate" save_climate_data(ep, climate, model)
 
-        if track_firms_households
-            save_household_quartiles(householddata)
-        end
+        # if track_firms_households
+        #     save_household_quartiles(householddata)
+        # end
     end
 
     if full_output
@@ -714,7 +736,8 @@ function run_simulation(;
     if !track_firms_households
         return genrunoutput(macroeconomy, ep, climate)
     else
-        return genrunoutput(macroeconomy, ep, climate), firmdata, householddata
+        nothing
+        # return genrunoutput(macroeconomy, ep, climate), firmdata, householddata
     end
 
 end
