@@ -3,19 +3,19 @@ function consumermarket_process!(
     all_cp::Vector{Int}, 
     government::Government,
     globalparam::GlobalParam,
-    # cmdata::CMData,
+    cmdata::CMData,
     t::Int,
     model::ABM,
     to
     )
 
     # Reset cm data 
-    @timeit to "reset matrices" reset_matrices_cp!(all_hh, all_cp, model)
+    @timeit to "reset matrices" reset_matrices_cp!(cmdata, all_hh, all_cp, model)
 
     # Market clearing process
-    @timeit to "market clearing" cpmarket_matching_cp!(model)
+    @timeit to "market clearing" cpmarket_matching_cp!(cmdata, model)
 
-    @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, government, model, t, to)
+    @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cmdata, government, model, t, to)
 
 end
 
@@ -23,14 +23,14 @@ end
 function process_transactions_cm!(
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
-    # cmdata::CMData,
+    cmdata::CMData,
     government::Government,
     model::ABM,
     t::Int64,
     to
     )
 
-    cmdata = model.cmdata
+    # cmdata = model.cmdata
 
     unsat_demand = zeros(Float64, length(all_cp))
     hh_D = zeros(Float64, length(all_cp))
@@ -87,10 +87,11 @@ end
 Market matching process for consumer market.
 """
 function cpmarket_matching_cp!(
+    cmdata::CMData,
     model::ABM
     )
 
-    cmdata = model.cmdata
+    # cmdata = model.cmdata
 
     # Normalize weights
     sum!(cmdata.weights_sum, cmdata.weights)

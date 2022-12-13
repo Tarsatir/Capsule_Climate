@@ -39,7 +39,7 @@ include("agents/energy_producer.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
-include("macro_markets/capitalmarket.jl")
+# include("macro_markets/capitalmarket.jl")
 
 include("helpers/modeldata_storage.jl")
 
@@ -97,17 +97,17 @@ function initialize_model(
         n_cp=initparam.n_cp
     )
     
-    kmdata = KMData(
-            zeros(Int64, initparam.n_kp, initparam.n_cp),
-            zeros(Int64, initparam.n_kp, initparam.n_cp),
-            # zeros(Int64, initparam.n_kp)  
-        )
+    # kmdata = KMData(
+    #         zeros(Int64, initparam.n_kp, initparam.n_cp),
+    #         zeros(Int64, initparam.n_kp, initparam.n_cp),
+    #         # zeros(Int64, initparam.n_kp)  
+    #     )
 
     properties = Dict(
                         :kp_brochures => Dict(),
-                        :cmdata => cmdata,
-                        :kmdata => kmdata,
-                        :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
+                        # :cmdata => cmdata,
+                        # :kmdata => kmdata,
+                        # :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
                      )
 
     # Initialize model struct
@@ -119,18 +119,23 @@ function initialize_model(
                 )
 
     # Global id
-    id = 1
+    # id = 1
 
     # Initialize households
-    hh_skills = sample_skills_hh(initparam)
-    for hh_i in 1:initparam.n_hh
+    # hh_skills = sample_skills_hh(initparam)
+    for _ in 1:initparam.n_hh
 
-        hh = Household(id=id, skill=hh_skills[hh_i])
+        hh = Household(
+                        id=nextid(model), 
+                        # skill=hh_skills[i],
+                        skill = rand(LogNormal(0, 0.75)),
+                        β = rand(Uniform(0.7, 1.))
+                      )
         hh.wʳ = max(government.w_min, hh.wʳ)
         add_agent!(hh, model)
-        model.i_to_id["hh"][hh_i] = id
+        # model.i_to_id["hh"][hh_i] = id
 
-        id += 1
+        # id += 1
     end
 
     # Initialize consumer good producers
@@ -155,7 +160,7 @@ function initialize_model(
         end
 
         cp = initialize_cp(
-                id,
+                nextid(model),
                 cp_i,
                 t_next_update,
                 machines,  
@@ -167,16 +172,16 @@ function initialize_model(
             )
         update_n_machines_cp!(cp, globalparam.freq_per_machine)
         add_agent!(cp, model)
-        model.i_to_id["cp"][cp_i] = id
+        # model.i_to_id["cp"][cp_i] = id
 
-        id += 1
+        # id += 1
     end
 
     # Initialize capital good producers
     for kp_i in 1:initparam.n_kp
 
         kp = initialize_kp(
-                id, 
+                nextid(model), 
                 kp_i, 
                 initparam.n_kp,
                 globalparam.b; 
@@ -188,12 +193,10 @@ function initialize_model(
                 B_EF=initparam.B_EF_0
              )
         add_agent!(kp, model)
-        model.i_to_id["kp"][kp_i] = id
+        # model.i_to_id["kp"][kp_i] = id
 
         # Initialize brochure of kp goods
         init_brochure!(kp, model)
-
-        id += 1
     end
 
     # Initialize schedulers
@@ -240,7 +243,7 @@ function initialize_model(
     end
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-           indexfund, climate, firmdata, householddata
+           indexfund, climate, firmdata, householddata, cmdata
 end
 
 
@@ -258,6 +261,7 @@ function model_step!(
     climate::Climate,
     firmdata::Union{Nothing, DataFrame},
     householddata::Union{Nothing, Array},
+    cmdata::CMData,
     model::ABM
     )
 
@@ -363,12 +367,12 @@ function model_step!(
         update_cop_machines_cp!(model[cp_id], government, ep, t)
 
         # Plan investments for this period
-        # plan_investment_cp!(model[cp_id], government, globalparam, ep, all_kp, t, model)
+        plan_investment_cp!(model[cp_id], government, all_kp, globalparam, ep, t, model)
 
         # Rank producers based on cost of acquiring machines
-        rank_producers_cp!(model[cp_id], government, globalparam.b, all_kp, ep, t, model)
+        # rank_producers_cp!(model[cp_id], government, globalparam.b, all_kp, ep, t, model)
 
-        rank_machines_cp!(model[cp_id])
+        # rank_machines_cp!(model[cp_id])
 
         # Update expected long-term production
         update_Qᵉ_cp!(model[cp_id], globalparam.ω, globalparam.ι)
@@ -405,16 +409,16 @@ function model_step!(
         check_funding_restrictions_cp!(model[cp_id], government, globalparam, ep.pₑ[t])
     end
 
-    # Let cp order capital goods from kp
-    @timeit to "capitalmarket" capitalmarket_process!(
-                all_cp, 
-                all_kp,
-                government,
-                globalparam,
-                ep,
-                t, 
-                model
-            )
+    # # Let cp order capital goods from kp
+    # @timeit to "capitalmarket" capitalmarket_process!(
+    #             all_cp, 
+    #             all_kp,
+    #             government,
+    #             globalparam,
+    #             ep,
+    #             t, 
+    #             model
+    #         )
 
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
@@ -464,9 +468,16 @@ function model_step!(
     ERt = t == 1 ? 0.07 : macroeconomy.returns_investments[t-1]
 
     # Households set consumption budget
-    Wmin = minimum(all_W)
-    Wmax = maximum(all_W)
-    Wmedian = median(all_W)
+    
+    for hh_id in all_hh
+        # Update average price level of cp
+        update_average_price_hh!(model[hh_id], globalparam.ω, model)
+    end
+
+
+    W̃min = minimum(hh_id -> model[hh_id].W̃, all_hh)
+    W̃max = maximum(hh_id -> model[hh_id].W̃, all_hh)
+
     @timeit to "set budget" @inbounds for hh_id in all_hh
         set_consumption_budget_hh!(
             model[hh_id], 
@@ -475,23 +486,24 @@ function model_step!(
             ERt,
             labormarket.P_getunemployed,
             labormarket.P_getemployed,
-            Wmin,
-            Wmax,
-            Wmedian,
+            # scale_W̃,
+            W̃min,
+            W̃max,
             model
         )
     end
 
     # Consumer market process
     @timeit to "consumermarket" consumermarket_process!(
-        all_hh,
-        all_cp,
-        government,
-        globalparam,
-        t,
-        model,
-        to
-    )
+                                    all_hh,
+                                    all_cp,
+                                    government,
+                                    globalparam,
+                                    cmdata,
+                                    t,
+                                    model,
+                                    to
+                                )
 
     # Households decide to switch suppliers based on satisfied demand and prices
     @timeit to "decide switching hh" decide_switching_all_hh!(
@@ -613,7 +625,7 @@ function model_step!(
     )
 
     return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-            indexfund, climate, ep, firmdata, householddata
+            indexfund, climate, ep, firmdata, householddata, cmdata
 end
 
 
@@ -639,7 +651,19 @@ function run_simulation(;
     seed::Int64=Random.rand(1000:9999)
     )
 
-    # Set seed of simulation
+    # TODO: REWRITING TO AGENTS RUN ENVIRONMENT
+    # model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
+    # indexfund, climate, cmdata, firmdata, householddata = initialize_model(
+    #     T; 
+    #     changed_params=changed_params,
+    #     changedparams_ofat=changedparams_ofat, 
+    #     changedtaxrates=changedtaxrates, 
+    #     track_firms_households=track_firms_households
+    # )
+
+    # @time agent_df, model_df = run!(model, dummystep, model_step!, 60)
+
+    # # Set seed of simulation
     Random.seed!(seed)
 
     println("thread $(Threads.threadid()), sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
@@ -647,7 +671,7 @@ function run_simulation(;
     to = TimerOutput()
 
     @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-                      indexfund, climate, firmdata, householddata = initialize_model(
+                      indexfund, climate, firmdata, householddata, cmdata = initialize_model(
                             T; 
                             changed_params=changed_params,
                             changedparams_ofat=changedparams_ofat, 
@@ -656,6 +680,7 @@ function run_simulation(;
                     )
     
     @time for t in 1:T
+        println(t)
         @timeit to "step" model_step!(
                                 t,
                                 t_warmup,
@@ -670,7 +695,8 @@ function run_simulation(;
                                 climate,
                                 # cmdata,
                                 firmdata,
-                                householddata, 
+                                householddata,
+                                cmdata, 
                                 model
                             )
     end
@@ -709,7 +735,7 @@ end
 @time run_simulation(
     savedata=true,
     track_firms_households=true,
-    seed=1234    
+    seed=1233    
 )
 
 nothing

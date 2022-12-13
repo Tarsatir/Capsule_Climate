@@ -364,30 +364,8 @@ function receive_order_kp!(
 end
 
 
-# """
-# Based on received orders, sets labor demand to fulfill production.
-# """
-# function plan_production_kp!(
-#     kp::CapitalGoodProducer,
-#     globalparam::GlobalParam,
-#     model::ABM
-#     )
-
-#     # Update average wage level
-#     update_w̄_p!(kp, model)
-    
-#     # Determine total amount of capital units to produce and amount of labor to hire
-#     kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
-
-#     # Determine amount of labor to hire
-#     update_Lᵈ!(kp, globalparam.λ)
-
-#     # Update maximum offered wage
-#     update_wᴼ_max_kp!(kp)
-# end
-
 """
-Based on expected demand, sets labor demand to fulfill production.
+Based on received orders, sets labor demand to fulfill production.
 """
 function plan_production_kp!(
     kp::CapitalGoodProducer,
@@ -397,12 +375,9 @@ function plan_production_kp!(
 
     # Update average wage level
     update_w̄_p!(kp, model)
-
-    # Update expected orders
-    update_Oᵉ_kp!(kp, globalparam.ω)
     
     # Determine total amount of capital units to produce and amount of labor to hire
-    # kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
+    kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
 
     # Determine amount of labor to hire
     update_Lᵈ!(kp, globalparam.λ)
@@ -410,6 +385,31 @@ function plan_production_kp!(
     # Update maximum offered wage
     update_wᴼ_max_kp!(kp)
 end
+
+# """
+# Based on expected demand, sets labor demand to fulfill production.
+# """
+# function plan_production_kp!(
+#     kp::CapitalGoodProducer,
+#     globalparam::GlobalParam,
+#     model::ABM
+#     )
+
+#     # Update average wage level
+#     update_w̄_p!(kp, model)
+
+#     # Update expected orders
+#     update_Oᵉ_kp!(kp, globalparam.ω)
+    
+#     # Determine total amount of capital units to produce and amount of labor to hire
+#     # kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
+
+#     # Determine amount of labor to hire
+#     update_Lᵈ!(kp, globalparam.λ)
+
+#     # Update maximum offered wage
+#     update_wᴼ_max_kp!(kp)
+# end
 
 
 """

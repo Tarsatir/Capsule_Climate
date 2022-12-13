@@ -20,8 +20,10 @@
     socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
     s::Float64 = 0.0                            # savings rate
     W::Float64 = 200.                           # wealth or cash on hand
+    W̃::Float64 = 200.                           # real wealth level
 
     α::Float64 = 0.8                            # Household's consumption fraction of wealth
+    β::Float64 = 1.                             # Household's discount factor
 
     # Expected income sources
     EYL_t::Float64 = L * skill                  # expected labor income
@@ -35,6 +37,7 @@
     cp::Vector{Int} = Vector{Int}()            # connected cp
     unsat_dem::Dict{Int, Float64} = Dict()     # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
+    P̄ᵉ::Float64 = 1.0                          # expected weighted average price of bp
     c_L::Float64 = 0.5                         # share of income used to buy luxury goods
 end
 
@@ -65,20 +68,18 @@ function set_consumption_budget_hh!(
     ERt::Float64,
     P_getunemployed::Float64,
     P_getemployed::Float64,
-    Wmin::Float64,
-    Wmax::Float64,
-    Wmedian::Float64,
+    # scale_W̃::Function,
+    W̃min::Float64,
+    W̃max::Float64,
+    # Wmedian::Float64,
     model::ABM
     )
 
     # Update expected income levels
     update_expected_incomes_hh!(hh, globalparam.ω, UB, P_getunemployed, P_getemployed)
 
-    # Update average price level of bp and lp
-    update_average_price_hh!(hh, model)
-
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, Wmax, Wmin, Wmedian, ERt, globalparam.α_cp)
+    compute_consumption_budget_hh!(hh, W̃min, W̃max, ERt)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
@@ -120,80 +121,18 @@ function utility(
 end
 
 
-function computeβ(
-    W::Float64,
-    Wmedian::Float64; 
-    # Wmin::Float64=0., 
-    # Wmax::Float64=750.,
-    # βmin::Float64=0.1,
-    # βmax::Float64=0.9,
-    δmin::Float64=0.,
-    δmax::Float64=0.1,
-    γ::Float64 = 0.5
-    )
-
-    # Compute discount rate δ
-    # δ = δmin + (δmax - δmin) / (1 + exp(γ * (W - (Wmin + Wmax) / 2)))
-    δ = δmin + (δmax - δmin) / (1 + exp(γ * (W - Wmedian)))
-
-    # Compute discount factor β
-    β = 1 / (1 + δ)
-
-    # return 0.8
-
-    return β
-end
-
-
-function computeU(
-    α::Float64,
-    P̄::Float64,
-    ERt::Float64,
-    EYt::Float64,
-    Wt::Float64,
-    T::Int64,
-    β::Float64;
-    ρ::Float64=0.9
-    )
-
-    U = 0.
-
-    for k in 0:T
-        Y_discounted = sum(m -> ((1 + ERt) * (1 - α)) ^ (k - m) * EYt, 0:k)
-        W_discounted = ((1 + ERt) * (1 - α)) ^ k * Wt
-        C = max(α * (W_discounted + Y_discounted), 0)
-        U += β ^ k * utility(C / P̄, ρ)
-    end
-
-    return U
-end
-
-
-function αopt(
-    hh::Household,
-    ERt::Float64,
-    Wmedian::Float64,
-    W_scaled;
-    T::Int64=6,
-    maxdev=0.01::Float64
-    )
-
-    αrange = (LinRange(-maxdev, maxdev, 5)) .+ hh.α
-    αmax = argmax(αstar -> αstar <= 1. && αstar >= 0. ? computeU(αstar, hh.P̄, ERt, hh.EY_t, hh.W, T, computeβ(hh.W[end], Wmedian)) : -1., αrange)
-
-    return αmax
-end
-
-
 """
 Computes average price level of available bp and lp
 """
 function update_average_price_hh!(
     hh::Household,
+    ω::Float64,
     model::ABM
     )
 
     hh.P̄ = mean(cp_id -> model[cp_id].p[end], hh.cp)
+    hh.P̄ᵉ = ω * hh.P̄ᵉ + (1 - ω) * hh.P̄
+    hh.W̃ = hh.W / hh.P̄
 end
 
 
@@ -202,31 +141,31 @@ Computes consumption budget, updates savings rate
 """
 function compute_consumption_budget_hh!(
     hh::Household,
-    W_max::Float64,
-    W_min::Float64,
-    Wmedian::Float64,
-    ERt::Float64,
-    α_cp::Float64
+    # scale_W̃::Function,
+    W̃min::Float64,
+    W̃max::Float64,
+    ERt::Float64
+    # W_scaled_min::Float64 = 0.,
+    # W_scaled_max::Float64 = 100.
     )
 
 
-    if W_max - W_min < 1.
-        W_max = W_min + 1.
-    end
+    # if W̃max - W̃min < 1.
+    #     W̃max = W̃min + 1.
+    # end
 
     if hh.W > 0
         # Scale W between 0 and 100
-        if hh.W == W_min
+        if hh.W̃ == W̃min
             hh.C = hh.W
         else
-            W_scaled = 100 * (hh.W - W_min) / (W_max - W_min)
+            # W_scaled = W_scaled_min + (W_scaled_max - W_scaled_min) * (hh.W̃ - W̃min) / (W̃max - W̃min)
 
-            hh.α = αopt(hh, ERt, Wmedian, W_scaled)
+            # Compute optimal propensity to consume
+            computeα!(hh, ERt, W̃min, W̃max)
 
-            hh.C = max(min(hh.α * hh.W, hh.W), 0)
-
-            # hh.C = hh.P̄ * (hh.W / W_scaled) * min((W_scaled / hh.P̄)^α_cp, W_scaled / hh.P̄)
-            # hh.C = min(hh.C, hh.W)
+            # Set consumption budget
+            hh.C = hh.α * hh.W
         end
 
         # Compute savings rate
@@ -235,6 +174,60 @@ function compute_consumption_budget_hh!(
         hh.C = 0.0
         hh.s = 0.0
     end
+end
+
+
+scale_W̃(W̃, W̃min, W̃max) = 100 * (W̃ - W̃min) / (W̃max - W̃min)
+
+
+function computeα!(
+    hh::Household,
+    ERt::Float64,
+    W̃min::Float64,
+    W̃max::Float64;
+    # scale_W̃::Function;
+    # W_scaled;
+    T::Int64=6,
+    maxdev=0.01::Float64
+    )
+
+    αrange = (LinRange(-maxdev, maxdev, 5)) .+ hh.α
+    hh.α = argmax(αstar -> αstar <= 1. && αstar >= 0. ? computeU(hh, αstar, W̃min, W̃max, ERt, T) : -1., αrange)
+    # println("   ", hh.W, "  ", hh.W̃, "  ", scale_W̃(hh.W̃, W̃min, W̃max), " ", hh.α)
+end
+
+
+function computeU(
+    hh::Household,
+    α::Float64,
+    W̃min::Float64,
+    W̃max::Float64,
+    ERt::Float64,
+    T::Int64;
+    ρ::Float64=0.3
+    )
+
+    U = 0.
+
+    # Compute the expected real income
+    EỸ_t = hh.EY_t / hh.P̄ᵉ
+
+    for k in 0:T
+        # Discount expected income and wealth level at time t
+        EỸ_disc = sum(m -> ((1 + ERt) * (1 - α)) ^ (k - m) * EỸ_t, 0:k)
+        W̃_disc = ((1 + ERt) * (1 - α)) ^ k * hh.W̃
+        
+        # Compute the expected wealth level at time t+k
+        EW̃_t = W̃_disc + EỸ_disc
+
+        # Compute scaled consumption amount, given EW̃_t and α
+        C_scaled = max(α * scale_W̃(EW̃_t, W̃min, W̃max), 0)
+
+        # Compute utility based on scaled 
+        U += hh.β ^ k * utility(C_scaled, ρ)
+    end
+
+    return U
 end
 
 
