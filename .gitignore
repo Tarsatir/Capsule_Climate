@@ -53,3 +53,5 @@ parameters/calibration/calibrationdata
 results/validation/validation_samples
 
 testbash.sh
+
+Trial_notebooks

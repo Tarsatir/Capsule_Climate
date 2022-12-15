@@ -858,14 +858,14 @@ function replace_bankrupt_cp!(
                     cp_i,
                     t + 1,
                     Vector{Machine}(),
-                    0,
-                    globalparam.μ1,     
-                    globalparam.ι,
-                    globalparam.b;
+                    # 0,
+                    # globalparam.μ1,     
+                    # globalparam.ι,
+                    model;
                     D=D,
                     w=macro_struct.w̄_avg[t],
                     L=0,
-                    N_goods=0.0,
+                    # N_goods=0.0,
                     f=0.0
                 )
 

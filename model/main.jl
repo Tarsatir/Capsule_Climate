@@ -486,6 +486,7 @@ function model_step!(
 
     W̃min = minimum(hh_id -> model[hh_id].W̃, all_hh)
     W̃max = maximum(hh_id -> model[hh_id].W̃, all_hh)
+    W̃med = median(map(hh_id -> model[hh_id].W̃, all_hh))
 
     @timeit to "set budget" @inbounds for hh_id in all_hh
         set_consumption_budget_hh!(
@@ -495,9 +496,9 @@ function model_step!(
             ERt,
             labormarket.P_getunemployed,
             labormarket.P_getemployed,
-            # scale_W̃,
             W̃min,
             W̃max,
+            W̃med,
             model
         )
     end
@@ -647,7 +648,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T::Int64=1,
+    T::Int64=660,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
     changedparams_ofat::Union{Dict,Nothing}=nothing,
