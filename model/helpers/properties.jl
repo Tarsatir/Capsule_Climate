@@ -39,5 +39,6 @@ mutable struct Properties
     # firmdata::DataFrame
     # householddata::DataFrame
     kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}
+    cmdata::CMData
 
 end

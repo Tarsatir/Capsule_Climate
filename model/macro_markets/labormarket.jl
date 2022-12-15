@@ -24,52 +24,89 @@ Households that are not assigned to a producer are declared unemployed.
 function spread_employees_lm!(
     labormarket::LaborMarket,
     government::Government, 
-    all_hh::Vector{Int}, 
-    all_cp::Vector{Int}, 
-    all_kp::Vector{Int}, 
-    n_init_emp_cp::Int, 
-    n_init_emp_kp::Int,
+    # all_hh::Vector{Int}, 
+    # all_cp::Vector{Int}, 
+    # all_kp::Vector{Int}, 
+    # n_init_emp_cp::Int, 
+    # n_init_emp_kp::Int,
     model::ABM
     )
 
     i = 1
 
+    # Determine initial amount of employees per producer
+    emp_per_producer = floor(Int64, (1 - model.i_param.init_unempl_rate) * model.i_param.n_hh / 
+                             (model.i_param.n_cp + model.i_param.n_kp))
+
+    for p_id in model.all_p
+
+        # Select employees
+        employees = model.all_hh[i:i + emp_per_producer - 1]
+
+        for hh_id in employees
+
+            # Initialize household wage at skill level
+            w = max(government.w_min, model[hh_id].skill)
+            set_employed_hh!(model[hh_id], w, p_id)
+            model[hh_id].w .= w
+
+            hire_worker_p!(model[p_id], model[hh_id])
+            push!(labormarket.employed_hh, hh_id)
+        end
+
+        model[p_id].employees = employees
+        model[p_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
+        # i += n_init_emp_cp
+        i += emp_per_producer
+
+    end
+
     # Loop over cp, allocate households as employees
-    for cp_id in all_cp
-        employees = all_hh[i:i+n_init_emp_cp-1]
+    # for cp_id in model.all_cp
+    #     # employees = all_hh[i:i+n_init_emp_cp-1]
 
-        for hh_id in employees
-            w = max(government.w_min, model[hh_id].skill)
-            set_employed_hh!(model[hh_id], w, cp_id)
-            model[hh_id].w .= w
-            hire_worker_p!(model[cp_id], model[hh_id])
-            push!(labormarket.employed_hh, hh_id)
-        end
+    #     # Select employees
+    #     employees = model.all_hh[i:i + emp_per_producer - 1]
 
-        model[cp_id].employees = employees
-        model[cp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
-        i += n_init_emp_cp
+    #     for hh_id in employees
 
-    end
+    #         # Initialize household wage at skill level
+    #         w = max(government.w_min, model[hh_id].skill)
+    #         set_employed_hh!(model[hh_id], w, cp_id)
+    #         model[hh_id].w .= w
 
-    # Loop over kp, allocate households as employees
-    for kp_id in all_kp
-        employees = all_hh[i:i+n_init_emp_kp-1]
+    #         hire_worker_p!(model[cp_id], model[hh_id])
+    #         push!(labormarket.employed_hh, hh_id)
+    #     end
 
-        for hh_id in employees
-            w = max(government.w_min, model[hh_id].skill)
-            set_employed_hh!(model[hh_id], w, kp_id)
-            model[hh_id].w .= w
-            hire_worker_p!(model[kp_id], model[hh_id])
-            push!(labormarket.employed_hh, hh_id)
-        end
-        model[kp_id].employees = employees
-        model[kp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
-        i += n_init_emp_kp
-    end
+    #     model[cp_id].employees = employees
+    #     model[cp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
+    #     # i += n_init_emp_cp
+    #     i += emp_per_producer
+
+    # end
+
+    # # Loop over kp, allocate households as employees
+    # for kp_id in model.all_kp
+    #     # employees = all_hh[i:i+n_init_emp_kp-1]
+
+    #     # Select employees
+    #     employees = model.all_hh[i:i+emp_per_producer-1]
+
+    #     for hh_id in employees
+    #         w = max(government.w_min, model[hh_id].skill)
+    #         set_employed_hh!(model[hh_id], w, kp_id)
+    #         model[hh_id].w .= w
+    #         hire_worker_p!(model[kp_id], model[hh_id])
+    #         push!(labormarket.employed_hh, hh_id)
+    #     end
+    #     model[kp_id].employees = employees
+    #     model[kp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
+    #     i += emp_per_producer
+    # end
 
     # Other households are pushed into unemployment
-    for hh_id in all_hh[i:end]
+    for hh_id in model.all_hh[i:end]
         set_unemployed_hh!(model[hh_id])
         model[hh_id].w .= 0.0        
         push!(labormarket.unemployed, model[hh_id].id)

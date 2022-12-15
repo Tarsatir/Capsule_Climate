@@ -74,17 +74,10 @@ function initialize_cp(
     cp_i::Int64,
     t_next_update::Int64, 
     machines::Vector{Machine},
-    model::ABM; 
-    # n_init_emp_cp::Int64,
-    # μ::Float64,
-    # ι::Float64,
-    # b::Int64;
-    D=1600.::Float64,
-    w=1.::Float64,
-    L=model.i_param.n_init_emp_cp * 100::Int64,
-    # N_goods=D*ι::Float64,
-    # n_consrgood=200::Int64,
-    f::Float64=2 / model.i_param.n_cp,
+    model::ABM;
+    D::Float64 = 1600.,
+    w::Float64 = 1.,
+    f::Float64 = 1 / model.i_param.n_cp,
 )
 
     cp = ConsumerGoodProducer(
@@ -100,7 +93,7 @@ function initialize_cp(
         Qᵉ = D * (1 + model.g_param.ι),
         debt_installments = zeros(Float64, model.g_param.b+1),          
         Ξ = machines,                 
-        L = L,
+        L = 0,
         w̄ = fill(w, 3),
         f = fill(f, 3)
     )
@@ -858,14 +851,9 @@ function replace_bankrupt_cp!(
                     cp_i,
                     t + 1,
                     Vector{Machine}(),
-                    # 0,
-                    # globalparam.μ1,     
-                    # globalparam.ι,
                     model;
                     D=D,
                     w=macro_struct.w̄_avg[t],
-                    L=0,
-                    # N_goods=0.0,
                     f=0.0
                 )
 

@@ -65,8 +65,7 @@ function initialize_model(
     T::Int64;
     changed_params::Union{Dict, Nothing},
     changedparams_ofat::Union{Dict, Nothing},
-    changedtaxrates::Union{Vector, Nothing},
-    track_firms_households::Bool=false
+    changedtaxrates::Union{Vector, Nothing}
     )
 
     # Initialize scheduler
@@ -97,19 +96,14 @@ function initialize_model(
 
     # Initialize data structures for consumer- and capital market
     cmdata = CMData(
-        n_hh=initparam.n_hh, 
-        n_cp=initparam.n_cp
+        n_hh = initparam.n_hh, 
+        n_cp = initparam.n_cp
     )
-    
-    # kmdata = KMData(
-    #         zeros(Int64, initparam.n_kp, initparam.n_cp),
-    #         zeros(Int64, initparam.n_kp, initparam.n_cp),
-    #         # zeros(Int64, initparam.n_kp)  
-    #     )
 
     # Make empty dict for kp_brochures
     kp_brochures = Dict()
 
+    # Determine ids for all agents
     all_hh = collect(1:initparam.n_hh)
     all_cp = collect(all_hh[end] + 1: all_hh[end] + initparam.n_cp)
     all_kp = collect(all_cp[end] + 1: all_cp[end] + initparam.n_kp)
@@ -131,31 +125,25 @@ function initialize_model(
                                 macroeconomy,
                                 # firmdata,
                                 # householddata,
-                                kp_brochures
+                                kp_brochures,
+                                cmdata
                            )
-
-    # properties = Dict(
-    #                     :kp_brochures => Dict(),
-    #                     # :cmdata => cmdata,
-    #                     # :kmdata => kmdata,
-    #                     # :i_to_id => Dict("hh" => Dict(), "cp" => Dict(), "kp" => Dict())
-    #                  )
 
     # Initialize model struct
     model = ABM(
                     Union{Household, CapitalGoodProducer, ConsumerGoodProducer};
-                    properties=properties,
-                    scheduler=scheduler, 
-                    warn=false
+                    properties = properties,
+                    scheduler = scheduler, 
+                    warn = false
                 )
 
     # Initialize households
     for _ in 1:model.i_param.n_hh
 
         hh = Household(
-                        id=nextid(model), 
-                        skill = rand(LogNormal(0, 0.75)),
-                        β = rand(Uniform(0.7, 1.))
+                        id = nextid(model), 
+                        skill = rand(LogNormal(model.i_param.skill_mean, model.i_param.skill_var)),
+                        β = rand(Uniform(model.i_param.βmin, model.i_param.βmax))
                       )
         hh.wʳ = max(model.gov.w_min, hh.wʳ)
         add_agent!(hh, model)
@@ -168,12 +156,13 @@ function initialize_model(
         machines = initialize_machine_stock(
                         model.g_param.freq_per_machine, 
                         model.i_param.n_machines_init,
-                        η=model.g_param.η; 
+                        η = model.g_param.η; 
                         A_LP = model.i_param.A_LP_0,
                         A_EE = model.i_param.A_EE_0,
                         A_EF = model.i_param.A_EF_0
                    )
 
+        # Decide on time of markup rate update
         t_next_update = 1
         if cp_i > 66
             t_next_update += 1
@@ -187,19 +176,10 @@ function initialize_model(
                 cp_i,
                 t_next_update,
                 machines,
-                model  
-                # model.i_param.n_init_emp_cp, 
-                # model.g_param.μ1,
-                # model.g_param.ι,
-                # model.g_param.b;
-                # n_consrgood=initparam.n_cp,
-                # model
+                model
             )
         update_n_machines_cp!(cp, globalparam.freq_per_machine)
         add_agent!(cp, model)
-        # model.i_to_id["cp"][cp_i] = id
-
-        # id += 1
     end
 
     # Initialize capital good producers
@@ -209,16 +189,15 @@ function initialize_model(
                 nextid(model), 
                 kp_i, 
                 model.i_param.n_kp,
-                globalparam.b; 
-                A_LP=model.i_param.A_LP_0,
-                A_EE=model.i_param.A_EE_0,
-                A_EF=model.i_param.A_EF_0, 
-                B_LP=model.i_param.B_LP_0,
-                B_EE=model.i_param.B_EE_0,
-                B_EF=model.i_param.B_EF_0
+                model.g_param.b; 
+                A_LP = model.i_param.A_LP_0,
+                A_EE = model.i_param.A_EE_0,
+                A_EF = model.i_param.A_EF_0, 
+                B_LP = model.i_param.B_LP_0,
+                B_EE = model.i_param.B_EE_0,
+                B_EF = model.i_param.B_EF_0
              )
         add_agent!(kp, model)
-        # model.i_to_id["kp"][kp_i] = id
 
         # Initialize brochure of kp goods
         init_brochure!(kp, model)
@@ -241,11 +220,11 @@ function initialize_model(
     spread_employees_lm!(
         labormarket,
         government,
-        all_hh, 
-        all_cp, 
-        all_kp,
-        model.i_param.n_init_emp_cp,
-        model.i_param.n_init_emp_kp,
+        # all_hh, 
+        # all_cp, 
+        # all_kp,
+        # model.i_param.n_init_emp_cp,
+        # model.i_param.n_init_emp_kp,
         model
     )
 
@@ -253,8 +232,7 @@ function initialize_model(
         update_mean_skill_p!(model[p_id], model)
     end
 
-    close_balance_all_p!(all_p, globalparam, government,
-                         indexfund, 0, model)
+    close_balance_all_p!(all_p, globalparam, government, indexfund, 0, model)
 
     # if track_firms_households
     #     firmdata = genfirmdata(all_cp, all_kp)
@@ -685,8 +663,7 @@ function run_simulation(;
                             T; 
                             changed_params=changed_params,
                             changedparams_ofat=changedparams_ofat, 
-                            changedtaxrates=changedtaxrates, 
-                            track_firms_households=track_firms_households
+                            changedtaxrates=changedtaxrates
                     )
     
     @time for t in 1:T
