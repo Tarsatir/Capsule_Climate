@@ -27,6 +27,8 @@ Manifest.toml
 results/result_data
 plotting/plots
 plotting/plot_D_p.jl
+C_example.pdf
+output.png
 
 # Avoid clutter files and folders
 parameters/sensitivity/__pycache__
