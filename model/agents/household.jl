@@ -1,15 +1,15 @@
 @with_kw mutable struct Household <: AbstractAgent
 
-    id :: Int                                   # global id
+    id :: Int64                                 # global id
 
     # Employment variables
     employed::Bool = false                      # is employed
-    employer_id::Union{Int} = 0                 # id of employer
+    employer_id::Union{Int64} = 0               # id of employer
     L::Float64 = 100.0                          # labor units in household
     w::Vector{Float64} = ones(Float64, 4)       # wage
     wˢ::Float64 = 1.0                           # satisfying wage
     wʳ::Float64 = 1.0                           # requested wage
-    T_unemp::Int = 0                            # time periods unemployed
+    T_unemp::Int64 = 0                            # time periods unemployed
     skill::Float64                              # skill level of household
 
     # Income and wealth variables
@@ -34,8 +34,8 @@
     # Consumption variables
     C::Float64 = 0.0                           # budget
     C_actual::Float64 = 0.0                    # actual spending on consumption goods
-    cp::Vector{Int} = Vector{Int}()            # connected cp
-    unsat_dem::Dict{Int, Float64} = Dict()     # unsatisfied demands
+    cp::Vector{Int64} = Int64[]                # connected cp
+    unsat_dem::Dict{Int64, Float64} = Dict()   # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
     P̄ᵉ::Float64 = 1.0                          # expected weighted average price of bp
     c_L::Float64 = 0.5                         # share of income used to buy luxury goods
@@ -47,8 +47,8 @@ Uniformly samples cp to be in trading network.
 """
 function select_cp_hh!(
     hh::Household,
-    all_cp::Vector{Int},
-    n_cp_hh::Int
+    all_cp::Vector{Int64},
+    n_cp_hh::Int64
     )
 
     hh.cp = sample(all_cp, n_cp_hh)
@@ -255,8 +255,8 @@ function receive_ordered_goods_hh!(
     tot_sales::Float64,
     unsat_demand::Vector{Float64},
     hh_D::Vector{Float64},
-    all_cp::Vector{Int},
-    n_hh::Int
+    all_cp::Vector{Int64},
+    n_hh::Int64
     )
 
     # Decrease wealth with total sold goods
@@ -351,7 +351,7 @@ Lets employee be hired when previously unemployed, saves employer id and new ear
 function set_employed_hh!(
     hh::Household, 
     wᴼ::Float64,
-    employer_id::Int,
+    employer_id::Int64,
     )
 
     hh.employed = true
@@ -367,7 +367,7 @@ Changes employer for households that were already employed.
 function change_employer_hh!(
     hh::Household,
     wᴼ::Float64,
-    employer_id::Int
+    employer_id::Int64
     )
 
     hh.employer_id = employer_id
@@ -380,7 +380,7 @@ Removes bankrupt producers from set of producers.
 """
 function remove_bankrupt_producers_hh!(
     hh::Household,
-    bankrupt_cp::Vector{Int}
+    bankrupt_cp::Vector{Int64}
     )
 
     filter!(cp_id -> cp_id ∉ bankrupt_cp, hh.cp)
@@ -393,10 +393,10 @@ Decides whether to switch to other cp
 """
 function decide_switching_all_hh!(
     globalparam::GlobalParam,
-    all_hh::Vector{Int},
-    all_cp::Vector{Int},
-    all_p::Vector{Int},
-    n_cp_hh::Int,
+    all_hh::Vector{Int64},
+    all_cp::Vector{Int64},
+    all_p::Vector{Int64},
+    n_cp_hh::Int64,
     model::ABM,
     to
     )
@@ -408,7 +408,7 @@ function decide_switching_all_hh!(
             # Pick a supplier to change, first set up weights inversely proportional
             # to supplied share of goods
 
-            create_weights(hh::Household, cp_id::Int)::Float64 = hh.unsat_dem[cp_id] > 0 ? 1 / hh.unsat_dem[cp_id] : 0.0
+            create_weights(hh::Household, cp_id::Int64)::Float64 = hh.unsat_dem[cp_id] > 0 ? 1 / hh.unsat_dem[cp_id] : 0.0
             weights = map(cp_id -> create_weights(model[hh_id], cp_id), model[hh_id].cp)
 
             # Sample producer to replace
@@ -493,8 +493,8 @@ Refills amount of bp and lp in amount is below minimum. Randomly draws suppliers
 """
 function refillsuppliers_hh!(
     hh::Household,
-    all_cp::Vector{Int},
-    n_cp_hh::Int,
+    all_cp::Vector{Int64},
+    n_cp_hh::Int64,
     model::ABM
     )
 

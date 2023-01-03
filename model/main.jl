@@ -10,7 +10,6 @@ using Parameters
 using SparseArrays
 using PyCall
 using Dates
-# using UnPack
 
 
 # Include files
@@ -46,27 +45,27 @@ include("helpers/modeldata_storage.jl")
 
 
 """
-    initialize_model(T::Int64, labormarket_is_fordist::Bool, changed_params::Dict)
+    initialize_model(T::Int64, t_warmup::Int64, changed_params::Dict)
 
-## Initializes model.
-Receives:
-* `T`, total number of time steps.
-* `changed_params`, changed global parameters in case
+...
+# Arguments:
+- `T`: total number of time steps.
+- `t_warmup`: number of time steps in warmup phase
+- `changed_params`: changed global parameters in case
     of run with other parameters than default parameters.
     
-Returns:
-* `model`: Agent Based Model struct
-* `globalparam`: struct containing global parameter values
-* `macroeconomy`: mutable struct containing macro variables
-* `government`: mutable struct containing variables concerning the government
-* `labormarket`: mutable struct containing variables concerning the labor market
+# Returns:
+- `model`: `Agents.jl` Agent Based Model struct
+
+...
 """
 function initialize_model(
-    T::Int64;
+    T::Int64,
+    t_warmup::Int64;
     changed_params::Union{Dict, Nothing},
     changedparams_ofat::Union{Dict, Nothing},
     changedtaxrates::Union{Vector, Nothing}
-    )
+    )::ABM
 
     # Initialize scheduler
     scheduler = Agents.Schedulers.by_type(true, true)
@@ -110,12 +109,16 @@ function initialize_model(
     all_p = vcat(all_cp, all_kp)
 
     properties = Properties(
+                                0,
+                                t_warmup,
+
                                 initparam,
                                 globalparam,
 
                                 government,
                                 ep,
                                 indexfund,
+                                climate,
                                 
                                 all_hh,
                                 all_cp, 
@@ -123,8 +126,7 @@ function initialize_model(
                                 all_p,
 
                                 macroeconomy,
-                                # firmdata,
-                                # householddata,
+                                labormarket,
                                 kp_brochures,
                                 cmdata
                            )
@@ -220,11 +222,6 @@ function initialize_model(
     spread_employees_lm!(
         labormarket,
         government,
-        # all_hh, 
-        # all_cp, 
-        # all_kp,
-        # model.i_param.n_init_emp_cp,
-        # model.i_param.n_init_emp_kp,
         model
     )
 
@@ -234,36 +231,87 @@ function initialize_model(
 
     close_balance_all_p!(all_p, globalparam, government, indexfund, 0, model)
 
-    # if track_firms_households
-    #     firmdata = genfirmdata(all_cp, all_kp)
-    #     householddata = genhouseholddata()
-    # else
-    #     firmdata = nothing
-    #     householddata = nothing
-    # end
+    return model
+end
 
-    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-           indexfund, climate, cmdata
+
+"""
+    initialize_datacategories(savedata::Bool)
+
+Initializes the data categories that should be stored during the model run.
+Returns `adata` and `mdata` arrays containing tuples descriving the properties
+to save of the agents and model, respectively (see `Agents.jl` documentation).
+
+...
+# Arguments
+- `savedata::Bool`: whether simulation data is saved. If not, return empty arrays.
+
+...
+
+"""
+function initialize_datacategories(
+    savedata::Bool
+)::Tuple{Vector{Tuple}, Vector{Tuple}}
+
+    hh(a) = a isa Household
+    cp(a) = a isa ConsumerGoodProducer
+    kp(a) = a isa CapitalGoodProducer
+
+    if savedata
+        adata = [
+            (:total_I, mean, hh)
+            (:labor_I, mean, hh)
+            (:capital_I, mean, hh)
+            (:UB_I, mean, hh)
+            (:socben_I, mean, hh)
+
+            (:total_I, std, hh)
+            (:labor_I, std, hh)
+            (:capital_I, std, hh)
+            (:UB_I, std, hh)
+            (:socben_I, std, hh)
+        ]
+
+        mdata = [
+
+        ]
+
+        return adata, mdata
+    end
+
+    # If no data saved, return empty arrays
+    return [], []
 end
 
 
 function model_step!(
-    t::Int64,
-    t_warmup::Int64,
-    to,
-    globalparam::GlobalParam, 
-    initparam::InitParam,
-    macroeconomy::MacroEconomy, 
-    government::Government,
-    ep::EnergyProducer, 
-    labormarket::LaborMarket,
-    indexfund::IndexFund,
-    climate::Climate,
-    # firmdata::Union{Nothing, DataFrame},
-    # householddata::Union{Nothing, Array},
-    cmdata::CMData,
+    # t::Int64,
+    # t_warmup::Int64,
+    # timer,
+    # globalparam::GlobalParam, 
+    # initparam::InitParam,
+    # macroeconomy::MacroEconomy, 
+    # government::Government,
+    # ep::EnergyProducer, 
+    # labormarket::LaborMarket,
+    # indexfund::IndexFund,
+    # climate::Climate,
+    # cmdata::CMData,
     model::ABM
-    )
+    )::ABM
+
+    model.t += 1
+    t = model.t
+    t_warmup = model.t_warmup
+    globalparam = model.g_param 
+    initparam = model.i_param 
+    macroeconomy = model.macroeconomy 
+    government = model.gov 
+    ep = model.ep 
+    labormarket = model.labormarket 
+    indexfund = model.idxf 
+    climate = model.climate 
+    cmdata = model.cmdata
 
     # Check if any global params are changed in ofat experiment
     check_changed_ofatparams(globalparam, t)
@@ -274,10 +322,10 @@ function model_step!(
     end
 
     # Update schedulers
-    @timeit to "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
+    @timeit timer "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
     # Redistrubute remaining stock of dividents to households
-    @timeit to "distr div" distribute_dividends_if!(
+    @timeit timer "distr div" distribute_dividends_if!(
         indexfund,
         government,
         all_hh,
@@ -295,22 +343,22 @@ function model_step!(
     end
 
     # Check if households still have enough bp and lp, otherwise sample more
-    @timeit to "hh refill" for hh_id in all_hh
+    @timeit timer "hh refill" for hh_id in all_hh
         refillsuppliers_hh!(model[hh_id], all_cp, initparam.n_cp_hh, model)
         resetincomes_hh!(model[hh_id])
     end
 
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
-    @timeit to "clear account cp" for cp_id in all_cp
+    @timeit timer "clear account cp" for cp_id in all_cp
         clear_firm_currentaccount_p!(model[cp_id])
     end
 
     # (1) kp and ep innovate, and kp send brochures
 
     # Determine distance matrix between kp
-    @timeit to "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
+    @timeit timer "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
-    @timeit to "kp innov" for kp_id in all_kp
+    @timeit timer "kp innov" for kp_id in all_kp
 
         clear_firm_currentaccount_p!(model[kp_id])
 
@@ -335,11 +383,11 @@ function model_step!(
     end
 
     # ep innovate, only when warmup period is left
-    @timeit to "inn ep" innovate_ep!(ep, globalparam, t)
+    @timeit timer "inn ep" innovate_ep!(ep, globalparam, t)
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
-    @timeit to "plan prod cp" for cp_id in all_cp
+    @timeit timer "plan prod cp" for cp_id in all_cp
       
         # Plan production for this period
         # μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
@@ -378,12 +426,12 @@ function model_step!(
     end
 
     # (2) capital good producers set labor demand based on expected ordered machines
-    @timeit to "plan prod kp"  for kp_id in all_kp
+    @timeit timer "plan prod kp"  for kp_id in all_kp
         plan_production_kp!(model[kp_id], globalparam, model)
     end
 
     # (3) labor market matching process
-    @timeit to "labormarket" labormarket_process!(
+    @timeit timer "labormarket" labormarket_process!(
         labormarket,
         all_hh, 
         all_p,
@@ -391,7 +439,7 @@ function model_step!(
         government,
         t, 
         model,
-        to
+        timer
     )
 
     # Update mean skill level of employees
@@ -409,7 +457,7 @@ function model_step!(
     end
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
-    @timeit to "pay workers" for p_id in all_p
+    @timeit timer "pay workers" for p_id in all_p
         pay_workers_p!(
             model[p_id],
             government,
@@ -425,11 +473,11 @@ function model_step!(
     # Update energy prices
     compute_pₑ_ep!(ep, t)
 
-    @timeit to "consumer prod" for cp_id in all_cp
+    @timeit timer "consumer prod" for cp_id in all_cp
         produce_goods_cp!(model[cp_id], ep, globalparam, t)
     end
 
-    @timeit to "capital prod" for kp_id in all_kp
+    @timeit timer "capital prod" for kp_id in all_kp
         produce_goods_kp!(model[kp_id], ep, globalparam, t)
     end
 
@@ -466,7 +514,7 @@ function model_step!(
     W̃max = maximum(hh_id -> model[hh_id].W̃, all_hh)
     W̃med = median(map(hh_id -> model[hh_id].W̃, all_hh))
 
-    @timeit to "set budget" @inbounds for hh_id in all_hh
+    @timeit timer "set budget" @inbounds for hh_id in all_hh
         set_consumption_budget_hh!(
             model[hh_id], 
             government.UB, 
@@ -482,7 +530,7 @@ function model_step!(
     end
 
     # Consumer market process
-    @timeit to "consumermarket" consumermarket_process!(
+    @timeit timer "consumermarket" consumermarket_process!(
                                     all_hh,
                                     all_cp,
                                     government,
@@ -490,24 +538,24 @@ function model_step!(
                                     cmdata,
                                     t,
                                     model,
-                                    to
+                                    timer
                                 )
 
     # Households decide to switch suppliers based on satisfied demand and prices
-    @timeit to "decide switching hh" decide_switching_all_hh!(
+    @timeit timer "decide switching hh" decide_switching_all_hh!(
         globalparam,
         all_hh,
         all_cp,
         all_p,
         initparam.n_cp_hh,
         model,
-        to
+        timer
     )
 
     # println("   $t 7 start $(Dates.format(now(), "HH:MM"))")
 
     # (6) kp deliver goods to cp, kp make up profits
-    @timeit to "send machines kp" for kp_id in all_kp
+    @timeit timer "send machines kp" for kp_id in all_kp
         send_ordered_machines_kp!(model[kp_id], ep, globalparam, t, model)
     end
 
@@ -519,7 +567,7 @@ function model_step!(
     end 
 
     # Close balances of firms, if insolvent, liquidate firms
-    @timeit to "close balance" close_balance_all_p!(
+    @timeit timer "close balance" close_balance_all_p!(
                                 all_p, 
                                 globalparam,
                                 government,
@@ -539,10 +587,10 @@ function model_step!(
     update_marketshare_p!(all_kp, model)
     
     # Select producers that will be declared bankrupt and removed
-    @timeit to "check br" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
+    @timeit timer "check br" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
 
     # (7) macro-economic indicators are updated.
-    @timeit to "update macro ts" update_macro_timeseries(
+    @timeit timer "update macro ts" update_macro_timeseries(
         macroeconomy,
         t, 
         all_hh, 
@@ -557,7 +605,7 @@ function model_step!(
         indexfund,
         globalparam,
         model,
-        to
+        timer
     )
 
     # if firmdata ≠ nothing
@@ -572,7 +620,7 @@ function model_step!(
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
 
     # Remove bankrupt companies.
-    @timeit to "kill bankr p" kill_all_bankrupt_p!(
+    @timeit timer "kill bankr p" kill_all_bankrupt_p!(
         bankrupt_cp,
         bankrupt_kp, 
         all_hh,
@@ -586,7 +634,7 @@ function model_step!(
 
     # Replace bankrupt kp. Do this before you replace cp, such that new cp can also choose
     # from new kp
-    @timeit to "replace kp" replace_bankrupt_kp!(
+    @timeit timer "replace kp" replace_bankrupt_kp!(
         bankrupt_kp, 
         bankrupt_kp_i, 
         all_kp,
@@ -599,7 +647,7 @@ function model_step!(
     )
 
     # Replace bankrupt companies with new companies
-    @timeit to "replace cp" replace_bankrupt_cp!(
+    @timeit timer "replace cp" replace_bankrupt_cp!(
         bankrupt_cp, 
         bankrupt_kp, 
         all_hh,
@@ -612,8 +660,9 @@ function model_step!(
         model
     )
 
-    return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-            indexfund, climate, ep, cmdata
+    # return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
+    #         indexfund, climate, ep, cmdata
+    return model
 end
 
 
@@ -626,7 +675,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T::Int64=100,
+    T::Int64=660,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
     changedparams_ofat::Union{Dict,Nothing}=nothing,
@@ -634,76 +683,76 @@ function run_simulation(;
     full_output::Bool=true,
     threadnr::Int64=1,
     sim_nr::Int64=0,
-    savedata::Bool=false,
-    track_firms_households::Bool=false,
+    savedata::Bool=true,
+    # track_firms_households::Bool=false,
     seed::Int64=Random.rand(1000:9999)
     )
 
-    # TODO: REWRITING TO AGENTS RUN ENVIRONMENT
-    # model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-    # indexfund, climate, cmdata, firmdata, householddata = initialize_model(
-    #     T; 
-    #     changed_params=changed_params,
-    #     changedparams_ofat=changedparams_ofat, 
-    #     changedtaxrates=changedtaxrates, 
-    #     track_firms_households=track_firms_households
-    # )
-
-    # @time agent_df, model_df = run!(model, dummystep, model_step!, 60)
-
-    # # Set seed of simulation
+    # Set seed of simulation
     Random.seed!(seed)
 
     println("thread $(Threads.threadid()), sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
 
-    to = TimerOutput()
+    global timer = TimerOutput()
 
-    @timeit to "init" model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-                      indexfund, climate, cmdata = initialize_model(
-                            T; 
-                            changed_params=changed_params,
-                            changedparams_ofat=changedparams_ofat, 
-                            changedtaxrates=changedtaxrates
-                    )
-    
-    @time for t in 1:T
-        println(t)
-        @timeit to "step" model_step!(
-                                t,
-                                t_warmup,
-                                to, 
-                                globalparam, 
-                                initparam,
-                                macroeconomy, 
-                                government,
-                                ep,
-                                labormarket, 
-                                indexfund,
-                                climate,
-                                # cmdata,
-                                # firmdata,
-                                # householddata,
-                                cmdata, 
-                                model
-                            )
-    end
+    # Initialize model
+    @timeit timer "init" model = initialize_model(
+          T,
+          t_warmup; 
+          changed_params=changed_params,
+          changedparams_ofat=changedparams_ofat, 
+          changedtaxrates=changedtaxrates
+    )
 
+    # Initialize data categories that need to be saved
+    adata, mdata = initialize_datacategories(savedata)
+
+    # Run model
+    @time agent_df, model_df = run!(
+                                        model, 
+                                        dummystep, 
+                                        model_step!, 
+                                        T;
+                                        adata = adata,
+                                        mdata = mdata, 
+                                        showprogress = true
+                                    )
+
+    display(agent_df)
+
+    # Save agent dataframe and model dataframe to csv
     if savedata
-        @timeit to "save macro" save_macro_data(macroeconomy)
-
-        all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
-
-        @timeit to "save findist" save_final_dist(all_hh, all_cp, all_kp, model)
-
-        @timeit to "save climate" save_climate_data(ep, climate, model)
-
-        # if track_firms_households
-        #     save_household_quartiles(householddata)
-        # end
+        # NOTE: CONVERSION DF TO STRING IS TMP SOLUTION, SHOULD BE FIXED BACK WHEN PACKAGES 
+        #       ARE CONSISTENT AGAIN!
+        CSV.write(string("results/result_data/agent_data_", seed, ".csv"), string.(agent_df))
+        CSV.write(string("results/result_data/model_data_", seed, ".csv"), string.(model_df))
     end
+    
+    # @time for t in 1:T
+    #     println(t)
+
+    #     # Set step number
+    #     model.t = t
+
+    #     @timeit timer "step" model_step!(model)
+    # end
+
+    # if savedata
+    #     @timeit timer "save macro" save_macro_data(model.macroeconomy)
+
+    #     all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
+
+    #     @timeit timer "save findist" save_final_dist(model.all_hh, model.all_cp, model.all_kp, model)
+
+    #     @timeit timer "save climate" save_climate_data(model.ep, model.climate, model)
+
+    #     # if track_firms_households
+    #     #     save_household_quartiles(householddata)
+    #     # end
+    # end
 
     if full_output
-        show(to)
+        show(timer)
         println()
     end
 
@@ -711,18 +760,18 @@ function run_simulation(;
 
     println("thread $threadnr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
 
-    if !track_firms_households
-        return genrunoutput(macroeconomy, ep, climate)
-    else
-        nothing
-        # return genrunoutput(macroeconomy, ep, climate), firmdata, householddata
-    end
+    # if !track_firms_households
+    #     return genrunoutput(model.macroeconomy, model.ep, model.climate)
+    # else
+    #     nothing
+    #     # return genrunoutput(macroeconomy, ep, climate), firmdata, householddata
+    # end
 
 end
 
 @time run_simulation(
     savedata=true,
-    track_firms_households=true,
+    # track_firms_households=true,
     seed=1234    
 )
 

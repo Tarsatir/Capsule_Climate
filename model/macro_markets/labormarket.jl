@@ -1,19 +1,20 @@
 @Base.kwdef mutable struct LaborMarket
-    employed_hh::Vector{Int} = Int64[]        # array of employed households
-    unemployed::Vector{Int} = Int64[]         # array of unemployed households
-    jobseeking_hh::Vector{Int} = Int64[]      # array of jobseeking households
 
-    hiring_producers::Vector{Int} = Int64[]   # array of hiring producers
-    firing_producers::Vector{Int} = Int64[]   # array of firing producers 
+    employed_hh::Vector{Int64} = Int64[]      # array of employed households
+    unemployed::Vector{Int64} = Int64[]       # array of unemployed households
+    jobseeking_hh::Vector{Int64} = Int64[]    # array of jobseeking households
 
-    L_demanded::Float64 = 0.0                 # total labor demanded
-    L_hired::Float64 = 0.0                    # total labor hired
-    L_fired::Float64 = 0.0                    # total labor fired
-    E::Float64 = 0.0                          # unemployment rate
-    switch_rate::Float64 = 0.0                # rate by which employed employees switch employer
+    hiring_producers::Vector{Int64} = Int64[] # array of hiring producers
+    firing_producers::Vector{Int64} = Int64[] # array of firing producers 
 
-    P_getunemployed::Float64 = 0.                # probability of an employed household getting unemployed
-    P_getemployed::Float64 = 0.                  # probability of an unemployed household getting employed
+    L_demanded::Float64 = 0.                  # total labor demanded
+    L_hired::Float64 = 0.                     # total labor hired
+    L_fired::Float64 = 0.                     # total labor fired
+    E::Float64 = 0.                           # unemployment rate
+    switch_rate::Float64 = 0.                 # rate by which employed employees switch employer
+
+    P_getunemployed::Float64 = 0.             # probability of an employed household getting unemployed
+    P_getemployed::Float64 = 0.               # probability of an unemployed household getting employed
 end
 
 
@@ -24,11 +25,6 @@ Households that are not assigned to a producer are declared unemployed.
 function spread_employees_lm!(
     labormarket::LaborMarket,
     government::Government, 
-    # all_hh::Vector{Int}, 
-    # all_cp::Vector{Int}, 
-    # all_kp::Vector{Int}, 
-    # n_init_emp_cp::Int, 
-    # n_init_emp_kp::Int,
     model::ABM
     )
 
@@ -61,50 +57,6 @@ function spread_employees_lm!(
 
     end
 
-    # Loop over cp, allocate households as employees
-    # for cp_id in model.all_cp
-    #     # employees = all_hh[i:i+n_init_emp_cp-1]
-
-    #     # Select employees
-    #     employees = model.all_hh[i:i + emp_per_producer - 1]
-
-    #     for hh_id in employees
-
-    #         # Initialize household wage at skill level
-    #         w = max(government.w_min, model[hh_id].skill)
-    #         set_employed_hh!(model[hh_id], w, cp_id)
-    #         model[hh_id].w .= w
-
-    #         hire_worker_p!(model[cp_id], model[hh_id])
-    #         push!(labormarket.employed_hh, hh_id)
-    #     end
-
-    #     model[cp_id].employees = employees
-    #     model[cp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
-    #     # i += n_init_emp_cp
-    #     i += emp_per_producer
-
-    # end
-
-    # # Loop over kp, allocate households as employees
-    # for kp_id in model.all_kp
-    #     # employees = all_hh[i:i+n_init_emp_kp-1]
-
-    #     # Select employees
-    #     employees = model.all_hh[i:i+emp_per_producer-1]
-
-    #     for hh_id in employees
-    #         w = max(government.w_min, model[hh_id].skill)
-    #         set_employed_hh!(model[hh_id], w, kp_id)
-    #         model[hh_id].w .= w
-    #         hire_worker_p!(model[kp_id], model[hh_id])
-    #         push!(labormarket.employed_hh, hh_id)
-    #     end
-    #     model[kp_id].employees = employees
-    #     model[kp_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
-    #     i += emp_per_producer
-    # end
-
     # Other households are pushed into unemployment
     for hh_id in model.all_hh[i:end]
         set_unemployed_hh!(model[hh_id])
@@ -126,11 +78,11 @@ Defines the whole labor market process
 """
 function labormarket_process!(
     labormarket::LaborMarket,
-    all_hh::Vector{Int}, 
-    all_p::Vector{Int}, 
+    all_hh::Vector{Int64}, 
+    all_p::Vector{Int64}, 
     globalparam::GlobalParam,
     government::Government,
-    t::Int,
+    t::Int64,
     model::ABM,
     to
     )
@@ -175,13 +127,13 @@ end
 
 
 """
-    update_hiring_firing_producers(labormarket::LaborMarket, all_p::Vector{Int}, model::ABM)
+    update_hiring_firing_producers(labormarket::LaborMarket, all_p::Vector{Int64}, model::ABM)
 
 Updates the arrays of hiring and firing producers in the labor market struct.    
 """
 function update_hiring_firing_producers(
     labormarket::LaborMarket,
-    all_p::Vector{Int},
+    all_p::Vector{Int64},
     model::ABM
     )
 
@@ -246,7 +198,7 @@ Matches job-seeking households with employee-seeking firms
 """
 function matching_lm(
     labormarket::LaborMarket,
-    all_p::Vector{Int},
+    all_p::Vector{Int64},
     model::ABM,
     )
     
@@ -258,7 +210,7 @@ function matching_lm(
 
     allowed_excess_L = 100
 
-    Lᵈ = Vector{Int}(undef, 100)
+    Lᵈ = Vector{Int64}(undef, 100)
 
     labormarket.L_demanded = length(labormarket.hiring_producers) > 0 ? sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers) : 0.0
     labormarket.L_hired = 0.0
@@ -277,7 +229,7 @@ function matching_lm(
         if length(labormarket.jobseeking_hh) == 0
             return
         elseif length(labormarket.jobseeking_hh) < length(Lᵈ)
-            Lᵈ = Vector{Int}(undef, length(labormarket.jobseeking_hh))
+            Lᵈ = Vector{Int64}(undef, length(labormarket.jobseeking_hh))
         end
 
         # Make queue of job-seeking households
@@ -288,7 +240,7 @@ function matching_lm(
         # w = map(hh_id -> model[hh_id].skill, labormarket.jobseeking_hh)
         # StatsBase.sample!(Lᵈ, Lᵈ, weights(w); replace=false)
 
-        to_be_hired = Vector{Int}()
+        to_be_hired = Int64[]
 
         for hh_id in Lᵈ
             # Only hire workers if wage can be afforded
@@ -310,7 +262,7 @@ function matching_lm(
         
         # Set offered wage to lowest requested wage that makes producer
         # meet the labor target
-        unemployed_to_employed = Vector{Int}()
+        unemployed_to_employed = Int64[]
 
         if length(to_be_hired) > 0
             model[p_id].wᴼ = model[to_be_hired[end]].wʳ
@@ -347,7 +299,7 @@ end
 
 function update_hiredworkers_lm!(
     labormarket::LaborMarket, 
-    to_be_hired::Vector{Int}
+    to_be_hired::Vector{Int64}
     )
 
     # Add newly employed workers to employed category
@@ -360,7 +312,7 @@ end
 
 function update_firedworker_lm!(
     labormarket::LaborMarket,
-    to_be_fired::Vector{Int}
+    to_be_fired::Vector{Int64}
     )
 
     # Add newly unemployed workers to unemployed category
@@ -375,9 +327,9 @@ end
 Finds employed workers that want to look for another job.
 """
 function find_employed_jobseekers_lm(
-    employed_hh::Vector{Int},
+    employed_hh::Vector{Int64},
     ψ_E::Float64
-    )::Vector{Int}
+    )::Vector{Int64}
 
     n = floor(Int64, length(employed_hh) * ψ_E)
     employed_jobseekers = sample(employed_hh, n)

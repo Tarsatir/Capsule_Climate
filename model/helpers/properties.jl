@@ -3,6 +3,9 @@ Model properties
 """
 mutable struct Properties
 
+    t::Int64
+    t_warmup::Int64
+
     """*******************************************************
     INITIALIZING PARAMETERS
     *******************************************************"""
@@ -21,6 +24,7 @@ mutable struct Properties
     gov::Government
     ep::EnergyProducer
     idxf::IndexFund
+    climate::Climate
 
 
     """*******************************************************
@@ -36,8 +40,7 @@ mutable struct Properties
     DATA STRUCTURES
     *******************************************************"""
     macroeconomy::MacroEconomy
-    # firmdata::DataFrame
-    # householddata::DataFrame
+    labormarket::LaborMarket
     kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}
     cmdata::CMData
 

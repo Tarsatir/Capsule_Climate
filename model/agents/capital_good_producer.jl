@@ -1,7 +1,8 @@
 @with_kw mutable struct CapitalGoodProducer <: AbstractAgent
-    id::Int                               # global id
-    kp_i::Int                             # kp index
-    age::Int = 0                          # firm age
+
+    id::Int64                               # global id
+    kp_i::Int64                             # kp index
+    age::Int64 = 0                          # firm age
     
     # Technology and innovation
     A_LP::Float64 = 1.0                   # labor prod sold machines
@@ -21,7 +22,7 @@
     true_c::Float64 = 0.0                 # true unit cost
     
     # Employment
-    employees::Vector{Int} = Int64[]      # employees in company
+    employees::Vector{Int64} = Int64[]      # employees in company
     mean_skill::Float64 = 1.0             # mean skill level of employees
     L::Float64 = 0.0                      # labor units in company
     L_RD::Float64 = 0.0                   # labor units used for R&D
@@ -40,7 +41,7 @@
     D::Vector{Float64} = zeros(Float64, 3)# hist demand
     EU::Float64 = 0.                      # energy use in the last period
 
-    HC::Vector{Int} = []                  # hist clients
+    HC::Vector{Int64} = []                  # hist clients
     Π::Vector{Float64} = zeros(Float64, 3)# hist profits
     Πᵀ::Vector{Float64} = zeros(Float64, 3)# hist profits after tax
     debt_installments::Vector{Float64}    # installments of debt repayments
@@ -58,9 +59,9 @@ Initializes kp agent, default is the heterogeneous state, otherwise properties a
     as optional arguments.
 """
 function initialize_kp(
-    id::Int, 
-    kp_i::Int,
-    n_captlgood::Int,
+    id::Int64, 
+    kp_i::Int64,
+    n_captlgood::Int64,
     b::Int64;
     NW=1000,
     A_LP=1.0,
@@ -101,10 +102,10 @@ function innovate_kp!(
     kp::CapitalGoodProducer, 
     government::Government,
     globalparam, 
-    all_kp::Vector{Int}, 
+    all_kp::Vector{Int64}, 
     kp_distance_matrix::Array{Float64},
     w̄::Float64,
-    t::Int,
+    t::Int64,
     ep,
     model::ABM,
     )
@@ -147,7 +148,7 @@ function choose_technology_kp!(
     w̄::Float64,
     globalparam::GlobalParam,
     tech_choices,
-    t::Int,
+    t::Int64,
     ep
     )
 
@@ -179,10 +180,10 @@ Creates brochures and sends to potential clients.
 """
 function send_brochures_kp!(
     kp::CapitalGoodProducer,
-    all_cp::Vector{Int}, 
+    all_cp::Vector{Int64}, 
     globalparam,
     model::ABM;
-    n_hist_clients=50::Int
+    n_hist_clients=50::Int64
     )
 
     # Update brochure
@@ -250,7 +251,7 @@ Uses inverse distances as weights for choice competitor to immitate
 """
 function imitate_technology_kp(
     kp::CapitalGoodProducer, 
-    all_kp::Vector{Int}, 
+    all_kp::Vector{Int64}, 
     kp_distance_matrix, 
     model::ABM
     )::Tuple{Float64, Float64, Float64, Float64, Float64, Float64}
@@ -343,13 +344,13 @@ end
 
 
 """
-    receive_order_kp!(kp::CapitalGoodProducer, cp_id::Int)
+    receive_order_kp!(kp::CapitalGoodProducer, cp_id::Int64)
 
 Lets kp receive orders, adds client as historical clients if it is not yet.
 """
 function receive_order_kp!(
     kp::CapitalGoodProducer,
-    cp_id::Int,
+    cp_id::Int64,
     order_size::Int64,
     freq_per_machine::Int64
     )
@@ -449,7 +450,7 @@ function produce_goods_kp!(
     kp::CapitalGoodProducer,
     ep,
     globalparam::GlobalParam,
-    t::Int
+    t::Int64
     )
 
     # Determine what the total demand is, regardless if it can be satisfied
@@ -542,7 +543,7 @@ function send_ordered_machines_kp!(
     kp::CapitalGoodProducer,
     ep,
     globalparam::GlobalParam,
-    t::Int,
+    t::Int64,
     model::ABM
     )
 
@@ -587,8 +588,8 @@ Lets kp select cp as historical clients
 """
 function select_HC_kp!(
     kp::CapitalGoodProducer, 
-    all_cp::Vector{Int};
-    n_hist_clients=10::Int
+    all_cp::Vector{Int64};
+    n_hist_clients=10::Int64
     )
 
     kp.HC = sample(all_cp, n_hist_clients; replace=false)
@@ -611,7 +612,7 @@ Filters out historical clients if they went bankrupt
 """
 function remove_bankrupt_HC_kp!(
     kp::CapitalGoodProducer,
-    bankrupt_cp::Vector{Int}
+    bankrupt_cp::Vector{Int64}
     )
 
     filter!(cp_id -> cp_id ∉ bankrupt_cp, kp.HC)
@@ -622,7 +623,7 @@ end
 Updates market share of all kp.
 """
 function update_marketshare_kp!(
-    all_kp::Vector{Int},
+    all_kp::Vector{Int64},
     model::ABM
     )
 
@@ -655,14 +656,14 @@ Replaces bankrupt kp with new kp. Gives them a level of technology and expectati
     from another kp. 
 """
 function replace_bankrupt_kp!(
-    bankrupt_kp::Vector{Int},
-    bankrupt_kp_i::Vector{Int},
-    all_kp::Vector{Int},
+    bankrupt_kp::Vector{Int64},
+    bankrupt_kp_i::Vector{Int64},
+    all_kp::Vector{Int64},
     globalparam::GlobalParam,
     indexfund::IndexFund,
     initparam::InitParam,
     macro_struct::MacroEconomy,
-    t::Int,
+    t::Int64,
     model::ABM
     )
 

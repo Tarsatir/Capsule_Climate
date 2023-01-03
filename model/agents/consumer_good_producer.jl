@@ -2,6 +2,7 @@
 Defines struct for consumer good producer
 """
 @with_kw mutable struct ConsumerGoodProducer <: AbstractAgent
+
     id::Int64                                 # global agent id
     cp_i::Int64                               # cp index
     age::Int64 = 0                            # firm age
@@ -44,7 +45,7 @@ Defines struct for consumer good producer
     Ξ::Vector{Machine}                        # machines
     n_machines::Float64 = 0.                  # total freq of machines # TODO rename
     cu::Float64 = 0.                          # capital utilizataion
-    employees::Vector{Int} = []               # employees list
+    employees::Vector{Int64} = []               # employees list
     L::Float64                                # labor units
     Lᵈ::Float64 = L                           # desired labor units
     ΔLᵈ::Float64 = 0.0                        # desired change in labor force
@@ -119,7 +120,7 @@ function plan_production_cp!(
     τˢ::Float64,
     n_hh::Int64,
     n_cp::Int64,
-    t::Int,
+    t::Int64,
     model::ABM
     )
 
@@ -169,7 +170,7 @@ function plan_investment_cp!(
     all_kp::Vector{Int64},
     globalparam::GlobalParam,
     ep::AbstractAgent,
-    t::Int,
+    t::Int64,
     model::ABM
 )
 
@@ -268,7 +269,7 @@ function check_funding_restrictions_cp!(
 
     #             # Decrease amount of expansionary investment.
     #             poss_EI = cp.cI + max_add_debt
-    #             cp.n_mach_ordered_EI = floor(Int, cp.n_mach_ordered_EI * (poss_EI / cp.EIᵈ))
+    #             cp.n_mach_ordered_EI = floor(Int64, cp.n_mach_ordered_EI * (poss_EI / cp.EIᵈ))
     #             cp.n_mach_ordered_RS = 0
     #             cp.mach_tb_repl = []
 
@@ -276,7 +277,7 @@ function check_funding_restrictions_cp!(
 
     #             # Full expansion is possible, decrease amount of replacement investments
     #             poss_RS = cp.cI + max_add_debt - cp.EIᵈ
-    #             cp.n_mach_ordered_RS = floor(Int, cp.n_mach_ordered_RS * (poss_RS / cp.RSᵈ))
+    #             cp.n_mach_ordered_RS = floor(Int64, cp.n_mach_ordered_RS * (poss_RS / cp.RSᵈ))
 
     #             if cp.n_mach_ordered_RS > 0
     #                 cp.mach_tb_repl = cp.mach_tb_repl[1:cp.n_mach_ordered_RS]
@@ -316,10 +317,10 @@ Lets cp make decision for kp out of available kp in brochures.
 function rank_producers_cp!(
     cp::ConsumerGoodProducer,
     government::Government, 
-    b::Int, 
-    all_kp::Vector{Int},
+    b::Int64, 
+    all_kp::Vector{Int64},
     ep::AbstractAgent,
-    t::Int,
+    t::Int64,
     model::ABM
     )
 
@@ -379,7 +380,7 @@ function plan_replacement_cp!(
     government::Government,
     globalparam::GlobalParam,
     ep::AbstractAgent,
-    t::Int,
+    t::Int64,
     model::ABM
     )
 
@@ -511,7 +512,7 @@ end
 #     globalparam::GlobalParam,
 #     ep::AbstractAgent,
 #     # roundnr::Int64,
-#     t::Int,
+#     t::Int64,
 #     model::ABM
 #     )
 
@@ -645,12 +646,12 @@ function produce_goods_cp!(
     cp::ConsumerGoodProducer,
     ep::AbstractAgent,
     globalparam::GlobalParam,
-    t::Int
+    t::Int64
     )
 
     # If the cp does not need to use its complete capital stock, only use most productive 
     # machines
-    n_machines_req = ceil(Int, cp.Qˢ / globalparam.freq_per_machine)
+    n_machines_req = ceil(Int64, cp.Qˢ / globalparam.freq_per_machine)
     if n_machines_req < length(cp.Ξ)
         # Compute number of machines needed (machines already ordered on productivity, 
         # least to most productive)
@@ -755,7 +756,7 @@ function receive_machines_cp!(
     ep, 
     new_machines::Vector{Machine},
     Iₜ::Float64,
-    t::Int
+    t::Int64
     )
 
     cp.curracc.TCI += Iₜ
@@ -785,15 +786,15 @@ end
 Replaces cp, places cp in firm list of hh.
 """
 function replace_bankrupt_cp!(
-    bankrupt_cp::Vector{Int},
-    bankrupt_kp::Vector{Int},
-    all_hh::Vector{Int},
-    all_cp::Vector{Int},
-    all_kp::Vector{Int},
+    bankrupt_cp::Vector{Int64},
+    bankrupt_kp::Vector{Int64},
+    all_hh::Vector{Int64},
+    all_cp::Vector{Int64},
+    all_kp::Vector{Int64},
     globalparam::GlobalParam,
     indexfund::IndexFund,
     macro_struct::MacroEconomy,
-    t::Int,
+    t::Int64,
     model::ABM
     )
 
@@ -819,9 +820,9 @@ function replace_bankrupt_cp!(
     # New cp receive an advanced type of machine, first select kp ids proportional
     # to their market share. cp can also select kp ids that went bankrupt in this 
     # period, as these producers have already been replaced with new companies
-    kp_choice_ids = zeros(Int, n_bankrupt_cp)
+    kp_choice_ids = zeros(Int64, n_bankrupt_cp)
     kp_choice_ps = zeros(Float64, n_bankrupt_cp)
-    all_n_machines = zeros(Int, n_bankrupt_cp)
+    all_n_machines = zeros(Int64, n_bankrupt_cp)
 
     for i in 1:n_bankrupt_cp
         # Decide from which kp to buy
@@ -829,7 +830,7 @@ function replace_bankrupt_cp!(
         kp_choice_ps[i] = model[kp_choice_ids[i]].p[end]
 
         # Compute the number of machines each cp will buy
-        all_n_machines[i] = floor(Int, capital_coefficients[i] * avg_n_machines / globalparam.freq_per_machine)
+        all_n_machines[i] = floor(Int64, capital_coefficients[i] * avg_n_machines / globalparam.freq_per_machine)
     end
 
     # Compute share of investments that can be paid from the investment fund
@@ -935,7 +936,7 @@ Updates capital stock n_machines
 """
 function update_n_machines_cp!(
     cp::ConsumerGoodProducer,
-    freq_per_machine::Int
+    freq_per_machine::Int64
     )
 
     # Retire old machines that are not replaced
