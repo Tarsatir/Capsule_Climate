@@ -626,7 +626,7 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T::Int64=660,
+    T::Int64=100,
     t_warmup::Int64=300,
     changed_params::Union{Dict,Nothing}=nothing,
     changedparams_ofat::Union{Dict,Nothing}=nothing,

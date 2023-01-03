@@ -56,7 +56,7 @@ function spread_employees_lm!(
 
         model[p_id].employees = employees
         model[p_id].L = length(employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, employees) : 0.0
-        # i += n_init_emp_cp
+
         i += emp_per_producer
 
     end
