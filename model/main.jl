@@ -250,31 +250,60 @@ to save of the agents and model, respectively (see `Agents.jl` documentation).
 
 """
 function initialize_datacategories(
+    model::ABM,
     savedata::Bool
 )::Tuple{Vector{Tuple}, Vector{Tuple}}
 
-    hh(a) = a isa Household
-    cp(a) = a isa ConsumerGoodProducer
-    kp(a) = a isa CapitalGoodProducer
-
     if savedata
+
+        # Define boolean functions that specify correct agent type
+        hh(a) = a isa Household
+        cp(a) = a isa ConsumerGoodProducer
+        kp(a) = a isa CapitalGoodProducer
+
+        # Define which data of agents should be saved
+        # POOR MEMORY PERFORMANCE, ONLY USE WHEN AGGREGATED MACRO VARIABLES NOT ADEQUATE
         adata = [
+            # Household data
             (:total_I, mean, hh)
-            (:labor_I, mean, hh)
-            (:capital_I, mean, hh)
-            (:UB_I, mean, hh)
-            (:socben_I, mean, hh)
+            # (:total_I, std, hh)
 
-            (:total_I, std, hh)
-            (:labor_I, std, hh)
-            (:capital_I, std, hh)
-            (:UB_I, std, hh)
-            (:socben_I, std, hh)
+            # (:labor_I, mean, hh)
+            # (:labor_I, std, hh)
+
+            # (:capital_I, mean, hh)
+            # (:capital_I, std, hh)
+
+            # (:UB_I, mean, hh)
+            # (:UB_I, std, hh)
+
+            # (:socben_I, mean, hh)
+            # (:socben_I, std, hh)
+
+            # Consumer good producer data
+
+
+            # Capital good producer data
         ]
 
-        mdata = [
+        # Define which model-wide data should be saved
+        # mdata = [
 
-        ]
+        #     # Global data
+
+
+        #     # Household data
+
+        # ]
+
+        # model.mdata_tosave = [
+        #     :GDP,
+
+        # ]
+
+        # mdata = get_mdata
+
+        mdata = []
 
         return adata, mdata
     end
@@ -591,7 +620,7 @@ function model_step!(
 
     # (7) macro-economic indicators are updated.
     @timeit timer "update macro ts" update_macro_timeseries(
-        macroeconomy,
+        # macroeconomy,
         t, 
         all_hh, 
         all_cp, 
@@ -705,10 +734,10 @@ function run_simulation(;
     )
 
     # Initialize data categories that need to be saved
-    adata, mdata = initialize_datacategories(savedata)
+    adata, mdata = initialize_datacategories(model, savedata)
 
     # Run model
-    @time agent_df, model_df = run!(
+    @timeit timer "runmodel" agent_df, model_df = run!(
                                         model, 
                                         dummystep, 
                                         model_step!, 
@@ -770,6 +799,7 @@ function run_simulation(;
 end
 
 @time run_simulation(
+    T=60;
     savedata=true,
     # track_firms_households=true,
     seed=1234    
