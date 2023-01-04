@@ -57,3 +57,6 @@ results/validation/validation_samples
 testbash.sh
 
 Trial_notebooks
+
+# CBS datasets should not be pushed to git
+data

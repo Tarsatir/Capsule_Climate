@@ -141,7 +141,33 @@
     W_80::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 80% of wealth
     W_max::Vector{Float64} = zeros(Float64, T)              # Maximum wealth level in the economy
 
+    # NOTE: TEMP COMMENTED AWAY
     α_W_quantiles::Matrix{Float64} = zeros(Float64, 5, T)   # Matrix containing average α for different wealth quintiles
+end
+
+
+# getval(cat) = getproperty(model.macroeconomy, cat)[model.t]
+
+# function get_mdata(
+#     model::ABM
+# )
+#     return map(cat -> (cat, getval), model.mdata_tosave)
+# end
+
+
+function get_mdata(
+    model::ABM
+)::DataFrame
+
+    # If mdata to save is not specified, save all data in macro struct
+    categories = fieldnames(typeof(model.macroeconomy))[2:end-1]
+    if !isnothing(model.mdata_tosave)
+        categories = model.mdata_tosave
+    end
+
+    model_dict = Dict(cat => getproperty(model.macroeconomy, cat) 
+                      for cat in categories)
+    return DataFrame(model_dict)
 end
 
 

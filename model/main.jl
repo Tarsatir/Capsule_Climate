@@ -109,7 +109,7 @@ function initialize_model(
     all_p = vcat(all_cp, all_kp)
 
     properties = Properties(
-                                0,
+                                1,
                                 t_warmup,
 
                                 initparam,
@@ -125,6 +125,7 @@ function initialize_model(
                                 all_kp,
                                 all_p,
 
+                                nothing,
                                 macroeconomy,
                                 labormarket,
                                 kp_brochures,
@@ -266,19 +267,19 @@ function initialize_datacategories(
         adata = [
             # Household data
             (:total_I, mean, hh)
-            # (:total_I, std, hh)
+            (:total_I, std, hh)
 
-            # (:labor_I, mean, hh)
-            # (:labor_I, std, hh)
+            (:labor_I, mean, hh)
+            (:labor_I, std, hh)
 
-            # (:capital_I, mean, hh)
-            # (:capital_I, std, hh)
+            (:capital_I, mean, hh)
+            (:capital_I, std, hh)
 
-            # (:UB_I, mean, hh)
-            # (:UB_I, std, hh)
+            (:UB_I, mean, hh)
+            (:UB_I, std, hh)
 
-            # (:socben_I, mean, hh)
-            # (:socben_I, std, hh)
+            (:socben_I, mean, hh)
+            (:socben_I, std, hh)
 
             # Consumer good producer data
 
@@ -296,10 +297,13 @@ function initialize_datacategories(
 
         # ]
 
-        # model.mdata_tosave = [
-        #     :GDP,
+        model.mdata_tosave = [
+            # GDP
+            :GDP, :GDP_I, :GDP_Π_cp, :GDP_Π_kp, :GDP_growth,
 
-        # ]
+            # Money supply
+            :M, :M_hh, :M_cp, :M_kp, :M_ep, :M_gov, :M_if
+        ]
 
         # mdata = get_mdata
 
@@ -314,22 +318,10 @@ end
 
 
 function model_step!(
-    # t::Int64,
-    # t_warmup::Int64,
-    # timer,
-    # globalparam::GlobalParam, 
-    # initparam::InitParam,
-    # macroeconomy::MacroEconomy, 
-    # government::Government,
-    # ep::EnergyProducer, 
-    # labormarket::LaborMarket,
-    # indexfund::IndexFund,
-    # climate::Climate,
-    # cmdata::CMData,
     model::ABM
-    )::ABM
+)::ABM
 
-    model.t += 1
+    # TODO incorporate this in all the functions
     t = model.t
     t_warmup = model.t_warmup
     globalparam = model.g_param 
@@ -637,14 +629,6 @@ function model_step!(
         timer
     )
 
-    # if firmdata ≠ nothing
-    #     appendfirmdata!(firmdata, all_cp, all_kp, t, model)
-    # end
-
-    # if householddata ≠ nothing
-    #     appendhouseholddata!(householddata, all_hh, t, t_warmup, model)
-    # end
-
     # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
 
@@ -689,8 +673,9 @@ function model_step!(
         model
     )
 
-    # return model, globalparam, initparam, macroeconomy, government, ep, labormarket, 
-    #         indexfund, climate, ep, cmdata
+    # Increment time by one step
+    model.t += 1
+
     return model
 end
 
@@ -737,7 +722,7 @@ function run_simulation(;
     adata, mdata = initialize_datacategories(model, savedata)
 
     # Run model
-    @timeit timer "runmodel" agent_df, model_df = run!(
+    @timeit timer "runmodel" agent_df, _ = run!(
                                         model, 
                                         dummystep, 
                                         model_step!, 
@@ -747,14 +732,15 @@ function run_simulation(;
                                         showprogress = true
                                     )
 
-    display(agent_df)
+    # Get macro variables from macroeconomy struct
+    model_df = get_mdata(model)
 
     # Save agent dataframe and model dataframe to csv
     if savedata
         # NOTE: CONVERSION DF TO STRING IS TMP SOLUTION, SHOULD BE FIXED BACK WHEN PACKAGES 
         #       ARE CONSISTENT AGAIN!
         CSV.write(string("results/result_data/agent_data_", seed, ".csv"), string.(agent_df))
-        CSV.write(string("results/result_data/model_data_", seed, ".csv"), string.(model_df))
+        CSV.write(string("results/result_data/model_data_", seed, ".csv"), model_df)
     end
     
     # @time for t in 1:T

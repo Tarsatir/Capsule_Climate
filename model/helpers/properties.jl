@@ -39,6 +39,7 @@ mutable struct Properties
     """*******************************************************
     DATA STRUCTURES
     *******************************************************"""
+    mdata_tosave::Union{Nothing, Vector{Symbol}}
     macroeconomy::MacroEconomy
     labormarket::LaborMarket
     kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}
