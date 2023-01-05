@@ -125,6 +125,7 @@ function initialize_model(
                                 all_p,
 
                                 nothing,
+                                nothing,
                                 macroeconomy,
                                 labormarket,
                                 kp_brochures,
@@ -304,6 +305,12 @@ function initialize_datacategories(
             ]
         end
 
+        # Define data of energy producer required to make plots
+        model.epdata_tosave = [
+            :D_ep, :Qmax_ep, :green_capacity, :dirty_capacity,
+            :RD_ep, :IN_g, :IN_d, :p_ep 
+        ]
+
         mdata = []
 
         return adata, mdata
@@ -393,7 +400,7 @@ function model_step!(
         )
 
         # Update cost of production and price
-        compute_c_kp!(model[kp_id], government, ep.pₑ[t])
+        compute_c_kp!(model[kp_id], government, ep.p_ep[t])
         compute_p_kp!(model[kp_id])
 
         # Send brochures to cp
@@ -471,7 +478,7 @@ function model_step!(
     end
 
     for cp_id in all_cp
-        check_funding_restrictions_cp!(model[cp_id], government, globalparam, ep.pₑ[t])
+        check_funding_restrictions_cp!(model[cp_id], government, globalparam, ep.p_ep[t])
     end
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
@@ -515,7 +522,7 @@ function model_step!(
     
     # (6) Transactions take place on consumer market
 
-    all_W = map(hh_id -> model[hh_id].W, all_hh)
+    # all_W = map(hh_id -> model[hh_id].W, all_hh)
 
     # TODO: change to actual expected returns
     ERt = t == 1 ? 0.07 : macroeconomy.returns_investments[t-1]

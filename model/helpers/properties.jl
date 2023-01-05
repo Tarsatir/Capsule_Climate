@@ -40,10 +40,10 @@ mutable struct Properties
     DATA STRUCTURES
     *******************************************************"""
     mdata_tosave::Union{Nothing, Vector{Symbol}}
+    epdata_tosave::Union{Nothing, Vector{Symbol}}
     macroeconomy::MacroEconomy
     labormarket::LaborMarket
     kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}
     cmdata::CMData
     ginidata::Matrix{Float64}
-
 end

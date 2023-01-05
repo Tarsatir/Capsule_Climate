@@ -59,6 +59,10 @@ def plot_macro_vars(df):
     ax[2,0].set_title('Aggregate C and I')
     ax[2,0].legend()
 
+    ax[2,1].plot(T, df.GDP_growth, label='GDP')
+    ax[2,1].set_title('growth rates')
+    ax[2,1].legend()
+
     plt.tight_layout()
     plt.savefig('plots/macro_ts.png', bbox_inches='tight')
 
@@ -437,19 +441,19 @@ def plot_inequality(df_macro):
     plt.savefig('plots/inequality.png')
 
 
-def plot_energy(df_climate_energy, df_macro):
+def plot_energy(df:pd.DataFrame):
 
     fig, ax = plt.subplots(2, 2, figsize=(8,6))
 
-    T = range(len(df_climate_energy.energy_demand))
+    T = range(len(df.D_ep))
 
     # Plot energy use and capacities
-    ax[0,0].plot(T, df_climate_energy.energy_demand, label='$D_{e}(t)$', color='red')
-    ax[0,0].plot(T, df_climate_energy.total_capacity, label='$\\bar{Q}_e$', 
+    ax[0,0].plot(T, df.D_ep, label='$D_{e}(t)$', color='red')
+    ax[0,0].plot(T, df.Qmax_ep, label='$\\bar{Q}_e$', 
                color='blue', linestyle='dashed')
-    ax[0,0].plot(T, df_climate_energy.green_capacity, label='green capacity', 
+    ax[0,0].plot(T, df.green_capacity, label='green capacity', 
                color='green')
-    ax[0,0].plot(T, df_climate_energy.total_capacity - df_climate_energy.green_capacity, 
+    ax[0,0].plot(T, df.Qmax_ep - df.green_capacity, 
                label='dirty capacity', color='brown')
     ax[0,0].set_title('Energy demand and consumption')
     ax[0,0].set_xlabel('Time')
@@ -458,18 +462,18 @@ def plot_energy(df_climate_energy, df_macro):
     ax[0,0].legend()
 
     # Plot energy intensity
-    ax[0,1].plot(T, df_climate_energy.energy_demand / (df_macro.GDP / df_macro.CPI))
+    ax[0,1].plot(T, df.D_ep / (df_macro.GDP / df_macro.CPI_cp))
     ax[0,1].set_title('Energy intensity per unit of real GDP')
     ax[0,1].set_xlabel('Time')
     ax[0,1].set_ylabel('Energy intensity')
     
     # Plot innovation spending
-    ax[1,0].plot(T, df_climate_energy.RD, label='total R&D spending', color='blue', linestyle='dashed')
-    ax[1,0].plot(T, df_climate_energy.IN_g, label='green R&D spending', color='green')
-    ax[1,0].plot(T, df_climate_energy.IN_d, label='dirty R&D spending', color='brown')
+    ax[1,0].plot(T, df.RD_ep, label='total R&D spending', color='blue', linestyle='dashed')
+    ax[1,0].plot(T, df.IN_g, label='green R&D spending', color='green')
+    ax[1,0].plot(T, df.IN_d, label='dirty R&D spending', color='brown')
     ax[1,0].legend()
 
-    ax[1,1].plot(T, df_climate_energy.p_e, label='energy prices')
+    ax[1,1].plot(T, df.p_ep, label='energy prices')
     ax[1,1].set_title('Energy prices')
     ax[1,1].legend()
 
@@ -599,7 +603,7 @@ if __name__=="__main__":
     plot_sales_dist()
 
     # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
-    # plot_energy(df_climate_energy, df_macro)
+    plot_energy(df_macro)
     # plot_climate(df_climate_energy, df_macro)
     # plot_emissions(df_climate_energy, df_macro)
 

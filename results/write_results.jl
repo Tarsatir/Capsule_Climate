@@ -137,7 +137,7 @@ using CSV
 function save_simdata(
     agent_df::DataFrame,
     model_df::DataFrame,
-    seed::Int64
+    seed::Int64,
 )
     # NOTE: CONVERSION DF TO STRING IS TMP SOLUTION, SHOULD BE FIXED BACK WHEN PACKAGES 
         #       ARE CONSISTENT AGAIN!
@@ -197,7 +197,7 @@ function save_climate_data(
         green_capacity = energy_producer.green_capacity,
         dirty_capacity = energy_producer.dirty_capacity,
 
-        p_e = energy_producer.pₑ,
+        p_e = energy_producer.p_ep,
 
         RD = energy_producer.RDₑ,
         IN_g = energy_producer.IN_g,

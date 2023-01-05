@@ -85,7 +85,7 @@ function labormarket_process!(
     t::Int64,
     model::ABM,
     to
-    )
+)
 
     # Update which producers want to hire or fire workers
     update_hiring_firing_producers(labormarket, all_p, model)

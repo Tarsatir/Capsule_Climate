@@ -37,7 +37,7 @@ function instatetaxes!(
     )
 
     # If changed tax rates passed, change in government struct
-    if government.changedtaxrates ≠ nothing
+    if !isnothing(government.changedtaxrates)
         for (taxtype, taxrate) in government.changedtaxrates
             setproperty!(government, taxtype, taxrate)
         end

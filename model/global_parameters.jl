@@ -44,7 +44,7 @@
     # Determine expectation updating cp
     ω::Float64 = 0.8                # memory parameter adaptive updating rules
     λ::Float64 = 0.7                # parameter for labor demand smoothing
-    p_rigid_time::Int64 = 3         # number of periods producer's price remains stable
+    p_rigid_time::Int64 = 1         # number of periods producer's price remains stable
 
     # Determine household consumption
     α_cp::Float64 = 0.75            # parameter controlling APC of consumers

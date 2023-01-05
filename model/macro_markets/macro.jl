@@ -68,8 +68,8 @@
     switch_rate::Vector{Float64} = zeros(Float64, T)        # rate of switching employers
     Exp_UB::Vector{Float64} = zeros(Float64, T)             # total spending on UB
     dL_avg::Vector{Float64} = zeros(Float64, T)             # average desired labor change
-    dL_cp_avg::Vector{Float64} = zeros(Float64, T)           # average desired over time for cp
-    dL_kp_avg::Vector{Float64} = zeros(Float64, T)           # average desired over time for kp
+    dL_cp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for cp
+    dL_kp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for kp
     
     # Investments
     RD_total::Vector{Float64} = zeros(Float64, T)           # total R&D investments
@@ -133,13 +133,18 @@ function get_mdata(
 )::DataFrame
 
     # If mdata to save is not specified, save all data in macro struct
-    categories = fieldnames(typeof(model.macroeconomy))[2:end-1]
+    macro_categories = fieldnames(typeof(model.macroeconomy))[2:end-1]
     if !isnothing(model.mdata_tosave)
-        categories = model.mdata_tosave
+        macro_categories = model.mdata_tosave
     end
 
-    model_dict = Dict(cat => getproperty(model.macroeconomy, cat) 
-                      for cat in categories)
+    macro_dict = Dict(cat => getproperty(model.macroeconomy, cat) 
+                      for cat in macro_categories)
+
+    ep_dict = Dict(cat => getproperty(model.ep, cat) for cat in model.epdata_tosave)
+
+    model_dict = merge(macro_dict, ep_dict)
+
     return DataFrame(model_dict)
 end
 
@@ -209,7 +214,7 @@ function update_macro_timeseries(
     update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, globalparam.Λ, t, model)
 
     # Investment
-    model.macroeconomy.RD_total[t] = sum(kp_id -> model[kp_id].RD, all_kp) + ep.RDₑ[t]
+    model.macroeconomy.RD_total[t] = sum(kp_id -> model[kp_id].RD, all_kp) + ep.RD_ep[t]
     model.macroeconomy.EI_avg[t] = mean(cp_id -> model[cp_id].EIᵈ, all_cp)
     model.macroeconomy.n_mach_EI_avg[t] = mean(cp_id -> model[cp_id].n_mach_ordered_EI, all_cp)
     model.macroeconomy.RS_avg[t] = mean(cp_id -> model[cp_id].RSᵈ, all_cp)
@@ -368,7 +373,7 @@ function compute_M!(
     model.macroeconomy.M_kp[t] = sum(kp_id -> model[kp_id].balance.NW, all_kp)
 
     # Liquid assets of ep
-    model.macroeconomy.M_ep[t] = ep.NWₑ[t]
+    model.macroeconomy.M_ep[t] = ep.NW_ep[t]
 
     # Money owned by government
     model.macroeconomy.M_gov[t] = government.MS

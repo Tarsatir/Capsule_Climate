@@ -144,9 +144,10 @@ function plan_production_cp!(
     update_w̄_p!(cp, model)
 
     # Update cost of production c
-    compute_c_cp!(cp, ep.pₑ[t], government.τᴱ, government.τᶜ)
+    compute_c_cp!(cp, ep.p_ep[t], government.τᴱ, government.τᶜ)
 
-    if checkupdateprice(cp.id, t, n_hh, n_cp, globalparam.p_rigid_time)
+    # if checkupdateprice(cp.id, t, n_hh, n_cp, globalparam.p_rigid_time)
+    if rand() < 1 / globalparam.p_rigid_time
 
         # Update markup μ
         update_μ_p!(cp, globalparam.ϵ_μ, t)
@@ -191,7 +192,7 @@ function plan_investment_cp!(
 
     # See if enough funds available for investments and production, otherwise
     # change investments and production to match funding availability.
-    check_funding_restrictions_cp!(cp, government, globalparam, ep.pₑ[t])
+    check_funding_restrictions_cp!(cp, government, globalparam, ep.p_ep[t])
 
     # Send orders to kp
     order_machines_cp!(cp, globalparam.freq_per_machine, model)
@@ -227,12 +228,12 @@ function check_funding_restrictions_cp!(
     cp::ConsumerGoodProducer,
     government::Government,
     globalparam::GlobalParam,
-    pₑ::Float64
+    p_ep::Float64
     )
 
     # Determine expected TCL and TCE
     TCLᵉ = (cp.L + cp.ΔLᵈ) * cp.w̄[end]
-    TCE = cp.Qˢ * ((pₑ + government.τᴱ) / cp.π_EE + government.τᶜ * cp.π_EF)
+    TCE = cp.Qˢ * ((p_ep + government.τᴱ) / cp.π_EE + government.τᶜ * cp.π_EF)
 
     # Determine how much additional debt can be made
     max_add_debt = max(globalparam.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
@@ -248,7 +249,7 @@ function check_funding_restrictions_cp!(
 
         cp.possible_I = 0
 
-        poss_prod = (NW_no_prod + max_add_debt) / cop(cp.w̄[end], cp.π_LP, government.τᴱ, pₑ, cp.π_EE, government.τᶜ, cp.π_EF)
+        poss_prod = (NW_no_prod + max_add_debt) / cop(cp.w̄[end], cp.π_LP, government.τᴱ, p_ep, cp.π_EE, government.τᶜ, cp.π_EF)
         poss_L = poss_prod / cp.π_LP
         cp.ΔLᵈ = poss_L - cp.L
     end
@@ -299,8 +300,8 @@ function check_funding_restrictions_cp!(
     #     if (NW_no_prod + max_add_debt) < (TCLᵉ + TCE)
     #         # Cost of labor exceeds expected liquid assets plus max additional debt. 
     #         # Decrease production quantity.
-    #         # poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + pₑ / cp.π_EE)
-    #         poss_prod = (NW_no_prod + max_add_debt) / cop(cp.w̄[end], cp.π_LP, government.τᴱ, pₑ, cp.π_EE, government.τᶜ, cp.π_EF)
+    #         # poss_prod = (NW_no_prod + max_add_debt) / (cp.w̄[end] / cp.π_LP + p_ep / cp.π_EE)
+    #         poss_prod = (NW_no_prod + max_add_debt) / cop(cp.w̄[end], cp.π_LP, government.τᴱ, p_ep, cp.π_EE, government.τᶜ, cp.π_EF)
     #         poss_L = poss_prod / cp.π_LP
     #         cp.ΔLᵈ = poss_L - cp.L
     #     end
@@ -342,7 +343,7 @@ function rank_producers_cp!(
                                 cp.w̄[end], 
                                 get(brochure, :A_LP, nothing), 
                                 government.τᴱ, 
-                                ep.pₑ[t], 
+                                ep.p_ep[t], 
                                 get(brochure, :A_EE, nothing), 
                                 government.τᶜ, 
                                 get(brochure, :A_EF, nothing)
@@ -395,7 +396,7 @@ function plan_replacement_cp!(
                     cp.w̄[end], 
                     get(brochure, :A_LP, nothing), 
                     government.τᴱ, 
-                    ep.pₑ[t], 
+                    ep.p_ep[t], 
                     get(brochure, :A_EE, nothing), 
                     government.τᶜ, 
                     get(brochure, :A_EF, nothing)
@@ -437,7 +438,7 @@ function plan_replacement_cp!(
     # max_mach_poss = floor(Int64, cp.possible_I / p_star)
 
     # Sort to-be-replaced machines from lowest to highest production costs
-    # sort!(cp.mach_tb_repl, by=machine->cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], 
+    # sort!(cp.mach_tb_repl, by=machine->cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.p_ep[t], 
     #                                        machine.A_EE, government.τᶜ, machine.A_EF), rev=true)
 
     # Update total amount of to-be-replaces machines
@@ -529,7 +530,7 @@ end
 #                     cp.w̄[end], 
 #                     get(brochure, :A_LP, nothing), 
 #                     government.τᴱ, 
-#                     ep.pₑ[t], 
+#                     ep.p_ep[t], 
 #                     get(brochure, :A_EE, nothing), 
 #                     government.τᶜ, 
 #                     get(brochure, :A_EF, nothing)
@@ -579,7 +580,7 @@ end
 #     max_mach_poss = floor(Int64, cp.possible_I / p_star)
 
 #     # Sort to-be-replaced machines from lowest to highest production costs
-#     sort!(cp.mach_tb_repl, by=machine->cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], 
+#     sort!(cp.mach_tb_repl, by=machine->cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.p_ep[t], 
 #                                            machine.A_EE, government.τᶜ, machine.A_EF), rev=true)
 
 #     # Update total amount of to-be-replaces machines
@@ -670,7 +671,7 @@ function produce_goods_cp!(
     shift_and_append!(cp.Q, Q)
 
     # Update energy use and carbon emissions from production
-    update_EU_TCE_cp!(cp, actual_π_EE, ep.pₑ[t])
+    update_EU_TCE_cp!(cp, actual_π_EE, ep.p_ep[t])
     update_emissions_cp!(cp, actual_em)
     
     # Update rate of capital utilization
@@ -742,7 +743,7 @@ function receive_machines_cp!(
         # that were delivered
 
         # Sort machines by cost of production, replace most expensive first
-        sort!(cp.mach_tb_repl, by=machine->cp.w̄[end]/machine.A_LP + ep.pₑ[t]/machine.A_EE; rev=true)
+        sort!(cp.mach_tb_repl, by=machine->cp.w̄[end]/machine.A_LP + ep.p_ep[t]/machine.A_EE; rev=true)
         # filter!(machine -> machine ∉ cp.mach_tb_repl[1:length(new_machines)], cp.Ξ)
         for i in 1:length(new_machines)
             filter!(machine -> machine ≠ cp.mach_tb_repl[i], cp.Ξ)
@@ -964,13 +965,13 @@ Compute production cost per unit c
 """
 function compute_c_cp!(
     cp::ConsumerGoodProducer,
-    pₑ::Float64,
+    p_ep::Float64,
     τᴱ::Float64,
     τᶜ::Float64
     )
 
     if cp.L + cp.ΔLᵈ > 0
-        c = cop(cp.w̄[end], cp.π_LP, τᴱ, pₑ, cp.π_EE, τᶜ, cp.π_EF)
+        c = cop(cp.w̄[end], cp.π_LP, τᴱ, p_ep, cp.π_EE, τᶜ, cp.π_EF)
         shift_and_append!(cp.c, c)
     else
         shift_and_append!(cp.c, cp.c[end])
@@ -1036,11 +1037,11 @@ Updates energy use for production
 function update_EU_TCE_cp!(
     cp::ConsumerGoodProducer,
     actual_π_EE::Float64,
-    pₑ::Float64
+    p_ep::Float64
     )
 
     cp.EU = length(cp.Ξ) > 0 ? cp.Q[end] / actual_π_EE : 0.0
-    cp.curracc.TCE = pₑ * cp.EU
+    cp.curracc.TCE = p_ep * cp.EU
 end
 
 

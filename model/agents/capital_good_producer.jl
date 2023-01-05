@@ -157,8 +157,8 @@ function choose_technology_kp!(
     # Make choice between possible technologies
     if length(tech_choices) > 1
         #   Lamperti et al (2018), eq 1 and 2, augmented for tax rates
-        c_h_cp = map(tech -> cop(w̄, tech[1], government.τᴱ, ep.pₑ[t], tech[2], government.τᶜ, tech[3]), tech_choices)
-        c_h_kp = map(tech -> cop(kp.w̄[end], tech[4], government.τᴱ, ep.pₑ[t], tech[5], government.τᶜ,  tech[6]), tech_choices)
+        c_h_cp = map(tech -> cop(w̄, tech[1], government.τᴱ, ep.p_ep[t], tech[2], government.τᶜ, tech[3]), tech_choices)
+        c_h_kp = map(tech -> cop(kp.w̄[end], tech[4], government.τᴱ, ep.p_ep[t], tech[5], government.τᶜ,  tech[6]), tech_choices)
  
         p_h = map(c -> (1 + kp.μ[end]) * c, c_h_kp)
         r_h = c_h_cp .* globalparam.b .+ p_h
@@ -269,10 +269,10 @@ Lets kp update unit costs
 function compute_c_kp!(
     kp::CapitalGoodProducer,
     government::Government,
-    pₑ::Float64
+    p_ep::Float64
     )
 
-    c_t = cop(kp.w̄[end], kp.B_LP, government.τᴱ, pₑ, kp.B_EE, government.τᶜ, kp.B_EF)
+    c_t = cop(kp.w̄[end], kp.B_LP, government.τᴱ, p_ep, kp.B_EE, government.τᶜ, kp.B_EF)
     if kp.Q[end] > 0
         c_t += kp.RD / kp.Q[end]
     end
@@ -501,7 +501,7 @@ function produce_goods_kp!(
     shift_and_append!(kp.Q, Q)
 
     # Update energy use from production
-    update_EU_TCE_kp!(kp, ep.pₑ[t])
+    update_EU_TCE_kp!(kp, ep.p_ep[t])
 
     update_emissions_kp!(kp)
 
@@ -517,11 +517,11 @@ Updates the energy use (EU) and total cost of energy (TCE) of kp
 """
 function update_EU_TCE_kp!(
     kp::CapitalGoodProducer, 
-    pₑ::Float64
+    p_ep::Float64
     )
 
     kp.EU = kp.Q[end] / kp.B_EE
-    kp.curracc.TCE = pₑ * kp.EU
+    kp.curracc.TCE = p_ep * kp.EU
 end
 
 

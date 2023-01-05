@@ -67,5 +67,5 @@ function update_cop_machine!(
     t::Int64
 )
 
-    machine.cop = cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.pₑ[t], machine.A_EE, government.τᶜ, machine.A_EF)
+    machine.cop = cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.p_ep[t], machine.A_EE, government.τᶜ, machine.A_EF)
 end
