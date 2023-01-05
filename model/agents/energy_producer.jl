@@ -5,20 +5,20 @@
     Qmax_ep::Vector{Float64} = zeros(Float64, T)     # Maximum production of units over time
 
     # Prices, cost and investments
-    markup_ep::Float64                                 # Markup to determine price
-    profit_ep::Vector{Float64} = zeros(Float64, T)     # Profits over time
-    NW_ep::Vector{Float64} = zeros(Float64, T)  # Stock of liquid assets over time
+    markup_ep::Float64                            # Markup to determine price
+    profit_ep::Vector{Float64} = zeros(Float64, T) # Profits over time
+    NW_ep::Vector{Float64} = zeros(Float64, T)    # Stock of liquid assets over time
     p_ep::Vector{Float64} = zeros(Float64, T)     # Price of energy over time
     PC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of generating Dₑ(t) units of energy over time
-    FU::Vector{Float64} = zeros(Float64, T)     # Number of fuel units used for production
+    FU::Vector{Float64} = zeros(Float64, T)       # Number of fuel units used for production
     IC_ep::Vector{Float64} = zeros(Float64, T)    # Expansion and replacement investments over time
     RD_ep::Vector{Float64} = zeros(Float64, T)    # R&D expenditure over time
-    IN_g::Vector{Float64} = zeros(Float64, T)   # R&D spending allocated to innovation in green tech
-    IN_d::Vector{Float64} = zeros(Float64, T)   # R&D spending allocated to innovation in dirty tech
-    EId_ep::Vector{Float64} = zeros(Float64, T)    # Desired amount of units of expansionary investments
-    RSd_ep::Vector{Float64} = zeros(Float64, T)    # Desired amount of units of replacement investments
+    IN_g::Vector{Float64} = zeros(Float64, T)     # R&D spending allocated to innovation in green tech
+    IN_d::Vector{Float64} = zeros(Float64, T)     # R&D spending allocated to innovation in dirty tech
+    EId_ep::Vector{Float64} = zeros(Float64, T)   # Desired amount of units of expansionary investments
+    RSd_ep::Vector{Float64} = zeros(Float64, T)   # Desired amount of units of replacement investments
     EC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of spansionary investment
-    carbontax::Vector{Float64} = zeros(Float64, T) # Paid carbon taxes
+    carbontax::Vector{Float64} = zeros(Float64, T)# Paid carbon taxes
 
     # Technological parameters
     IC_g::Vector{Float64}                       # Fixed investment cost of the cheapest new green power plant
@@ -32,8 +32,9 @@
     dirty_portfolio::Vector{PowerPlant}         # Portfolio of all dirty powerplants
     dirty_capacity::Vector{Float64} = zeros(Float64, T) # Capacity of set of dirty powerplants,
     green_frac_prod::Vector{Float64} = zeros(Float64, T) # Green fraction of total production
-    infra_marg::Vector{PowerPlant} = []         # Infra-marginal plants
-    pp_tb_repl::Vector{PowerPlant} = []         # Power plants to be replaced
+    infra_marg::Vector{PowerPlant} = PowerPlant[]   # Infra-marginal plants
+    pp_tb_replaced::Vector{PowerPlant} = PowerPlant[]   # Power plants to be replaced
+    pp_tb_retired::Vector{PowerPlant} = PowerPlant[]   # Power plants to be retired
 
     emissions::Vector{Float64} = zeros(Float64, T)
 end
@@ -263,36 +264,50 @@ function expand_and_replace_pp_ep!(
         # If in warmup period, ep will replace such that share of green tech remains
         # at init level
 
-        n_add_green_pp = max(ceil(frac_green * (ep.green_capacity[t] + ep.dirty_capacity[t]
-                              + n_add_pp) - ep.green_capacity[t]), 0)
-        n_add_dirty_pp = max(n_add_pp - n_add_green_pp, 0)
+        # n_add_green_pp = max(ceil(frac_green * (ep.green_capacity[t] + ep.dirty_capacity[t]
+        #                       + n_add_pp) - ep.green_capacity[t]), 0)
+        # n_add_dirty_pp = max(n_add_pp - n_add_green_pp, 0)
+        n_add_green_pp = round(Int64, frac_green * n_add_pp)
+        n_add_dirty_pp = round(Int64, (1-frac_green) * n_add_pp)
     end
+
+    # println(ep.EId_ep[t], " ", ep.RSd_ep[t])
+    # println(n_add_pp, " ", n_add_green_pp, " ", n_add_dirty_pp)
+    # println()
 
     # TODO: if expanding green, invested sum should go somewhere!
 
     # Add green power plants
-    if n_add_green_pp > 0
+    if n_add_green_pp > 1
         
         # Invest green
         ep.EC_ep[t] = ep.IC_g[t] * ep.EId_ep[t]
         
         # Build new green pp
         for _ in 1:n_add_green_pp
-            green_pp = PowerPlant(
-                type = "Green",
-                age = 0,
-                c = 0.0,
-                freq = globalparam.freq_per_powerplant,
-                capacity = globalparam.freq_per_powerplant,
-                Aᵀ = 0.0,
-                em = 0.0
+            green_pp = init_powerplant(
+                "Green",
+                0,
+                0.,
+                0.,
+                0.,
+                globalparam
             )
+            # green_pp = PowerPlant(
+            #     type = "Green",
+            #     age = 0,
+            #     c = 0.0,
+            #     freq = globalparam.freq_per_powerplant,
+            #     capacity = globalparam.freq_per_powerplant,
+            #     Aᵀ = 0.0,
+            #     em = 0.0
+            # )
             push!(ep.green_portfolio, green_pp)
         end
     end
 
     # Add dirty power plants
-    if n_add_dirty_pp > 0
+    if n_add_dirty_pp > 1
 
         # Invest dirty
         for _ in 1:n_add_dirty_pp
@@ -308,9 +323,12 @@ function expand_and_replace_pp_ep!(
         end
     end
 
-    # Discard old machines
-    filter!(pp -> pp ∉ ep.pp_tb_repl, ep.green_portfolio)
-    filter!(pp -> pp ∉ ep.pp_tb_repl, ep.dirty_portfolio)
+    # Discard old power plants
+    filter!(pp -> pp ∉ ep.pp_tb_replaced, ep.green_portfolio)
+    filter!(pp -> pp ∉ ep.pp_tb_retired, ep.green_portfolio)
+
+    filter!(pp -> pp ∉ ep.pp_tb_replaced, ep.dirty_portfolio)
+    filter!(pp -> pp ∉ ep.pp_tb_retired, ep.dirty_portfolio)
 end
 
 
@@ -478,7 +496,6 @@ function compute_EIᵈ_ep!(
     t::Int64
     )
 
-    # TODO: I dont know yet what Kᵈ is, likely has to be changed
     ep.EId_ep[t] = ep.Qmax_ep[t] < ep.D_ep[t] ? ep.D_ep[t] - (ep.green_capacity[t] + ep.dirty_capacity[t]) : 0.0
 end
 
@@ -494,13 +511,22 @@ function compute_RSᵈ_ep!(
     )
 
     # Select powerplants to be replaced
-    ep.pp_tb_repl = []
+    ep.pp_tb_replaced = []
+    ep.pp_tb_retired = []
+
+    excess_capacity = ep.Qmax_ep[t] - ep.D_ep[t]
+
     for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
         if pp.age >= ηₑ
-            push!(ep.pp_tb_repl, pp)
+            if excess_capacity > pp.capacity
+                excess_capacity -= pp.capacity
+                push!(ep.pp_tb_retired, pp)
+            else
+                push!(ep.pp_tb_replaced, pp)
+            end
         end
     end
-    ep.RSd_ep[t] = length(ep.pp_tb_repl) > 0 ? sum(pp -> pp.freq, ep.pp_tb_repl) : 0.0
+    ep.RSd_ep[t] = length(ep.pp_tb_replaced) > 0 ? sum(pp -> pp.capacity, ep.pp_tb_replaced) : 0.0
 end
 
 

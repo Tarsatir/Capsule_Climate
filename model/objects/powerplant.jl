@@ -8,6 +8,7 @@
     em::Float64                                 # emissions per unit of energy
 end
 
+
 function init_powerplant(
     type::String,
     age::Int64,
@@ -22,7 +23,7 @@ function init_powerplant(
         age = age,
         c = c,
         freq = globalparam.freq_per_powerplant,
-        capacity = type=="Dirty" ? globalparam.freq_per_powerplant * Aᵀ : globalparam.freq_per_poweplant,
+        capacity = type=="Dirty" ? globalparam.freq_per_powerplant * Aᵀ : globalparam.freq_per_powerplant,
         Aᵀ = Aᵀ,
         em = emᵀ
     )
