@@ -130,7 +130,9 @@ function initialize_model(
                                 labormarket,
                                 kp_brochures,
                                 cmdata,
-                                zeros(Float64, initparam.n_hh, initparam.n_hh,)
+                                # zeros(Float64, initparam.n_hh, initparam.n_hh,)
+                                zeros(Float64, initparam.n_hh),
+                                LinRange(0, 100, initparam.n_hh)
                            )
 
     # Initialize model struct

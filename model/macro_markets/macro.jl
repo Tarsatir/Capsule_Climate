@@ -537,18 +537,39 @@ end
 
 
 """
+GINI approximation function with drastically reduced runtime
+"""
+function GINI_approx(
+    x::Vector{Float64},
+    model::ABM
+)
+
+    model.perc_of_wealth .= 100 .* cumsum(sort(x) ./ sum(x))
+    A = sum(model.equal_div .- model.perc_of_wealth)
+    B = sum(model.perc_of_wealth)
+    G = A / (A + B)
+    return G
+end
+
+
+"""
 Computes the GINI coefficient for wealth and income
 """
 function compute_GINI(
     all_hh::Vector{Int},
     # model.macroeconomy::MacroEconomy,
     t::Int,
-    model::ABM
+    model::ABM;
+    approx_GINI::Bool=true
     )
 
     # Compute GINI for income
     all_I = map(hh_id -> model[hh_id].total_I[end], all_hh)
-    model.macroeconomy.GINI_I[t] = GINI(all_I, model)
+    if approx_GINI
+        model.macroeconomy.GINI_I[t] = GINI_approx(all_I, model)
+    else
+        model.macroeconomy.GINI_I[t] = GINI(all_I, model)
+    end
 
     # all_I_tmp = zeros(Float64, length(all_I))
     # all_I_absdiff = zeros(Float64, length(all_I))
@@ -564,7 +585,11 @@ function compute_GINI(
 
     # Compute GINI for wealth
     all_W = map(hh_id -> model[hh_id].W, all_hh)
-    model.macroeconomy.GINI_W[t] = GINI(all_W, model)
+    if approx_GINI
+        model.macroeconomy.GINI_W[t] = GINI_approx(all_W, model)
+    else
+        model.macroeconomy.GINI_W[t] = GINI(all_W, model)
+    end
 
     # all_W_tmp = zeros(Float64, length(all_W))
     # all_W_absdiff = zeros(Float64, length(all_W))
