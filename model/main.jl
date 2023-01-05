@@ -38,7 +38,6 @@ include("agents/energy_producer.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
-# include("macro_markets/capitalmarket.jl")
 
 include("helpers/properties.jl")
 include("helpers/modeldata_storage.jl")
@@ -129,7 +128,8 @@ function initialize_model(
                                 macroeconomy,
                                 labormarket,
                                 kp_brochures,
-                                cmdata
+                                cmdata,
+                                zeros(Float64, initparam.n_hh, initparam.n_hh,)
                            )
 
     # Initialize model struct
@@ -252,7 +252,9 @@ to save of the agents and model, respectively (see `Agents.jl` documentation).
 """
 function initialize_datacategories(
     model::ABM,
-    savedata::Bool
+    savedata::Bool;
+    custom_adata::Bool=false,
+    custom_mdata::Bool=false
 )::Tuple{Vector{Tuple}, Vector{Tuple}}
 
     if savedata
@@ -264,48 +266,43 @@ function initialize_datacategories(
 
         # Define which data of agents should be saved
         # POOR MEMORY PERFORMANCE, ONLY USE WHEN AGGREGATED MACRO VARIABLES NOT ADEQUATE
-        adata = [
-            # Household data
-            (:total_I, mean, hh)
-            (:total_I, std, hh)
+        if custom_adata
+            adata = [
+                        # Household data
+                        (:total_I, mean, hh)
+                        (:total_I, std, hh)
 
-            (:labor_I, mean, hh)
-            (:labor_I, std, hh)
+                        (:labor_I, mean, hh)
+                        (:labor_I, std, hh)
 
-            (:capital_I, mean, hh)
-            (:capital_I, std, hh)
+                        (:capital_I, mean, hh)
+                        (:capital_I, std, hh)
 
-            (:UB_I, mean, hh)
-            (:UB_I, std, hh)
+                        (:UB_I, mean, hh)
+                        (:UB_I, std, hh)
 
-            (:socben_I, mean, hh)
-            (:socben_I, std, hh)
+                        (:socben_I, mean, hh)
+                        (:socben_I, std, hh)
 
-            # Consumer good producer data
-
-
-            # Capital good producer data
-        ]
-
-        # Define which model-wide data should be saved
-        # mdata = [
-
-        #     # Global data
+                        # Consumer good producer data
 
 
-        #     # Household data
+                        # Capital good producer data
+                    ]
+        else
+            adata = []
+        end
+        
+        if custom_mdata
+            # Define which model-wide data should be saved
+            model.mdata_tosave = [
+                # GDP
+                :GDP, :GDP_I, :GDP_Π_cp, :GDP_Π_kp, :GDP_growth,
 
-        # ]
-
-        model.mdata_tosave = [
-            # GDP
-            :GDP, :GDP_I, :GDP_Π_cp, :GDP_Π_kp, :GDP_growth,
-
-            # Money supply
-            :M, :M_hh, :M_cp, :M_kp, :M_ep, :M_gov, :M_if
-        ]
-
-        # mdata = get_mdata
+                # Money supply
+                :M, :M_hh, :M_cp, :M_kp, :M_ep, :M_gov, :M_if
+            ]
+        end
 
         mdata = []
 
@@ -389,7 +386,7 @@ function model_step!(
             globalparam, 
             all_kp, 
             kp_distance_matrix,
-            macroeconomy.w̄_avg[max(t-1,1)],
+            macroeconomy.w_avg[max(t-1,1)],
             t,
             ep,
             model
@@ -698,7 +695,6 @@ function run_simulation(;
     threadnr::Int64=1,
     sim_nr::Int64=0,
     savedata::Bool=true,
-    # track_firms_households::Bool=false,
     seed::Int64=Random.rand(1000:9999)
     )
 
@@ -737,10 +733,7 @@ function run_simulation(;
 
     # Save agent dataframe and model dataframe to csv
     if savedata
-        # NOTE: CONVERSION DF TO STRING IS TMP SOLUTION, SHOULD BE FIXED BACK WHEN PACKAGES 
-        #       ARE CONSISTENT AGAIN!
-        CSV.write(string("results/result_data/agent_data_", seed, ".csv"), string.(agent_df))
-        CSV.write(string("results/result_data/model_data_", seed, ".csv"), model_df)
+        save_simdata(agent_df, model_df, seed)
     end
     
     # @time for t in 1:T
@@ -785,7 +778,7 @@ function run_simulation(;
 end
 
 @time run_simulation(
-    T=60;
+    T=660;
     savedata=true,
     # track_firms_households=true,
     seed=1234    

@@ -704,31 +704,6 @@ function order_machines_cp!(
     end
 end
 
-# """
-#     order_machines_cp!(cp::ConsumerGoodProducer, model::ABM)
-
-# Lets cp order machines from kp of choice.
-# """
-# function order_machines_cp!(
-#     cp::ConsumerGoodProducer,
-#     kp,
-#     n_machines::Int64,
-#     freq_per_machine::Int64
-#     )
-
-#     receive_order_kp!(kp, cp.id, n_machines, freq_per_machine)
-#     # cp.n_mach_ordered_RS = min(n_machines, cp.n_mach_desired_RS)
-#     # cp.n_mach_ordered_EI = n_machines - cp.n_mach_ordered_RS
-# end
-
-
-# function reset_brochures_cp!(
-#     cp::ConsumerGoodProducer
-#     )
-
-#     cp.brochures = []
-# end
-
 
 function reset_queue_cp!(
     cp::ConsumerGoodProducer
@@ -854,12 +829,11 @@ function replace_bankrupt_cp!(
                     Vector{Machine}(),
                     model;
                     D=D,
-                    w=macro_struct.w̄_avg[t],
+                    w=macro_struct.w_avg[t],
                     f=0.0
                 )
 
         # Order machines at kp of choice
-        # new_cp.kp_ids = [kp_choice_ids[cp_i]]
         new_cp.kp_ids = sample(nonbankrupt_kp, Weights(weights_kp), n_kp_sample; replace=false)
         new_cp.n_mach_desired_EI = all_n_machines[cp_i]
 

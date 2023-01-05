@@ -14,18 +14,18 @@ def plot_macro_vars(df):
     T = range(len(df.GDP))
 
     # Plot real GDP
-    ax[0,0].plot(T, 100 * df.GDP / df.CPI, label='total GDP')
-    ax[0,0].plot(T, 100 * df.GDP_I / df.CPI, label='income share')
-    ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI, label='cp share')
-    ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI, label='kp share')
-    ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI, label='UB exp')
-    ax[0,0].plot(T, 100 * df.total_I / df.CPI, label='I')
-    ax[0,0].plot(T, 100 * df.total_C / df.CPI, label='C')
+    ax[0,0].plot(T, 100 * df.GDP / df.CPI_cp, label='total GDP')
+    ax[0,0].plot(T, 100 * df.GDP_hh / df.CPI_cp, label='hh share')
+    ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI_cp, label='cp share')
+    ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI_cp, label='kp share')
+    ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI_cp, label='UB exp')
+    ax[0,0].plot(T, 100 * df.total_I / df.CPI_cp, label='I')
+    ax[0,0].plot(T, 100 * df.total_C / df.CPI_cp, label='C')
     ax[0,0].set_title("GDP")
     ax[0,0].legend()
 
     # Unemployment rate
-    ax[0,1].plot(T, df.UR, label='unemployment rate')
+    ax[0,1].plot(T, df.U, label='unemployment rate')
     ax[0,1].plot(T, df.switch_rate, label='switching rate')
     ax[0,1].set_title("Unemployment rate")
     ax[0,1].set_ylim(0,1)
@@ -46,7 +46,7 @@ def plot_macro_vars(df):
     ax[1,0].legend()
 
     # Inflation
-    ax[1,1].plot(T, df.CPI, label='cp')
+    ax[1,1].plot(T, df.CPI_cp, label='cp')
     ax[1,1].plot(T, df.CPI_kp, label='kp')
     ax[1,1].set_title('CPI')
     ax[1,1].legend()
@@ -54,8 +54,8 @@ def plot_macro_vars(df):
     # Aggregate consumption and investments
     ax[2,0].plot(T, df.total_C, label="$C$")
     ax[2,0].plot(T, df.total_C_actual, label="$C$ actual")
-    ax[2,0].plot(T, df.total_I, label="$I$")
-    ax[2,0].plot(T, df.total_w, label="$w$")
+    ax[2,0].plot(T, df.total_I, label="$investments$")
+    ax[2,0].plot(T, df.total_w, label="$wages$")
     ax[2,0].set_title('Aggregate C and I')
     ax[2,0].legend()
 
@@ -76,23 +76,23 @@ def plot_household_vars(df):
     T = range(len(df.GDP))
 
     # Wage levels
-    real_w_avg = 100 * df.w_avg / df.CPI
+    real_w_avg = 100 * df.w_avg / df.CPI_cp
     ax[0,0].plot(T, real_w_avg, color='green', label='real $\\bar{w}$')
     ax[0,0].plot(T, df.w_avg, color='blue', label='$\\bar{w}$')
     ax[0,0].set_title('Real wage level')
     ax[0,0].legend()
 
     # Real income
-    real_I_avg = 100 * df.I_avg / df.CPI
-    real_I_labor = 100 * df.I_labor_avg / df.CPI
-    real_I_capital = 100 * df.I_capital_avg / df.CPI
-    real_I_UB = 100 * df.I_UB_avg / df.CPI
-    real_I_socben = 100 * df.I_socben_avg / df.CPI
+    real_Y = 100 * df.Y_avg / df.CPI_cp
+    real_YL = 100 * df.YL_avg / df.CPI_cp
+    real_YK = 100 * df.YK_avg / df.CPI_cp
+    real_YUB = 100 * df.YUB_avg / df.CPI_cp
+    real_YSB = 100 * df.YSB_avg / df.CPI_cp
 
-    ax[0,1].plot(T, real_I_labor / real_I_avg, color='blue', label='labor')
-    ax[0,1].plot(T, real_I_capital / real_I_avg, color='red', label='capital')
-    ax[0,1].plot(T, real_I_UB / real_I_avg, color='green', label='UB')
-    ax[0,1].plot(T, real_I_socben / real_I_avg, color='orange', label='socben')
+    ax[0,1].plot(T, real_YL / real_Y, color='blue', label='labor')
+    ax[0,1].plot(T, real_YK / real_Y, color='red', label='capital')
+    ax[0,1].plot(T, real_YUB / real_Y, color='green', label='UB')
+    ax[0,1].plot(T, real_YSB / real_Y, color='orange', label='socben')
     ax[0,1].hlines(0, max(T), 0, linestyle='dashed', color='black')
     ax[0,1].legend()
     ax[0,1].set_title('Real income of households')
@@ -129,8 +129,6 @@ def plot_producer_vars(df):
 
     # Labor demand
     ax[0,0].hlines(0, 0, T[-1], linestyle='dashed', color='black')
-    # ax[0,0].plot(T, df.dL_avg, color='red', label='all')
-    # ax[0,0].fill_between(range(len(df.dL_avg)), df.dL_avg + df.dL_std, df.dL_avg - df.dL_std, color='red', alpha=0.4)
     ax[0,0].plot(T, df.dL_cp_avg, color='green', label='cp', alpha=0.5)
     ax[0,0].plot(T, df.dL_kp_avg, color='orange', label='kp', alpha=0.5)
     ax[0,0].set_title('$\Delta L^d$')
@@ -144,8 +142,8 @@ def plot_producer_vars(df):
     ax[0,1].legend()
 
     # Number of ordered machines
-    ax[1,0].plot(T, df.n_mach_EI, label='n EI')
-    ax[1,0].plot(T, df.n_mach_RS, label='n RS')
+    ax[1,0].plot(T, df.n_mach_EI_avg, label='n EI')
+    ax[1,0].plot(T, df.n_mach_RS_avg, label='n RS')
     ax[1,0].legend()
 
     # Production quantities
@@ -169,8 +167,8 @@ def plot_producer_vars(df):
     ax[2,0].set_title('Bankrupty rate')
 
     # Markup rates
-    ax[2,1].plot(range(len(df.mu_cp)), df.mu_cp, label='cp')
-    ax[2,1].plot(range(len(df.mu_kp)), df.mu_kp, label='kp')
+    ax[2,1].plot(T, df.markup_cp, label='cp')
+    ax[2,1].plot(T, df.markup_kp, label='kp')
     ax[2,1].legend()
     ax[2,1].set_title('Markup rates $\mu$')
 
@@ -221,7 +219,7 @@ def plot_cons_vars(df):
         return
 
     # Plot real GDP growth rates
-    real_GDP = 100 * df.GDP.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    real_GDP = 100 * df.GDP.to_numpy()[100:] / df.CPI_cp.to_numpy()[100:]
     delta_GDP = 100 * (real_GDP[1:] - real_GDP[:-1]) / real_GDP[:-1]
 
     T = np.arange(100, 100+len(real_GDP)-1)
@@ -239,7 +237,7 @@ def plot_cons_vars(df):
 
 
     # Plot consumption growth rates
-    C_t = 100 * df.total_C.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    C_t = 100 * df.total_C.to_numpy()[100:] / df.CPI_cp.to_numpy()[100:]
     delta_C = 100 * (C_t[1:] - C_t[:-1]) / C_t[:-1]
 
     ax1.hlines(0, min(T), max(T), linestyle='dashed', color='black')
@@ -253,7 +251,7 @@ def plot_cons_vars(df):
     ax1.set_ylim(-7.5,7.5)
 
     # Plot hh GDP rowth rates
-    real_GDP_hh = 100 * df.GDP_I.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    real_GDP_hh = 100 * df.GDP_hh.to_numpy()[100:] / df.CPI_cp.to_numpy()[100:]
     delta_GDP_hh = 100 * (real_GDP_hh[1:] - real_GDP_hh[:-1]) / real_GDP_hh[:-1]
 
     ax2.hlines(0, min(T), max(T), linestyle='dashed', color='black')
@@ -267,7 +265,7 @@ def plot_cons_vars(df):
     ax2.set_ylim(-7.5,7.5)
 
     # Plot cp GDP growth rates
-    real_GDP_cp = 100 * df.GDP_cp.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    real_GDP_cp = 100 * df.GDP_cp.to_numpy()[100:] / df.CPI_cp.to_numpy()[100:]
     delta_GDP_cp = 100 * (real_GDP_cp[1:] - real_GDP_cp[:-1]) / real_GDP_cp[:-1]
 
     ax3.hlines(0, min(T), max(T), linestyle='dashed', color='black')
@@ -281,7 +279,7 @@ def plot_cons_vars(df):
     ax3.set_ylim(-7.5,7.5)
 
     # Plot kp GDP growth rates
-    real_GDP_kp = 100 * df.GDP_kp.to_numpy()[100:] / df.CPI.to_numpy()[100:]
+    real_GDP_kp = 100 * df.GDP_kp.to_numpy()[100:] / df.CPI_cp.to_numpy()[100:]
     delta_GDP_kp = 100 * (real_GDP_kp[1:] - real_GDP_kp[:-1]) / real_GDP_kp[:-1]
 
     ax4.hlines(0, min(T), max(T), linestyle='dashed', color='black')
@@ -419,18 +417,17 @@ def plot_inequality(df_macro):
 
     fig, ax = plt.subplots(1, 2, figsize=(8,4))
 
-    T = range(len(df_macro.gini_I))
+    T = range(len(df_macro.GINI_I))
 
-    ax[0].plot(T, df_macro.gini_I, label='model output')
-    # ax[0].plot(T, df_macro.FGT, label='FGT index')
-    ax[0].hlines(0.282, 0, len(df_macro.gini_I), linestyle='dashed', color='black', 
+    ax[0].plot(T, df_macro.GINI_I, label='model output')
+    ax[0].hlines(0.282, 0, len(df_macro.GINI_I), linestyle='dashed', color='black', 
                  label='Netherlands (2018)')
     ax[0].set_ylim(0,1)
     ax[0].set_title("Income inequality")
     ax[0].legend()
 
-    ax[1].plot(T, df_macro.gini_W, label='model output')
-    ax[1].hlines(0.789, 0, len(df_macro.gini_W), linestyle='dashed', color='black', 
+    ax[1].plot(T, df_macro.GINI_W, label='model output')
+    ax[1].hlines(0.789, 0, len(df_macro.GINI_W), linestyle='dashed', color='black', 
                  label='Netherlands (2018)')
     ax[1].set_title("Wealth inequality")
     ax[1].set_ylim(0,1)
@@ -590,7 +587,7 @@ def plot_LIS(df_macro):
     
 if __name__=="__main__":
 
-    df_macro = pd.read_csv('../results/result_data/first.csv')
+    df_macro = pd.read_csv('../results/result_data/model_data_1234.csv')
 
     plot_macro_vars(df_macro)
     plot_household_vars(df_macro)

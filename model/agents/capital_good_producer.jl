@@ -732,8 +732,8 @@ function replace_bankrupt_kp!(
             B_LP = new_B_LP,
             B_EE = new_B_EE,
             B_EF = new_B_EF,
-            μ = macro_struct.μ_kp[t],
-            w̄ = macro_struct.w̄_avg[t],
+            μ = macro_struct.markup_kp[t],
+            w̄ = macro_struct.w_avg[t],
             f = 0.0
         )
 

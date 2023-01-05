@@ -44,5 +44,6 @@ mutable struct Properties
     labormarket::LaborMarket
     kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}
     cmdata::CMData
+    ginidata::Matrix{Float64}
 
 end

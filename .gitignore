@@ -40,6 +40,7 @@ parameters/sensitivity/sensitivity_runs/input_data/notlatest
 parameters/sensitivity/sensitivity_runs/output_data/KS_mean_values.csv
 parameters/sensitivity/sensitivity_plots
 parameters/calibration/calibrate_example.py
+performance.ipynb
 
 results/experiments/OFAT_experiments
 
