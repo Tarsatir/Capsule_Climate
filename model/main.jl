@@ -126,6 +126,7 @@ function initialize_model(
 
                                 nothing,
                                 nothing,
+                                nothing,
                                 macroeconomy,
                                 labormarket,
                                 kp_brochures,
@@ -315,10 +316,15 @@ function initialize_datacategories(
             ]
         end
 
-        # Define data of energy producer required to make plots
+        # Define data of energy producer to save
         model.epdata_tosave = [
             :D_ep, :Qmax_ep, :green_capacity, :dirty_capacity,
             :RD_ep, :IN_g, :IN_d, :p_ep 
+        ]
+
+        # Define data of climate/emissions to save
+        model.climatedata_tosave = [
+            :emissions_index, :energy_percentage 
         ]
 
         mdata = []
@@ -770,6 +776,7 @@ end
     T = 660;
     savedata = true,
     show_full_output = true,
+    showprogress = true,
     seed = 1234
 )
 

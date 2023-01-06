@@ -123,11 +123,11 @@
     W_80::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 80% of wealth
     W_max::Vector{Float64} = zeros(Float64, T)              # Maximum wealth level in the economy
 
-    # NOTE: TEMP COMMENTED AWAY
     α_W_quantiles::Matrix{Float64} = zeros(Float64, 5, T)   # Matrix containing average α for different wealth quintiles
 end
 
 
+# TODO: MOVE TO WRITEDATA
 function get_mdata(
     model::ABM
 )::DataFrame
@@ -138,13 +138,18 @@ function get_mdata(
         macro_categories = model.mdata_tosave
     end
 
+    # Gather macro data in dict
     macro_dict = Dict(cat => getproperty(model.macroeconomy, cat) 
                       for cat in macro_categories)
 
+    # Gather energy producer data in dict
     ep_dict = Dict(cat => getproperty(model.ep, cat) for cat in model.epdata_tosave)
 
-    model_dict = merge(macro_dict, ep_dict)
+    # Gather climate data in dict
+    climate_dict = Dict(cat => getproperty(model.climate, cat) for cat in model.climatedata_tosave)
 
+    # Merge all dicts and convert and return as dataframe
+    model_dict = merge(macro_dict, ep_dict, climate_dict)
     return DataFrame(model_dict)
 end
 
