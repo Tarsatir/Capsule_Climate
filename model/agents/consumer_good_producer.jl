@@ -6,7 +6,7 @@ Defines struct for consumer good producer
     id::Int64                                 # global agent id
     cp_i::Int64                               # cp index
     age::Int64 = 0                            # firm age
-    t_next_update::Int64                      # next update time
+    # t_next_update::Int64                      # next update time
     
     # Price and cost data
     μ::Vector{Float64}                        # markup rate
@@ -73,7 +73,7 @@ end
 function initialize_cp(
     id::Int64,
     cp_i::Int64,
-    t_next_update::Int64, 
+    # t_next_update::Int64, 
     machines::Vector{Machine},
     model::ABM;
     D::Float64 = 1600.,
@@ -84,7 +84,7 @@ function initialize_cp(
     cp = ConsumerGoodProducer(
         id = id,
         cp_i = cp_i,
-        t_next_update = t_next_update,
+        # t_next_update = t_next_update,
         μ = fill(model.g_param.μ1, 3),
         D = fill(D, 3),
         Dᵉ = D,  
@@ -826,7 +826,7 @@ function replace_bankrupt_cp!(
         new_cp = initialize_cp(
                     cp_id,
                     cp_i,
-                    t + 1,
+                    # t + 1,
                     Vector{Machine}(),
                     model;
                     D=D,

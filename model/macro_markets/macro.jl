@@ -537,7 +537,8 @@ end
 
 
 """
-GINI approximation function with drastically reduced runtime
+GINI approximation function with drastically reduced runtime. Computes using an
+    approximation of the surface above and under a Lorenz curve.
 """
 function GINI_approx(
     x::Vector{Float64},
@@ -557,7 +558,6 @@ Computes the GINI coefficient for wealth and income
 """
 function compute_GINI(
     all_hh::Vector{Int},
-    # model.macroeconomy::MacroEconomy,
     t::Int,
     model::ABM;
     approx_GINI::Bool=true

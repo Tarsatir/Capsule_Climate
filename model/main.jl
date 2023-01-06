@@ -155,13 +155,20 @@ function initialize_model(
         add_agent!(hh, model)
     end
 
+    # Determine initial amount of employees per producer
+    emp_per_producer = floor(Int64, (1 - model.i_param.init_unempl_rate) * model.i_param.n_hh / 
+    (model.i_param.n_cp + model.i_param.n_kp))
+
+    # Determine initial amount of machines per cp
+    n_machines_init = ceil(Int64, 1.1 * emp_per_producer)
+
     # Initialize consumer good producers
     for cp_i in 1:model.i_param.n_cp
 
         # Initialize capital good stock
         machines = initialize_machine_stock(
                         model.g_param.freq_per_machine, 
-                        model.i_param.n_machines_init,
+                        n_machines_init,
                         η = model.g_param.η; 
                         A_LP = model.i_param.A_LP_0,
                         A_EE = model.i_param.A_EE_0,
@@ -169,18 +176,18 @@ function initialize_model(
                    )
 
         # Decide on time of markup rate update
-        t_next_update = 1
-        if cp_i > 66
-            t_next_update += 1
-        end
-        if cp_i > 132
-            t_next_update += 1
-        end
+        # t_next_update = 1
+        # if cp_i > 66
+        #     t_next_update += 1
+        # end
+        # if cp_i > 132
+        #     t_next_update += 1
+        # end
 
         cp = initialize_cp(
                 nextid(model),
                 cp_i,
-                t_next_update,
+                # t_next_update,
                 machines,
                 model
             )
@@ -224,6 +231,7 @@ function initialize_model(
 
     # Spread employed households over producerss
     spread_employees_lm!(
+        emp_per_producer,
         labormarket,
         government,
         model
@@ -430,9 +438,9 @@ function model_step!(
             model
         )
 
-        if model[cp_id].t_next_update == t  
-            model[cp_id].t_next_update += globalparam.update_period
-        end
+        # if model[cp_id].t_next_update == t  
+        #     model[cp_id].t_next_update += globalparam.update_period
+        # end
 
         # Reset desired and ordered machines
         reset_desired_ordered_machines_cp!(model[cp_id])

@@ -23,16 +23,13 @@ Gives all producers a share of the labor force after being initialized.
 Households that are not assigned to a producer are declared unemployed.
 """
 function spread_employees_lm!(
+    emp_per_producer::Int64,
     labormarket::LaborMarket,
     government::Government, 
     model::ABM
     )
 
     i = 1
-
-    # Determine initial amount of employees per producer
-    emp_per_producer = floor(Int64, (1 - model.i_param.init_unempl_rate) * model.i_param.n_hh / 
-                             (model.i_param.n_cp + model.i_param.n_kp))
 
     for p_id in model.all_p
 

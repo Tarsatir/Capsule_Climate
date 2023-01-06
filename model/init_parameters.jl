@@ -3,7 +3,7 @@
     # Agent counts
     n_kp::Int64 = 20                      # number of kp
     n_cp::Int64 = 200                     # number of cp
-    n_hh::Int64 = 3000                    # number of hh
+    n_hh::Int64 = 2500                    # number of hh
 
     # Init rates
     init_unempl_rate::Float64 = 0.05      # initial unemployment rate
