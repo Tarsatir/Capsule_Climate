@@ -566,15 +566,15 @@ function model_step!(
 
     # Consumer market process
     @timeit timer "consumermarket" consumermarket_process!(
-                                    all_hh,
-                                    all_cp,
-                                    government,
-                                    globalparam,
-                                    cmdata,
-                                    t,
-                                    model,
-                                    timer
-                                )
+        all_hh,
+        all_cp,
+        government,
+        globalparam,
+        cmdata,
+        t,
+        model,
+        timer
+    )
 
     # Households decide to switch suppliers based on satisfied demand and prices
     @timeit timer "decide switching hh" decide_switching_all_hh!(
@@ -603,13 +603,13 @@ function model_step!(
 
     # Close balances of firms, if insolvent, liquidate firms
     @timeit timer "close balance" close_balance_all_p!(
-                                all_p, 
-                                globalparam,
-                                government,
-                                indexfund, 
-                                t, 
-                                model
-                            )
+        all_p, 
+        globalparam,
+        government,
+        indexfund, 
+        t, 
+        model
+    )
 
     # println("   $t 7 start $(Dates.format(now(), "HH:MM"))")
 
@@ -703,17 +703,18 @@ end
     - Writes simulation results to csv.
 """
 function run_simulation(;
-    T::Int64=660,
-    t_warmup::Int64=300,
-    changed_params::Union{Dict,Nothing}=nothing,
-    changedparams_ofat::Union{Dict,Nothing}=nothing,
-    changedtaxrates::Union{Vector,Nothing}=nothing,
-    full_output::Bool=true,
-    threadnr::Int64=1,
-    sim_nr::Int64=0,
-    savedata::Bool=true,
-    seed::Int64=Random.rand(1000:9999)
-    )
+    T::Int64 = 660,
+    t_warmup::Int64 = 300,
+    changed_params::Union{Dict,Nothing} = nothing,
+    changedparams_ofat::Union{Dict,Nothing} = nothing,
+    changedtaxrates::Union{Vector,Nothing} = nothing,
+    show_full_output::Bool = false,
+    threadnr::Int64 = 1,
+    sim_nr::Int64 = 0,
+    showprogress::Bool = false,
+    savedata::Bool = false,
+    seed::Int64 = Random.rand(1000:9999)
+)
 
     # Set seed of simulation
     Random.seed!(seed)
@@ -724,11 +725,11 @@ function run_simulation(;
 
     # Initialize model
     @timeit timer "init" model = initialize_model(
-          T,
-          t_warmup; 
-          changed_params=changed_params,
-          changedparams_ofat=changedparams_ofat, 
-          changedtaxrates=changedtaxrates
+        T,
+        t_warmup; 
+        changed_params=changed_params,
+        changedparams_ofat=changedparams_ofat, 
+        changedtaxrates=changedtaxrates
     )
 
     # Initialize data categories that need to be saved
@@ -736,14 +737,14 @@ function run_simulation(;
 
     # Run model
     @timeit timer "runmodel" agent_df, _ = run!(
-                                        model, 
-                                        dummystep, 
-                                        model_step!, 
-                                        T;
-                                        adata = adata,
-                                        mdata = mdata, 
-                                        showprogress = true
-                                    )
+        model, 
+        dummystep, 
+        model_step!, 
+        T;
+        adata = adata,
+        mdata = mdata, 
+        showprogress = showprogress
+    )
 
     # Get macro variables from macroeconomy struct
     model_df = get_mdata(model)
@@ -752,53 +753,24 @@ function run_simulation(;
     if savedata
         save_simdata(agent_df, model_df, seed)
     end
-    
-    # @time for t in 1:T
-    #     println(t)
 
-    #     # Set step number
-    #     model.t = t
-
-    #     @timeit timer "step" model_step!(model)
-    # end
-
-    # if savedata
-    #     @timeit timer "save macro" save_macro_data(model.macroeconomy)
-
-    #     all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
-
-    #     @timeit timer "save findist" save_final_dist(model.all_hh, model.all_cp, model.all_kp, model)
-
-    #     @timeit timer "save climate" save_climate_data(model.ep, model.climate, model)
-
-    #     # if track_firms_households
-    #     #     save_household_quartiles(householddata)
-    #     # end
-    # end
-
-    if full_output
+    # Show profiling output
+    if show_full_output
         show(timer)
         println()
     end
 
-    # Pack output in struct
-
     println("thread $threadnr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
 
-    # if !track_firms_households
-    #     return genrunoutput(model.macroeconomy, model.ep, model.climate)
-    # else
-    #     nothing
-    #     # return genrunoutput(macroeconomy, ep, climate), firmdata, householddata
-    # end
-
+    return agent_df, model_df
 end
 
+
 @time run_simulation(
-    T=660;
-    savedata=true,
-    # track_firms_households=true,
-    seed=1234    
+    T = 660;
+    savedata = true,
+    show_full_output = true,
+    seed = 1234
 )
 
 nothing

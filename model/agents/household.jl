@@ -80,7 +80,7 @@ function set_consumption_budget_hh!(
     update_expected_incomes_hh!(hh, globalparam.ω, UB, P_getunemployed, P_getemployed)
 
     # Compute consumption budget
-    compute_consumption_budget_hh!(hh, W̃min, W̃max, W̃med, ERt)
+    compute_consumption_budget_hh!(hh, globalparam, W̃min, W̃max, W̃med, ERt)
 
     # Reset actual spending to zero
     hh.C_actual = 0.0
@@ -143,6 +143,7 @@ Computes consumption budget, updates savings rate
 function compute_consumption_budget_hh!(
     hh::Household,
     # scale_W̃::Function,
+    globalparam::GlobalParam,
     W̃min::Float64,
     W̃max::Float64,
     W̃med::Float64,
@@ -164,7 +165,7 @@ function compute_consumption_budget_hh!(
             # W_scaled = W_scaled_min + (W_scaled_max - W_scaled_min) * (hh.W̃ - W̃min) / (W̃max - W̃min)
 
             # Compute optimal propensity to consume
-            computeα!(hh, ERt, W̃min, W̃max, W̃med)
+            compute_α!(hh, globalparam, ERt, W̃min, W̃med)
 
             # Set consumption budget
             hh.C = hh.α * hh.W
@@ -193,34 +194,29 @@ function scale_W̃(
 end
 
 
-function computeα!(
+function compute_α!(
     hh::Household,
+    globalparam::GlobalParam,
     ERt::Float64,
     W̃min::Float64,
-    W̃max::Float64,
     W̃med::Float64;
-    # scale_W̃::Function;
-    # W_scaled;
-    T::Int64=6,
-    maxdev=0.01::Float64
-    )
+    T::Int64=6
+)
 
-    αrange = (LinRange(-maxdev, maxdev, 5)) .+ hh.α
-    hh.α = argmax(αstar -> αstar <= 1. && αstar >= 0. ? computeU(hh, αstar, W̃min, W̃max, W̃med, ERt, T) : -1., αrange)
-    # println("   ", hh.W, "  ", hh.W̃, "  ", scale_W̃(hh.W̃, W̃min, W̃max), " ", hh.α)
+    αrange = (LinRange(-globalparam.α_maxdev, globalparam.α_maxdev, 5)) .+ hh.α
+    hh.α = argmax(αstar -> αstar <= 1. && αstar >= 0. ? computeU(hh, αstar, globalparam.ρ, W̃min, W̃med, ERt, T) : -1., αrange)
 end
 
 
 function computeU(
     hh::Household,
     α::Float64,
+    ρ::Float64,
     W̃min::Float64,
-    W̃max::Float64,
     W̃med::Float64,
     ERt::Float64,
-    T::Int64;
-    ρ::Float64=0.3
-    )
+    T::Int64
+)
 
     U = 0.
 
@@ -236,7 +232,6 @@ function computeU(
         EW̃_t = W̃_disc + EỸ_disc
 
         # Compute scaled consumption amount, given EW̃_t and α
-        # C_scaled = max(α * scale_W̃(EW̃_t, W̃min, W̃max), 0)
         C_scaled = max(α * scale_W̃(EW̃_t, W̃min, W̃med), 0)
 
         # Compute utility based on scaled 

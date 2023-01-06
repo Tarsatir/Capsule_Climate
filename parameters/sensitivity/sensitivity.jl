@@ -87,7 +87,6 @@ Generates data used by sensitivity analysis.
 """
 function generate_simdata(
     X_labels::Dict,
-    # n_parl::Int64,
     n_per_epoch::Int64,
     n_per_parl::Int64,
     t_warmup::Int64,
@@ -96,7 +95,7 @@ function generate_simdata(
     run_nr::Int64;
     proc_nr::Union{Int64, Nothing}=nothing,
     sim_nr_only::Int64
-    )
+)
 
     params = collect(keys(X_labels))
     changedparams = Dict(params .=> 0.0)
@@ -114,8 +113,6 @@ function generate_simdata(
         seed = 1234
         Random.seed!(seed)
 
-        println("   seed: $seed")
-
         sim_nr = parse(Int64, row.sim_nr)
 
         if sim_nr_only != 0 && sim_nr != sim_nr_only
@@ -127,17 +124,14 @@ function generate_simdata(
             changedparams[param] = parse(Float64, getproperty(row, Symbol(param)))
         end
 
-        # println("   $changedparams")
-
         # Run the model with changed parameters
         runoutput = run_simulation(
-            changed_params = changedparams,
-            full_output = false;
+            changed_params = changedparams;
             threadnr = parl_nr,
             sim_nr = sim_nr
         )
 
-        if res == nothing
+        if isnothing(res)
             res = convertrunoutput(runoutput, sim_nr; return_as_df=true, t_warmup=t_warmup)
         else
             push!(res, (convertrunoutput(runoutput, sim_nr; t_warmup=t_warmup)))
@@ -341,7 +335,7 @@ function parse_commandline(
     N_u::Int64,
     n::Int64,
     N_c::Int64
-    )
+)
 
     s = ArgParseSettings()
     @add_arg_table s begin
@@ -351,7 +345,7 @@ function parse_commandline(
             arg_type=Int64
             default=N_u + n * N_c * M
         "--n_per_epoch"
-            help="number of simulations per epoch"
+            help="number of simulations per epoch (after which data is saved)"
             arg_type=Int64
             default=50
         "--inputpath"
@@ -397,14 +391,16 @@ function main(;
     run_nr::Int64=9,
     n_timesteps::Int64=660,
     t_warmup::Int64=300
-    )
+)
 
+    # Set parameters for optimal sampling quantity
     N_u = 500
     n = 20
     N_c = 100
 
     X_labels = Dict([
-        ["α_cp", [0.4, 1.0]],
+        ["α_maxdev", [0.005, 0.5]],
+        ["ρ", [0.05, 0.8]],
         ["prog", [-1.0, 1.0]],
         ["μ1", [0.0, 0.5]],
         ["ω", [0.0, 1.0]],
@@ -415,8 +411,8 @@ function main(;
         ["ψ_E", [0., 0.25]],
         ["ψ_Q", [0., 0.25]],
         ["ψ_P", [0., 0.25]],
-        ["p_f", [0.0, 1.0]]]
-   )
+        ["p_f", [0.0, 1.0]]
+    ])
 
     parsed_args = parse_commandline(length(X_labels), N_u, n, N_c)
 
@@ -483,7 +479,7 @@ function main(;
         end
     end
 
-    # Generate PAWN indeces
+    # Generate PAWN indices
     if runpawn
         run_PAWN(X_labels, run_nr, N_u, N_c, outputpath)
     end

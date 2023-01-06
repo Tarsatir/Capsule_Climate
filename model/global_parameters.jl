@@ -47,7 +47,9 @@
     p_rigid_time::Int64 = 3         # number of periods producer's price remains stable
 
     # Determine household consumption
-    α_cp::Float64 = 0.75            # parameter controlling APC of consumers
+    α_maxdev::Float64 = 0.01        # maximum deviation household α can make in one time period
+    ρ::Float64 = 0.3                # parameter governing utility function steepness
+    # α_cp::Float64 = 0.75            # parameter controlling APC of consumers
 
     # Deterime extend of progresivity of government spending
     prog::Float64 = -0.5
@@ -65,7 +67,7 @@
     n_cons_market_days::Int64 = 4   # number of days in the consumer market process
 
     t_warmup::Int64 = 300           # time period warmup of the model
-    t_wait::Int64 = 4               # number of time periods producers are not allowed to go bankrupt
+    t_wait::Int64 = 4               # number of time periods new producers are not allowed to go bankrupt
 
     changedparams_ofat::Union{Nothing, Dict} # Parameters that are changed at the end of the warmup period
 end
@@ -79,7 +81,7 @@ function initialize_global_params(
     globalparam = GlobalParam(changedparams_ofat=changedparams_ofat)
 
     # Change parameters if needed before returning.
-    if changedparams ≠ nothing
+    if !isnothing(changedparams)
         for (key, new_param) in changedparams
             setproperty!(globalparam, Symbol(key), new_param)
         end
