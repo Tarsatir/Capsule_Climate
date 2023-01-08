@@ -87,12 +87,14 @@ Generates data used by sensitivity analysis.
 """
 function generate_simdata(
     X_labels::Dict,
+    Y_labels::Vector{String},
     n_per_epoch::Int64,
     n_per_parl::Int64,
     t_warmup::Int64,
     inputpath::String,
     outputpath::String,
     run_nr::Int64;
+    save_full_output::Bool=true,
     proc_nr::Union{Int64, Nothing}=nothing,
     sim_nr_only::Int64
 )
@@ -101,7 +103,7 @@ function generate_simdata(
     changedparams = Dict(params .=> 0.0)
 
     # If multithreaded, take thread id, otherwise take passed sim nr
-    parl_nr = proc_nr == nothing ? Threads.threadid() : proc_nr
+    parl_nr = isnothing(proc_nr) ? Threads.threadid() : proc_nr
 
     inputfilepath = getfilepath(inputpath, run_nr, parl_nr; isinput=true)
     outputfilepath = getfilepath(outputpath, run_nr, parl_nr)
@@ -125,24 +127,36 @@ function generate_simdata(
         end
 
         # Run the model with changed parameters
-        runoutput = run_simulation(
+        _, model_df = run_simulation(
             changed_params = changedparams;
             threadnr = parl_nr,
             sim_nr = sim_nr
         )
 
-        if isnothing(res)
-            res = convertrunoutput(runoutput, sim_nr; return_as_df=true, t_warmup=t_warmup)
+
+        # Check to save full output per run, or preprocess results first
+        if save_full_output
+
+            # Save full time series of selected Y labels
+            outputfilepath = get_output_path(sim_nr)
+            CSV.write(outputfilepath, res[Y_labels]; append=i≠n_per_epoch)
+
         else
-            push!(res, (convertrunoutput(runoutput, sim_nr; t_warmup=t_warmup)))
+            # Preprocess output results
+            if isnothing(res)
+                res = convertrunoutput(model_df, sim_nr; return_as_df=true, t_warmup=t_warmup)
+            else
+                push!(res, (convertrunoutput(model_df, sim_nr; t_warmup=t_warmup)))
+            end
+
+            # If end of epoch is reached, write results to output csv
+            if nrow(res) == n_per_epoch || i == n_per_parl
+                CSV.write(outputfilepath, res; append=i≠n_per_epoch)
+                res = nothing
+            end
         end
 
-        # If end of epoch is reached, write results to output csv
-        if nrow(res) == n_per_epoch || i == n_per_parl
-            CSV.write(outputfilepath, res; append=i≠n_per_epoch)
-            res = nothing
-        end
-
+        # If max number of simulations is reached, stop thread/loop
         if i == n_per_parl
             break
         end
@@ -150,8 +164,12 @@ function generate_simdata(
 end
 
 
-getinputpath(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/input_data/gsa_input_run$(run_nr)_thread$parl_id.csv"
-getoutputpath(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run$(run_nr)_thread$parl_id.csv"
+# get_input_path(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/input_data/gsa_input_run$(run_nr)_thread$parl_id.csv"
+# get_output_path(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run$(run_nr)_thread$parl_id.csv"
+
+get_input_path(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/input_data/gsa_input_run$(run_nr)_thread$parl_id.csv"
+get_output_path(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run$(run_nr)_thread$parl_id.csv"
+get_output_path(sim_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run_$(sim_nr).csv"
 
 
 """
@@ -164,20 +182,20 @@ function run_PAWN(
     N_c::Int64,
     outputpath::String;
     nthreads::Int64=16
-    )
+)
 
     # Include Python file containing GSA functions
     @pyinclude("parameters/sensitivity/run_GSA.py")
 
     # Open all input dataframes
-    dfs = [DataFrame(CSV.File(getinputpath(i, run_nr))) for i in 1:nthreads]
+    dfs = [DataFrame(CSV.File(get_input_path(i, run_nr))) for i in 1:nthreads]
     input_df = dfs[1]
     for df in dfs[2:end]
         append!(input_df, df)
     end
 
     # Open all output dataframes
-    dfs = [DataFrame(CSV.File(getoutputpath(i, run_nr))) for i in 1:nthreads]
+    dfs = [DataFrame(CSV.File(get_output_path(i, run_nr))) for i in 1:nthreads]
     output_df = dfs[1]
     for df in dfs[2:end]
         append!(output_df, df)
@@ -229,104 +247,13 @@ function run_PAWN(
     # Write results to csv
     outputfilepath = outputpath * "KS_mean_values.csv"
 
+    # Run PAWN for all input parameters
     for (y, y_title) in Y
         ts = df[!, Symbol(y)]
         ts_KS = py"run_PAWN"(labelnames, X, ts, y, run_nr, y_title, crit)
         push!(df_KS, vcat([y], ts_KS))
         CSV.write(outputfilepath, df_KS)
     end
-
-    # GDP
-    # GDP_1st = 100 .* df[!, Symbol("GDP_1st")]
-    # GDP_1_KS = py"run_PAWN"(labelnames, X, GDP_1st, "GDP_1", run_nr, "mean \$\\Delta GDP\$", crit)
-    # push!(df_KS, vcat(["GDP_1st"], GDP_1_KS))
-
-    # GDP_2nd = 100 .* df[!, Symbol("GDP_2nd")]
-    # GDP_2_KS = py"run_PAWN"(labelnames, X, GDP_2nd, "GDP_2", run_nr, "var \$\\Delta GDP\$", crit)
-    # push!(df_KS, vcat(["GDP_2nd"], GDP_2_KS))
-
-    # GDP_3rd = 100 .* df[!, Symbol("GDP_3rd")]
-    # GDP_3_KS = py"run_PAWN"(labelnames, X, GDP_3rd, "GDP_3", run_nr, "skew \$\\Delta GDP\$", crit)
-    # push!(df_KS, vcat(["GDP_3rd"], GDP_3_KS))
-
-    # GDP_4th = 100 .* df[!, Symbol("GDP_4th")]
-    # GDP_4_KS = py"run_PAWN"(labelnames, X, GDP_4th, "GDP_4", run_nr, "kurtosis \$\\Delta GDP\$", crit)
-    # push!(df_KS, vcat(["GDP_4th"], GDP_4_KS))
-
-    # GDP_acorr = df[!, Symbol("acorr_GDP")]
-    # GDP_ac_KS = py"run_PAWN"(labelnames, X, GDP_acorr, "acorr_GDP", run_nr, "\$\\Delta GDP\$ autocorrelation", crit)
-    # push!(df_KS, vcat(["GDP_ac"], GDP_ac_KS))
-
-    # dQ_1st = 100 .* df[!, Symbol("dQ_1st")]
-    # dQ_1_KS = py"run_PAWN"(labelnames, X, dQ_1st, "dQ_1", run_nr, "mean \$\\Delta Q\$", crit)
-    # push!(df_KS, vcat(["dQ_1st"], dQ_1_KS))
-
-    # LIS_1st = df[!, Symbol("LIS")]
-
-    # GINI coefficients
-    # GINI_I_1st = df[!, Symbol("GINI_I_1st")]
-    # GINI_I_1_KS = py"run_PAWN"(labelnames, X, GINI_I_1st, "GINI_I_1", run_nr, "mean income GINI", crit)
-    # push!(df_KS, vcat(["GINI_I_1"], GINI_I_1_KS))
-
-    # GINI_I_2nd = df[!, Symbol("GINI_I_2nd")]
-    # GINI_I_2_KS = py"run_PAWN"(labelnames, X, GINI_I_2nd, "GINI_I_2", run_nr, "var income GINI", crit)
-    # push!(df_KS, vcat(["GINI_I_2"], GINI_I_2_KS))
-
-    # GINI_W_1st = df[!, Symbol("GINI_W_1st")]
-    # GINI_W_1_KS = py"run_PAWN"(labelnames, X, GINI_W_1st, "GINI_W_1", run_nr, "mean wealth GINI", crit)
-    # push!(df_KS, vcat(["GINI_W_1"], GINI_W_1_KS))
-
-    # GINI_W_2nd = df[!, Symbol("GINI_W_2nd")]
-    # py"run_PAWN"(labelnames, X, GINI_W_2nd, "GINI_W_2nd", run_nr, "var wealth GINI", crit)
-    
-    # Unemployment
-    # U_1st = df[!, Symbol("U_1st")]
-    # U_1_KS = py"run_PAWN"(labelnames, X, U_1st, "U_1", run_nr, "mean U", crit)
-    # push!(df_KS, vcat(["U_1"], U_1_KS))
-
-    # U_2nd = df[!, Symbol("U_2nd")]
-    # U_2_KS = py"run_PAWN"(labelnames, X, U_2nd, "U_2", run_nr, "var U", crit)
-    # push!(df_KS, vcat(["U_2"], U_2_KS))
-
-    # dU_1st = df[!, Symbol("dU1st")]
-    # py"run_PAWN"(labelnames, X, dU_1st, "dU_1", run_nr, "\$\\Delta U\$")
-
-    # corr_GDP_dU = df[!, Symbol("corr_GDP_dU")]
-    # py"run_PAWN"(labelnames, X, corr_GDP_dU, "corr_GDP_dU", run_nr, "corr \$\\Delta GDP\$ and \$\\Delta U\$")
-
-    # Poverty
-    # FGT_1st = df[!, Symbol("FGT_1st")]
-    # FGT_1_KS = py"run_PAWN"(labelnames, X, FGT_1st, "FGT_1", run_nr, "mean FGT", crit)
-    # push!(df_KS, vcat(["FTG_1"], FGT_1_KS))
-
-    # FGT_2nd = df[!, Symbol("FGT_2nd")]
-    # py"run_PAWN"(labelnames, X, FGT_2nd, "FGT_2", run_nr, "var FGT")
-
-    # # Carbon emissions
-    # em2030 = df[!, Symbol("em2030")]
-    # em2030_KS = py"run_PAWN"(labelnames, X, em2030, "em2030", run_nr, "\$CO_2\$ em 2030", crit)
-    # push!(df_KS, vcat(["em2030"], em2030_KS))
-
-    # em2040 = df[!, Symbol("em2040")]
-    # em2040_KS = py"run_PAWN"(labelnames, X, em2040, "em2040", run_nr, "\$CO_2\$ em 2040", crit)
-    # push!(df_KS, vcat(["em2040"], em2040_KS))
-
-    # em2050 = df[!, Symbol("em2050")]
-    # em2050_KS = py"run_PAWN"(labelnames, X, em2050, "em2050", run_nr, "\$CO_2\$ em 2050", crit)
-    # push!(df_KS, vcat(["em2050"], em2050_KS))
-
-    # # # Productivity
-    # LP_g_1st = df[!, Symbol("LP_g_1st")]
-    # LP_1_KS = py"run_PAWN"(labelnames, X, LP_g_1st, "LP_g", run_nr, "mean LP growth", crit)
-    # push!(df_KS, vcat(["LP_1"], LP_1_KS))
-
-    # EE_g_1st = df[!, Symbol("EE_g_1st")]
-    # EE_1_KS = py"run_PAWN"(labelnames, X, EE_g_1st, "EE_g", run_nr, "mean EE growth", crit)
-    # push!(df_KS, vcat(["EE_1"], EE_1_KS))
-
-    # EF_g_1st = df[!, Symbol("EF_g_1st")]
-    # EF_1_KS = py"run_PAWN"(labelnames, X, EF_g_1st, "EF_g", run_nr, "mean EF growth", crit)
-    # push!(df_KS, vcat(["EF_1"], EF_1_KS))
 end
 
 
@@ -398,6 +325,7 @@ function main(;
     n = 20
     N_c = 100
 
+    # Define parameters that are varied over and their ranges
     X_labels = Dict([
         ["α_maxdev", [0.005, 0.5]],
         ["ρ", [0.05, 0.8]],
@@ -413,6 +341,9 @@ function main(;
         ["ψ_P", [0., 0.25]],
         ["p_f", [0.0, 1.0]]
     ])
+
+    # Dependent variables that are saved
+    Y_labels = ["GDP", "emissions_index"]
 
     parsed_args = parse_commandline(length(X_labels), N_u, n, N_c)
 
@@ -456,6 +387,7 @@ function main(;
             Threads.@threads for _ in 1:n_parl
                 generate_simdata(
                     X_labels,
+                    Y_labels,
                     n_per_epoch, 
                     n_per_parl,
                     t_warmup,
@@ -467,6 +399,7 @@ function main(;
         else
             generate_simdata(
                 X_labels,
+                Y_labels,
                 n_per_epoch, 
                 n_per_parl,
                 t_warmup,

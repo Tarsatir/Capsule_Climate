@@ -176,15 +176,12 @@ function update_macro_timeseries(
     )
 
     # Update CPI
-    # compute_price_data!(all_cp, all_kp, t, model.macroeconomy, model)
     compute_price_data!(model)
 
     # Update total GDP, per sector and GDP growth
-    # compute_GDP!(all_hh, all_cp, all_kp, t, model)
     compute_GDP!(model)
 
     # Update spending of different sectors
-    # compute_spending!(all_hh, all_cp, all_kp, all_p, t, model)
     compute_spending!(model)
 
     # Compute the labor share of income

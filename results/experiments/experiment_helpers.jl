@@ -21,7 +21,7 @@ function convertrunoutput(
     sim_nr::Int64;
     return_as_df::Bool=false,
     t_warmup::Int64=300,
-    )
+)
 
     # Prepare data to be written to dataframe
     GDP_1st = mean(runoutput.GDP_growth[t_warmup:end])

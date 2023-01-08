@@ -63,3 +63,6 @@ Trial_notebooks
 
 # CBS datasets should not be pushed to git
 data
+
+# Ignore sensitivity inputs and output
+parameters/sensitivity/sensitivity_runs/*
