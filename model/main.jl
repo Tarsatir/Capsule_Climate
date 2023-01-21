@@ -62,15 +62,15 @@ function initialize_model(
     T::Int64,
     t_warmup::Int64;
     changed_params::Union{Dict, Nothing},
-    changedparams_ofat::Union{Dict, Nothing},
-    changedtaxrates::Union{Vector, Nothing}
+    changed_params_ofat::Union{Dict, Nothing},
+    changed_taxrates::Union{Vector, Nothing}
     )::ABM
 
     # Initialize scheduler
     scheduler = Agents.Schedulers.by_type(true, true)
 
     # Initialize struct that holds global params and initial parameters
-    globalparam  = initialize_global_params(changed_params, changedparams_ofat)
+    globalparam  = initialize_global_params(changed_params, changed_params_ofat)
     initparam = InitParam()
 
     # Initialize struct that holds macro variables
@@ -80,7 +80,7 @@ function initialize_model(
     labormarket = LaborMarket()
 
     # Initialize government struct
-    government = initgovernment(T, changedtaxrates)
+    government = initgovernment(T, changed_taxrates)
 
     # Initialize index fund struct
     indexfund = IndexFund(T=T)
@@ -712,10 +712,10 @@ function run_simulation(;
     T::Int64 = 660,
     t_warmup::Int64 = 300,
     changed_params::Union{Dict,Nothing} = nothing,
-    changedparams_ofat::Union{Dict,Nothing} = nothing,
-    changedtaxrates::Union{Vector,Nothing} = nothing,
+    changed_params_ofat::Union{Dict,Nothing} = nothing,
+    changed_taxrates::Union{Vector,Nothing} = nothing,
     show_full_output::Bool = false,
-    threadnr::Int64 = 1,
+    thread_nr::Int64 = 1,
     sim_nr::Int64 = 0,
     showprogress::Bool = false,
     savedata::Bool = false,
@@ -733,9 +733,9 @@ function run_simulation(;
     @timeit timer "init" model = initialize_model(
         T,
         t_warmup; 
-        changed_params=changed_params,
-        changedparams_ofat=changedparams_ofat, 
-        changedtaxrates=changedtaxrates
+        changed_params = changed_params,
+        changed_params_ofat = changed_params_ofat, 
+        changed_taxrates = changed_taxrates
     )
 
     # Initialize data categories that need to be saved
@@ -766,18 +766,18 @@ function run_simulation(;
         println()
     end
 
-    println("thread $threadnr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
+    println("thread $thread_nr, sim $sim_nr has finished on $(Dates.format(now(), "HH:MM"))")
 
     return agent_df, model_df
 end
 
 
-@time run_simulation(
-    T = 660;
-    savedata = true,
-    show_full_output = true,
-    showprogress = true,
-    seed = 1234
-)
+# @time run_simulation(
+#     T = 660;
+#     savedata = true,
+#     show_full_output = true,
+#     showprogress = true,
+#     seed = 1234
+# )
 
-nothing
+# nothing

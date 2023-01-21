@@ -139,7 +139,7 @@ function generate_simdata(
 
             # Save full time series of selected Y labels
             outputfilepath = get_output_path(sim_nr)
-            CSV.write(outputfilepath, res[Y_labels]; append=i≠n_per_epoch)
+            CSV.write(outputfilepath, res[Y_labels])
 
         else
             # Preprocess output results

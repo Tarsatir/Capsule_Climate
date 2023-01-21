@@ -13,17 +13,17 @@
 
     MS::Float64 = 0.0                      # money stock owned by government
     curracc::GovCurrentAccount             # current account of government spending
-    changedtaxrates::Union{Vector, Nothing} # vector of tax rates that will be changed once warmup period ends
+    changed_taxrates::Union{Vector, Nothing} # vector of tax rates that will be changed once warmup period ends
 end
 
 
 function initgovernment(
     T::Int64,
-    changedtaxrates::Union{Vector, Nothing}
+    changed_taxrates::Union{Vector, Nothing}
     )::Government
 
     # Initialize government structure
-    government = Government(curracc=GovCurrentAccount(T=T), changedtaxrates=changedtaxrates)
+    government = Government(curracc=GovCurrentAccount(T=T), changed_taxrates=changed_taxrates)
 
     return government
 end
@@ -34,11 +34,11 @@ Instates changed taxes at the end of the warmup period
 """
 function instatetaxes!(
     government::Government
-    )
+)
 
     # If changed tax rates passed, change in government struct
-    if !isnothing(government.changedtaxrates)
-        for (taxtype, taxrate) in government.changedtaxrates
+    if !isnothing(government.changed_taxrates)
+        for (taxtype, taxrate) in government.changed_taxrates
             setproperty!(government, taxtype, taxrate)
         end
     end

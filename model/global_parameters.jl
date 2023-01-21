@@ -69,25 +69,26 @@
     t_warmup::Int64 = 300           # time period warmup of the model
     t_wait::Int64 = 4               # number of time periods new producers are not allowed to go bankrupt
 
-    changedparams_ofat::Union{Nothing, Dict} # Parameters that are changed at the end of the warmup period
+    changed_params_ofat::Union{Nothing, Dict} # Parameters that are changed at the end of the warmup period
 end
 
 
 function initialize_global_params(
-    changedparams::Union{Nothing, Dict},
-    changedparams_ofat::Union{Nothing, Dict}
+    changed_params::Union{Nothing, Dict},
+    changed_params_ofat::Union{Nothing, Dict}
     )
 
-    globalparam = GlobalParam(changedparams_ofat=changedparams_ofat)
+    globalparam = GlobalParam(changed_params_ofat = changed_params_ofat)
 
     # Change parameters if needed before returning.
-    if !isnothing(changedparams)
-        for (key, new_param) in changedparams
+    if !isnothing(changed_params)
+        for (key, new_param) in changed_params
             setproperty!(globalparam, Symbol(key), new_param)
         end
 
-        if haskey(changedparams, "κ_upper")
-            setproperty!(globalparam, Symbol("κ_lower"), -changedparams["κ_upper"])
+        # If κ_upper part of OFAT experiment, also set κ_lower
+        if haskey(changed_params, "κ_upper")
+            setproperty!(globalparam, Symbol("κ_lower"), -changed_params["κ_upper"])
         end
     end
 
@@ -104,11 +105,11 @@ function check_changed_ofatparams(
     t::Int64
     )
 
-    if globalparam.changedparams_ofat ≠ nothing
-        for (paramtype, (newparamval, oldparamval, t_introduction, t_duration)) in globalparam.changedparams_ofat
+    if globalparam.changed_params_ofat ≠ nothing
+        for (paramtype, (newparamval, oldparamval, t_introduction, t_duration)) in globalparam.changed_params_ofat
             if t == t_introduction
                 # Set old value to current value of parameter
-                globalparam.changedparams_ofat[paramtype][2] = getfield(globalparam, paramtype)
+                globalparam.changed_params_ofat[paramtype][2] = getfield(globalparam, paramtype)
 
                 # Set parameter to new value
                 setproperty!(globalparam, paramtype, newparamval)

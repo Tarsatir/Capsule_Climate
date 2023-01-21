@@ -65,4 +65,6 @@ Trial_notebooks
 data
 
 # Ignore sensitivity inputs and output
-parameters/sensitivity/sensitivity_runs/*
+parameters/sensitivity/sensitivity_runs/input_data/*
+parameters/sensitivity/sensitivity_runs/output_data/*
+parameters/sensitivity/sensitivity_runs/test.jl
