@@ -9,7 +9,7 @@ def plot_macro_vars(df):
     Plots macro statistics
     """
     
-    _, ax = plt.subplots(3, 2, figsize=(10,10))
+    _, ax = plt.subplots(4, 2, figsize=(10, 12))
 
     T = range(len(df.GDP))
 
@@ -62,6 +62,22 @@ def plot_macro_vars(df):
     ax[2,1].plot(T, df.GDP_growth, label='GDP')
     ax[2,1].set_title('growth rates')
     ax[2,1].legend()
+
+    # Government ax revenues
+    ax[3,0].set_title('Government tax income')
+    ax[3,0].plot(T, df.rev_incometax, label='income')
+    ax[3,0].plot(T, df.rev_capitaltax, label='capital')
+    ax[3,0].plot(T, df.rev_salestax, label='sales')
+    ax[3,0].plot(T, df.rev_profittax, label='profit')
+    ax[3,0].plot(T, df.rev_energytax, label='energy')
+    ax[3,0].plot(T, df.rev_carbontax, label='carbon')
+    ax[3,0].legend()
+
+    # Government expenditures
+    ax[3,1].set_title('Government expenditures')
+    ax[3,1].plot(T, df.exp_UB, label='UB')
+    ax[3,1].plot(T, df.exp_subsidies, label='subsidies')
+    ax[3,1].legend()
 
     plt.tight_layout()
     plt.savefig('plots/macro_ts.png', bbox_inches='tight')

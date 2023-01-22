@@ -1,5 +1,6 @@
 @Base.kwdef mutable struct Government <: AbstractAgent
-    
+
+    T::Int64
     w_min::Float64 = 0.5
     UB::Float64 = 100 * 0.7 * w_min        # unemployment benefits
 
@@ -8,11 +9,24 @@
     τᴷ::Float64 = 0.25                     # capital gains tax
     τˢ::Float64 = 0.                       # sales tax
     τᴾ::Float64 = 0.25                     # profit tax
-    τᴱ::Float64 = 0.1                      # energy tax
+    τᴱ::Float64 = 0.                       # energy tax
     τᶜ::Float64 = 0.                       # emission tax
 
     MS::Float64 = 0.0                      # money stock owned by government
-    curracc::GovCurrentAccount             # current account of government spending
+    # curracc::GovCurrentAccount             # current account of government spending
+
+    # Revenues
+    rev_incometax::Vector{Float64} = zeros(Float64, T)  # hist revenues of income tax
+    rev_capitaltax::Vector{Float64} = zeros(Float64, T)  # hist revenues of capital gains tax
+    rev_salestax::Vector{Float64} = zeros(Float64, T)  # hist revenues of sales tax
+    rev_profittax::Vector{Float64} = zeros(Float64, T)  # hist revenues of profit tax
+    rev_energytax::Vector{Float64} = zeros(Float64, T)  # hist revenues of energy tax
+    rev_carbontax::Vector{Float64} = zeros(Float64, T)  # hist revenues of emission tax
+
+    # Expenditures
+    exp_UB::Vector{Float64} = zeros(Float64, T)  # hist expenditures on unemployment benefits
+    exp_subsidies::Vector{Float64} = zeros(Float64, T) # hist expenditures on subsidies
+
     changed_taxrates::Union{Vector, Nothing} # vector of tax rates that will be changed once warmup period ends
 end
 
@@ -20,11 +34,13 @@ end
 function initgovernment(
     T::Int64,
     changed_taxrates::Union{Vector, Nothing}
-    )::Government
+)::Government
 
     # Initialize government structure
-    government = Government(curracc=GovCurrentAccount(T=T), changed_taxrates=changed_taxrates)
-
+    government = Government(
+                    T = T, 
+                    changed_taxrates = changed_taxrates
+                )
     return government
 end
 
@@ -51,9 +67,9 @@ Loops over all unemployed households and pays UB
 function pay_unemployment_benefits_gov!(
     government::Government, 
     unemployed::Vector{Int},
-    t::Int,
+    t::Int64,
     model::ABM
-    )
+)
 
     # Pay out unemployment benefits to households
     total_UB = 0
@@ -63,7 +79,7 @@ function pay_unemployment_benefits_gov!(
     end
 
     # Add total UB spending to government current account
-    government.curracc.Exp_UB[t] = total_UB
+    government.exp_UB[t] = total_UB
 end
 
 
@@ -72,10 +88,10 @@ Levies profit tax on all producers
 """
 function levy_profit_tax_gov!(
     government::Government,
-    all_p::Vector{Int},
-    t::Int,
+    all_p::Vector{Int64},
+    t::Int64,
     model::ABM
-    )
+)
 
     total_τᴾ = 0
     for p_id in all_p
@@ -89,7 +105,7 @@ function levy_profit_tax_gov!(
         end
     end
 
-    government.curracc.Rev_τᴾ[t] = total_τᴾ
+    government.rev_profittax[t] = total_τᴾ
 end
 
 
@@ -99,10 +115,10 @@ Lets government receive income tax from employers
 function receive_incometax_gov!(
     government::Government,
     incometax::Float64,
-    t::Int
-    )
+    t::Int64
+)
 
-    government.curracc.Rev_τᴵ[t] += incometax
+    government.rev_incometax[t] += incometax
 end
 
 
@@ -112,10 +128,10 @@ Lets government receive capital gains tax from the indexfund
 function receive_capgains_tax_gov!(
     government::Government, 
     capgainstax::Float64,
-    t::Int
-    )
+    t::Int64
+)
 
-    government.curracc.Rev_τᴷ[t] += capgainstax
+    government.rev_capitaltax[t] += capgainstax
 end
 
 
@@ -125,10 +141,10 @@ Lets government receive sales taxes from consumer good producers
 function receive_salestax_gov!(
     government::Government,
     salestax::Float64,
-    t::Int
-    )
+    t::Int64
+)
 
-    government.curracc.Rev_τˢ[t] += salestax
+    government.rev_salestax[t] += salestax
 end
 
 
@@ -138,10 +154,10 @@ Lets government receive energy taxes from producers
 function receive_energytax_gov!(
     government::Government,
     energytax::Float64,
-    t::Int
-    )
+    t::Int64
+)
 
-    government.curracc.Rev_τᴱ[t] += energytax
+    government.rev_energytax[t] += energytax
 end
 
 
@@ -151,30 +167,30 @@ Lets government receive carbon taxes from producers
 function receive_carbontax_gov!(
     government::Government,
     carbontax::Float64,
-    t::Int
-    )
+    t::Int64
+)
 
-    government.curracc.Rev_τᶜ[t] += carbontax
+    government.rev_carbontax[t] += carbontax
 end
 
 
 function compute_budget_balance(
     government::Government,
-    t::Int
-    )
+    t::Int64
+)
 
-    Rev_τᴷ = t > 1 ? government.curracc.Rev_τᴷ[t-1] : 0.0
+    rev_capitaltax = t > 1 ? government.rev_capitaltax[t-1] : 0.0
 
     # Compute total tax revenues
-    Tot_rev = (government.curracc.Rev_τᴵ[t] + government.curracc.Rev_τᴾ[t] 
-               + government.curracc.Rev_τˢ[t] + government.curracc.Rev_τᴱ[t] 
-               + government.curracc.Rev_τᶜ[t] + Rev_τᴷ)
+    total_revenue = (government.rev_incometax[t] + government.rev_profittax[t] 
+                    + government.rev_salestax[t] + government.rev_energytax[t] 
+                    + government.rev_carbontax[t] + rev_capitaltax)
 
     # Compute total expediture
-    Tot_exp = government.curracc.Exp_UB[t] + government.curracc.Exp_Sub[t]
+    total_expenditure = government.exp_UB[t] + government.exp_subsidies[t]
 
     # Pay off part of debt in case of positive balance
-    government.MS += (Tot_rev - Tot_exp)
+    government.MS += (total_revenue - total_expenditure)
 end
 
 
@@ -190,10 +206,9 @@ function resolve_gov_balance!(
     indexfund,
     globalparam::GlobalParam,
     all_hh::Vector{Int64},
+    t::Int64,
     model::ABM
-    )
-
-    # println("gov budget balance is $(government.MS)")
+)
 
     if government.MS >= 0.0
 
@@ -204,7 +219,7 @@ function resolve_gov_balance!(
             socialbenefits = government.MS * share
             receiveincome_hh!(model[hh_id], socialbenefits; socben=true)
         end
-        government.MS = 0.0
+        government.exp_subsidies[t] = government.MS
     else
         issuegovbonds(indexfund, -government.MS)
         government.MS = 0.0
@@ -219,7 +234,7 @@ Determines the rate of income tax that should be paid over the agent's income.
 function determine_incometaxrate(
     government::Government,
     income::Float64
-    )::Float64
+)::Float64
 
     return government.τᴵ
 end

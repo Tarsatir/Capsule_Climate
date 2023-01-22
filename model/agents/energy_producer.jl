@@ -606,7 +606,8 @@ function pay_carbontax_ep!(
     )
 
     ep.carbontax[t] = government.τᶜ * ep.emissions[t]
-    government.curracc.Rev_τᶜ[t] += ep.carbontax[t]
+    # TODO move this to a gov function
+    government.rev_carbontax[t] += ep.carbontax[t]
 end
 
 
@@ -614,7 +615,7 @@ function compute_FU_ICₑ_ep!(
     ep::EnergyProducer,
     p_f::Float64, 
     t::Int64
-    )
+)
 
     ep.FU[t] = length(ep.infra_marg) > 0 ? sum(pp-> pp ∈ ep.dirty_portfolio ? pp.capacity / pp.Aᵀ : 0.0, ep.infra_marg) : 0.0
     ep.IC_ep[t] = p_f * ep.FU[t]

@@ -148,8 +148,11 @@ function get_mdata(
     # Gather climate data in dict
     climate_dict = Dict(cat => getproperty(model.climate, cat) for cat in model.climatedata_tosave)
 
+    # Gather government tax revenue and expenditure data
+    government_dict = Dict(cat => getproperty(model.gov, cat) for cat in model.governmentdata_tosave)
+
     # Merge all dicts and convert and return as dataframe
-    model_dict = merge(macro_dict, ep_dict, climate_dict)
+    model_dict = merge(macro_dict, ep_dict, climate_dict, government_dict)
     return DataFrame(model_dict)
 end
 
@@ -173,7 +176,7 @@ function update_macro_timeseries(
     globalparam::GlobalParam,
     model::ABM,
     to
-    )
+)
 
     # Update CPI
     compute_price_data!(model)
@@ -198,7 +201,7 @@ function update_macro_timeseries(
     # Update unemployment rate and unemployment benefits expenditure
     model.macroeconomy.U[t] = labormarket.E
     model.macroeconomy.switch_rate[t] = labormarket.switch_rate
-    model.macroeconomy.Exp_UB[t] = government.curracc.Exp_UB[t]
+    # model.macroeconomy.Exp_UB[t] = government.Exp_UB[t]
 
     # Consumption 
     # model.macroeconomy.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)

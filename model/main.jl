@@ -127,6 +127,8 @@ function initialize_model(
                                 nothing,
                                 nothing,
                                 nothing,
+                                nothing,
+
                                 macroeconomy,
                                 labormarket,
                                 kp_brochures,
@@ -327,6 +329,13 @@ function initialize_datacategories(
             :emissions_index, :energy_percentage 
         ]
 
+        # Define data of government to save
+        model.governmentdata_tosave = [
+            :rev_incometax, :rev_capitaltax, :rev_salestax, 
+            :rev_profittax, :rev_energytax, :rev_carbontax,
+            :exp_UB, :exp_subsidies
+        ]
+
         mdata = []
 
         return adata, mdata
@@ -376,7 +385,7 @@ function model_step!(
     )
 
     # Redistribute goverment balance
-    resolve_gov_balance!(government, indexfund, globalparam, all_hh, model)
+    resolve_gov_balance!(government, indexfund, globalparam, all_hh, t, model)
 
     # Update firm age
     for p_id in all_p
@@ -772,12 +781,12 @@ function run_simulation(;
 end
 
 
-# @time run_simulation(
-#     T = 660;
-#     savedata = true,
-#     show_full_output = true,
-#     showprogress = true,
-#     seed = 1234
-# )
+@time run_simulation(
+    T = 660;
+    savedata = true,
+    show_full_output = true,
+    showprogress = true,
+    seed = 1234
+)
 
-# nothing
+nothing
