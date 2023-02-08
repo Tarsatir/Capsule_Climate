@@ -88,6 +88,7 @@ Generates data used by sensitivity analysis.
 function generate_simdata(
     X_labels::Dict,
     Y_labels::Vector{String},
+    n_timesteps::Int64,
     n_per_epoch::Int64,
     n_per_parl::Int64,
     t_warmup::Int64,
@@ -128,6 +129,7 @@ function generate_simdata(
 
         # Run the model with changed parameters
         _, model_df = run_simulation(
+            T = n_timesteps,
             changed_params = changedparams;
             thread_nr = parl_nr,
             sim_nr = sim_nr
@@ -389,6 +391,7 @@ function main(;
                 generate_simdata(
                     X_labels,
                     Y_labels,
+                    n_timesteps,
                     n_per_epoch, 
                     n_per_parl,
                     t_warmup,
