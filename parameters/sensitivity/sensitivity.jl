@@ -87,7 +87,7 @@ Generates data used by sensitivity analysis.
 """
 function generate_simdata(
     X_labels::Dict,
-    Y_labels::Vector{String},
+    Y_labels::Vector{Symbol},
     n_timesteps::Int64,
     n_per_epoch::Int64,
     n_per_parl::Int64,
