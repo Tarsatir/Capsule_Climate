@@ -345,7 +345,7 @@ function main(;
     ])
 
     # Dependent variables that are saved
-    Y_labels = ["GDP", "emissions_index"]
+    Y_labels = [:GDP, :emissions_index]
 
     parsed_args = parse_commandline(length(X_labels), N_u, n, N_c)
 
