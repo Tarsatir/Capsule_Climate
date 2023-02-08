@@ -781,12 +781,12 @@ function run_simulation(;
 end
 
 
-@time run_simulation(
-    T = 660;
-    savedata = true,
-    show_full_output = true,
-    showprogress = true,
-    seed = 1234
-)
+# @time run_simulation(
+#     T = 660;
+#     savedata = true,
+#     show_full_output = true,
+#     showprogress = true,
+#     seed = 1234
+# )
 
 nothing

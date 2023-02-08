@@ -318,8 +318,8 @@ end
 
 function main(;
     run_nr::Int64=9,
-    n_timesteps::Int64=660,
-    t_warmup::Int64=300
+    n_timesteps::Int64=10,
+    t_warmup::Int64=10
 )
 
     # Set parameters for optimal sampling quantity
