@@ -93,10 +93,10 @@ function generate_simdata(
     t_warmup::Int64,
     inputpath::String,
     outputpath::String,
+    sim_nr_only::Int64,
     run_nr::Int64;
     save_full_output::Bool=true,
-    proc_nr::Union{Int64, Nothing}=nothing,
-    sim_nr_only::Int64
+    proc_nr::Union{Int64, Nothing}=nothing
 )
 
     params = collect(keys(X_labels))
@@ -358,7 +358,7 @@ function main(;
     geninput = parsed_args["geninput"]
     genoutput = parsed_args["genoutput"]
     runpawn = parsed_args["runpawn"]
-    sim_nr = parsed_args["sim_nr"]
+    sim_nr_only = parsed_args["sim_nr"]
 
     
     if n_processes == 0
@@ -393,23 +393,24 @@ function main(;
                     n_per_parl,
                     t_warmup,
                     inputpath,
-                    outputpath, 
+                    outputpath,
+                    sim_nr_only, 
                     run_nr
                 )
             end
-        else
-            generate_simdata(
-                X_labels,
-                Y_labels,
-                n_per_epoch, 
-                n_per_parl,
-                t_warmup,
-                inputpath,
-                outputpath, 
-                run_nr;
-                proc_nr=process_id,
-                sim_nr_only=sim_nr
-            )
+        # else
+        #     generate_simdata(
+        #         X_labels,
+        #         Y_labels,
+        #         n_per_epoch, 
+        #         n_per_parl,
+        #         t_warmup,
+        #         inputpath,
+        #         outputpath, 
+        #         run_nr;
+        #         proc_nr=process_id,
+        #         sim_nr_only=sim_nr
+        #     )
         end
     end
 
