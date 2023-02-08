@@ -107,7 +107,7 @@ function generate_simdata(
 
     inputfilepath = getfilepath(inputpath, run_nr, parl_nr; isinput=true)
     outputfilepath = getfilepath(outputpath, run_nr, parl_nr)
-    res = nothing
+    # res = nothing
 
     for (i, row) in enumerate(CSV.Rows(inputfilepath))
 
@@ -129,7 +129,7 @@ function generate_simdata(
         # Run the model with changed parameters
         _, model_df = run_simulation(
             changed_params = changedparams;
-            threadnr = parl_nr,
+            thread_nr = parl_nr,
             sim_nr = sim_nr
         )
 
@@ -139,21 +139,22 @@ function generate_simdata(
 
             # Save full time series of selected Y labels
             outputfilepath = get_output_path(sim_nr)
-            CSV.write(outputfilepath, res[Y_labels])
+            CSV.write(outputfilepath, model_df[Y_labels])
 
-        else
-            # Preprocess output results
-            if isnothing(res)
-                res = convertrunoutput(model_df, sim_nr; return_as_df=true, t_warmup=t_warmup)
-            else
-                push!(res, (convertrunoutput(model_df, sim_nr; t_warmup=t_warmup)))
-            end
+        # TODO: MAKE FUNCTION FOR CONDENSED DATA
+        # else
+        #     # Preprocess output results
+        #     if isnothing(res)
+        #         res = convertrunoutput(model_df, sim_nr; return_as_df=true, t_warmup=t_warmup)
+        #     else
+        #         push!(res, (convertrunoutput(model_df, sim_nr; t_warmup=t_warmup)))
+        #     end
 
-            # If end of epoch is reached, write results to output csv
-            if nrow(res) == n_per_epoch || i == n_per_parl
-                CSV.write(outputfilepath, res; append=i≠n_per_epoch)
-                res = nothing
-            end
+        #     # If end of epoch is reached, write results to output csv
+        #     if nrow(res) == n_per_epoch || i == n_per_parl
+        #         CSV.write(outputfilepath, res; append=i≠n_per_epoch)
+        #         res = nothing
+        #     end
         end
 
         # If max number of simulations is reached, stop thread/loop
