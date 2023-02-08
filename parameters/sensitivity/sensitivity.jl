@@ -108,7 +108,6 @@ function generate_simdata(
 
     inputfilepath = getfilepath(inputpath, run_nr, parl_nr; isinput=true)
     outputfilepath = getfilepath(outputpath, run_nr, parl_nr)
-    # res = nothing
 
     for (i, row) in enumerate(CSV.Rows(inputfilepath))
 

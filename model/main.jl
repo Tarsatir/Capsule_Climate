@@ -727,7 +727,7 @@ function run_simulation(;
     thread_nr::Int64 = 1,
     sim_nr::Int64 = 0,
     showprogress::Bool = false,
-    savedata::Bool = false,
+    savedata::Bool = true,
     seed::Int64 = Random.rand(1000:9999)
 )
 
