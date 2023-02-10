@@ -65,9 +65,9 @@ function OFAT_taxrates(
 
         println("type $taxtype, range $raterange")
 
-        for taxrate in LinRange(raterange[1], raterange[2], n_per_taxtype)
+        for taxrate in Base._linspace(raterange[1], raterange[2], n_per_taxtype)
 
-            taxrate = round(taxrate, digits=2)
+            #taxrate = round(taxrate, digits=2)
             
             # Set up array with changed tax rate, to be introduced in period t_warmup
             changed_taxrates = [(taxtype, taxrate)]
@@ -313,11 +313,11 @@ function parse_commandline()
         "--n_per_taxtype"
             help="number of simulations per tax type"
             arg_type=Int64
-            default=5
+            default=20
         "--n_per_taxrate"
             help="number of simulations per tax rate"
             arg_type=Int64
-            default=30
+            default=5
         "--outputpath"
             help="path to directory with output files"
             arg_type=String
@@ -343,7 +343,8 @@ function main()
         # :τˢ => (0.0, 0.5),
         # :τᴾ => (0.1, 0.6),
         # :τᴱ => (0.1, 0.5),
-        :τᶜ => (0.1, 0.5)
+        :τᶜ => (0.1, 0.8) 
+        
     )
 
     # Select which model variables to save from each simulation
