@@ -10,6 +10,7 @@ using Parameters
 using SparseArrays
 using PyCall
 using Dates
+using StaticArrays
 
 
 # Include files
@@ -80,7 +81,7 @@ function initialize_model(
     labormarket = LaborMarket()
 
     # Initialize government struct
-    government = initgovernment(T, changed_taxrates)
+    government = initgovernment(T, t_warmup, changed_taxrates)
 
     # Initialize index fund struct
     indexfund = IndexFund(T=T)
@@ -331,6 +332,7 @@ function initialize_datacategories(
 
         # Define data of government to save
         model.governmentdata_tosave = [
+            :τᴵ_ts, :τᴷ_ts, :τˢ_ts, :τᴾ_ts, :τᴱ_ts, :τᶜ_ts,
             :rev_incometax, :rev_capitaltax, :rev_salestax, 
             :rev_profittax, :rev_energytax, :rev_carbontax,
             :exp_UB, :exp_subsidies
@@ -366,10 +368,8 @@ function model_step!(
     # Check if any global params are changed in ofat experiment
     check_changed_ofatparams(globalparam, t)
 
-    # If end of warmup period reached, instate changed taxes
-    if t == t_warmup
-        instatetaxes!(government)
-    end
+    # Update tax rates
+    update_taxrates!(government, t)
 
     # Update schedulers
     @timeit timer "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
@@ -779,14 +779,3 @@ function run_simulation(;
 
     return agent_df, model_df
 end
-
-
-# @time run_simulation(
-#     T = 660;
-#     savedata = true,
-#     show_full_output = true,
-#     showprogress = true,
-#     seed = 1234
-# )
-
-nothing

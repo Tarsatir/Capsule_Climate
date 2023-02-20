@@ -2,14 +2,14 @@ from matplotlib.gridspec import GridSpec
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats as stats
+# import scipy.stats as stats
 
 def plot_macro_vars(df):
     """
     Plots macro statistics
     """
     
-    _, ax = plt.subplots(4, 2, figsize=(10, 12))
+    _, ax = plt.subplots(3, 2, figsize=(10, 10))
 
     T = range(len(df.GDP))
 
@@ -62,22 +62,6 @@ def plot_macro_vars(df):
     ax[2,1].plot(T, df.GDP_growth, label='GDP')
     ax[2,1].set_title('growth rates')
     ax[2,1].legend()
-
-    # Government ax revenues
-    ax[3,0].set_title('Government tax income')
-    ax[3,0].plot(T, df.rev_incometax, label='income')
-    ax[3,0].plot(T, df.rev_capitaltax, label='capital')
-    ax[3,0].plot(T, df.rev_salestax, label='sales')
-    ax[3,0].plot(T, df.rev_profittax, label='profit')
-    ax[3,0].plot(T, df.rev_energytax, label='energy')
-    ax[3,0].plot(T, df.rev_carbontax, label='carbon')
-    ax[3,0].legend()
-
-    # Government expenditures
-    ax[3,1].set_title('Government expenditures')
-    ax[3,1].plot(T, df.exp_UB, label='UB')
-    ax[3,1].plot(T, df.exp_subsidies, label='subsidies')
-    ax[3,1].legend()
 
     plt.tight_layout()
     plt.savefig('plots/macro_ts.png', bbox_inches='tight')
@@ -215,6 +199,45 @@ def plot_producer_vars(df):
 
     plt.tight_layout()
     plt.savefig('plots/producer_ts.png', bbox_inches='tight')
+
+
+def plot_government_vars(df:pd.DataFrame):
+
+    fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+    fig.suptitle("Government")
+
+    T = range(len(df.GDP))
+
+    # Government tax revenues
+    ax[0,0].set_title('tax revenues')
+    ax[0,0].plot(T, df.rev_incometax, label='income')
+    ax[0,0].plot(T, df.rev_capitaltax, label='capital')
+    ax[0,0].plot(T, df.rev_salestax, label='sales')
+    ax[0,0].plot(T, df.rev_profittax, label='profit')
+    ax[0,0].plot(T, df.rev_energytax, label='energy')
+    ax[0,0].plot(T, df.rev_carbontax, label='carbon')
+    ax[0,0].legend()
+
+    # Government expenditures
+    ax[0,1].set_title('expenditures')
+    ax[0,1].plot(T, df.exp_UB, label='UB')
+    ax[0,1].plot(T, df.exp_subsidies, label='subsidies')
+    ax[0,1].legend()
+
+    # Government budget deficit
+
+    # Tax rates
+    ax[1,1].set_title('tax rates')
+    ax[1,1].plot(T, df['τᴵ_ts'], label='income')
+    ax[1,1].plot(T, df['τᴷ_ts'], label='capital')
+    ax[1,1].plot(T, df['τˢ_ts'], label='sales')
+    ax[1,1].plot(T, df['τᴾ_ts'], label='profits')
+    ax[1,1].plot(T, df['τᴱ_ts'], label='energy')
+    ax[1,1].plot(T, df['τᶜ_ts'], label='carbon')
+    ax[1,1].legend()
+
+    plt.tight_layout()
+    plt.savefig('plots/government.png')
 
 
 def plot_cons_vars(df):
@@ -551,44 +574,39 @@ def get_share(timeseries, tottimeseries, tot_index):
     return tot_index * timeseries / tottimeseries
 
 
-def plot_emissions(df_climate_energy, df_macro, warmup=300):
+def plot_emissions(df:pd.DataFrame, warmup:int=300):
 
-    T = range(len(df_climate_energy.emissions_total))[warmup:]
+    T = range(len(df.emissions_index))
 
     fig, ax = plt.subplots(1, 2, figsize=(8,4))
+    fig.suptitle('Carbon Emissions')
 
-    em_tot = get_indexnumbers(df_climate_energy.emissions_total[warmup:].to_numpy())
-
-    ax[0].plot(T, df_climate_energy.emissions_total[warmup:], label='$c^{total}_t$')
-    ax[0].plot(T, df_climate_energy.emissions_kp[warmup:], label='$c^{kp}_t$')
-    ax[0].plot(T, df_climate_energy.emissions_cp[warmup:], label='$c^{cp}_t$')
-    ax[0].plot(T, df_climate_energy.emissions_ep[warmup:], label='$c^{ep}_t$')
+    ax[0].plot(T, df.emissions_index, label='$c^{total}_t$')
     ax[0].set_title('CO$_2$ emissions')
     ax[0].set_xlabel('time')
-    ax[0].set_ylabel('total CO$_2$ emission')
-    ax[0].set_xticks(np.arange(warmup, warmup+361, 60), np.arange(2020, 2051, 5))
+    ax[0].set_ylabel('CO$_2$ index')
     ax[0].legend()
 
 
-    em_kp = get_share(df_climate_energy.emissions_kp[warmup:].to_numpy(),
-                      df_climate_energy.emissions_total[warmup:].to_numpy(),
-                      em_tot)
-    em_cp = get_share(df_climate_energy.emissions_cp[warmup:].to_numpy(),
-                      df_climate_energy.emissions_total[warmup:].to_numpy(),
-                      em_tot)
-    em_ep = get_share(df_climate_energy.emissions_ep[warmup:].to_numpy(),
-                      df_climate_energy.emissions_total[warmup:].to_numpy(),
-                      em_tot)
+    # em_kp = get_share(df_climate_energy.emissions_kp[warmup:].to_numpy(),
+    #                   df_climate_energy.emissions_total[warmup:].to_numpy(),
+    #                   em_tot)
+    # em_cp = get_share(df_climate_energy.emissions_cp[warmup:].to_numpy(),
+    #                   df_climate_energy.emissions_total[warmup:].to_numpy(),
+    #                   em_tot)
+    # em_ep = get_share(df_climate_energy.emissions_ep[warmup:].to_numpy(),
+    #                   df_climate_energy.emissions_total[warmup:].to_numpy(),
+    #                   em_tot)
 
-    ax[1].plot(T, em_tot, label='$c^{total}_t$')
-    ax[1].plot(T, em_kp, label='$c^{kp}_t$')
-    ax[1].plot(T, em_cp, label='$c^{cp}_t$')
-    ax[1].plot(T, em_ep, label='$c^{ep}_t$')
-    ax[1].set_title('CO$_2$ emissions')
-    ax[1].set_xlabel('time')
-    ax[1].set_ylabel('total CO$_2$ emission')
-    # ax[1].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
-    ax[1].legend()
+    # ax[1].plot(T, em_tot, label='$c^{total}_t$')
+    # ax[1].plot(T, em_kp, label='$c^{kp}_t$')
+    # ax[1].plot(T, em_cp, label='$c^{cp}_t$')
+    # ax[1].plot(T, em_ep, label='$c^{ep}_t$')
+    # ax[1].set_title('CO$_2$ emissions')
+    # ax[1].set_xlabel('time')
+    # ax[1].set_ylabel('total CO$_2$ emission')
+    # # ax[1].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
+    # ax[1].legend()
 
     plt.tight_layout()
     plt.savefig('plots/emissions.png')
@@ -612,15 +630,16 @@ if __name__=="__main__":
     plot_macro_vars(df_macro)
     plot_household_vars(df_macro)
     plot_producer_vars(df_macro)
+    plot_government_vars(df_macro)
     # plot_cons_vars(df_macro)
 
-    plot_income_dist()
+    # plot_income_dist()
     plot_inequality(df_macro)
-    plot_sales_dist()
+    # plot_sales_dist()
 
     # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
-    plot_energy(df_macro)
+    # plot_energy(df_macro)
     # plot_climate(df_climate_energy, df_macro)
-    # plot_emissions(df_climate_energy, df_macro)
+    plot_emissions(df_macro)
 
     # plot_LIS(df_macro)

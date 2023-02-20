@@ -4,23 +4,24 @@
     w_min::Float64 = 0.5
     UB::Float64 = 100 * 0.7 * w_min        # unemployment benefits
 
-    # Tax rates
-    # τᴵ::Float64 = 0.25                              # income tax
-    # τᴷ::Float64 = 0.25                              # capital gains tax
-    # τˢ::Float64 = 0.                                # sales tax
-    # τᴾ::Float64 = 0.25                              # profit tax
-    # τᴱ::Float64 = 0.                                # energy tax
-    # τᶜ::Float64 = 0.                                # emission tax
+    # (Default) tax rates
+    τᴵ::Float64 = 0.25                              # income tax
+    τᴷ::Float64 = 0.25                              # capital gains tax
+    τˢ::Float64 = 0.                                # sales tax
+    τᴾ::Float64 = 0.25                              # profit tax
+    τᴱ::Float64 = 0.                                # energy tax
+    τᶜ::Float64 = 0.                                # emission tax
 
-    τᴵ::Vector{Float64} = @MVector fill(0.25, T)   # income tax
-    τᴷ::Vector{Float64} = @MVector fill(0.25, T)   # capital gains tax
-    τˢ::Vector{Float64} = @MVector fill(0., T)     # sales tax
-    τᴾ::Vector{Float64} = @MVector fill(0.25, T)   # profit tax
-    τᴱ::Vector{Float64} = @MVector fill(0., T)     # energy tax
-    τᶜ::Vector{Float64} = @MVector fill(0., T)     # emission tax
+    # Tax rates over time
+    τᴵ_ts::Vector{Float64} = @MVector fill(τᴵ, T)   # income tax
+    τᴷ_ts::Vector{Float64} = @MVector fill(τᴷ, T)   # capital gains tax
+    τˢ_ts::Vector{Float64} = @MVector fill(τˢ, T)   # sales tax
+    τᴾ_ts::Vector{Float64} = @MVector fill(τᴾ, T)   # profit tax
+    τᴱ_ts::Vector{Float64} = @MVector fill(τᴱ, T)   # energy tax
+    τᶜ_ts::Vector{Float64} = @MVector fill(τᶜ, T)   # emission tax
+
 
     MS::Float64 = 0.0                      # money stock owned by government
-    # curracc::GovCurrentAccount             # current account of government spending
 
     # Revenues
     rev_incometax::Vector{Float64} = zeros(Float64, T)  # hist revenues of income tax
@@ -34,39 +35,100 @@
     exp_UB::Vector{Float64} = zeros(Float64, T)  # hist expenditures on unemployment benefits
     exp_subsidies::Vector{Float64} = zeros(Float64, T) # hist expenditures on subsidies
 
-    changed_taxrates::Union{Vector, Nothing} # vector of tax rates that will be changed once warmup period ends
+    # changed_taxrates::Union{Vector, Nothing} # vector of tax rates that will be changed once warmup period ends
 end
 
 
 function initgovernment(
     T::Int64,
+    t_warmup::Int64,
     changed_taxrates::Union{Vector, Nothing}
 )::Government
 
-    # Initialize government structure
-    government = Government(
-                    T = T, 
-                    changed_taxrates = changed_taxrates
-                )
+    government = Government(T=T)
+
+    if !isnothing(changed_taxrates)
+        for changed_taxrate in changed_taxrates
+            change_taxrate!(changed_taxrate, government, t_warmup)
+        end
+    end
+
     return government
 end
 
 
-"""
-Instates changed taxes at the end of the warmup period
-"""
-function instate_taxes!(
+function change_taxrate!(
+    changed_taxrate::Tuple{Symbol, Float64}, 
     government::Government,
-    t::Int64,
     t_warmup::Int64
 )
+    taxtype = changed_taxrate[1]
+    taxtype_ts = Symbol(String(taxtype) * "_ts")
 
-    # If changed tax rates passed, change in government struct
-    if !isnothing(government.changed_taxrates)
-        for (taxtype, taxrate) in government.changed_taxrates
-            setproperty!(government, taxtype, taxrate)
-        end
+    if length(changed_taxrate) == 2
+        # Change to new tax rate at end of warmup period
+        taxrate = changed_taxrate[2]
+        tax_ts = getproperty(government, taxtype_ts)
+        tax_ts[t_warmup:end] .= taxrate
+    else
+        # Linear interpolation between τ_start and τ_end
+        taxrate_start = changed_taxrate[2]
+        taxrate_end = changed_taxrate[3]
+        tax_ts = getproperty(government, Symbol(String(taxtype) * "_ts"))
+        tax_ts[begin:t_warmup] .= taxrate_start
+        tax_ts[t_warmup:end] .= Base._linspace(taxrate_start, taxrate_end, length(tax_ts) - t_warmup + 1)
     end
+
+    setproperty!(government, taxtype_ts, tax_ts)
+end
+
+
+# function change_taxrate!(
+#     changed_taxrate::Tuple{Symbol, Float64, Float64}, 
+#     government::Government,
+#     t_warmup::Int64
+# )
+#     taxtype = changed_taxrate[1]
+#     taxtype_ts = Symbol(String(taxtype) * "_ts")
+
+#     taxrate_start = changed_taxrate[2]
+#     taxrate_end = changed_taxrate[3]
+#     tax_ts = getproperty(government, Symbol(String(taxtype) * "_ts"))
+#     tax_ts[begin:t_warmup] .= taxrate_start
+#     tax_ts[t_warmup:end] .= Base._linspace(taxrate_start, taxrate_end, length(tax_ts) - t_warmup + 1)
+
+#     setproperty!(government, taxtype_ts, tax_ts)
+# end
+
+
+# """
+# Instates changed taxes at the end of the warmup period
+# """
+# function instate_taxes!(
+#     government::Government,
+#     t::Int64,
+#     t_warmup::Int64
+# )
+
+#     # If changed tax rates passed, change in government struct
+#     if !isnothing(government.changed_taxrates)
+#         for (taxtype, taxrate) in government.changed_taxrates
+#             setproperty!(government, taxtype, taxrate)
+#         end
+#     end
+# end
+
+
+function update_taxrates!(
+    government::Government,
+    t::Int64
+)
+    government.τᴵ = government.τᴵ_ts[t]
+    government.τᴷ = government.τᴷ_ts[t]
+    government.τˢ = government.τˢ_ts[t]
+    government.τᴾ = government.τᴾ_ts[t]
+    government.τᴱ = government.τᴱ_ts[t]
+    government.τᶜ = government.τᶜ_ts[t]
 end
 
 
@@ -107,8 +169,8 @@ function levy_profit_tax_gov!(
         p = model[p_id]
         # Only levy tax when profit is positive
         if p.Π[end] > 0
-            total_τᴾ += p.Π[end] * government.τᴾ[t]
-            shift_and_append!(p.Πᵀ, p.Π[end] * (1 - government.τᴾ[t]))
+            total_τᴾ += p.Π[end] * government.τᴾ
+            shift_and_append!(p.Πᵀ, p.Π[end] * (1 - government.τᴾ))
         else
             shift_and_append!(p.Πᵀ, 0.0)
         end
@@ -139,7 +201,6 @@ function receive_capgains_tax_gov!(
     capgainstax::Float64,
     t::Int64
 )
-
     government.rev_capitaltax[t] += capgainstax
 end
 
@@ -152,7 +213,6 @@ function receive_salestax_gov!(
     salestax::Float64,
     t::Int64
 )
-
     government.rev_salestax[t] += salestax
 end
 
@@ -165,7 +225,6 @@ function receive_energytax_gov!(
     energytax::Float64,
     t::Int64
 )
-
     government.rev_energytax[t] += energytax
 end
 
@@ -178,7 +237,6 @@ function receive_carbontax_gov!(
     carbontax::Float64,
     t::Int64
 )
-
     government.rev_carbontax[t] += carbontax
 end
 
@@ -236,14 +294,14 @@ function resolve_gov_balance!(
 end
 
 
-"""
-Determines the rate of income tax that should be paid over the agent's income.
-    This will be a flat rate by default, and can be ammended to be a progressive tax.
-"""
-function determine_incometaxrate(
-    government::Government,
-    income::Float64
-)::Float64
+# """
+# Determines the rate of income tax that should be paid over the agent's income.
+#     This will be a flat rate by default, and can be ammended to be a progressive tax.
+# """
+# function determine_incometaxrate(
+#     government::Government,
+#     income::Float64
+# )::Float64
 
-    return government.τᴵ[t]
-end
+#     return government.τᴵ
+# end

@@ -1,7 +1,7 @@
 using ArgParse
 
 include("../../model/main.jl")
-include("experiment_helpers.jl")
+include("helpers.jl")
 
 
 global taxtype_dict = Dict(
@@ -21,21 +21,6 @@ function getfilepath_tax(
     sim_nr::Int64;
     is_agent_data::Bool=false
 )
-
-    # if taxtype == :τᴵ
-    #     folderpath *= "incometax"
-    # elseif taxtype == :τᴷ
-    #     folderpath *= "capitaltax"
-    # elseif taxtype == :τˢ
-    #     folderpath *= "salestax"
-    # elseif taxtype == :τᴾ
-    #     folderpath *= "profittax"
-    # elseif taxtype == :τᴱ
-    #     folderpath *= "energytax"
-    # else
-    #     folderpath *= "carbontax"
-    # end
-
     # Convert taxtype Symbol to String name
     folderpath *= taxtype_dict[taxtype]
 
@@ -66,8 +51,6 @@ function OFAT_taxrates(
         println("type $taxtype, range $raterange")
 
         for taxrate in Base._linspace(raterange[1], raterange[2], n_per_taxtype)
-
-            #taxrate = round(taxrate, digits=2)
             
             # Set up array with changed tax rate, to be introduced in period t_warmup
             changed_taxrates = [(taxtype, taxrate)]
@@ -337,6 +320,10 @@ function main()
     folderpath = parsed_args["outputpath"]
 
     # Select tax types and ranges to test
+    # taxtype => (τ_start, τ_end, δτ::Int (optional))
+    #   τ_start: tax rate from t=0 to t=t_warmup
+    #   τ_end: tax rate at t=T
+    #   δτ: how many months between increases, default is increase every month (δτ=1).
     taxrates = Dict(
         # :τᴵ => (0.1, 0.6),
         # :τᴷ => (0.1, 0.6),
