@@ -5,6 +5,7 @@ mutable struct Properties
 
     t::Int64
     t_warmup::Int64
+    T::Int64
 
     """*******************************************************
     INITIALIZING PARAMETERS

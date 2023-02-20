@@ -111,6 +111,7 @@ function initialize_model(
     properties = Properties(
                                 1,
                                 t_warmup,
+                                T,
 
                                 initparam,
                                 globalparam,
@@ -327,7 +328,8 @@ function initialize_datacategories(
 
         # Define data of climate/emissions to save !!! SAVED DATA
         model.climatedata_tosave = [
-            :emissions_index, :energy_percentage 
+            :em_index, :em_index_cp, :em_index_kp, :em_index_ep,
+            :energy_percentage 
         ]
 
         # Define data of government to save
@@ -704,6 +706,10 @@ function model_step!(
 
     # Increment time by one step
     model.t += 1
+
+    if model.t == model.T
+        compute_emission_indices!(climate, t_warmup)
+    end
 
     return model
 end

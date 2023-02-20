@@ -574,39 +574,27 @@ def get_share(timeseries, tottimeseries, tot_index):
     return tot_index * timeseries / tottimeseries
 
 
-def plot_emissions(df:pd.DataFrame, warmup:int=300):
+def plot_emissions(df:pd.DataFrame, t_warmup:int=300, t_cutoff:int=200):
 
-    T = range(len(df.emissions_index))
+    T = range(len(df.em_index))
 
     fig, ax = plt.subplots(1, 2, figsize=(8,4))
     fig.suptitle('Carbon Emissions')
 
-    ax[0].plot(T, df.emissions_index, label='$c^{total}_t$')
-    ax[0].set_title('CO$_2$ emissions')
+    ax[0].set_title('CO$_2$ emissions index')
+    ax[0].plot(T, df.em_index, label='$c^{total}_t$')
+    ax[0].plot(T, df.em_index_cp, label='$c^{cp}_t$')
+    ax[0].plot(T[t_cutoff:], df.em_index_kp[t_cutoff:], label='$c^{kp}_t$')
+    ax[0].plot(T, df.em_index_ep, label='$c^{ep}_t$')
+    ax[0].axvline(t_warmup, color='black', linestyle='dotted')
     ax[0].set_xlabel('time')
-    ax[0].set_ylabel('CO$_2$ index')
+    ax[0].set_ylabel('index ($t_{warmup}=100$)')
     ax[0].legend()
 
-
-    # em_kp = get_share(df_climate_energy.emissions_kp[warmup:].to_numpy(),
-    #                   df_climate_energy.emissions_total[warmup:].to_numpy(),
-    #                   em_tot)
-    # em_cp = get_share(df_climate_energy.emissions_cp[warmup:].to_numpy(),
-    #                   df_climate_energy.emissions_total[warmup:].to_numpy(),
-    #                   em_tot)
-    # em_ep = get_share(df_climate_energy.emissions_ep[warmup:].to_numpy(),
-    #                   df_climate_energy.emissions_total[warmup:].to_numpy(),
-    #                   em_tot)
-
-    # ax[1].plot(T, em_tot, label='$c^{total}_t$')
-    # ax[1].plot(T, em_kp, label='$c^{kp}_t$')
-    # ax[1].plot(T, em_cp, label='$c^{cp}_t$')
-    # ax[1].plot(T, em_ep, label='$c^{ep}_t$')
-    # ax[1].set_title('CO$_2$ emissions')
-    # ax[1].set_xlabel('time')
-    # ax[1].set_ylabel('total CO$_2$ emission')
-    # # ax[1].set_xticks(np.arange(100, 500, 60), np.arange(2020, 2051, 5))
-    # ax[1].legend()
+    ax[1].set_title('percentage CO$_2$ emissions from energy')
+    ax[1].plot(T, df.energy_percentage)
+    ax[1].axvline(t_warmup, color='black', linestyle='dotted')
+    
 
     plt.tight_layout()
     plt.savefig('plots/emissions.png')

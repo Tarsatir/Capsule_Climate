@@ -6,7 +6,6 @@ Defines struct for consumer good producer
     id::Int64                                 # global agent id
     cp_i::Int64                               # cp index
     age::Int64 = 0                            # firm age
-    # t_next_update::Int64                      # next update time
     
     # Price and cost data
     μ::Vector{Float64}                        # markup rate
@@ -52,7 +51,6 @@ Defines struct for consumer good producer
     w̄::Vector{Float64}                        # wage level
     wᴼ::Float64 = 1.0                         # offered wage
     wᴼ_max::Float64 = 1.0                     # maximum offered wage
-    # brochures::Vector = []                    # brochures from kp
 
     π_LP::Float64 = 1.0                       # labor productivity of total capital stock
     π_EE::Float64 = 1.0                       # productivity per energy unit of total capital stock
@@ -73,7 +71,6 @@ end
 function initialize_cp(
     id::Int64,
     cp_i::Int64,
-    # t_next_update::Int64, 
     machines::Vector{Machine},
     model::ABM;
     D::Float64 = 1600.,
@@ -84,7 +81,6 @@ function initialize_cp(
     cp = ConsumerGoodProducer(
         id = id,
         cp_i = cp_i,
-        # t_next_update = t_next_update,
         μ = fill(model.g_param.μ1, 3),
         D = fill(D, 3),
         Dᵉ = D,  

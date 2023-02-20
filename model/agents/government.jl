@@ -58,7 +58,7 @@ end
 
 
 function change_taxrate!(
-    changed_taxrate::Tuple{Symbol, Float64}, 
+    changed_taxrate::Tuple, 
     government::Government,
     t_warmup::Int64
 )
