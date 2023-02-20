@@ -5,12 +5,19 @@
     UB::Float64 = 100 * 0.7 * w_min        # unemployment benefits
 
     # Tax rates
-    τᴵ::Float64 = 0.25                     # income tax
-    τᴷ::Float64 = 0.25                     # capital gains tax
-    τˢ::Float64 = 0.                       # sales tax
-    τᴾ::Float64 = 0.25                     # profit tax
-    τᴱ::Float64 = 0.                       # energy tax
-    τᶜ::Float64 = 0.                       # emission tax
+    # τᴵ::Float64 = 0.25                              # income tax
+    # τᴷ::Float64 = 0.25                              # capital gains tax
+    # τˢ::Float64 = 0.                                # sales tax
+    # τᴾ::Float64 = 0.25                              # profit tax
+    # τᴱ::Float64 = 0.                                # energy tax
+    # τᶜ::Float64 = 0.                                # emission tax
+
+    τᴵ::Vector{Float64} = @MVector fill(0.25, T)   # income tax
+    τᴷ::Vector{Float64} = @MVector fill(0.25, T)   # capital gains tax
+    τˢ::Vector{Float64} = @MVector fill(0., T)     # sales tax
+    τᴾ::Vector{Float64} = @MVector fill(0.25, T)   # profit tax
+    τᴱ::Vector{Float64} = @MVector fill(0., T)     # energy tax
+    τᶜ::Vector{Float64} = @MVector fill(0., T)     # emission tax
 
     MS::Float64 = 0.0                      # money stock owned by government
     # curracc::GovCurrentAccount             # current account of government spending
@@ -48,8 +55,10 @@ end
 """
 Instates changed taxes at the end of the warmup period
 """
-function instatetaxes!(
-    government::Government
+function instate_taxes!(
+    government::Government,
+    t::Int64,
+    t_warmup::Int64
 )
 
     # If changed tax rates passed, change in government struct
@@ -98,8 +107,8 @@ function levy_profit_tax_gov!(
         p = model[p_id]
         # Only levy tax when profit is positive
         if p.Π[end] > 0
-            total_τᴾ += p.Π[end] * government.τᴾ
-            shift_and_append!(p.Πᵀ, p.Π[end] * (1 - government.τᴾ))
+            total_τᴾ += p.Π[end] * government.τᴾ[t]
+            shift_and_append!(p.Πᵀ, p.Π[end] * (1 - government.τᴾ[t]))
         else
             shift_and_append!(p.Πᵀ, 0.0)
         end
@@ -236,5 +245,5 @@ function determine_incometaxrate(
     income::Float64
 )::Float64
 
-    return government.τᴵ
+    return government.τᴵ[t]
 end
