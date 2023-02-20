@@ -140,7 +140,8 @@ function generate_simdata(
 
             # Save full time series of selected Y labels
             outputfilepath = get_output_path(sim_nr)
-            CSV.write(outputfilepath, model_df[:, Y_labels])
+            CSV.write(outputfilepath, model_df[:,Y_labels])
+
 
         # TODO: MAKE FUNCTION FOR CONDENSED DATA
         # else
@@ -344,8 +345,8 @@ function main(;
         ["p_f", [0.0, 1.0]]
     ])
 
-    # Dependent variables that are saved
-    Y_labels = [:GDP, :emissions_index]
+    # Dependent variables that are saved  !!! NOTE: Change SA output here! !!!
+    Y_labels = [:GDP, :emissions_index, :energy_percentage ]
 
     parsed_args = parse_commandline(length(X_labels), N_u, n, N_c)
 

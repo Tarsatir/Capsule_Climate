@@ -324,7 +324,7 @@ function initialize_datacategories(
             :RD_ep, :IN_g, :IN_d, :p_ep 
         ]
 
-        # Define data of climate/emissions to save
+        # Define data of climate/emissions to save !!! SAVED DATA
         model.climatedata_tosave = [
             :emissions_index, :energy_percentage 
         ]
