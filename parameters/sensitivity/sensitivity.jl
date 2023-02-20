@@ -140,7 +140,7 @@ function generate_simdata(
 
             # Save full time series of selected Y labels
             outputfilepath = get_output_path(sim_nr)
-            CSV.write(outputfilepath, model_df[Y_labels])
+            CSV.write(outputfilepath, model_df[:, Y_labels])
 
         # TODO: MAKE FUNCTION FOR CONDENSED DATA
         # else
