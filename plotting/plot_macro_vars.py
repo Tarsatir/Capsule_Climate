@@ -584,14 +584,14 @@ def plot_emissions(df:pd.DataFrame, t_warmup:int=300, t_cutoff:int=200):
     ax[0].set_title('CO$_2$ emissions index')
     ax[0].plot(T, df.em_index, label='$c^{total}_t$')
     ax[0].plot(T, df.em_index_cp, label='$c^{cp}_t$')
-    ax[0].plot(T[t_cutoff:], df.em_index_kp[t_cutoff:], label='$c^{kp}_t$')
+    #ax[0].plot(T[t_cutoff:], df.em_index_kp[t_cutoff:], label='$c^{kp}_t$')
     ax[0].plot(T, df.em_index_ep, label='$c^{ep}_t$')
     ax[0].axvline(t_warmup, color='black', linestyle='dotted')
     ax[0].set_xlabel('time')
     ax[0].set_ylabel('index ($t_{warmup}=100$)')
     ax[0].legend()
 
-    ax[1].set_title('percentage CO$_2$ emissions from energy')
+    ax[1].set_title('percentage CO$_2$ emissions from CP')
     ax[1].plot(T, df.energy_percentage)
     ax[1].axvline(t_warmup, color='black', linestyle='dotted')
     

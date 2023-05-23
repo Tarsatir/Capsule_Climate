@@ -4,7 +4,7 @@
     νₑ::Float64 = 0.01              # R&D inv propensity energy producer (note this a greek 'nu')
     ξ::Float64 = 0.3                # R&D allocation to IN
     ξₑ::Float64 = 0.4               # R&D allocation to green tech for energy producer
-    ζ::Float64 = 0.3                # firm search capabilities
+    ζ::Float64 = 0.3                # firm search capabilities 0.3#NOTE original valua
     ζ_ge::Float64 = 0.3             # ep search capabilities for green tech
     ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN

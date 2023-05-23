@@ -329,8 +329,8 @@ function main()
         # :τᴷ => (0.1, 0.6),
         # :τˢ => (0.0, 0.5),
         # :τᴾ => (0.1, 0.6),
-        # :τᴱ => (0.1, 0.5),
-        :τᶜ => (0.1, 0.8) 
+        :τᴱ => (0.1, 0.8),
+        #:τᶜ => (0.1, 0.8) 
         
     )
 
@@ -338,7 +338,7 @@ function main()
     modelvars_to_save = Symbol[
         :GDP,               # GDP
         :U,                 # unemployment rate
-        :emissions_index    # carbon emissions index
+        :em_index    # carbon emissions index
     ]
 
     # Run OFAT experiment for tax rates

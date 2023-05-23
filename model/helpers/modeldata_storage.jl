@@ -80,6 +80,10 @@ struct RunOutput
     W_20::Vector{Float64}
     W_80::Vector{Float64}
     W_min::Vector{Float64}
+    percentile_25::Vector{Float64}
+    percentile_50::Vector{Float64}
+    percentile_75::Vector{Float64}
+    percentile_100::Vector{Float64}
     bankrupty_cp::Vector{Float64}
     avg_π_LP::Vector{Float64}
     avg_π_EE::Vector{Float64}
@@ -116,6 +120,10 @@ function genrunoutput(macroeconomy, ep, climate)
         macroeconomy.W_20,
         macroeconomy.W_80,
         macroeconomy.W_min,
+        macroeconomy.percentile_25,
+        macroeconomy.percentile_50,
+        macroeconomy.percentile_75,
+        macroeconomy.percentile_100,
         macroeconomy.bankrupt_cp,
         macroeconomy.avg_π_LP,
         macroeconomy.avg_π_EE,

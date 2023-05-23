@@ -141,6 +141,7 @@ function produce_energy_ep!(
 
     # Choose pp to use in production
     choose_powerplants_ep!(ep, t)
+
     compute_FU_ICₑ_ep!(ep, globalparam.p_f, t)
     compute_emissions_ep!(ep, t)
 
@@ -151,39 +152,176 @@ function produce_energy_ep!(
     pay_dividends_ep!(ep, indexfund, t)
 end
 
+# """
+# Lets ep choose power plants to produce energy demand with
+# """
 
-"""
-Lets ep choose power plants to produce energy demand with
-"""
+# function choose_powerplants_ep!(
+#     ep::EnergyProducer,
+#     t::Int64
+#     )
+    
+#     # Compute the total green capacity available based on a maximum of 80% of demand
+#     green_capacity_total = floor(min(0.8 * ep.D_ep[t], ep.green_capacity[t]))
+#     # print("D_ep: ", ep.D_ep[t], "\n")
+#     # print("green_capacity[t]: ", ep.green_capacity[t], "\n")
+#     # print("green_capacity_total: ", green_capacity_total, "\n")
+    
+
+    
+#     if !isempty(ep.green_portfolio) && !isnan(green_capacity_total / ep.green_capacity[t])
+#         max_green_plants = Int(floor(green_capacity_total / ep.green_capacity[t]))
+#     else
+#         max_green_plants = 0
+#     end
+    
+    
+#     # If the total demand at time t can be met using only green tech, 
+#     # use only green tech and set fraction of production to 1.0
+#     if ep.D_ep[t] < green_capacity_total
+#         ep.infra_marg = copy(ep.green_portfolio)
+#         ep.green_frac_prod[t] = 1.0
+#     else
+#         # If green tech is insufficient, use a combination of green and dirty tech
+#         ep.infra_marg = copy(ep.green_portfolio[1:min(end, max_green_plants)])
+#         total_capacity = Int(green_capacity_total)
+
+#         # Sort the dirty portfolio by cost to take the lowest cost power plants first
+#         sort!(ep.dirty_portfolio, by = pp -> pp.c)
+
+#         # Loop over the dirty power plants in the sorted dirty portfolio
+#         for dirty_pp in ep.dirty_portfolio
+#             # Add the dirty power plant to the infrastructure margin list
+#             push!(ep.infra_marg, dirty_pp)
+#             # Add the capacity of the dirty power plant to the total capacity
+#             # of the infrastructure margin
+#             total_capacity += dirty_pp.capacity * dirty_pp.Aᵀ
+            
+#             # If the total capacity of the infrastructure margin exceeds the 
+#             # demand at time t, exit the loop
+#             if total_capacity >= ep.D_ep[t]
+#                 break
+#             end
+#         end
+
+#         # Compute the fraction of production that will come from green tech
+#         # using the length of the green portfolio and the length of the
+#         # infrastructure margin list
+#         #ep.green_frac_prod[t] = length(ep.green_portfolio[1:max_green_plants]) / length(ep.infra_marg)
+#         ep.green_frac_prod[t] = length(ep.green_portfolio) / length(ep.infra_marg)
+#         print("ep.green_frac_prod[t]: ", ep.green_frac_prod[t], "\n")
+#         ep.green_frac_prod[t] = length(ep.green_portfolio[1:min(end, max_green_plants)]) / length(ep.infra_marg)
+#         print(ep.green_portfolio)
+#         print("ep.green_frac_prod_new[t]: ", ep.green_frac_prod[t], "\n")
+
+
+#     end
+# end
+
+# function choose_powerplants_ep!(
+#     ep::EnergyProducer,
+#     t::Int64
+#     )
+
+#     # Check if all production can be done using green tech, if not, compute cost
+#     # of production using dirty tech
+#     if ep.D_ep[t] < ep.green_capacity[t]
+#         ep.infra_marg = copy(ep.green_portfolio)
+#         ep.green_frac_prod[t] = 1.0
+#     else
+
+#         ep.infra_marg = copy(ep.green_portfolio)
+#         total_capacity = ep.green_capacity[t]
+
+#         # Sort dirty portfolio as to take low cost power plants first
+#         sort!(ep.dirty_portfolio, by = pp -> pp.c)
+
+#         for dirty_pp in ep.dirty_portfolio
+#             push!(ep.infra_marg, dirty_pp)
+#             total_capacity += dirty_pp.capacity * dirty_pp.Aᵀ
+#             if total_capacity >= ep.D_ep[t]
+#                 break
+#             end
+#         end
+
+#         ep.green_frac_prod[t] = length(ep.green_portfolio) / length(ep.infra_marg)
+#         print("ep.green_frac_prod[t]: ", ep.green_frac_prod[t], t)
+#     end
+# end
+
+
 function choose_powerplants_ep!(
     ep::EnergyProducer,
     t::Int64
     )
+    green_limit = 0.5
 
-    # Check if all production can be done using green tech, if not, compute cost
-    # of production using dirty tech
-    if ep.D_ep[t] < ep.green_capacity[t]
+
+
+ 
+    shortened_portfolio, total_capacity  = shorten_portfolio!(ep.green_portfolio, ep.D_ep[t], float(green_limit))
+    #print("Total capacity green: ", total_capacity, "\n")
+    #print("Total demand: ", ep.D_ep[t]*0.5, "\n")
+
+    if green_limit*ep.D_ep[t] > ep.green_capacity[t]
         ep.infra_marg = copy(ep.green_portfolio)
-        ep.green_frac_prod[t] = 1.0
-    else
-
-        ep.infra_marg = copy(ep.green_portfolio)
-        total_capacity = ep.green_capacity[t]
-
-        # Sort dirty portfolio as to take low cost power plants first
-        sort!(ep.dirty_portfolio, by = pp -> pp.c)
-
-        for dirty_pp in ep.dirty_portfolio
-            push!(ep.infra_marg, dirty_pp)
-            total_capacity += dirty_pp.capacity * dirty_pp.Aᵀ
-            if total_capacity >= ep.D_ep[t]
-                break
-            end
-        end
-
-        ep.green_frac_prod[t] = length(ep.green_portfolio) / length(ep.infra_marg)
+        
+    else  
+        ep.infra_marg = copy(shortened_portfolio)
+    
     end
+    # Sort dirty portfolio as to take low cost power plants first
+    sort!(ep.dirty_portfolio, by = pp -> pp.c)
+
+    for dirty_pp in ep.dirty_portfolio
+        push!(ep.infra_marg, dirty_pp)
+        total_capacity += dirty_pp.capacity * dirty_pp.Aᵀ
+        if total_capacity >= ep.D_ep[t]
+            break
+        end
+    end
+    #print the length of shortened_portfolio and green_portfolio
+    #print("length of shortened_portfolio: ", length(shortened_portfolio), "\n")
+    #print("length of green_portfolio: ", length(ep.green_portfolio), "\n")
+    #print("length of infra_marg: ", length(ep.infra_marg), "\n")
+    #print("length of dirty_portfolio: ", length(ep.dirty_portfolio), "\n")
+    ep.green_frac_prod[t] = length(shortened_portfolio) / length(ep.infra_marg)
+    #print ep.infra_marg
+    #print("infra_marg", ep.infra_marg)
+    #print("ep.green_frac_prod[t]: ", ep.green_frac_prod[t], t)
+    
 end
+
+function shorten_portfolio!(
+    green_portfolio::Vector{PowerPlant}, 
+    D_ep::Float64, 
+    green_limit::Float64)
+
+    if isempty(green_portfolio)
+        return green_portfolio, 0.0
+    end
+
+    sorted_portfolio = sort(green_portfolio, by = pp -> pp.capacity)
+    total_capacity = sum(pp.capacity for pp in sorted_portfolio)
+    green_capacity_limit = green_limit * D_ep
+ 
+    
+    shortened_portfolio = PowerPlant[]
+    current_capacity = 0.0
+    
+    for pp in sorted_portfolio
+        current_capacity += pp.capacity
+        if current_capacity > green_capacity_limit
+            break
+        end
+        push!(shortened_portfolio, pp)
+    end
+    
+    return shortened_portfolio, current_capacity
+end
+
+
+
 
 
 function pay_dividends_ep!(
@@ -247,7 +385,7 @@ function expand_and_replace_pp_ep!(
     t::Int64,
     t_warmup::Int64
     )
-
+    green_limit  = 0.5
     n_add_pp = ceil(Int64, (ep.EId_ep[t] + ep.RSd_ep[t]) / globalparam.freq_per_powerplant)
 
     # Determine what share of additional powerplants should be green and dirty
@@ -255,7 +393,7 @@ function expand_and_replace_pp_ep!(
         # If after warmup period, ep can plan investment based on cheapest tech
         n_add_green_pp = 0
         n_add_dirty_pp = 0
-        if ep.IC_g[t] <= globalparam.bₑ * ep.c_d[t]
+        if (floor(exp(ep.green_frac_prod[t]*10)) + ep.IC_g[t]) <= globalparam.bₑ * ep.c_d[t] && (length(ep.green_portfolio)/(length(ep.dirty_portfolio)+length(ep.green_portfolio))) < green_limit
             n_add_green_pp = n_add_pp
         else
             n_add_dirty_pp = n_add_pp
@@ -281,7 +419,9 @@ function expand_and_replace_pp_ep!(
     if n_add_green_pp > 1
         
         # Invest green
-        ep.EC_ep[t] = ep.IC_g[t] * ep.EId_ep[t]
+        #ep.EC_ep[t] = ep.IC_g[t] * ep.EId_ep[t] #FIXME
+        ep.EC_ep[t] = (floor(exp(ep.green_frac_prod[t]*10))  + ep.IC_g[t]) * ep.EId_ep[t]
+
         
         # Build new green pp
         for _ in 1:n_add_green_pp
@@ -509,25 +649,52 @@ function compute_RSᵈ_ep!(
     ηₑ::Int64,
     t::Int64
     )
-
+    green_limit = 0.5
     # Select powerplants to be replaced
     ep.pp_tb_replaced = []
     ep.pp_tb_retired = []
 
-    excess_capacity = ep.Qmax_ep[t] - ep.D_ep[t]
-
+   
+    dirty_excess_capacity =  ep.green_capacity[t]/ep.Qmax_ep[t] - ep.D_ep[t]*(1-green_limit)
+    green_excess_capacity = ep.dirty_capacity[t]/ep.Qmax_ep[t] - ep.D_ep[t]*green_limit
+    
+    # Loop over all power plants (both green and dirty)
     for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
+        # Check if the age of the power plant is greater than or equal to the age limit
         if pp.age >= ηₑ
+            # Choose the correct excess capacity depending on the type of power plant
+            excess_capacity = pp.type == "Green" ? green_excess_capacity : dirty_excess_capacity
+
+            # If the excess capacity is greater than the capacity of the power plant
             if excess_capacity > pp.capacity
+                # Subtract the capacity of the power plant from the excess capacity
                 excess_capacity -= pp.capacity
+                # Add the power plant to the list of power plants to be retired
                 push!(ep.pp_tb_retired, pp)
             else
+                # If the excess capacity is not greater than the capacity of the power plant,
+                # add the power plant to the list of power plants to be replaced
                 push!(ep.pp_tb_replaced, pp)
             end
         end
     end
+
+    # If there are any power plants to be replaced, calculate the total capacity
+    # of those power plants. If not, set the desired replacement to 0.
     ep.RSd_ep[t] = length(ep.pp_tb_replaced) > 0 ? sum(pp -> pp.capacity, ep.pp_tb_replaced) : 0.0
 end
+#     for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
+#         if pp.age >= ηₑ
+#             if excess_capacity > pp.capacity
+#                 excess_capacity -= pp.capacity
+#                 push!(ep.pp_tb_retired, pp)
+#             else
+#                 push!(ep.pp_tb_replaced, pp)
+#             end
+#         end
+#     end
+#     ep.RSd_ep[t] = length(ep.pp_tb_replaced) > 0 ? sum(pp -> pp.capacity, ep.pp_tb_replaced) : 0.0
+# end
 
 
 """
@@ -578,24 +745,23 @@ function compute_emissions_ep!(
     ep::EnergyProducer, 
     t::Int64
     )
+   
+    req_capacity = ep.D_ep[t]*(1-ep.green_frac_prod[t])
+    #print("req_capacity: ", req_capacity, "\n")
+    total_emissions = 0.0
 
-    # Emissions remain at default value of zero if only green pp used,
-    # Otherwise compute emissions of dirty pp in infra-marginal stock
-    if ep.D_ep[t] > ep.green_capacity[t]
-
-        req_capacity = ep.D_ep[t] - ep.green_capacity[t]
-        total_emissions = 0.0
-
-        # Only use fraction of machines required, in order as sorted for costs
-        for pp in ep.infra_marg
-            if pp ∈ ep.dirty_portfolio
-                total_emissions += max(min(req_capacity / pp.capacity, 1.0), 0) * pp.capacity * pp.em
-                req_capacity -= pp.capacity
-            end
+    # Only use fraction of machines required, in order as sorted for costs
+    #print("infra.marg", length(ep.infra_marg),"\n")
+    for pp in ep.infra_marg
+        if pp ∈ ep.dirty_portfolio
+            total_emissions += max(min(req_capacity / pp.capacity, 1.0), 0) * pp.capacity * pp.em
+            req_capacity -= pp.capacity
         end
-
-        ep.emissions[t] = total_emissions
     end
+
+    ep.emissions[t] = total_emissions
+    #print("Emissions: ", ep.emissions[t], "\n")
+    
 end
 
 
