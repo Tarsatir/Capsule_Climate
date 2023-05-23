@@ -40,6 +40,8 @@
     M_gov::Vector{Float64} = zeros(Float64, T)              # total amount of money at gov
     M_if::Vector{Float64}  = zeros(Float64, T)              # total amount of money at if
 
+    
+
     # Debt levels
     debt_tot::Vector{Float64} = zeros(Float64, T)           # total debt
     debt_cp::Vector{Float64} = zeros(Float64, T)            # cp debt
@@ -122,6 +124,11 @@
     W_20::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 20% of wealth
     W_80::Vector{Float64} = zeros(Float64, T)               # Threshold of the lower 80% of wealth
     W_max::Vector{Float64} = zeros(Float64, T)              # Maximum wealth level in the economy
+
+    percentile_25::Vector{Float64} = zeros(Float64, T)      # 25th percentile of wealth distribution
+    percentile_50::Vector{Float64} = zeros(Float64, T)      # 50th percentile of wealth distribution
+    percentile_75::Vector{Float64}  = zeros(Float64, T)     # 75th percentile of wealth distribution
+    percentile_100::Vector{Float64} = zeros(Float64, T)     # 100th percentile of wealth distribution
 
     α_W_quantiles::Matrix{Float64} = zeros(Float64, 5, T)   # Matrix containing average α for different wealth quintiles
 end
@@ -254,6 +261,8 @@ function update_macro_timeseries(
     model.macroeconomy.avg_D_cp[t] = mean(cp_id -> model[cp_id].D[end], all_cp)
     model.macroeconomy.avg_Du_cp[t] = mean(cp_id -> model[cp_id].Dᵁ[end], all_cp)
     model.macroeconomy.avg_De_cp[t] = mean(cp_id -> model[cp_id].Dᵉ, all_cp)
+
+
 
     compute_bankrupties!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, t, model)
 
@@ -634,6 +643,18 @@ function compute_I_W_thresholds(
     model.macroeconomy.W_20[t] = W_sorted[start_60]
     model.macroeconomy.W_80[t] = W_sorted[end_60]
     model.macroeconomy.W_max[t] = W_sorted[end]
+
+    # Compute wealth levels of percentiles
+    group_size = round(Int64, length(all_hh) / 4)
+    mean_wealth_groups = [mean(W_sorted[(i-1)*group_size+1:i*group_size]) for i in 1:4]
+
+    # Assign mean values to percentile variables
+    model.macroeconomy.percentile_25[t] = mean_wealth_groups[1]
+    model.macroeconomy.percentile_50[t] = mean_wealth_groups[2]
+    model.macroeconomy.percentile_75[t] = mean_wealth_groups[3]
+    model.macroeconomy.percentile_100[t] = mean_wealth_groups[4]
+
+
 end
 
 
