@@ -1,4 +1,6 @@
-# DKS_model_MScThesis
+### README
+This is the collection of code needed to replicate all results in the paper "Carbon Pricing Drives Critical Transition to Green Growth" by Isaak Mengesha Students under his supervision at the University of Amsterdam. The code is written in `Julia` and `Python`. The `Julia` code is used to run the model, and the `Python` code is used to produce the plots.
+
 
 
 ### Running the model
