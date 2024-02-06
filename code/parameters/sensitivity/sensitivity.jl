@@ -4,8 +4,10 @@ The used method is PAWN (https://www.safetoolbox.info/pawn-method/),
     which is implemented in Python.
 """
 
+ENV["PYTHON"] = "/home/imengesha/Climate_Paper/Climate-Paper/myenv/bin/python"
 using PyCall
 using ArgParse
+using DataFrames
 
 include("../../model/main.jl")
 include("../../results/experiments/helpers.jl")
@@ -96,7 +98,7 @@ function generate_simdata(
     outputpath::String,
     sim_nr_only::Int64,
     run_nr::Int64;
-    save_full_output::Bool=true,
+    save_full_output::Bool=false,
     proc_nr::Union{Int64, Nothing}=nothing
 )
 
@@ -131,16 +133,71 @@ function generate_simdata(
             T = n_timesteps,
             changed_params = changedparams;
             thread_nr = parl_nr,
-            sim_nr = sim_nr
+            sim_nr = sim_nr,
+            savedata=false
         )
-
+        #print message if model_df is not empty
+        if nrow(model_df) == 0
+            println("model_df is empty")
+        end
 
         # Check to save full output per run, or preprocess results first
         if save_full_output
 
             # Save full time series of selected Y labels
-            outputfilepath = get_output_path(sim_nr)
-            CSV.write(outputfilepath, model_df[:,Y_labels])
+            # outputfilepath = get_output_path(sim_nr)
+            #outputfilepath = get_output_path(proc_nr, run_nr) #CHANGE FROM ORIGINAL CODE
+            outputfilepath = get_output_path(parl_nr, run_nr)
+ 
+            #CSV.write(outputfilepath, model_df[:,Y_labels])
+            #println("Saved full output for simulation $sim_nr")
+
+            # Create a new DataFrame with only the columns you need from model_df
+            ndata_df = model_df[:, Y_labels]
+
+            # Add the new column to the new DataFrame
+            ndata_df[!, :sim_nr] .= sim_nr
+
+
+
+            # Check if the file exists. If it does, read it into a DataFrame
+            if isfile(outputfilepath)
+                existing_df = CSV.read(outputfilepath, DataFrame)
+                appended_df = vcat(existing_df, ndata_df)
+                #println("Added new Sim $sim_nr")
+                CSV.write(outputfilepath, appended_df)
+            else
+                CSV.write(outputfilepath, ndata_df)
+                #println("Created first Sim $sim_nr")
+            end
+
+        else
+            outputfilepath = get_output_path(parl_nr, run_nr)
+            # Create a new DataFrame with only the columns you need from model_df
+            ndata_df = model_df[:, Y_labels]
+            #average over the last 20 periods
+            avdata_dict = Dict([(colname => mean(coldata)) for (colname, coldata) in pairs(eachcol(ndata_df[end-19:end, :]))])
+            avdata_df = DataFrame([avdata_dict])
+            # Add the sim_number column
+            avdata_df[!, "sim_nr"] .= sim_nr
+
+            
+                        
+            if isfile(outputfilepath)
+                existing_df = CSV.read(outputfilepath, DataFrame)
+                appended_df = vcat(existing_df, avdata_df)
+                #println("Added new Sim $sim_nr")
+                CSV.write(outputfilepath, appended_df)
+            else
+                CSV.write(outputfilepath, avdata_df)
+                #println("Created first Sim $sim_nr")
+            end
+
+
+
+
+
+
 
 
         # TODO: MAKE FUNCTION FOR CONDENSED DATA
@@ -172,7 +229,7 @@ end
 
 get_input_path(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/input_data/gsa_input_run$(run_nr)_thread$parl_id.csv"
 get_output_path(parl_id::Int64, run_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run$(run_nr)_thread$parl_id.csv"
-get_output_path(sim_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run_$(sim_nr).csv"
+#get_output_path(sim_nr::Int64) = "parameters/sensitivity/sensitivity_runs/output_data/gsa_output_run_$(sim_nr).csv"
 
 
 """
@@ -205,7 +262,7 @@ function run_PAWN(
     end
 
     # Merge input and output dataframes
-    df = innerjoin(input_df, output_df, on=:sim_nr)
+    df = DataFrames.innerjoin(input_df, output_df, on=:sim_nr)
 
     # Define labels and label names
     labels = ["α_cp", "ω", "λ", "κ_upper", "prog", "μ1", "ϵ_w", "ϵ_μ", "p_f", "ψ_P", "ψ_Q", "ψ_E"]
@@ -274,7 +331,7 @@ function parse_commandline(
             help="number of simulations"
             arg_type=Int64
             default=N_u + n * N_c * M
-        "--n_per_epoch"
+        "--n_per_epoch" #after how many times the data is saved
             help="number of simulations per epoch (after which data is saved)"
             arg_type=Int64
             default=50
@@ -286,7 +343,7 @@ function parse_commandline(
             help="path to directory with output files"
             arg_type=String
             default="parameters/sensitivity/sensitivity_runs/output_data/"
-        "--n_processes"
+        "--n_processes" #
             help="total number of processes"
             arg_type=Int64
             default=0
@@ -295,15 +352,15 @@ function parse_commandline(
                   otherwise assumed to be multithreaded."
             arg_type=Int64
             default=0
-        "--geninput"
+        "--geninput" #for each run what parameters are entered into the model (do locally)
             help="determines if input parameters are generated"
             arg_type=Bool
             default=false
-        "--genoutput"
+        "--genoutput" #whole sensitivity run (do on cluster)
             help="determines if output parameters are generated (may take a long time)"
             arg_type=Bool
             default=true
-        "--runpawn"
+        "--runpawn"# put output in pawn computation (do locally)
             help="determines if PAWN indeces are run"
             arg_type=Bool
             default=false
@@ -319,7 +376,7 @@ end
 
 function main(;
     run_nr::Int64=9,
-    n_timesteps::Int64=10,
+    n_timesteps::Int64=660,
     t_warmup::Int64=10
 )
 
@@ -346,7 +403,7 @@ function main(;
     ])
 
     # Dependent variables that are saved  !!! NOTE: Change SA output here! !!!
-    Y_labels = [:GDP, :em_index, :energy_percentage]
+    Y_labels = [:GDP, :em_index, :energy_percentage, :bankrupt_cp, :GINI_I, :GINI_W, :LIS, :avg_pi_LP, :avg_A_EE, :avg_A_EF, :U, :total_I, :total_C]
 
     parsed_args = parse_commandline(length(X_labels), N_u, n, N_c)
 
@@ -366,6 +423,7 @@ function main(;
     if n_processes == 0
         # Program assumed to be multithreaded
         n_threads = Threads.nthreads()
+        println("Running multithreaded with $n_threads threads")
         n_per_parl = ceil(Int64, n_sims / n_threads)
     else
         n_per_parl = ceil(Int64, n_sims / n_processes)
@@ -417,10 +475,10 @@ function main(;
         end
     end
 
-    # Generate PAWN indices
-    if runpawn
-        run_PAWN(X_labels, run_nr, N_u, N_c, outputpath)
-    end
+    #Generate PAWN indices
+    # if runpawn
+    #     run_PAWN(X_labels, run_nr, N_u, N_c, outputpath; nthreads=Threads.nthreads())
+    # end
 end
 
 main()

@@ -44,7 +44,10 @@ mutable struct Properties
     epdata_tosave::Union{Nothing, Vector{Symbol}}
     climatedata_tosave::Union{Nothing, Vector{Symbol}}
     governmentdata_tosave::Union{Nothing, Vector{Symbol}}
-
+    kpdata_tosave::Union{Nothing, Vector{Symbol}}
+    cpdata_tosave::Union{Nothing, Vector{Symbol}}
+    
+    firm_time_series::FirmTimeSeries
     macroeconomy::MacroEconomy
     labormarket::LaborMarket
     kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}

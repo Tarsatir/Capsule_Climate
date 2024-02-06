@@ -613,7 +613,8 @@ def plot_LIS(df_macro):
     
 if __name__=="__main__":
 
-    df_macro = pd.read_csv('../results/result_data/model_data_1234.csv')
+    #df_macro = pd.read_csv('../results/result_data/model_data_1234.csv')
+    df_macro = pd.read_csv('../data/1234_model.csv')
 
     plot_macro_vars(df_macro)
     plot_household_vars(df_macro)

@@ -14,6 +14,7 @@ Run the model by starting a `Julia` session in the main folder, and typing the f
 >julia include("run_model.jl")
 ```
 This command will run the model for the default settings, and produce the output plots.
+In order to replicate the main finding of the paper (the critical transition), you will need to run the model for a large number of times for varying 'green_limits' using the 'changed_params' option in the 'run_simulation()' function. 
 
 ### Plots and Results
 For some tentative plots execute 'plot_macro_vars.py' these will not replicate the plots in the paper exactly, as the data generated for the paper is not included in this repository.

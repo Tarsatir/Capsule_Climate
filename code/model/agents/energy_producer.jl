@@ -4,6 +4,7 @@
     D_ep::Vector{Float64} = zeros(Float64, T)     # Demand for energy units over time
     Qmax_ep::Vector{Float64} = zeros(Float64, T)     # Maximum production of units over time
 
+
     # Prices, cost and investments
     markup_ep::Float64                            # Markup to determine price
     profit_ep::Vector{Float64} = zeros(Float64, T) # Profits over time
@@ -138,7 +139,7 @@ function produce_energy_ep!(
 
     # Check if production capacity needs to be expanded and old pp replaced
     plan_investments_ep!(ep, government, globalparam, frac_green, t, t_warmup)
-
+    
     # Choose pp to use in production
     choose_powerplants_ep!(ep, t, globalparam)
 
@@ -255,16 +256,16 @@ function choose_powerplants_ep!(
     t::Int64,
     globalparam::GlobalParam
     )
-   
-    green_limit = globalparam.green_limit
+    
+
 
 
  
-    shortened_portfolio, total_capacity  = shorten_portfolio!(ep.green_portfolio, ep.D_ep[t], float(green_limit))
+    shortened_portfolio, total_capacity  = shorten_portfolio!(ep.green_portfolio, ep.D_ep[t], float(globalparam.green_limit ))
     #print("Total capacity green: ", total_capacity, "\n")
-    #print("Total demand: ", ep.D_ep[t]*0.5, "\n")
+    #print("Total demand: ", ep.D_ep[t]*globalparam.green_limit, "\n")
 
-    if green_limit*ep.D_ep[t] > ep.green_capacity[t]
+    if globalparam.green_limit*ep.D_ep[t] > ep.green_capacity[t]
         ep.infra_marg = copy(ep.green_portfolio)
         
     else  
@@ -289,7 +290,7 @@ function choose_powerplants_ep!(
     ep.green_frac_prod[t] = length(shortened_portfolio) / length(ep.infra_marg)
     #print ep.infra_marg
     #print("infra_marg", ep.infra_marg)
-    #print("ep.green_frac_prod[t]: ", ep.green_frac_prod[t], t)
+    #print("ep.green_frac_prod[t]: ", ep.green_frac_prod[t])
     
 end
 
@@ -367,8 +368,8 @@ function plan_investments_ep!(
     t::Int64,
     t_warmup::Int64
     )
-
-    compute_RSᵈ_ep!(ep, globalparam.ηₑ, t)
+    
+    compute_RSᵈ_ep!(ep, globalparam.ηₑ, t, globalparam)
 
     compute_EIᵈ_ep!(ep, t)
 
@@ -386,15 +387,20 @@ function expand_and_replace_pp_ep!(
     t::Int64,
     t_warmup::Int64
     )
-    green_limit  = 0.5
+    
     n_add_pp = ceil(Int64, (ep.EId_ep[t] + ep.RSd_ep[t]) / globalparam.freq_per_powerplant)
-
+    green_fraction = ep.green_capacity[t]/(ep.green_capacity[t]+ep.dirty_capacity[t])
     # Determine what share of additional powerplants should be green and dirty
     if t >= t_warmup
         # If after warmup period, ep can plan investment based on cheapest tech
         n_add_green_pp = 0
         n_add_dirty_pp = 0
-        if (floor(exp(ep.green_frac_prod[t]*10)) + ep.IC_g[t]) <= globalparam.bₑ * ep.c_d[t] && (length(ep.green_portfolio)/(length(ep.dirty_portfolio)+length(ep.green_portfolio))) < green_limit
+        
+        if  ep.IC_g[t] <= globalparam.bₑ * ep.c_d[t] && green_fraction < globalparam.green_limit # && (ep.green_capacity[t]/(ep.green_capacity[t]+ep.dirty_capacity[t])) <= globalparam.green_limit
+            #(floor(exp(green_fraction*10)) + ep.IC_g[t]) <= globalparam.bₑ * ep.c_d[t] &&
+            #variable = (floor(exp(green_fraction*10)) + ep.IC_g[t])
+            #print('\n' ," Check Condition", variable, "<=", globalparam.bₑ * ep.c_d[t], "\n")
+            #print('\n' ," Check Condition", green_fraction, "<=", globalparam.green_limit, "\n")
             n_add_green_pp = n_add_pp
         else
             n_add_dirty_pp = n_add_pp
@@ -648,16 +654,17 @@ Computes the desired replacement investment
 function compute_RSᵈ_ep!(
     ep::EnergyProducer,
     ηₑ::Int64,
-    t::Int64
+    t::Int64,
+    globalparam::GlobalParam
     )
-    green_limit = 0.5
+    
     # Select powerplants to be replaced
     ep.pp_tb_replaced = []
     ep.pp_tb_retired = []
 
    
-    dirty_excess_capacity =  ep.green_capacity[t]/ep.Qmax_ep[t] - ep.D_ep[t]*(1-green_limit)
-    green_excess_capacity = ep.dirty_capacity[t]/ep.Qmax_ep[t] - ep.D_ep[t]*green_limit
+    dirty_excess_capacity =  ep.green_capacity[t] - globalparam.green_limit*ep.D_ep[t] #ep.D_ep[t]*(1-globalparam.green_limit)   # /ep.Qmax_ep[t]
+    green_excess_capacity = ep.dirty_capacity[t] - (1-globalparam.green_limit)*ep.D_ep[t]#ep.D_ep[t]*globalparam.green_limit
     
     # Loop over all power plants (both green and dirty)
     for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))

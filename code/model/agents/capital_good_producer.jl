@@ -95,6 +95,43 @@ function initialize_kp(
 end
 
 
+function get_kp_mdata(model::ABM)
+    # If model.kpdata_tosave is not specified, return nothing
+    if isnothing(model.kpdata_tosave)
+        return nothing
+    end
+    
+    # Initialize an empty DataFrame with columns as properties
+    kp_df = DataFrame(; Dict(prop => Float64[] for prop in model.kpdata_tosave)...)
+    insertcols!(kp_df, 1, :size => Float64[])
+  
+
+
+    # Populate the DataFrame by iterating through all_kp
+    for kp_id in model.all_kp
+        kp_agent = model[kp_id]  # Assuming model[id] retrieves the agent by id
+        
+        row = Dict()
+        for prop in model.kpdata_tosave
+            if prop == :employees
+                row[prop] = Float64(length(getproperty(kp_agent, prop)))
+            else
+                row[prop] = getproperty(kp_agent, prop)
+            end
+            
+        end
+        row[:size] = model[kp_id].curracc.S
+        
+        push!(kp_df, row)
+    end
+    # Add a timestamp column to the DataFrame
+    kp_df[!, :timestamp] .= model.t
+
+    return kp_df
+end
+
+
+
 """
 Checks if innovation is performed, then calls appropriate functions
 """

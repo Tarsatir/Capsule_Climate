@@ -10,7 +10,8 @@ function shift_and_append!(
     )
 
     # Shift values
-    ts[1:end-1] = ts[2:end]
+    # ts[1:end-1] = ts[2:end]
+    circshift!(ts, 1)
 
     # Add new value
     ts[end] = newval

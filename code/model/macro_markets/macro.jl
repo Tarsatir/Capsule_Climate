@@ -160,6 +160,10 @@ function get_mdata(
 
     # Merge all dicts and convert and return as dataframe
     model_dict = merge(macro_dict, ep_dict, climate_dict, government_dict)
+
+    # Gather firm data and convert and return as dataframe
+    
+
     return DataFrame(model_dict)
 end
 

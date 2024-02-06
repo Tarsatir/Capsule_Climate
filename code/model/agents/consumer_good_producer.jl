@@ -44,7 +44,7 @@ Defines struct for consumer good producer
     Ξ::Vector{Machine}                        # machines
     n_machines::Float64 = 0.                  # total freq of machines # TODO rename
     cu::Float64 = 0.                          # capital utilizataion
-    employees::Vector{Int64} = []               # employees list
+    employees::Vector{Int64} = []             # employees list
     L::Float64                                # labor units
     Lᵈ::Float64 = L                           # desired labor units
     ΔLᵈ::Float64 = 0.0                        # desired change in labor force
@@ -100,6 +100,50 @@ function initialize_cp(
 
     return cp
 end
+
+
+
+
+
+function get_cp_mdata(model::ABM)
+    # If model.cpdata_tosave is not specified, return nothing
+    if isnothing(model.cpdata_tosave)
+        return DataFrame()
+    end
+    
+    # Initialize an empty DataFrame with columns as properties
+    cp_df = DataFrame(; Dict(prop => Float64[] for prop in model.cpdata_tosave)...)
+    #add an additional colum named TCI and K
+    insertcols!(cp_df, :TCI => Float64[])
+    insertcols!(cp_df, :K => Float64[])
+    insertcols!(cp_df, :size=> Float64[])
+    
+
+
+    # Populate the DataFrame by iterating through all_cp
+    for cp_id in model.all_cp
+        cp_agent = model[cp_id]  # Assuming model[id] retrieves the agent by id
+        row = Dict(prop => getproperty(cp_agent, prop) for prop in model.cpdata_tosave)
+        #populate the additional colum TCI with model[cp_id].curracc.TCI
+        row[:TCI] = model[cp_id].curracc.TCI
+        row[:K] = model[cp_id].balance.K
+        row[:size] = model[cp_id].curracc.S
+
+        push!(cp_df, row)
+    end
+
+    
+
+    # Add a timestamp column to the DataFrame
+    cp_df[!, :timestamp] .= model.t
+
+    return cp_df
+end
+
+
+
+
+
 
 
 """

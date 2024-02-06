@@ -49,7 +49,7 @@ function collect_emissions_cl!(
         # climate.emissions_index[t] = 100 * climate.carbon_emissions[t] / climate.carbon_emissions[t_warmup]
         
     # end
-    climate.energy_percentage[t] = climate.carbon_emissions_cp[t] / climate.carbon_emissions[t]
+    climate.energy_percentage[t] = climate.carbon_emissions_ep[t] / climate.carbon_emissions[t]
 end
 
 compute_index(ts, t_index) = (ts ./ ts[t_index]) .* 100

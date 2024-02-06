@@ -64,12 +64,16 @@ function change_taxrate!(
 )
     taxtype = changed_taxrate[1]
     taxtype_ts = Symbol(String(taxtype) * "_ts")
+    original_taxrate = getproperty(government, taxtype)
 
     if length(changed_taxrate) == 2
         # Change to new tax rate at end of warmup period
         taxrate = changed_taxrate[2]
         tax_ts = getproperty(government, taxtype_ts)
         tax_ts[t_warmup:end] .= taxrate
+        #in case of shock experiment
+        # change return taxrate to inital value after 100 entries
+        tax_ts[t_warmup+20:end] .= original_taxrate
     else
         # Linear interpolation between τ_start and τ_end
         taxrate_start = changed_taxrate[2]

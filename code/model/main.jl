@@ -13,6 +13,7 @@ using Dates
 using StaticArrays
 
 
+
 # Include files
 include("../results/write_results.jl")
 include("helpers/custom_schedulers.jl")
@@ -39,6 +40,7 @@ include("agents/energy_producer.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
+include("macro_markets/firms.jl")
 
 include("helpers/properties.jl")
 include("helpers/modeldata_storage.jl")
@@ -59,9 +61,12 @@ include("helpers/modeldata_storage.jl")
 
 ...
 """
+
+
 function initialize_model(
     T::Int64,
-    t_warmup::Int64;
+    t_warmup::Int64,
+    timer::TimerOutput;
     changed_params::Union{Dict, Nothing},
     changed_params_ofat::Union{Dict, Nothing},
     changed_taxrates::Union{Vector, Nothing}
@@ -71,11 +76,20 @@ function initialize_model(
     scheduler = Agents.Schedulers.by_type(true, true)
 
     # Initialize struct that holds global params and initial parameters
-    globalparam  = initialize_global_params(changed_params, changed_params_ofat)
+    #print(changed_params)
+    globalparam  = initialize_global_params(changed_params, changed_params_ofat, T, t_warmup, timer)
     initparam = InitParam()
 
     # Initialize struct that holds macro variables
     macroeconomy = MacroEconomy(T=T)
+
+
+    # Initialize empty DataFrames for cp_data and kp_data
+    cp_data = DataFrame()  # Define appropriate columns if needed
+    kp_data = DataFrame()  # Define appropriate columns if needed
+
+    # Initialize FirmTimeSeries
+    firm_time_series = FirmTimeSeries(cp_data, kp_data)
 
     # Initialize labor market struct
     labormarket = LaborMarket()
@@ -130,7 +144,10 @@ function initialize_model(
                                 nothing,
                                 nothing,
                                 nothing,
-
+                                nothing,
+                                nothing,
+                                
+                                firm_time_series,
                                 macroeconomy,
                                 labormarket,
                                 kp_brochures,
@@ -273,7 +290,7 @@ function initialize_datacategories(
     custom_mdata::Bool=false
 )::Tuple{Vector{Tuple}, Vector{Tuple}}
 
-    if savedata
+    if true
 
         # Define boolean functions that specify correct agent type
         hh(a) = a isa Household
@@ -329,7 +346,7 @@ function initialize_datacategories(
         # Define data of climate/emissions to save !!! SAVED DATA
         model.climatedata_tosave = [
             :em_index, :em_index_cp, :em_index_kp, :em_index_ep,
-            :energy_percentage 
+            :energy_percentage, :carbon_emissions
         ]
 
         # Define data of government to save
@@ -341,6 +358,14 @@ function initialize_datacategories(
         ]
 
         mdata = []
+        #save CP firm data
+        model.cpdata_tosave = [
+            :id, :cp_i, :age, :cu, :possible_I
+        ]
+        #save KP firm data
+        model.kpdata_tosave = [
+            :id, :kp_i, :age, :employees, :A_LP, :A_EE, :A_EF, :B_LP, :B_EE, :B_EF
+        ]
 
         return adata, mdata
     end
@@ -353,6 +378,8 @@ end
 function model_step!(
     model::ABM
 )::ABM
+
+    timer = model.g_param.timer
 
     # TODO incorporate this in all the functions
     t = model.t
@@ -367,12 +394,15 @@ function model_step!(
     climate = model.climate 
     cmdata = model.cmdata
 
+    #timer = global_thread_local_timer[] 
     # Check if any global params are changed in ofat experiment
     check_changed_ofatparams(globalparam, t)
 
     # Update tax rates
     update_taxrates!(government, t)
-
+    # Update parameters
+    update_global_params!(Symbol("p_f"), globalparam , t_warmup, t)
+    #print("green_limit: ", globalparam.green_limit, "\n")
     # Update schedulers
     @timeit timer "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
@@ -641,6 +671,16 @@ function model_step!(
     # Select producers that will be declared bankrupt and removed
     @timeit timer "check br" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
 
+
+    #update firm_time_series
+    testv = model.firm_time_series
+   
+    update_firm_time_series!(t,  model, model.firm_time_series)
+    #print if firm_time_series is updated
+    if testv != model.firm_time_series
+        print("firm_time_series updated \n")
+    end
+
     # (7) macro-economic indicators are updated.
     @timeit timer "update macro ts" update_macro_timeseries(
         # macroeconomy,
@@ -704,6 +744,10 @@ function model_step!(
         model
     )
 
+    #Save houhehold data if necessary.
+    
+    save_hh_shock_data(all_hh, model, t, t_warmup)
+
     # Increment time by one step
     model.t += 1
 
@@ -713,6 +757,10 @@ function model_step!(
 
     return model
 end
+
+
+#const thread_local_timer = ThreadLocal(TimerOutput())
+
 
 
 """
@@ -734,6 +782,7 @@ function run_simulation(;
     sim_nr::Int64 = 0,
     showprogress::Bool = false,
     savedata::Bool = true,
+    save_firmdata::Bool = false,
     seed::Int64 = Random.rand(1000:9999)
 )
 
@@ -741,23 +790,47 @@ function run_simulation(;
     Random.seed!(seed)
 
     println("thread $(Threads.threadid()), sim $sim_nr has started on $(Dates.format(now(), "HH:MM"))")
+    #print(changed_params)
+    
+    
 
-    global timer = TimerOutput()
+    timer = TimerOutput() #MULTITHREADING #TODO #once global variable
 
     # Initialize model
     @timeit timer "init" model = initialize_model(
         T,
-        t_warmup; 
+        t_warmup,
+        timer; 
         changed_params = changed_params,
         changed_params_ofat = changed_params_ofat, 
         changed_taxrates = changed_taxrates
+    )
+    #initialize firm data category
+    # Check for Nothing and provide empty vectors if needed
+    cp_cols = isnothing(model.cpdata_tosave) ? [] : model.cpdata_tosave
+    kp_cols = isnothing(model.kpdata_tosave) ? [] : model.kpdata_tosave
+
+    
+    # Initialize the FirmTimeSeries struct
+    firm_time_series = FirmTimeSeries(
+        DataFrame(; Dict(prop => Float64[] for prop in cp_cols)...),
+        DataFrame(; Dict(prop => Float64[] for prop in kp_cols)...)
     )
 
     # Initialize data categories that need to be saved
     adata, mdata = initialize_datacategories(model, savedata)
 
+    # At the beginning of the simulation
+    # property_dfs = Dict()   # MULTITHREADING #TODO #once global variable
+    # for prop in propertynames(model.all_hh)
+    #     if prop != :id  # Exclude the id property
+    #         property_dfs[prop] = DataFrame(id = collect(keys(model.all_hh)), t1 = Float64[])
+    #     end
+    # end
+
     # Run model
-    @timeit timer "runmodel" agent_df, _ = run!(
+    # @timeit timer "runmodel" 
+    agent_df, _ = run!(
         model, 
         dummystep, 
         model_step!, 
@@ -769,6 +842,16 @@ function run_simulation(;
 
     # Get macro variables from macroeconomy struct
     model_df = get_mdata(model)
+
+    # Get dataframe for firm data
+    cp_firm_df = get_cp_mdata(model)
+    kp_firm_df = get_kp_mdata(model)
+
+    #save firm dataframe to csv
+    if save_firmdata
+        save_firm_data(model.firm_time_series.cp_data, seed) 
+        save_firm_data(model.firm_time_series.kp_data, seed)
+    end
 
     # Save agent dataframe and model dataframe to csv
     if savedata

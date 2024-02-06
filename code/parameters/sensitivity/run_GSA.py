@@ -3,13 +3,13 @@ This file contains code to run PAWN global sensitivity analysis.
 
 """
 
-from SAFEpython import PAWN
+from safepython import PAWN
 import scipy.stats as stats
 import numpy as np
 
-from SAFEpython.sampling import AAT_sampling
-import SAFEpython.plot_functions as pf # module to visualize the results
-from SAFEpython.util import aggregate_boot  # function to aggregate the bootstrap results
+from safepython.sampling import AAT_sampling
+import safepython.plot_functions as pf # module to visualize the results
+from safepython.util import aggregate_boot  # function to aggregate the bootstrap results
 
 import matplotlib.pyplot as plt
 from matplotlib import rc
@@ -36,7 +36,7 @@ def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, crit, n=10, Nboot=3000)
     """
     Runs code required for PAWN sensitivity analysis.
     """
-
+    print(f'Running PAWN sensitivity analysis for {type}...')
     KS_median, KS_mean, KS_max = PAWN.pawn_indices(X, Y, n, Nboot=Nboot)
 
     # KS_median_m, KS_median_lb, KS_median_ub = aggregate_boot(KS_median) # shape (M,)
@@ -45,8 +45,16 @@ def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, crit, n=10, Nboot=3000)
 
     X_labels = [f'${l}$' for l in X_labels]
 
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='serif')
+    # plt.rcParams('text', usetex=True)
+    # plt.rcParams('font', family='serif')
+
+    plt.rcParams['text.usetex'] = True
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+
+
+
+
 
     # Plot bootstrapping results (for instance for KS_max):
     # plt.figure()
@@ -59,7 +67,7 @@ def run_PAWN(X_labels, X, Y, type, run_nr, name_dep_var, crit, n=10, Nboot=3000)
                 X_Labels=X_labels, Y_Label=f'{name_dep_var}')
     plt.hlines(crit, 0, KS_mean_m.shape[0]+1, color='red', linestyle='dotted')
     plt.tight_layout()
-    plt.savefig(f'parameters/sensitivity/sensitivity_plots/sa_{type}_mean_plot{run_nr}.pdf')
+    plt.savefig(f'sensitivity_plots/sa_{type}_mean_plot{run_nr}.pdf')
 
     return KS_mean_m
 
