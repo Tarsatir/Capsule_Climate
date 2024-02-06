@@ -24,6 +24,7 @@
     ηₑ::Int64 = 240                 # physical scrapping age energy producer
     Λ::Float64 = 2.0                # max debt/sales ratio
     update_period::Int64 = 3        # time period after which cp update prod plans
+    green_limit::Float64 = 1.0      # maximum green capacity
 
     # Determine entrant composition
     φ1::Float64 = 0.1               # 1st Uniform dist support, cp entrant cap

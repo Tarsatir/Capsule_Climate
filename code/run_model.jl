@@ -22,12 +22,12 @@ seed = 1234
 # )
 
 run_simulation(
-    T = 1600;
+    T = 660;
     savedata = true,
     show_full_output = true,
     showprogress = true,
     seed = seed,
-    changed_taxrates = [(:τᶜ, 0.2, 0.8)]
+    changed_taxrates = [(:τᶜ, 0.1, 0.11)]
 )
 
 

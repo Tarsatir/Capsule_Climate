@@ -773,6 +773,7 @@ function run_simulation(;
     # Save agent dataframe and model dataframe to csv
     if savedata
         save_simdata(agent_df, model_df, seed)
+        save_final_dist(model.all_hh, model.all_cp, model.all_kp, model)
     end
 
     # Show profiling output

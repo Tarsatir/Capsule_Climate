@@ -140,7 +140,7 @@ function produce_energy_ep!(
     plan_investments_ep!(ep, government, globalparam, frac_green, t, t_warmup)
 
     # Choose pp to use in production
-    choose_powerplants_ep!(ep, t)
+    choose_powerplants_ep!(ep, t, globalparam)
 
     compute_FU_ICₑ_ep!(ep, globalparam.p_f, t)
     compute_emissions_ep!(ep, t)
@@ -252,10 +252,11 @@ end
 
 function choose_powerplants_ep!(
     ep::EnergyProducer,
-    t::Int64
+    t::Int64,
+    globalparam::GlobalParam
     )
-    green_limit = 0.5
-
+   
+    green_limit = globalparam.green_limit
 
 
  

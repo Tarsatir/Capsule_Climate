@@ -139,10 +139,12 @@ function save_simdata(
     model_df::DataFrame,
     seed::Int64,
 )
+    #print current FilePaths
+    println("Current Filepath: ", pwd())
     # NOTE: CONVERSION DF TO STRING IS TMP SOLUTION, SHOULD BE FIXED BACK WHEN PACKAGES 
         #       ARE CONSISTENT AGAIN!
-    CSV.write(string("results/result_data/agent_data_", seed, ".csv"), string.(agent_df))
-    CSV.write(string("results/result_data/model_data_", seed, ".csv"), model_df)
+    #CSV.write(string("../results/agent_data_", seed, ".csv"), string.(agent_df))
+    CSV.write(string("../data/", seed, "_model.csv"), model_df)
 end
 
 
@@ -160,7 +162,7 @@ function save_final_dist(
         all_W = map(hh_id -> model[hh_id].W, all_hh),
         skills = map(hh_id -> model[hh_id].skill, all_hh)
     )
-    CSV.write("results/result_data/final_income_dists.csv", df)
+    CSV.write("../data/final_income_dists.csv", df)
 
     # Save sales, profits and market share of cp
     df = DataFrame(
@@ -171,7 +173,7 @@ function save_final_dist(
         all_p_cp = map(cp_id -> model[cp_id].p[end], all_cp),
         all_w_cp = map(cp_id -> model[cp_id].w̄[end], all_cp)
     )
-    CSV.write("results/result_data/final_profit_dists_cp.csv", df)
+    CSV.write("../data/final_profit_dists_cp.csv", df)
 
     # Save sales, profits and market share of kp
     df = DataFrame(
@@ -180,7 +182,7 @@ function save_final_dist(
         all_f_kp = map(kp_id -> model[kp_id].f[end], all_kp),
         all_L_kp = map(kp_id -> model[kp_id].L, all_kp)
     )
-    CSV.write("results/result_data/final_profit_dists_kp.csv", df)
+    CSV.write("../data/final_profit_dists_kp.csv", df)
 
 end
 
