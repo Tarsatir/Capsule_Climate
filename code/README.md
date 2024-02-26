@@ -8,11 +8,10 @@ The sensitivity analysis for the model was done with the 'run_sensitivity_analys
 
 ### Running the model
 
-Run the model by starting a `Julia` session in the main folder, and typing the following command:
+Run the model by navigating to the main folder, and typing the following command:
 
-```julia
->julia include("run_model.jl")
-```
+"julia run_model.jl "
+
 This command will run the model for the default settings, and produce the output plots.
 In order to replicate the main finding of the paper (the critical transition), you will need to run the model for a large number of times for varying 'green_limits' using the 'changed_params' option in the 'run_simulation()' function. 
 

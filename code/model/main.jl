@@ -357,6 +357,10 @@ function initialize_datacategories(
             :exp_UB, :exp_subsidies
         ]
 
+        # model.indexfunddata_tosave = [
+        #     :Assets, :funds_inv, :returns_investments #INDEX
+        # ]
+
         mdata = []
         #save CP firm data
         model.cpdata_tosave = [
@@ -745,7 +749,6 @@ function model_step!(
     )
 
     #Save houhehold data if necessary.
-    
     save_hh_shock_data(all_hh, model, t, t_warmup)
 
     # Increment time by one step

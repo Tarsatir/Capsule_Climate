@@ -158,8 +158,10 @@ function get_mdata(
     # Gather government tax revenue and expenditure data
     government_dict = Dict(cat => getproperty(model.gov, cat) for cat in model.governmentdata_tosave)
 
+    #indexfund_dict = Dict(cat => getproperty(model.indexfund, cat) for cat in model.indexfunddata_tosave)
+
     # Merge all dicts and convert and return as dataframe
-    model_dict = merge(macro_dict, ep_dict, climate_dict, government_dict)
+    model_dict = merge(macro_dict, ep_dict, climate_dict, government_dict) #, indexfund_dict
 
     # Gather firm data and convert and return as dataframe
     

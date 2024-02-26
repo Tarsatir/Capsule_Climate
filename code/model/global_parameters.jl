@@ -157,38 +157,38 @@ function initialize_global_params(
     #     init_changed_params( globalparam, filler, T, t_warmup)
     # end
 
+   
+    if !isnothing(changed_params)  #SHOCK EXPERIMENT
+        # Extract the first key-value pair from changed_params
+        shock=20
+        pair = first(changed_params)
+        var = pair[1]
+        #print("var", var)
+        upper = pair[2]
+        #print("upper", upper)
+        value = getfield(globalparam, Symbol(var))
+        param_vector = fill(value, T-t_warmup)
+        high_vector = fill(upper, shock)
+        #the rest of T is filled with the initial value
+        rest_vector = fill(value, T-t_warmup-shock)
+        #concatenate the three vectors
+        param_vector = vcat(param_vector, high_vector, rest_vector)
+        setproperty!(globalparam, :changing_params, param_vector)
 
-    # if !isnothing(changed_params)  #SHOCK EXPERIMENT
-    #     # Extract the first key-value pair from changed_params
-    #     shock=20
-    #     pair = first(changed_params)
-    #     var = pair[1]
-    #     #print("var", var)
-    #     upper = pair[2]
-    #     #print("upper", upper)
-    #     value = getfield(globalparam, Symbol(var))
-    #     param_vector = fill(value, T-t_warmup)
-    #     high_vector = fill(upper, shock)
-    #     #the rest of T is filled with the initial value
-    #     rest_vector = fill(value, T-t_warmup-shock)
-    #     #concatenate the three vectors
-    #     param_vector = vcat(param_vector, high_vector, rest_vector)
-    #     setproperty!(globalparam, :changing_params, param_vector)
-
-    # end
-    
-    # Change parameters if needed before returning.
-    if !isnothing(changed_params)
-        for (key, new_param) in changed_params
-            
-            setproperty!(globalparam, Symbol(key), new_param)
-        end
-
-        # If κ_upper part of OFAT experiment, also set κ_lower
-        if haskey(changed_params, "κ_upper")
-            setproperty!(globalparam, Symbol("κ_lower"), -changed_params["κ_upper"])
-        end
     end
+    
+    # # Change parameters if needed before returning.
+    # if !isnothing(changed_params)
+    #     for (key, new_param) in changed_params
+            
+    #         setproperty!(globalparam, Symbol(key), new_param)
+    #     end
+
+    #     # If κ_upper part of OFAT experiment, also set κ_lower
+    #     if haskey(changed_params, "κ_upper")
+    #         setproperty!(globalparam, Symbol("κ_lower"), -changed_params["κ_upper"])
+    #     end
+    # end
 
     return globalparam
 end

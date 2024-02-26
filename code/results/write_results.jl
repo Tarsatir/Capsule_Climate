@@ -175,6 +175,7 @@ function save_hh_shock_data(
         df = DataFrame(
             hh_id = map(hh_id -> hh_id, all_hh),
             all_I = map(hh_id -> model[hh_id].total_I, all_hh),
+            C_actual = map(hh_id -> model[hh_id].C_actual, all_hh),
             all_w = map(hh_id -> model[hh_id].w[end], all_hh),
             all_labor = map(hh_id -> model[hh_id].labor_I, all_hh),
             all_captial = map(hh_id -> model[hh_id].capital_I, all_hh),
@@ -184,6 +185,9 @@ function save_hh_shock_data(
             #same with P̄
             real_I = map(hh_id -> model[hh_id].total_I/model[hh_id].P̄, all_hh)
         )
+        #output the path i am currently in
+        #println(pwd())
+
 
         # Save data to CSV if t > t_warmup - 5 and t < t_warmup + 100
         file_name = "household_$(t)_hh.csv"
