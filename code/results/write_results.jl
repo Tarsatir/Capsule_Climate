@@ -183,7 +183,10 @@ function save_hh_shock_data(
             all_socben_I = map(hh_id -> model[hh_id].socben_I, all_hh),
             all_W = map(hh_id -> model[hh_id].W, all_hh),
             #same with P̄
-            real_I = map(hh_id -> model[hh_id].total_I/model[hh_id].P̄, all_hh)
+            real_I = map(hh_id -> model[hh_id].total_I/model[hh_id].P̄, all_hh),
+            #same with hh.C 
+            all_C = map(hh_id -> model[hh_id].C, all_hh)
+        
         )
         #output the path i am currently in
         #println(pwd())

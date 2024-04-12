@@ -416,7 +416,7 @@ function parse_commandline()
         "--n_per_taxrate"
             help="number of simulations per tax rate"
             arg_type=Int64
-            default=9
+            default=20
         "--outputpath"
             help="path to directory with output files"
             arg_type=String
@@ -440,17 +440,17 @@ function main()
     #   τ_start: tax rate from t=0 to t=t_warmup
     #   τ_end: tax rate at t=T
     #   δτ: how many months between increases, default is increase every month (δτ=1).
-    taxrates = Dict(
-        # :τᴵ => (0.1, 0.6),
-        # :τᴷ => (0.1, 0.6),
-        # :τˢ => (0.0, 0.5),
-        # :τᴾ => (0.1, 0.6),
-        #:τᴱ => (0.1, 0.8),
-        :τᶜ => (0.0, 0.8) 
-    )
+    # taxrates = Dict(
+    #     # :τᴵ => (0.1, 0.6),
+    #     # :τᴷ => (0.1, 0.6),
+    #     # :τˢ => (0.0, 0.5),
+    #     # :τᴾ => (0.1, 0.6),
+    #     #:τᴱ => (0.1, 0.8),
+    #     :τᶜ => (0.0, 0.8) 
+    # )
 
     paramrange = Dict(
-    #    :prog => (-1.5, 0.5)
+        :prog => (-1.5, 0.5)
     #     :p_f => (0.1, 0.3)
     #     :green_limit => (0.1, 0.11)
     )
@@ -466,20 +466,20 @@ function main()
     ]
 
     # Run OFAT experiment for tax rates
-    OFAT_taxrates(
-        folderpath,
-        taxrates; 
-        n_per_taxtype = n_per_type,
-        n_per_taxrate = n_per_val,
-        modelvars_to_save = modelvars_to_save
-    )
-    # OFAT_globalparam(
+    # OFAT_taxrates(
     #     folderpath,
-    #     paramrange; 
-    #     n_per_paramtype = n_per_type,
-    #     n_per_paramval = n_per_val,
+    #     taxrates; 
+    #     n_per_taxtype = n_per_type,
+    #     n_per_taxrate = n_per_val,
     #     modelvars_to_save = modelvars_to_save
     # )
+    OFAT_globalparam(
+        folderpath,
+        paramrange; 
+        n_per_paramtype = n_per_type,
+        n_per_paramval = n_per_val,
+        modelvars_to_save = modelvars_to_save
+    )
 
     # Run OFAT experiment for global parameters
     # OFAT_globalparam(
