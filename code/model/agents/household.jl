@@ -258,9 +258,37 @@ function receive_ordered_goods_hh!(
     hh.W -= tot_sales
     hh.C_actual += tot_sales
 
+    
+
+    #valid_cp_indices = all_cp #.- n_hh .+ 1
+    #print("valid_cp_indices: ", length(valid_cp_indices))
+    #print first entry of all
+    #print("first entry of all_cp: ", all_cp[1], all_cp[end])
+
     for cp_id in hh.cp
-        i = cp_id - n_hh
-        hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.0
+        #print("cp_id: ", cp_id)
+        #add n_hh to all entries of valid_cp_indices
+        #cp_id = cp_id + n_hh
+        if cp_id in all_cp
+            i = cp_id - n_hh
+            hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.0
+        else
+            #println("cp_id is not in all_cp")
+            # Select a new cp_id from valid_cp that is not in hh.cp
+            
+            available_cp_ids = setdiff(all_cp, Set(hh.cp))
+            println("available_cp_ids: ", available_cp_ids)
+            if !isempty(available_cp_ids)
+                new_cp_id = sample(available_cp_ids)
+                print("new_cp_id: ", new_cp_id)
+                push!(hh.cp, new_cp_id)
+                hh.unsat_dem[new_cp_id] = 0.0  # Initialize unsatisfied demand for the new cp_id
+                #println("Replaced cp_id $cp_id with new cp_id $new_cp_id")
+            else
+                #println("No available cp_id to replace")
+            end
+            error("firms are not properly deleted from hh")
+        end
     end
 end
 
@@ -405,6 +433,13 @@ function decide_switching_all_hh!(
 
             create_weights(hh::Household, cp_id::Int64)::Float64 = hh.unsat_dem[cp_id] > 0 ? 1 / hh.unsat_dem[cp_id] : 0.0
             weights = map(cp_id -> create_weights(model[hh_id], cp_id), model[hh_id].cp)
+
+            if any(isnan.(weights))
+                println("weights: ", weights)
+                println("unsat_dem: ", model[hh_id].unsat_dem)
+                println("cp: ", model[hh_id].cp)
+                error("weights contain NaN")
+            end
 
             # Sample producer to replace
             p_id_replaced = sample(model[hh_id].cp, Weights(weights))[1]

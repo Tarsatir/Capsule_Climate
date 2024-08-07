@@ -42,22 +42,82 @@ function reset_matrices_cp!(
     )
 
     # Set to order of small to large id (minimum(all_cp):max(all_cp)
-    all_p = map(cp_id -> model[cp_id].p[end], minimum(all_cp):maximum(all_cp))
-    all_N_goods = map(cp_id -> model[cp_id].N_goods, minimum(all_cp):maximum(all_cp))
+    # all_p = map(cp_id -> model[cp_id].p[end], minimum(all_cp):maximum(all_cp))
+    # all_N_goods = map(cp_id -> model[cp_id].N_goods, minimum(all_cp):maximum(all_cp))
+    # all_p = map(cp_id -> model[cp_id].p[end], all_cp)
+    # too_add = setdiff(Set(2501:2700), Set(all_cp))
+    # #apply - length(all_hh) on all elements of too_add
+    # adjusted_indices = [index - length(all_hh) for index in too_add]
+    # sorted_indices = sort(collect(adjusted_indices), rev=true)
+    # # Insert NaN at the specific indices in all_p
+    # for i in sorted_indices
+    #     insert!(all_p, i, NaN)
+    # end
+
+    all_p = fill(NaN, 200)
+    all_N_goods = fill(NaN, 200)
+
+    # Step 2: Populate values from model at specific indices
+    for cp_id in all_cp
+        adjusted_index = cp_id - length(all_hh)
+        if adjusted_index > 0 && adjusted_index <= length(all_p)
+            all_p[adjusted_index] = model[cp_id].p[end]
+            all_N_goods[adjusted_index] = model[cp_id].N_goods
+        end
+    end
+
+    
+
+    #all_N_goods = map(cp_id -> model[cp_id].N_goods, all_cp)
+
+
+    #println("all_N_goods", all_N_goods)
 
     @inbounds for (i,hh_id) ∈ enumerate(minimum(all_hh):maximum(all_hh))
 
         cmdata.all_C[i] = model[hh_id].C
+
         cmdata.weights[i,:] .= 0.0
 
         for cp_id in model[hh_id].cp
+            #print error if any cp_id is not in all_cp
+            if cp_id ∉ all_cp
+                println("cp_id: ", cp_id)
+                println("all_cp: ", all_cp)
+                error("cp_id not in all_cp")
+            end
 
             # cp are initiated after hh and cp_id will thus correspond to col + len(hh), 
             # so subtract len(hh) to get index
             j = cp_id - length(all_hh)
 
+            # if  any(all_p[j] == 0.0)
+            #     println("length of price list", length(all_p), "\n")
+            #     println("index", j,"colum has value zero",  all_p[j], "\n")
+            #     println("list of prices", all_p)
+            #     error("all_p is wrong because zero")
+            # end
             cmdata.all_N[j] = all_N_goods[j] * all_p[j]
             cmdata.weights[i,j] = all_p[j] ^ -1
+
+            # Check if the value at index j in all_N is NaN and replace it with 0.0
+            if isnan(cmdata.all_N[j])
+                cmdata.all_N[j] = 0.0
+            end
+
+            # Check if the value at position (i, j) in weights is NaN and replace it with 0.0
+            if isnan(cmdata.weights[i, j])
+                cmdata.weights[i, j] = 0.0
+            end
+
+            
+            if any(isinf.(cmdata.weights[i,j]))
+                println("length of price list", length(all_p), "\n")
+                println("index", j,"colum has value zero",  all_p[j], "\n")
+                println("list of prices", all_p)
+                println(cmdata.weights[i,j])
+                error("inf in weights")
+            end
         end
     end
 

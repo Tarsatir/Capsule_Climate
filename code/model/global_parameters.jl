@@ -26,6 +26,7 @@
     Λ::Float64 = 2.0                # max debt/sales ratio
     update_period::Int64 = 3        # time period after which cp update prod plans
     green_limit::Float64 = 1.0      # limit on green tech share in ep production
+    firm_replacement::Float64 = 1 # replacement rate of firms
 
     # Determine entrant composition
     φ1::Float64 = 0.1               # 1st Uniform dist support, cp entrant cap

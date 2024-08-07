@@ -704,6 +704,12 @@ function replace_bankrupt_kp!(
     model::ABM
     )
 
+
+    # if globalparam.firm_replacement > rand() || length(all_kp) == 0
+    #     println("Firm replacement is not implemented")
+    # end
+
+
     # TODO: describe in model
 
     # Check if not all kp have gone bankrupt, in this case, 

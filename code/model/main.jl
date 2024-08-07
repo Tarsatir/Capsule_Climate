@@ -422,7 +422,7 @@ function model_step!(
 
     # Redistribute goverment balance
     resolve_gov_balance!(government, indexfund, globalparam, all_hh, t, model)
-
+    #println("Are we getting here?")
     # Update firm age
     for p_id in all_p
         model[p_id].age += 1
@@ -473,8 +473,13 @@ function model_step!(
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
+    # println("number of cp", length(all_cp))
+    # println("max cp", maximum(all_cp))
+    #print the set difference between all_cp and range(2501, length(all_cp)+2500)
+
+
     @timeit timer "plan prod cp" for cp_id in all_cp
-      
+        
         # Plan production for this period
         # μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
         plan_production_cp!(
@@ -489,6 +494,7 @@ function model_step!(
             model
         )
 
+        #println("cp_id: ", cp_id)
         # if model[cp_id].t_next_update == t  
         #     model[cp_id].t_next_update += globalparam.update_period
         # end
@@ -560,6 +566,7 @@ function model_step!(
     compute_pₑ_ep!(ep, t)
 
     @timeit timer "consumer prod" for cp_id in all_cp
+        #print("cp_id: ", cp_id, "\n")
         produce_goods_cp!(model[cp_id], ep, globalparam, t)
     end
 
@@ -706,7 +713,7 @@ function model_step!(
 
     # Update climate parameters, compute new carbon equilibria and temperature change
     collect_emissions_cl!(climate, all_cp, all_kp, ep, t, globalparam.t_warmup, model)
-
+    #print("before kill", length(all_cp), "\n")
     # Remove bankrupt companies.
     @timeit timer "kill bankr p" kill_all_bankrupt_p!(
         bankrupt_cp,
@@ -718,10 +725,16 @@ function model_step!(
         model
     )
     update_unemploymentrate_lm!(labormarket)
+    #print("after kill", length(all_cp), "\n")
 
 
     # Replace bankrupt kp. Do this before you replace cp, such that new cp can also choose
     # from new kp
+
+    # println(length(all_kp))
+    # println("<kp  and cp>")
+    # println(length(all_cp))
+    
     @timeit timer "replace kp" replace_bankrupt_kp!(
         bankrupt_kp, 
         bankrupt_kp_i, 
@@ -747,6 +760,17 @@ function model_step!(
         t,
         model
     )
+    # println("all_cp:", all_cp)
+    
+    println("Set difference global:", setdiff(Set(2501:2700), Set(all_cp)))
+    
+    # println("Generated range:", collect(2501:2700))
+    
+    # range_set = Set(2501:length(all_cp) + 2500)
+    # all_cp_set = Set(all_cp)
+    # println("Set difference:", setdiff(all_cp_set, range_set))
+    
+
 
     #Save houhehold data if necessary.
     save_hh_shock_data(all_hh, model, t, t_warmup)

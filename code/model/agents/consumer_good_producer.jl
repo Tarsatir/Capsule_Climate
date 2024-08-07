@@ -270,19 +270,50 @@ function check_funding_restrictions_cp!(
     globalparam::GlobalParam,
     p_ep::Float64
     )
-
+    #print all variables
+    #print(cp.L, " ", cp.ΔLᵈ, " ", cp.w̄[end], " ", cp.D[end], " ", cp.Qˢ, " ", p_ep, " ", government.τᴱ, " ", cp.π_EE, " ", government.τᶜ, " ", cp.π_EF, " ","\n")
     # Determine expected TCL and TCE
     TCLᵉ = (cp.L + cp.ΔLᵈ) * cp.w̄[end]
     TCE = cp.Qˢ * ((p_ep + government.τᴱ) / cp.π_EE + government.τᶜ * cp.π_EF)
 
+    #print all variables
+    #print( globalparam.Λ, " ", cp.D[end], " ", cp.p[end - 1], " ", cp.balance.debt, " ", globalparam.r, "\n")
     # Determine how much additional debt can be made
     max_add_debt = max(globalparam.Λ * cp.D[end] * cp.p[end - 1] - cp.balance.debt, 0)
+    #print all variables
+    #print(cp.balance.NW, " ", cp.Dᵉ * cp.p[end], " ", cp.curracc.rev_dep, " ", cp.debt_installments[1], " ", cp.balance.debt, " ", globalparam.r, "\n")
 
     # Check if cost of labor and investment can be financed from liquid assets
     NW_no_prod = (cp.balance.NW + cp.Dᵉ * cp.p[end] + cp.curracc.rev_dep 
                   - cp.debt_installments[1] - cp.balance.debt * globalparam.r)
 
+    if any(isnan.(cp.possible_I))
+        print(cp.L, " ", cp.ΔLᵈ, " ", cp.w̄[end], " ", cp.D[end], " ", cp.Qˢ, " ", p_ep, " ", government.τᴱ, " ", cp.π_EE, " ", government.τᶜ, " ", cp.π_EF, " ","\n")
+        println("NW_no_prod", NW_no_prod, "\n")
+        println("max_add_debt", max_add_debt, "\n")
+        println("TCLᵉ", TCLᵉ, "\n")
+        println("TCE", TCE, "\n")
+        error("NaN value")
+    end
     cp.possible_I = NW_no_prod + max_add_debt - TCLᵉ - TCE
+    #if possibleI is larger than 10^18
+    if cp.Dᵉ == 0 || cp.D[end] == 0 || cp.Dᵁ[end] == 0
+        println("cp id: ", cp.id)
+        println("unsatdem, demand, exdem", cp.Dᵁ[end],"  ", cp.D[end],"  ",cp.Dᵉ)
+        
+    end
+    if cp.possible_I > 10^18
+        println("cp id: ", cp.id)
+        println("possI", cp.possible_I, "\n")
+        println("unsatdem, demand, exdem", cp.Dᵁ[end], cp.D[end],cp.Dᵉ)
+        print(cp.L, " ", cp.ΔLᵈ, " ", cp.w̄[end], " ", cp.D[end], " ", cp.Qˢ, " ", p_ep, " ", government.τᴱ, " ", cp.π_EE, " ", government.τᶜ, " ", cp.π_EF, " ","\n")
+        println("NW_no_prod", NW_no_prod, "\n")
+        println("max_add_debt", max_add_debt, "\n")
+        println("TCLᵉ", TCLᵉ, "\n")
+        println("TCE", TCE, "\n")
+        println("komponents: ", cp.balance.NW,  "\n", cp.Dᵉ, "\n", cp.p[end], "\n", cp.curracc.rev_dep, "\n", cp.debt_installments[1], "\n", cp.balance.debt, "\n", globalparam.r)
+        error("unrealistic possible_I")
+    end
 
     # If possible investments negative, decrease labor demand
     if cp.possible_I < 0
@@ -519,13 +550,52 @@ function plan_expansion_cp!(
         # cp.EIᵈ = 0.0
     end
 
-    max_mach_poss = floor(Int64, cp.possible_I / brochure[:price])
+    # Calculate the potential value
+    potential_value = cp.possible_I / brochure[:price]
+
+    # Check for overflow before converting to Int64
+    if potential_value > typemax(Int64)
+        max_mach_poss = typemax(Int64)  # Use the maximum Int64 value if overflow occurs
+        # print component that lead to this overflow
+        println("Potential value: ", potential_value)
+        println("Possible I: ", cp.possible_I)
+        println("Brochure price: ", brochure[:price])
+        error("Potential value overflowed Int64")
+    else
+        max_mach_poss = floor(Int64, potential_value)
+    end
+ 
+    # #compute set difference
+    # deadfirms = setdiff(Set(2501:2700), Set(model.all_cp))
+
+    # if cp.id in deadfirms
+    #     max_mach_poss = floor(Int64, cp.possible_I / brochure[:price])
+    # else
+    #     try
+    #         # Attempt to compute max_mach_poss normally
+    #         return floor(Int64, cp.possible_I / brochure[:price])
+    #     catch e
+    #         if isa(e, InexactError)
+    #             # Handle the specific inexact error by providing additional information
+    #             println("InexactError occurred during computation for cp.id = ", cp.id)
+    #             println("possible I: ", cp.possible_I ,"\n")
+    #             println("brochure price: ", brochure[:price],"\n")
+    #         end
+    #         rethrow(e)  # Rethrow the error to maintain normal error handling flow outside this function
+    #     end
+    # end
 
     # if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
     if cp.Qᵉ > cp.n_machines
         # cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
-
-        total_mach_desired = round(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
+        potential_mach_desired = (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine
+        if potential_mach_desired > typemax(Int64)
+            total_mach_desired = typemax(Int64)
+            error("Potential value overflowed Int64")
+        else
+            total_mach_desired = round(Int64, potential_mach_desired)
+        end
+        #total_mach_desired = round(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
         add_mach_desired = total_mach_desired - cp.n_mach_ordered_EI
         cp.n_mach_desired_EI = max(min(max_mach_poss, add_mach_desired), 0)
         cp.n_mach_ordered_EI = cp.n_mach_desired_EI
@@ -689,10 +759,28 @@ function produce_goods_cp!(
     globalparam::GlobalParam,
     t::Int64
     )
+    # Assuming cp is defined
+    if !(2501 <= cp.id <= 2700)
+        println("index error somewhere!")
+        println(cp.id)
+        return
+    end
 
     # If the cp does not need to use its complete capital stock, only use most productive 
     # machines
-    n_machines_req = ceil(Int64, cp.Qˢ / globalparam.freq_per_machine)
+    #println("cp.Qˢ: ", cp.Qˢ, " globalparam.freq_per_machine: ", globalparam.freq_per_machine)
+    if isnan(cp.Qˢ)
+        println("cp.Qˢ is NaN")
+        println(cp.id)
+    end
+    pot_mach_req = cp.Qˢ / globalparam.freq_per_machine
+    if pot_mach_req > typemax(Int64)
+        n_machines_req = typemax(Int64)
+        error("Potential value overflowed Int64")
+    else
+        n_machines_req = ceil(Int64, pot_mach_req)
+    end
+    #n_machines_req = ceil(Int64, cp.Qˢ / globalparam.freq_per_machine)
     if n_machines_req < length(cp.Ξ)
         # Compute number of machines needed (machines already ordered on productivity, 
         # least to most productive)
@@ -856,50 +944,86 @@ function replace_bankrupt_cp!(
 
     n_kp_sample = min(length(weights_kp), 10)
 
+
     for (cp_i, cp_id) in enumerate(bankrupt_cp)
+  
 
-        # Sample what the size of the capital stock will be
-        D = macro_struct.cu[t] * all_n_machines[cp_i] * globalparam.freq_per_machine
+        if globalparam.firm_replacement > rand() || length(all_cp) <= 50
 
-        # In the first period, the cp has no machines yet, these are delivered at the end
-        # of the first period
-        new_cp = initialize_cp(
-                    cp_id,
-                    cp_i,
-                    # t + 1,
-                    Vector{Machine}(),
-                    model;
-                    D=D,
-                    w=macro_struct.w_avg[t],
-                    f=0.0
-                )
+            #println("THIS WORKS")
 
-        # Order machines at kp of choice
-        new_cp.kp_ids = sample(nonbankrupt_kp, Weights(weights_kp), n_kp_sample; replace=false)
-        new_cp.n_mach_desired_EI = all_n_machines[cp_i]
+            # Sample what the size of the capital stock will be
+            D = macro_struct.cu[t] * all_n_machines[cp_i] * globalparam.freq_per_machine
 
-        update_wᴼ_max_cp!(new_cp)
+            # In the first period, the cp has no machines yet, these are delivered at the end
+            # of the first period
+            new_cp = initialize_cp(
+                        cp_id,
+                        cp_i,
+                        # t + 1,
+                        Vector{Machine}(),
+                        model;
+                        D=D,
+                        w=macro_struct.w_avg[t],
+                        f=0.0
+                    )
 
-        # Augment the balance with acquired NW and K
-        new_cp.balance.NW = req_NW[cp_i]
+            # Order machines at kp of choice
+            new_cp.kp_ids = sample(nonbankrupt_kp, Weights(weights_kp), n_kp_sample; replace=false)
+            new_cp.n_mach_desired_EI = all_n_machines[cp_i]
 
-        # Borrow remaining required funds for the machine, the other part of the 
-        # funds come from the investment fund
-        borrow_funds_p!(new_cp, (1 - frac_NW_if) * req_NW[cp_i], globalparam.b)
+            update_wᴼ_max_cp!(new_cp)
 
-        add_agent!(new_cp, model)
+            # Augment the balance with acquired NW and K
+            new_cp.balance.NW = req_NW[cp_i]
 
-        # Add new cp to subset of households, inversely proportional to amount of suppliers
-        # they already have
-        n_init_hh = 100
+            # Borrow remaining required funds for the machine, the other part of the 
+            # funds come from the investment fund
+            borrow_funds_p!(new_cp, (1 - frac_NW_if) * req_NW[cp_i], globalparam.b)
 
-        customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
-    
-        # Add cp to list of hh
-        for hh_id ∈ customers
-            push!(model[hh_id].cp, cp_id)
+            add_agent!(new_cp, model)
+
+            # Add new cp to subset of households, inversely proportional to amount of suppliers
+            # they already have
+            n_init_hh = 100
+
+            customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
+        
+            # Add cp to list of hh
+            for hh_id ∈ customers
+                push!(model[hh_id].cp, cp_id)
+            end
+
+        else
+            println("No new cp added")
+            println("cp id of bankrupt: ", cp_id)
+            # Check if cp_id exists in all_cp before attempting to remove it
+            if cp_id in all_cp
+                
+                #check if cp_id is in all_cp
+                if cp_id in all_cp
+                    print("Is contained", "\n")
+                end
+                # Remove cp_id from all_cp
+                filter!(x -> x != cp_id, all_cp)
+                if cp_id ∉ all_cp
+                    println("Is not contained")
+                end
+                
+                # Update all_p
+                all_p = vcat(all_cp, all_kp)
+                # Update the properties in the model
+                model.properties.all_cp = all_cp
+                model.properties.all_p = all_p
+
+                println("Set difference:", setdiff(Set(2501:2700), Set(all_cp)))
+
+
+            else
+                # Print an informative message if cp_id is not found
+                println("cp_id not found in all_cp: ", cp_id)
+            end
         end
-
     end
 end
 
@@ -915,8 +1039,15 @@ function update_Dᵉ_cp!(
     cp::ConsumerGoodProducer,
     ω::Float64
     )
-
+    
     cp.Dᵉ = cp.age > 1 ? ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end]) : cp.Dᵉ
+    #CHANGES MADE
+    # growth_limit = 1
+    # if cp.age > 1
+    #     new_Dᵉ = ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end])
+    #     max_Dᵉ = cp.Dᵉ * (1 + growth_limit)
+    #     cp.Dᵉ = min(new_Dᵉ, max_Dᵉ)
+    # end
 end
 
 
@@ -926,8 +1057,14 @@ Updates desired short-term production Qˢ
 function update_Qˢ_cp!(
     cp::ConsumerGoodProducer
     )
-
-    cp.Qˢ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0.0)
+    # Check if any of the variables is NaN
+    if isnan(cp.Dᵉ) || isnan(cp.Nᵈ) || isnan(cp.N_goods)
+        cp.Qˢ = 0.0
+        error("One of the variables is NaN")
+    else
+        cp.Qˢ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0.0)
+    end
+   
 end
 
 

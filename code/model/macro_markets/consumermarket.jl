@@ -14,6 +14,10 @@ function consumermarket_process!(
 
     # Market clearing process
     @timeit to "market clearing" cpmarket_matching_cp!(cmdata, model)
+    if any(isnan.(cmdata.demand_per_cp))
+        println("nan in transactions")
+        error("nan in transactions")
+    end
 
     @timeit to "process transac" process_transactions_cm!(all_hh, all_cp, cmdata, government, model, t, to)
 
@@ -32,22 +36,32 @@ function process_transactions_cm!(
 
     # cmdata = model.cmdata
 
-    unsat_demand = zeros(Float64, length(all_cp))
-    hh_D = zeros(Float64, length(all_cp))
+    unsat_demand = zeros(Float64, 200) #Should be initparam.n_cp but is hardcoded for now
+    hh_D = zeros(Float64, 200)
 
     # Process transactions for hh
     for (i, hh_id) in enumerate(minimum(all_hh):maximum(all_hh))
 
-        hh_D .= @view cmdata.true_D[i,:]
+        #hh_D .= @view cmdata.true_D[i,:]
+        valid_cp_indices = all_cp .- length(all_hh)# .+ 1
+        #println("valid_cp_indices: ", valid_cp_indices)
+        hh_D[valid_cp_indices] .= @view cmdata.true_D[i, valid_cp_indices]
+        if any(isnan.(hh_D))
+            println("nan in hh_D at index: ", i)
+            println("hh_D: ", hh_D)
+            print(cmdata.true_D[i,:])
+            error("nan in hh_D")
+        end
+
 
         # Compute unsatisfied demand
-        unsat_demand .= @view cmdata.true_D[i,:]
-        unsat_demand .-= @view cmdata.transactions[i,:]
+        unsat_demand[valid_cp_indices] .= @view cmdata.true_D[i, valid_cp_indices]
+        unsat_demand[valid_cp_indices] .-= @view cmdata.transactions[i, valid_cp_indices]
         unsat_demand .= max.(unsat_demand, 0.0)
 
         receive_ordered_goods_hh!(
             model[hh_id], 
-            sum(@view cmdata.transactions[i,:]), 
+            sum(@view cmdata.transactions[i,valid_cp_indices]), 
             unsat_demand, 
             hh_D, 
             all_cp,
@@ -59,22 +73,37 @@ function process_transactions_cm!(
     total_salestax = 0.0
 
     # Process transations for cp
-    for (i, cp_id) in enumerate(minimum(all_cp):maximum(all_cp))
-
+    #for (i, cp_id) in enumerate(minimum(all_cp):maximum(all_cp))
+    for (i, cp_id) in enumerate(all_cp)
+ 
         # Compute unsat_demand
         unsat_demand = @view cmdata.true_D[:,i]
         unsat_demand .-= @view cmdata.transactions[:,i]
         unsat_demand .= max.(unsat_demand, 0.0)
 
         # TODO decide whether it makes sense if producers know unsatisfied demand
-
+        #if any entry of cmdata.transactions is nan print index
+        if any(isnan.(cmdata.transactions[:,i]))
+            println("nan in transactions at index: ", i)
+            println("unsat_demand: ", unsat_demand)
+            print(cmdata.true_D[:,i])
+            error("nan in transactions")
+        end
         model[cp_id].curracc.S = sum(@view cmdata.transactions[:,i])
 
         total_salestax += model[cp_id].curracc.S * (government.τˢ / (1 + government.τˢ))
         model[cp_id].curracc.S = model[cp_id].curracc.S * (1 / (1 + government.τˢ))
 
+        #print("curracc.S ", model[cp_id].curracc.S, " prod ",model[cp_id].p[end] )
         N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
+        if any(isnan.(N_goods_sold))
+            #print unsat_demand, curracc, and p 
+            println(unsat_demand[:,cp.id], model[cp_id].curracc, model[cp_id].p)
+            error("N_goods_sold is nan")
+        end
+        #cp.D defined here!
         shift_and_append!(model[cp_id].D, N_goods_sold)
+        #print("Demand/sold ", N_goods_sold)
         shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))
         model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) > 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
     end
@@ -93,16 +122,55 @@ function cpmarket_matching_cp!(
 
     # cmdata = model.cmdata
 
+    
     # Normalize weights
     sum!(cmdata.weights_sum, cmdata.weights)
+    
+    if any(isinf.(cmdata.weights))
+        error("inf in weights")
+    end
+
+    if any(isinf.(cmdata.weights_sum))
+        error("inf in weights_sum")
+    end
+
+ 
+
+    if any(iszero(cmdata.weights_sum))
+        error("zero in weights_sum")
+    end
     cmdata.weights ./= cmdata.weights_sum
+    #replace!(cmdata.weights, NaN=>0.0)
+
+    if any(isnan.(cmdata.weights))
+        error("nan in weights")
+    end
     sold_out = Int64[]
+
+    # #print if an entries in demand_per_cp is nan
+    # if any(isnan.(cmdata.C_spread))
+    #     #print total number of nan entries
+    #     #println("weights ", cmdata.weights, "all c ", cmdata.all_C, "all N ", cmdata.all_N)
+    #     print("nan in C_spread")
+    #     error("nan in C_spread")
+    # end
 
     for i in 1:3
 
         # Spread consumption budget according to weights (no allocs)
         cmdata.C_spread .= cmdata.all_C 
+        if any(isnan.(cmdata.all_C))
+            error("nan in all_C")
+        end
         cmdata.C_spread .*= cmdata.weights
+
+        if any(isnan.(cmdata.weights))
+            error("nan in weights")
+        end
+        if any(isnan.(cmdata.C_spread))
+            println("nan in C_spread")
+            error("nan in C_spread")
+        end
 
         # Compute the first choice of hh for the products (2 allocs)
         if i == 1
@@ -116,8 +184,13 @@ function cpmarket_matching_cp!(
         sold_out = findall(cmdata.all_N .<= cmdata.demand_per_cp)
 
         # Sell goods
-        cmdata.frac_sellable .= min.(cmdata.all_N ./ cmdata.demand_per_cp, 1.0)
-        replace!(cmdata.frac_sellable, -Inf=>0.0, NaN=>0.0)
+        cmdata.frac_sellable .= cmdata.all_N ./ cmdata.demand_per_cp
+        cmdata.frac_sellable[isnan.(cmdata.frac_sellable) .| isinf.(cmdata.frac_sellable)] .= 0.0
+        cmdata.frac_sellable .= min.(cmdata.frac_sellable, 1.0)
+
+        # cmdata.frac_sellable .= min.(cmdata.all_N ./ cmdata.demand_per_cp, 1.0)
+        
+        # replace!(cmdata.frac_sellable, -Inf=>0.0, NaN=>0.0)
 
         cmdata.C_spread .*= cmdata.frac_sellable'
         cmdata.transactions .+= cmdata.C_spread
