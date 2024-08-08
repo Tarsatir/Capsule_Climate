@@ -282,8 +282,33 @@ function check_funding_restrictions_cp!(
     NW_no_prod = (cp.balance.NW + cp.Dᵉ * cp.p[end] + cp.curracc.rev_dep 
                   - cp.debt_installments[1] - cp.balance.debt * globalparam.r)
 
+    if any(isnan.(cp.possible_I))
+        print(cp.L, " ", cp.ΔLᵈ, " ", cp.w̄[end], " ", cp.D[end], " ", cp.Qˢ, " ", p_ep, " ", government.τᴱ, " ", cp.π_EE, " ", government.τᶜ, " ", cp.π_EF, " ","\n")
+        println("NW_no_prod", NW_no_prod, "\n")
+        println("max_add_debt", max_add_debt, "\n")
+        println("TCLᵉ", TCLᵉ, "\n")
+        println("TCE", TCE, "\n")
+        error("NaN value")
+    end
     cp.possible_I = NW_no_prod + max_add_debt - TCLᵉ - TCE
-
+    #if possibleI is larger than 10^18
+    # if cp.Dᵉ == 0 || cp.D[end] == 0 || cp.Dᵁ[end] == 0
+    #     println("cp id: ", cp.id)
+    #     println("unsatdem, demand, exdem", cp.Dᵁ[end],"  ", cp.D[end],"  ",cp.Dᵉ)
+        
+    # end
+    if cp.possible_I > 10^6
+        println("cp id: ", cp.id)
+        println("possI", cp.possible_I, "\n")
+        println("unsatdem, demand, exdem", cp.Dᵁ[end], cp.D[end],cp.Dᵉ)
+        print(cp.L, " ", cp.ΔLᵈ, " ", cp.w̄[end], " ", cp.D[end], " ", cp.Qˢ, " ", p_ep, " ", government.τᴱ, " ", cp.π_EE, " ", government.τᶜ, " ", cp.π_EF, " ","\n")
+        println("NW_no_prod", NW_no_prod, "\n")
+        println("max_add_debt", max_add_debt, "\n")
+        println("TCLᵉ", TCLᵉ, "\n")
+        println("TCE", TCE, "\n")
+        println("komponents: ", cp.balance.NW,  "\n", cp.Dᵉ, "\n", cp.p[end], "\n", cp.curracc.rev_dep, "\n", cp.debt_installments[1], "\n", cp.balance.debt, "\n", globalparam.r)
+        error("unrealistic possible_I")
+    end
     # If possible investments negative, decrease labor demand
     if cp.possible_I < 0
 
@@ -857,47 +882,78 @@ function replace_bankrupt_cp!(
     n_kp_sample = min(length(weights_kp), 10)
 
     for (cp_i, cp_id) in enumerate(bankrupt_cp)
+        if globalparam.firm_replacement > rand() || length(all_cp) <= 50
+            # Sample what the size of the capital stock will be
+            D = macro_struct.cu[t] * all_n_machines[cp_i] * globalparam.freq_per_machine
 
-        # Sample what the size of the capital stock will be
-        D = macro_struct.cu[t] * all_n_machines[cp_i] * globalparam.freq_per_machine
+            # In the first period, the cp has no machines yet, these are delivered at the end
+            # of the first period
+            new_cp = initialize_cp(
+                        cp_id,
+                        cp_i,
+                        # t + 1,
+                        Vector{Machine}(),
+                        model;
+                        D=D,
+                        w=macro_struct.w_avg[t],
+                        f=0.0
+                    )
 
-        # In the first period, the cp has no machines yet, these are delivered at the end
-        # of the first period
-        new_cp = initialize_cp(
-                    cp_id,
-                    cp_i,
-                    # t + 1,
-                    Vector{Machine}(),
-                    model;
-                    D=D,
-                    w=macro_struct.w_avg[t],
-                    f=0.0
-                )
+            # Order machines at kp of choice
+            new_cp.kp_ids = sample(nonbankrupt_kp, Weights(weights_kp), n_kp_sample; replace=false)
+            new_cp.n_mach_desired_EI = all_n_machines[cp_i]
 
-        # Order machines at kp of choice
-        new_cp.kp_ids = sample(nonbankrupt_kp, Weights(weights_kp), n_kp_sample; replace=false)
-        new_cp.n_mach_desired_EI = all_n_machines[cp_i]
+            update_wᴼ_max_cp!(new_cp)
 
-        update_wᴼ_max_cp!(new_cp)
+            # Augment the balance with acquired NW and K
+            new_cp.balance.NW = req_NW[cp_i]
 
-        # Augment the balance with acquired NW and K
-        new_cp.balance.NW = req_NW[cp_i]
+            # Borrow remaining required funds for the machine, the other part of the 
+            # funds come from the investment fund
+            borrow_funds_p!(new_cp, (1 - frac_NW_if) * req_NW[cp_i], globalparam.b)
 
-        # Borrow remaining required funds for the machine, the other part of the 
-        # funds come from the investment fund
-        borrow_funds_p!(new_cp, (1 - frac_NW_if) * req_NW[cp_i], globalparam.b)
+            add_agent!(new_cp, model)
 
-        add_agent!(new_cp, model)
+            # Add new cp to subset of households, inversely proportional to amount of suppliers
+            # they already have
+            n_init_hh = 100
 
-        # Add new cp to subset of households, inversely proportional to amount of suppliers
-        # they already have
-        n_init_hh = 100
+            customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
+        
+            # Add cp to list of hh
+            for hh_id ∈ customers
+                push!(model[hh_id].cp, cp_id)
+            end
+        else
+            println("No new cp added")
+            println("cp id of bankrupt: ", cp_id)
+            # Check if cp_id exists in all_cp before attempting to remove it
+            if cp_id in all_cp
+                
+                #check if cp_id is in all_cp
+                if cp_id in all_cp
+                    print("Is contained", "\n")
+                end
+                # Remove cp_id from all_cp
+                filter!(x -> x != cp_id, all_cp)
+                if cp_id ∉ all_cp
+                    println("Is not contained")
+                end
+                
+                # Update all_p
+                all_p = vcat(all_cp, all_kp)
+                # Update the properties in the model
+                model.properties.all_cp = all_cp
+                model.properties.all_p = all_p
 
-        customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
-    
-        # Add cp to list of hh
-        for hh_id ∈ customers
-            push!(model[hh_id].cp, cp_id)
+                println("Set difference:", setdiff(Set(2501:2700), Set(all_cp)))
+
+
+            else
+                # Print an informative message if cp_id is not found
+                println("cp_id not found in all_cp: ", cp_id)
+            end
+            
         end
 
     end

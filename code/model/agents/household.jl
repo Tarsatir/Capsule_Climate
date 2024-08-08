@@ -259,8 +259,26 @@ function receive_ordered_goods_hh!(
     hh.C_actual += tot_sales
 
     for cp_id in hh.cp
-        i = cp_id - n_hh
-        hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.0
+        if cp_id in all_cp
+            i = cp_id - n_hh
+            hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.0
+        else
+            #println("cp_id is not in all_cp")
+            # Select a new cp_id from valid_cp that is not in hh.cp
+            
+            available_cp_ids = setdiff(all_cp, Set(hh.cp))
+            println("available_cp_ids: ", available_cp_ids)
+            if !isempty(available_cp_ids)
+                new_cp_id = sample(available_cp_ids)
+                print("new_cp_id: ", new_cp_id)
+                push!(hh.cp, new_cp_id)
+                hh.unsat_dem[new_cp_id] = 0.0  # Initialize unsatisfied demand for the new cp_id
+                #println("Replaced cp_id $cp_id with new cp_id $new_cp_id")
+            else
+                #println("No available cp_id to replace")
+            end
+            error("firms are not properly deleted from hh")
+        end
     end
 end
 

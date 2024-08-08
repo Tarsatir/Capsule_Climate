@@ -747,7 +747,11 @@ function model_step!(
         t,
         model
     )
+    # Calculate the set difference
+    diff_set = setdiff(Set(2501:2700), Set(all_cp))
 
+    # Print the set difference only if it is not empty
+    isempty(diff_set) || println("Set difference global:", diff_set)
     #Save houhehold data if necessary.
     save_hh_shock_data(all_hh, model, t, t_warmup)
 

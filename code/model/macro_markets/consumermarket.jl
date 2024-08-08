@@ -32,22 +32,29 @@ function process_transactions_cm!(
 
     # cmdata = model.cmdata
 
-    unsat_demand = zeros(Float64, length(all_cp))
-    hh_D = zeros(Float64, length(all_cp))
+    # unsat_demand = zeros(Float64, length(all_cp))
+    # hh_D = zeros(Float64, length(all_cp))
+    unsat_demand = zeros(Float64, 200) #Should be initparam.n_cp but is hardcoded for now
+    hh_D = zeros(Float64, 200)
 
     # Process transactions for hh
     for (i, hh_id) in enumerate(minimum(all_hh):maximum(all_hh))
 
-        hh_D .= @view cmdata.true_D[i,:]
+        valid_cp_indices = all_cp .- length(all_hh)# .+ 1
+        #println("valid_cp_indices: ", valid_cp_indices)
+        hh_D[valid_cp_indices] .= @view cmdata.true_D[i, valid_cp_indices]
 
         # Compute unsatisfied demand
-        unsat_demand .= @view cmdata.true_D[i,:]
-        unsat_demand .-= @view cmdata.transactions[i,:]
+        # unsat_demand .= @view cmdata.true_D[i,:]
+        # unsat_demand .-= @view cmdata.transactions[i,:]
+        # unsat_demand .= max.(unsat_demand, 0.0)
+        unsat_demand[valid_cp_indices] .= @view cmdata.true_D[i, valid_cp_indices]
+        unsat_demand[valid_cp_indices] .-= @view cmdata.transactions[i, valid_cp_indices]
         unsat_demand .= max.(unsat_demand, 0.0)
 
         receive_ordered_goods_hh!(
             model[hh_id], 
-            sum(@view cmdata.transactions[i,:]), 
+            sum(@view cmdata.transactions[i,valid_cp_indices]), 
             unsat_demand, 
             hh_D, 
             all_cp,
@@ -59,24 +66,41 @@ function process_transactions_cm!(
     total_salestax = 0.0
 
     # Process transations for cp
-    for (i, cp_id) in enumerate(minimum(all_cp):maximum(all_cp))
+    for (i, cp_id) in enumerate(2501:2700)
+
+        if (cp_id in all_cp)
+            unsat_demand = @view cmdata.true_D[:,i]
+            unsat_demand .-= @view cmdata.transactions[:,i]
+            unsat_demand .= max.(unsat_demand, 0.0)
+
+    
+            # TODO decide whether it makes sense if producers know unsatisfied demand
+
+            model[cp_id].curracc.S = sum(@view cmdata.transactions[:,i])
+
+            total_salestax += model[cp_id].curracc.S * (government.τˢ / (1 + government.τˢ))
+            model[cp_id].curracc.S = model[cp_id].curracc.S * (1 / (1 + government.τˢ))
+
+            N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
+            shift_and_append!(model[cp_id].D, N_goods_sold)
+            shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))
+            model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) > 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
+
+            
+        else
+            continue
+            # unsat_demand = 0.0
+            # model[cp_id].curracc.S = 0.0
+            # N_goods_sold = 0.0
+            # total_salestax = 0.0
+            # shift_and_append!(model[cp_id].D, N_goods_sold)
+            # shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))
+            # model[cp_id].N_goods = 0.0
+        end
+        #check if cp_id is in all_cp
 
         # Compute unsat_demand
-        unsat_demand = @view cmdata.true_D[:,i]
-        unsat_demand .-= @view cmdata.transactions[:,i]
-        unsat_demand .= max.(unsat_demand, 0.0)
-
-        # TODO decide whether it makes sense if producers know unsatisfied demand
-
-        model[cp_id].curracc.S = sum(@view cmdata.transactions[:,i])
-
-        total_salestax += model[cp_id].curracc.S * (government.τˢ / (1 + government.τˢ))
-        model[cp_id].curracc.S = model[cp_id].curracc.S * (1 / (1 + government.τˢ))
-
-        N_goods_sold = model[cp_id].curracc.S / model[cp_id].p[end]
-        shift_and_append!(model[cp_id].D, N_goods_sold)
-        shift_and_append!(model[cp_id].Dᵁ, sum(unsat_demand))
-        model[cp_id].N_goods = abs(model[cp_id].N_goods - N_goods_sold) > 1e-1 ? model[cp_id].N_goods - N_goods_sold : 0.0
+        
     end
 
     receive_salestax_gov!(government, total_salestax, t)
