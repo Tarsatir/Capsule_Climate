@@ -135,6 +135,46 @@ end
 """
 Checks if innovation is performed, then calls appropriate functions
 """
+# function innovate_kp!(
+#     kp::CapitalGoodProducer, 
+#     government::Government,
+#     globalparam, 
+#     all_kp::Vector{Int64}, 
+#     kp_distance_matrix::Array{Float64},
+#     w̄::Float64,
+#     t::Int64,
+#     ep,
+#     model::ABM,
+#     )
+
+#     # Determine levels of R&D, and how to divide under IN and IM
+#     set_RD_kp!(kp, globalparam.ξ, globalparam.ν)
+#     tech_choices = [(kp.A_LP, kp.A_EE, kp.A_EF, kp.B_LP, kp.B_EE, kp.B_EF)]
+
+#     # Determine innovation of machines (Dosi et al (2010); eq. 4)
+#     θ_IN = 1 - exp(-globalparam.ζ * kp.IN)
+#     if rand(Bernoulli(θ_IN))
+#         A_LP_t_in = update_techparam_p(kp.A_LP, globalparam)
+#         A_EE_t_in = update_techparam_p(kp.A_EE, globalparam)
+#         A_EF_t_in = update_techparam_p(kp.A_EF, globalparam; is_EF=true)
+
+#         B_LP_t_in = update_techparam_p(kp.B_LP, globalparam)
+#         B_EE_t_in = update_techparam_p(kp.B_EE, globalparam)
+#         B_EF_t_in = update_techparam_p(kp.B_EF, globalparam; is_EF=true)
+
+#         push!(tech_choices, (A_LP_t_in, A_EE_t_in, A_EF_t_in, B_LP_t_in, B_EE_t_in, B_EF_t_in))
+#     end
+
+#     # Determine immitation of competitors
+#     θ_IM = 1 - exp(-globalparam.ζ * kp.IM)
+#     if rand(Bernoulli(θ_IM))
+#         imitated_tech = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
+#         push!(tech_choices, imitated_tech)
+#     end
+
+#     choose_technology_kp!(kp, government, w̄, globalparam, tech_choices, t, ep)
+# end
+
 function innovate_kp!(
     kp::CapitalGoodProducer, 
     government::Government,
@@ -153,6 +193,13 @@ function innovate_kp!(
 
     # Determine innovation of machines (Dosi et al (2010); eq. 4)
     θ_IN = 1 - exp(-globalparam.ζ * kp.IN)
+    
+    # Check if θ_IN is a valid probability, otherwise set to trivial innovation
+    if isnan(θ_IN) || θ_IN < 0 || θ_IN > 1
+        println("Warning: Invalid θ_IN = $θ_IN for innovation, opting for trivial innovation.")
+        θ_IN = 0  # Trivial innovation: skip the innovation process
+    end
+    
     if rand(Bernoulli(θ_IN))
         A_LP_t_in = update_techparam_p(kp.A_LP, globalparam)
         A_EE_t_in = update_techparam_p(kp.A_EE, globalparam)
@@ -165,8 +212,15 @@ function innovate_kp!(
         push!(tech_choices, (A_LP_t_in, A_EE_t_in, A_EF_t_in, B_LP_t_in, B_EE_t_in, B_EF_t_in))
     end
 
-    # Determine immitation of competitors
+    # Determine imitation of competitors
     θ_IM = 1 - exp(-globalparam.ζ * kp.IM)
+    
+    # Check if θ_IM is a valid probability, otherwise set to trivial imitation
+    if isnan(θ_IM) || θ_IM < 0 || θ_IM > 1
+        println("Warning: Invalid θ_IM = $θ_IM for imitation, opting for trivial imitation.")
+        θ_IM = 0  # Trivial imitation: skip the imitation process
+    end
+    
     if rand(Bernoulli(θ_IM))
         imitated_tech = imitate_technology_kp(kp, all_kp, kp_distance_matrix, model)
         push!(tech_choices, imitated_tech)
@@ -174,6 +228,7 @@ function innovate_kp!(
 
     choose_technology_kp!(kp, government, w̄, globalparam, tech_choices, t, ep)
 end
+
 
 
 """

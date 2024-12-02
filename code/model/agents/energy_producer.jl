@@ -486,6 +486,59 @@ INNOVATION
 """
 Innocation process
 """
+# function innovate_ep!(
+#     ep::EnergyProducer,
+#     globalparam::GlobalParam,
+#     t::Int64
+#     )
+
+#     # Compute R&D spending (Lamperti et al (2018), eq 18)
+#     ep.RD_ep[t] = t > 1 ? globalparam.νₑ * ep.p_ep[t-1] * ep.D_ep[t-1] : 0.0
+
+#     # Compute portions of R&D spending going to innovation in green and dirty tech
+#     #   (Lamperti et al (2018), eq 18.5)
+#     ep.IN_g[t] = globalparam.ξₑ * ep.RD_ep[t]
+#     ep.IN_d[t] = (1 - globalparam.ξₑ) * ep.RD_ep[t]
+
+#     # Define success probabilities of tech search (Lamperti et al (2018), eq 19)
+#     θ_g = 1 - exp(-globalparam.ζ_ge * ep.IN_g[t])
+#     θ_d = 1 - exp(-globalparam.ζ_de * ep.IN_d[t])
+
+#     # Candidate innovation for green tech
+#     if rand(Bernoulli(θ_g))
+#         # Draw from Beta distribution
+#         κ_g = rand(Beta(globalparam.α1, globalparam.β1))
+
+#         # Scale over supports
+#         κ_g = globalparam.κ_lower + κ_g * (globalparam.κ_upper - globalparam.κ_lower)
+
+#         # Compute possible cost, replace all future if better
+#         #   (Lamperti et al (2018), eq 20)
+#         poss_IC_g = ep.IC_g[t] * (1 - κ_g)
+#         ep.IC_g[t:end] .= poss_IC_g < ep.IC_g[t] ? poss_IC_g : ep.IC_g[t]
+#     end
+
+#     # Candidate innovation for dirty tech
+#     if rand(Bernoulli(θ_d))
+#         # Draw from Beta distribution
+#         κ_d_A, κ_d_em = rand(Beta(globalparam.α1, globalparam.β1), 2)
+
+#         # Scale over supports
+#         κ_d_A = globalparam.κ_lower + κ_d_A * (globalparam.κ_upper - globalparam.κ_lower)
+#         κ_d_em = globalparam.κ_lower + κ_d_em * (globalparam.κ_upper - globalparam.κ_lower)
+
+#         # Compute possible thermal efficiency, replace all future if better
+#         #   (Lamperti et al (2018), eq 21)
+#         poss_A_d = ep.A_therm_ep[t] * (1 + κ_d_A)
+#         ep.A_therm_ep[t:end] .= poss_A_d > ep.A_therm_ep[t] ? poss_A_d : ep.A_therm_ep[t]
+
+#         # Compute possible emissions, replace all future if better
+#         #   (Lamperti et al (2018), eq 21)
+#         poss_em_d = ep.emnew_ep[t] * (1 - κ_d_em)
+#         ep.emnew_ep[t:end] .= poss_em_d < ep.emnew_ep[t] ? poss_em_d : ep.emnew_ep[t]
+#     end
+# end
+
 function innovate_ep!(
     ep::EnergyProducer,
     globalparam::GlobalParam,
@@ -504,6 +557,12 @@ function innovate_ep!(
     θ_g = 1 - exp(-globalparam.ζ_ge * ep.IN_g[t])
     θ_d = 1 - exp(-globalparam.ζ_de * ep.IN_d[t])
 
+    # Check if θ_g is valid, otherwise opt for trivial innovation
+    if isnan(θ_g) || θ_g < 0 || θ_g > 1
+        println("Warning: Invalid θ_g = $θ_g for green tech innovation, opting for trivial innovation.")
+        θ_g = 0  # Trivial innovation: skip the innovation process
+    end
+
     # Candidate innovation for green tech
     if rand(Bernoulli(θ_g))
         # Draw from Beta distribution
@@ -516,6 +575,12 @@ function innovate_ep!(
         #   (Lamperti et al (2018), eq 20)
         poss_IC_g = ep.IC_g[t] * (1 - κ_g)
         ep.IC_g[t:end] .= poss_IC_g < ep.IC_g[t] ? poss_IC_g : ep.IC_g[t]
+    end
+
+    # Check if θ_d is valid, otherwise opt for trivial innovation
+    if isnan(θ_d) || θ_d < 0 || θ_d > 1
+        println("Warning: Invalid θ_d = $θ_d for dirty tech innovation, opting for trivial innovation.")
+        θ_d = 0  # Trivial innovation: skip the innovation process
     end
 
     # Candidate innovation for dirty tech
@@ -538,6 +603,7 @@ function innovate_ep!(
         ep.emnew_ep[t:end] .= poss_em_d < ep.emnew_ep[t] ? poss_em_d : ep.emnew_ep[t]
     end
 end
+
 
 
 

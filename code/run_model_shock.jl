@@ -67,18 +67,23 @@ run_simulation(
 )
 
 # Example usage:
-source_folder = "../data/"
+source_folder = joinpath(pwd(), "data")
 old_filename = "1234_model.csv"
 new_filename = "priceshocks/down_priceshock.csv"
+
+# Check if file exists
+if isfile(joinpath(source_folder, old_filename))
+    println("File exists.")
+end
 
 move_and_rename_file(source_folder, old_filename, new_filename)
 
 
 # Example usage
-old_folder = "../data/x_hh"
-new_folder = "../data/priceshocks/down_x_hh"
+old_folder = "household_data.csv"
+new_folder = "priceshocks/household_data_down.csv"
 
-move_and_rename(old_folder, new_folder)
+move_and_rename_file(source_folder, old_folder, new_folder)
 
 
 run_simulation(
@@ -89,17 +94,17 @@ run_simulation(
     seed = seed,
     changed_params=Dict([(:p_f, 0.3)]),
 )
-source_folder = "../data/"
+source_folder = joinpath(pwd(), "data")
 old_filename = "1234_model.csv"
 new_filename = "priceshocks/up_priceshock.csv"
 
 move_and_rename_file(source_folder, old_filename, new_filename)
 
 # Example usage:
-old_folder = "../data/x_hh"
-new_folder = "../data/priceshocks/up_x_hh"
+old_folder = "household_data.csv"
+new_folder = "priceshocks/household_data_up.csv"
 
-move_and_rename(old_folder, new_folder)
+move_and_rename_file(source_folder, old_folder, new_folder)
 
 
 run_simulation(
@@ -110,17 +115,17 @@ run_simulation(
     seed = seed,
     changed_params=Dict([(:p_f, 0.2)]),
 )
-source_folder = "../data/"
+source_folder = joinpath(pwd(), "data")
 old_filename = "1234_model.csv"
 new_filename = "priceshocks/no_priceshock.csv"
 
 move_and_rename_file(source_folder, old_filename, new_filename)
 
 # Example usage:
-old_folder = "../data/x_hh"
-new_folder = "../data/priceshocks/no_x_hh"
+old_folder = "household_data.csv"
+new_folder = "priceshocks/household_data.csv"
 
-move_and_rename(old_folder, new_folder)
+move_and_rename_file(source_folder, old_folder, new_folder)
 
 nothing
 

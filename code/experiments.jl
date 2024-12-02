@@ -16,6 +16,25 @@ global taxtype_dict = Dict(
 )
 
 
+# function getfilepath_tax(
+#     folderpath::String,
+#     taxtype::Symbol,
+#     taxrate::Float64,
+#     sim_nr::Int64;
+#     is_agent_data::Bool=false
+# )
+#     #folderpath *= "result_data/"
+#     folderpath = joinpath( "../data/OFAT/")
+#     # Convert taxtype Symbol to String name
+#     folderpath *= taxtype_dict[taxtype]
+
+#     if is_agent_data
+#         folderpath *= "_agentdata"
+#     end
+#     #print(folderpath * "_$(taxrate)_$(sim_nr).csv")
+#     return folderpath * "_$(taxrate)_$(sim_nr).csv"
+# end
+
 function getfilepath_tax(
     folderpath::String,
     taxtype::Symbol,
@@ -23,15 +42,24 @@ function getfilepath_tax(
     sim_nr::Int64;
     is_agent_data::Bool=false
 )
-    #folderpath *= "result_data/"
-    folderpath = joinpath(pwd(), "../data/OFAT/")
-    # Convert taxtype Symbol to String name
-    folderpath *= taxtype_dict[taxtype]
+    # Set the base folder path
+    folderpath = joinpath(pwd(), "data/OFAT/")
+    
+    # Convert taxtype Symbol to String name, validate it's a standard symbol
+    # Attempt to map taxtype using the dictionary; fallback to robust conversion
+    taxtype_str = get(taxtype_dict, taxtype, try
+        String(taxtype)
+    catch
+        "param"  # Use "param" if the symbol cannot be converted
+    end)
+
+    folderpath *= taxtype_str
 
     if is_agent_data
         folderpath *= "_agentdata"
     end
-    #print(folderpath * "_$(taxrate)_$(sim_nr).csv")
+
+    # Construct and return the file path with taxrate and simulation number
     return folderpath * "_$(taxrate)_$(sim_nr).csv"
 end
 
@@ -117,7 +145,7 @@ function OFAT_taxrates(
                     show_full_output = false,
                     thread_nr = Threads.threadid(),
                     seed = seed,
-                    savedata = false
+                    savedata = true
                 )
                 #replace df with dummy data frames : df = DataFrame(rand(10, 10), :auto)
                 # agent_df = DataFrame(rand(10, 10), :auto)
@@ -420,7 +448,7 @@ function parse_commandline()
         "--outputpath"
             help="path to directory with output files"
             arg_type=String
-            default="../data/OFAT/"
+            default=joinpath(pwd(), "data/OFAT")
     end
 
     return parse_args(s)
@@ -440,46 +468,47 @@ function main()
     #   τ_start: tax rate from t=0 to t=t_warmup
     #   τ_end: tax rate at t=T
     #   δτ: how many months between increases, default is increase every month (δτ=1).
-    # taxrates = Dict(
-    #     # :τᴵ => (0.1, 0.6),
-    #     # :τᴷ => (0.1, 0.6),
-    #     # :τˢ => (0.0, 0.5),
-    #     # :τᴾ => (0.1, 0.6),
-    #     #:τᴱ => (0.1, 0.8),
-    #     :τᶜ => (0.0, 0.8) 
-    # )
-
-    paramrange = Dict(
-        :prog => (-1.5, 0.5)
-    #     :p_f => (0.1, 0.3)
-    #     :green_limit => (0.1, 0.11)
+    taxrates = Dict(
+        # :τᴵ => (0.1, 0.6),
+        # :τᴷ => (0.1, 0.6),
+        # :τˢ => (0.0, 0.5),
+        # :τᴾ => (0.1, 0.6),
+        #:τᴱ => (0.1, 0.8),
+        :τᶜ => (0.0, 0.8) 
     )
+
+    # paramrange = Dict(
+    #     :Λ => (0.0, 0.425)
+    # #    :prog => (-1.5, 0.5)
+    # #     :p_f => (0.1, 0.3)
+    # #     :green_limit => (0.1, 0.11)
+    # )
 
     # Select which model variables to save from each simulation
     modelvars_to_save = Symbol[
-        :GDP,               # GDP
-        :U,                 # unemployment rate
-        :em_index,    # carbon emissions index
-        :GINI_W            # Gini coefficient of wealth distribution
+        # :GDP,               # GDP
+        # :U,                 # unemployment rate
+        # :em_index,    # carbon emissions index
+        # :GINI_W            # Gini coefficient of wealth distribution
         #add markups
         
     ]
 
     # Run OFAT experiment for tax rates
-    # OFAT_taxrates(
-    #     folderpath,
-    #     taxrates; 
-    #     n_per_taxtype = n_per_type,
-    #     n_per_taxrate = n_per_val,
-    #     modelvars_to_save = modelvars_to_save
-    # )
-    OFAT_globalparam(
+    OFAT_taxrates(
         folderpath,
-        paramrange; 
-        n_per_paramtype = n_per_type,
-        n_per_paramval = n_per_val,
+        taxrates; 
+        n_per_taxtype = n_per_type,
+        n_per_taxrate = n_per_val,
         modelvars_to_save = modelvars_to_save
     )
+    # OFAT_globalparam(
+    #     folderpath,
+    #     paramrange; 
+    #     n_per_paramtype = n_per_type,
+    #     n_per_paramval = n_per_val,
+    #     modelvars_to_save = modelvars_to_save
+    # )
 
     # Run OFAT experiment for global parameters
     # OFAT_globalparam(

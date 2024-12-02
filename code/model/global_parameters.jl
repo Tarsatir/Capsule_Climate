@@ -77,32 +77,60 @@
     timer::TimerOutput
 end
 
+# function init_changed_params(
+#     globalparam::GlobalParam,
+#     param_range::Tuple{Symbol, Float64, Float64},
+#     T::Int64,
+#     t_warmup::Int64
+#     )
+#     #print("nothing happens")
+#     if param_range[3]==100.0
+#         print("No parameter range given")
+#         #define a vector of length T-t_warmup that is filled with the initial parameter value
+        
+#         value = getfield(globalparam, Symbol(param_range[1]))
+#         param_vector = fill(value, T-t_warmup)
+#         warmup_vector = fill(value, t_warmup)
+#         param_vector = vcat(warmup_vector, param_vector)
+
+#     else 
+#         #define a vector that is filled with a linspace of the parameter range but 
+#         param_vector = LinRange(param_range[2], param_range[3], T-t_warmup)
+#         #create a vector with initial parameter value for the warmup period
+#         warmup_vector = fill(param_range[2], t_warmup)
+#         #concatenate the two vectors
+#         param_vector = vcat(warmup_vector, param_vector)
+#         #return vector and parameter name
+#         #return Dict([param_range[1] => param_vector])
+#     end
+#     setproperty!(globalparam, :changing_params, param_vector)
+# end
+
 function init_changed_params(
     globalparam::GlobalParam,
     param_range::Tuple{Symbol, Float64, Float64},
     T::Int64,
     t_warmup::Int64
-    )
-    #print("nothing happens")
-    if param_range[3]==100.0
-        print("No parameter range given")
-        #define a vector of length T-t_warmup that is filled with the initial parameter value
-        
-        value = getfield(globalparam, Symbol(param_range[1]))
-        param_vector = fill(value, T-t_warmup)
-        warmup_vector = fill(value, t_warmup)
-        param_vector = vcat(warmup_vector, param_vector)
+)
+    # Extract parameter details
+    param_name = param_range[1]
+    start_value = param_range[2]
+    end_value = param_range[3]
 
-    else 
-        #define a vector that is filled with a linspace of the parameter range but 
-        param_vector = LinRange(param_range[2], param_range[3], T-t_warmup)
-        #create a vector with initial parameter value for the warmup period
-        warmup_vector = fill(param_range[2], t_warmup)
-        #concatenate the two vectors
-        param_vector = vcat(warmup_vector, param_vector)
-        #return vector and parameter name
-        #return Dict([param_range[1] => param_vector])
+    if end_value == 100.0
+        # No parameter range given; use the initial parameter value throughout
+        initial_value = getfield(globalparam, param_name)
+        param_vector = fill(initial_value, T)
+    else
+        # Create the parameter vector with initial value during warm-up
+        # and linearly changing values after warm-up
+        param_vector = vcat(
+            fill(start_value, t_warmup),
+            LinRange(start_value, end_value, T - t_warmup)
+        )
     end
+
+    # Assign the parameter vector back to globalparam
     setproperty!(globalparam, :changing_params, param_vector)
 end
 

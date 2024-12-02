@@ -749,7 +749,7 @@ function model_step!(
     )
 
     #Save houhehold data if necessary.
-    save_hh_shock_data(all_hh, model, t, t_warmup)
+    save_hh_shock_data(all_hh, model, t)
 
     # Increment time by one step
     model.t += 1

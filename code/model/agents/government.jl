@@ -66,20 +66,25 @@ function change_taxrate!(
     taxtype_ts = Symbol(String(taxtype) * "_ts")
     original_taxrate = getproperty(government, taxtype)
 
+    # if length(changed_taxrate) == 2
+    #     # Change to new tax rate at end of warmup period
+    #     taxrate = changed_taxrate[2]
+    #     tax_ts = getproperty(government, taxtype_ts)
+    #     tax_ts[t_warmup:end] .= taxrate
+    #     #in case of shock experiment
+    #     # change return taxrate to inital value after 100 entries
+    #     tax_ts[t_warmup+20:end] .= original_taxrate
     if length(changed_taxrate) == 2
-        # Change to new tax rate at end of warmup period
+        # Change to new tax rate at the end of warmup period
         taxrate = changed_taxrate[2]
         tax_ts = getproperty(government, taxtype_ts)
         tax_ts[t_warmup:end] .= taxrate
-        #in case of shock experiment
-        # change return taxrate to inital value after 100 entries
-        tax_ts[t_warmup+20:end] .= original_taxrate
     else
         # Linear interpolation between τ_start and τ_end
         taxrate_start = changed_taxrate[2]
         taxrate_end = changed_taxrate[3]
         tax_ts = getproperty(government, Symbol(String(taxtype) * "_ts"))
-        tax_ts[begin:t_warmup] .= taxrate_start
+        tax_ts[begin:t_warmup] .= taxrate_start 
         tax_ts[t_warmup:end] .= Base._linspace(taxrate_start, taxrate_end, length(tax_ts) - t_warmup + 1)
     end
 

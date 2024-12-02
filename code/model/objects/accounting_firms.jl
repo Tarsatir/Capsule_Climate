@@ -45,7 +45,7 @@ function close_balance_all_p!(
         writeoffs = update_K_p!(model[p_id], globalparam.η)
 
         # Compute profits
-        compute_Π_p!(model[p_id], government; writeoffs)
+        compute_Π_p!(model[p_id], government; writeoffs) 
 
         if t >= 1
             # Compute and pay energy and carbon taxes

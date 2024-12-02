@@ -5,7 +5,7 @@ include("model/main.jl")
 seed = 2345
 
 # Ensure the output directory exists
-output_dir = "../data/multirun/"
+output_dir = joinpath(pwd(), "data/multirun")
 isdir(output_dir) || mkdir(output_dir)
 
 # Run model n times with different seeds and save data in "within_time_ofat" folder
@@ -24,9 +24,9 @@ for i in 1:9
     name = "$(local_seed)_model.csv"
     
     #cp(name, joinpath(output_dir, name), force=true)
-    cp("../data/$name", joinpath(output_dir, name), force=true)
+    cp(joinpath(pwd(),"data/$name"), joinpath(output_dir, name), force=true)
     # Delete the original file
-    rm("../data/$name")
+    rm(joinpath(pwd(),"data/$name"))
 end
 
 

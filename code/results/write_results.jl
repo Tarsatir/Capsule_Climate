@@ -139,13 +139,13 @@ function save_simdata(
     model_df::DataFrame,
     seed::Int64,
 )
-    dir = pwd()
+    dir_path = joinpath(pwd(), "data") 
     # NOTE: CONVERSION DF TO STRING IS TMP SOLUTION, SHOULD BE FIXED BACK WHEN PACKAGES 
         #       ARE CONSISTENT AGAIN!
     # NOTE: CONVERSION DF TO STRING IS TMP SOLUTION, SHOULD BE FIXED BACK WHEN PACKAGES 
     #       ARE CONSISTENT AGAIN!
     #CSV.write(joinpath(dir, string(seed, "_agent.csv")), string.(agent_df))
-    CSV.write(joinpath("../data", string(seed, "_model.csv")), model_df)
+    CSV.write(joinpath(dir_path, string(seed, "_model.csv")), model_df)
 
 end
 
@@ -153,50 +153,87 @@ function save_firm_data(
     firm_df::DataFrame,
     seed::Int64,
 )
-         
+    dir_path = joinpath(pwd(), "data")  
     #if first colum is named cp_i save it as "_cp_firm.csv"
     if "cp_i" in names(firm_df)
-        CSV.write(joinpath("../data/", string(seed, "_cp_firm.csv")), firm_df)
+        CSV.write(joinpath(dir_path, string(seed, "_cp_firm.csv")), firm_df)
     else
-        CSV.write(joinpath("../data/", string(seed, "_kp_firm.csv")), firm_df)
+        CSV.write(joinpath(dir_path, string(seed, "_kp_firm.csv")), firm_df)
     end
 
 end
 
 using DataFrames, CSV
 
+# function save_hh_shock_data(
+#     all_hh::Vector{Int},
+#     model::ABM,
+#     t::Int64,
+#     t_warmup::Int64
+# )
+#     if t > t_warmup - 5 && t < t_warmup + 250
+#         df = DataFrame(
+#             hh_id = map(hh_id -> hh_id, all_hh),
+#             all_I = map(hh_id -> model[hh_id].total_I, all_hh),
+#             C_actual = map(hh_id -> model[hh_id].C_actual, all_hh),
+#             all_w = map(hh_id -> model[hh_id].w[end], all_hh),
+#             all_labor = map(hh_id -> model[hh_id].labor_I, all_hh),
+#             all_captial = map(hh_id -> model[hh_id].capital_I, all_hh),
+#             all_UB_I = map(hh_id -> model[hh_id].UB_I, all_hh),
+#             all_socben_I = map(hh_id -> model[hh_id].socben_I, all_hh),
+#             all_W = map(hh_id -> model[hh_id].W, all_hh),
+#             #same with P̄
+#             real_I = map(hh_id -> model[hh_id].total_I/model[hh_id].P̄, all_hh),
+#             #same with hh.C 
+#             all_C = map(hh_id -> model[hh_id].C, all_hh)
+        
+#         )
+#         #output the path i am currently in
+#         #println(pwd())
+
+
+#         # Save data to CSV if t > t_warmup - 5 and t < t_warmup + 100
+#         file_name = "household_$(t)_hh.csv"
+#         full_path = joinpath("../data/", "x_hh", file_name)
+#         CSV.write(full_path, df)
+#     end
+# end
+
 function save_hh_shock_data(
     all_hh::Vector{Int},
     model::ABM,
-    t::Int64,
-    t_warmup::Int64
+    t::Int64
 )
-    if t > t_warmup - 5 && t < t_warmup + 250
-        df = DataFrame(
-            hh_id = map(hh_id -> hh_id, all_hh),
-            all_I = map(hh_id -> model[hh_id].total_I, all_hh),
-            C_actual = map(hh_id -> model[hh_id].C_actual, all_hh),
-            all_w = map(hh_id -> model[hh_id].w[end], all_hh),
-            all_labor = map(hh_id -> model[hh_id].labor_I, all_hh),
-            all_captial = map(hh_id -> model[hh_id].capital_I, all_hh),
-            all_UB_I = map(hh_id -> model[hh_id].UB_I, all_hh),
-            all_socben_I = map(hh_id -> model[hh_id].socben_I, all_hh),
-            all_W = map(hh_id -> model[hh_id].W, all_hh),
-            #same with P̄
-            real_I = map(hh_id -> model[hh_id].total_I/model[hh_id].P̄, all_hh),
-            #same with hh.C 
-            all_C = map(hh_id -> model[hh_id].C, all_hh)
+    # Create DataFrame for the current time step
+    df = DataFrame(
+        timestamp = fill(t, length(all_hh)),
+        hh_id = all_hh,
+        all_I = [model[hh_id].total_I for hh_id in all_hh],
+        C_actual = [model[hh_id].C_actual for hh_id in all_hh],
+        all_w = [model[hh_id].w[end] for hh_id in all_hh],
+        all_labor = [model[hh_id].labor_I for hh_id in all_hh],
+        all_capital = [model[hh_id].capital_I for hh_id in all_hh],
+        all_UB_I = [model[hh_id].UB_I for hh_id in all_hh],
+        all_socben_I = [model[hh_id].socben_I for hh_id in all_hh],
+        all_W = [model[hh_id].W for hh_id in all_hh],
+        real_I = [model[hh_id].total_I / model[hh_id].P̄ for hh_id in all_hh],
+        all_C = [model[hh_id].C for hh_id in all_hh],
         
-        )
-        #output the path i am currently in
-        #println(pwd())
+    )
 
+    # Set directory and filename
+    dir_path = joinpath(pwd(), "data") 
+    file_name = "household_data.csv"
+    full_path = joinpath(dir_path, file_name)
 
-        # Save data to CSV if t > t_warmup - 5 and t < t_warmup + 100
-        file_name = "household_$(t)_hh.csv"
-        full_path = joinpath("../data/", "x_hh", file_name)
-        CSV.write(full_path, df)
-    end
+    #overwrite the file if it already exists
+    CSV.write(full_path, df)
+    # # Append data to the CSV file
+    # if isfile(full_path)
+    #     CSV.write(full_path, df, append=true)
+    # else
+    #     CSV.write(full_path, df)
+    # end
 end
 
 
@@ -206,7 +243,7 @@ function save_final_dist(
     all_kp::Vector{Int}, 
     model::ABM
     )
-    dir = "../data/"
+    dir = joinpath(pwd(), "data")
     # Save income data of households 
     df = DataFrame(
         all_I = map(hh_id -> model[hh_id].total_I, all_hh),
